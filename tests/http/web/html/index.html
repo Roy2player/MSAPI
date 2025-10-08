@@ -1,0 +1,108 @@
+<!--
+ * This file is part of MSAPI.
+ * License: see LICENSE.md
+ * Contributor terms: see CONTRIBUTING.md
+ *
+ * This software is licensed under the Polyform Noncommercial License 1.0.0.
+ * You may use, copy, modify, and distribute it for noncommercial purposes only.
+ *
+ * For commercial use, please contact: maks.angels@mail.ru
+ *
+ * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+-->
+
+<!DOCTYPE html>
+<html lang="en_EN">
+<!-- Get out while doesn't get for ass -->
+
+<head>
+    <!-- ALL META -->
+    <meta charset="utf-8" />
+    <meta name="robots" content="index, follow" />
+    <meta name="reply-to" content="maks.angels@mail.ru" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="description"
+        content="Micro services application programming interface - an easy way to create a fast and scalable custom C++ solution" />
+    <meta name="keywords" content="Micro services application programming interface" />
+    <meta name="copyright" content="Auto Trading software solution - TBank connectivity" />
+    <meta name="Author" lang="en" content="Maksim Leonov" />
+    <meta name="format-detection" content="telephone=no">
+    <meta name="format-detection" content="address=no">
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:title" content="Micro services application programming interface" />
+    <meta property="og:description"
+        content="Micro services application programming interface - an easy way to create a fast and scalable custom C++ solution" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="/" />
+    <meta property="og:site_name" content="Auto Trading software solution - TBank connectivity" />
+    <meta property="og:see_also" content="/" />
+    <meta property="business:contact_data:email" content="" />
+    <!-- <meta property="business:contact_data:phone_number" content="+7(999)9999999"/> -->
+    <meta property="business:contact_data:website" content="/" />
+    <title>Micro services application programming interface</title>
+    <!-- <link rel="canonical" href="/"/> -->
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+    <!-- THEME -->
+    <meta name="msapplication-TileColor" content="#0000ff">
+    <meta name="theme-color" content="#ffffff">
+    <!-- FONTS PRELOAD -->
+    <!-- <link rel="preload" href="fonts/Montserrat-Light.woff2" as="font" type="font/woff" crossorigin="anonymous">
+    <link rel="preload" href="fonts/Montserrat-Bold.woff2" as="font" type="font/woff" crossorigin="anonymous">
+    <link rel="preload" href="fonts/Montserrat-Medium.woff2" as="font" type="font/woff" crossorigin="anonymous">
+    <link rel="preload" href="fonts/Montserrat-Regular.woff2" as="font" type="font/woff" crossorigin="anonymous">
+    <link rel="preload" href="fonts/Montserrat-SemiBold.woff2" as="font" type="font/woff" crossorigin="anonymous"> -->
+    <!-- CSS PRELOAD -->
+    <link rel="preload" href="style.css" as="style" />
+    <!-- CSS INCLUDE -->
+    <link rel="stylesheet" href="style.css" />
+    <!-- DOP IMAGES -->
+    <!-- <link rel="apple-touch-icon" type="image/png" sizes="60x60" href="images/sys/touch-icon-iphone.png">
+    <link rel="apple-touch-icon" type="image/png" sizes="76x76" href="images/sys/touch-icon-ipad.png">
+    <link rel="apple-touch-icon" type="image/png" sizes="120x120" href="images/sys/touch-icon-iphone-retina.png">
+    <link rel="apple-touch-icon" type="image/png" sizes="152x152" href="images/sys/touch-icon-ipad-retina.png"> -->
+
+    <script src="/index.js"></script>
+</head>
+
+<body>
+    <header data-scrolled="header" data-scrolled-type="sticker">
+
+    </header>
+    <main>
+        <section class="MSAPIManagerInstalledApps">
+            <div class="grid">
+                <div class="headers">
+                    <span>Action</span>
+                    <span>Name</span>
+                </div>
+                <div class="rows"></div>
+            </div>
+        </section>
+        <section class="MSAPIManagerCreatedApps">
+            <div class="grid">
+                <div class="headers">
+                    <span>Action</span>
+                    <span>State</span>
+                    <span>Name</span>
+                    <span>PID</span>
+                    <span>Created time</span>
+                </div>
+                <div class="rows"></div>
+            </div>
+        </section>
+    </main>
+    <footer>
+
+    </footer>
+    <script src="/trigger_ML.js"></script>
+    <script src="/scroll_ML.js"></script>
+    <script>
+        globalActions.GetInstalledApps();
+        setInterval(globalActions.GetCreatedApps, 5000);
+    </script>
+</body>
+
+</html>

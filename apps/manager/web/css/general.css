@@ -1,0 +1,122 @@
+/**************************
+ * This file is part of MSAPI.
+ * License: see LICENSE.md
+ * Contributor terms: see CONTRIBUTING.md
+ *
+ * This software is licensed under the Polyform Noncommercial License 1.0.0.
+ * You may use, copy, modify, and distribute it for noncommercial purposes only.
+ *
+ * For commercial use, please contact: maks.angels@mail.ru
+ *
+ * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ */
+
+:root {
+    --background-view: white;
+    --background-element-general: #eaecf7;
+    --background-element-sub-general: #d7dbf0;
+    --background-element-header: #bdc4fa;
+    --background-element-general-hover: #faf3bd;
+    --background-element-invalid: #ffcccc;
+    --background-element-disabled: #f0f0f0;
+    --background-element-enabled: #c2e8d8;
+    --border-color-general: black;
+    --border-color-sub-general: #ccc;
+    --text-color-general: black;
+    --loader-background: rgba(255, 255, 255, 0.5);
+    --loader-background-element: #fff;
+    --error-message-color: red;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-view: #1e1e1e;
+        --background-element-general: #2c2f3a;
+        --background-element-sub-general: #353847;
+        --background-element-header: #3e4260;
+        --background-element-general-hover: #494d66;
+        --background-element-invalid: #4b1d1d;
+        --background-element-disabled: #333;
+        --background-element-enabled: #3a6151;
+        --border-color-general: #999;
+        --border-color-sub-general: #555;
+        --text-color-general: #f0f0f0;
+        --loader-background: rgba(0, 0, 0, 0.5);
+        --loader-background-element: #222;
+        --error-message-color: #ff6666;
+    }
+}
+
+body {
+    overflow-x: hidden;
+    min-width: 320px;
+    line-height: 1.15;
+    font-size: 15px;
+    font-family: Consolas, sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    color: var(--text-color-general);
+    background-color: var(--background-view);
+    height: 100vh;
+}
+
+input {
+    border: 0 solid transparent;
+    box-shadow: 0 0 0 transparent;
+    appearance: none;
+    outline: 0;
+    border-radius: 0;
+    font-family: Consolas, sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    color: var(--text-color-general);
+    line-height: 1;
+    padding: 0;
+    font-size: 15px;
+    background: var(--background-view);
+}
+
+input[type="number"] {
+    appearance: textfield;
+}
+
+select {
+    outline: 0;
+    border-radius: 0;
+    font-family: Consolas, sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    color: var(--text-color-general);
+    line-height: 1;
+    padding: 0;
+    font-size: 15px;
+}
+
+ul,
+ol {
+    list-style: none;
+}
+
+main {
+    overflow: hidden;
+    height: 100%;
+    max-width: 100vw;
+    position: relative;
+}
+
+a {
+    text-decoration: none;
+    color: var(--text-color-general);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+select {
+    text-overflow: ellipsis;
+    cursor: pointer;
+}

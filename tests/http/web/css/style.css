@@ -1,0 +1,299 @@
+/**************************
+ * This file is part of MSAPI.
+ * License: see LICENSE.md
+ * Contributor terms: see CONTRIBUTING.md
+ *
+ * This software is licensed under the Polyform Noncommercial License 1.0.0.
+ * You may use, copy, modify, and distribute it for noncommercial purposes only.
+ *
+ * For commercial use, please contact: maks.angels@mail.ru
+ *
+ * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ */
+
+html,
+body,
+div,
+span,
+applet,
+object,
+iframe,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+pre,
+a,
+abbr,
+acronym,
+address,
+big,
+cite,
+code,
+del,
+dfn,
+em,
+img,
+ins,
+kbd,
+q,
+s,
+samp,
+small,
+strike,
+strong,
+sub,
+sup,
+tt,
+var,
+b,
+u,
+i,
+center,
+dl,
+dt,
+dd,
+ol,
+ul,
+li,
+fieldset,
+form,
+label,
+legend,
+table,
+caption,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td,
+article,
+aside,
+canvas,
+details,
+embed,
+figure,
+figcaption,
+footer,
+header,
+hgroup,
+menu,
+nav,
+output,
+ruby,
+section,
+summary,
+time,
+mark,
+audio,
+video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+article,
+aside,
+details,
+figcaption,
+figure,
+footer,
+header,
+hgroup,
+menu,
+nav,
+section,
+main {
+    display: block;
+}
+
+body {
+    overflow-x: hidden;
+    min-width: 320px;
+    line-height: 1;
+    font-size: 16px;
+    font-family: Montserrat, sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    color: var(--black_1);
+    padding-right: 0 !important;
+    -webkit-text-size-adjust: none;
+}
+
+ul,
+ol {
+    list-style: none;
+}
+
+main {
+    overflow: hidden;
+}
+
+a {
+    text-decoration: none;
+    color: var(--black_1);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+select {
+    text-overflow: ellipsis;
+}
+
+::selection {
+    background: var(--system_1);
+    color: var(--system_2);
+}
+
+body {
+    padding-top: 0;
+    background: #fff;
+    margin: 0 auto;
+    max-width: 1920px;
+    min-height: 100vh;
+}
+
+img {
+    display: inline-block;
+    user-select: none;
+}
+
+input {
+    border: 0 solid rgba(0, 0, 0, 0);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+    -webkit-appearance: none;
+    outline: 0;
+    border-radius: 0;
+    font-family: Montserrat, sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    color: var(--black_1);
+    line-height: 1;
+    padding: 0;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    font-family: Montserrat, sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    color: var(--black_1);
+    line-height: 1;
+    padding: 0;
+}
+
+textarea {
+    border: 0 solid rgba(0, 0, 0, 0);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+    -webkit-appearance: none;
+    outline: 0;
+    border-radius: 0;
+    font-family: Montserrat, sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    color: var(--black_1);
+    line-height: 1;
+    padding: 0;
+    resize: none;
+}
+
+.width {
+    position: relative;
+    width: calc(100% - 40px);
+    max-width: calc(100% - 40px);
+    margin: 0 auto;
+}
+
+/*
+    START -- MSAPI manager
+*/
+
+.grid {
+    border: 2px solid #3548b3;
+    border-top: 0px;
+    margin: 1px;
+}
+
+.grid>.headers {
+    background: #3548b3;
+    color: white;
+    display: flex;
+}
+
+.grid>.headers>span {
+    border-right: 2px solid white;
+    padding: 3px 5px 3px 3px;
+}
+
+.grid>.headers>span:last-child {
+    border-right: 0;
+    padding: 3px;
+}
+
+.grid>.rows>.row {
+    display: flex;
+}
+
+.grid>.rows>.row>span.action {
+    cursor: pointer;
+    width: 20px;
+}
+
+.grid>.rows>.row>span {
+    padding: 3px;
+}
+
+.grid>.rows>.row:nth-child(odd)>span:nth-child(odd) {
+    background: #f0f0f0;
+}
+
+.grid>.rows>.row:nth-child(odd)>span:nth-child(even) {
+    background: #fff;
+}
+
+.grid>.rows>.row:nth-child(even)>span:nth-child(even) {
+    background: #f0f0f0;
+}
+
+.grid>.rows>.row:nth-child(even)>span:nth-child(odd) {
+    background: #fff;
+}
+
+.grid>.rows>.row>span.action[action="create"] {
+    position: relative;
+}
+
+.grid>.rows>.row>span.action[action="create"]::before {
+    content: "+";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    border-radius: 3px;
+    background: #35b37e;
+    width: 85%;
+    height: 85%;
+    text-align: center;
+    color: white;
+    line-height: 100%;
+    transition: ease 0.3s all;
+}
+
+.grid>.rows>.row>span.action[action="create"]:hover::before {
+    background: #45dd00;
+}
+
+
+
+/*
+    END -- MSAPI manager
+*/

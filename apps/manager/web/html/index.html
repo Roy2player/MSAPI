@@ -1,0 +1,151 @@
+<!--
+* This file is part of MSAPI.
+* License: see LICENSE.md
+* Contributor terms: see CONTRIBUTING.md
+*
+* This software is licensed under the Polyform Noncommercial License 1.0.0.
+* You may use, copy, modify, and distribute it for noncommercial purposes only.
+*
+* For commercial use, please contact: maks.angels@mail.ru
+*
+* Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+-->
+
+<!DOCTYPE html>
+<html lang="en_EN">
+<!-- Get out until don't get for ass -->
+
+<head>
+    <!-- ALL META -->
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description"
+        content="Micro services application programming interface - the easiest way to create a fast and scalable custom C++ solution" />
+    <meta name="keywords" content="Micro services application programming interface" />
+    <meta name="copyright" content="MSAPI Manager" />
+    <meta name="Author" lang="en" content="Maksim Leonov" />
+    <meta name="format-detection" content="telephone=no">
+    <meta name="format-detection" content="address=no">
+    <title>MSAPI Manager</title>
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+    <!-- THEME -->
+    <meta name="msapplication-TileColor" content="#0000ff">
+    <meta name="theme-color" content="#ffffff">
+    <!-- CSS PRELOAD -->
+    <link rel="preload" href="general.css" as="style" />
+    <link rel="preload" href="grid.css" as="style" />
+    <link rel="preload" href="view.css" as="style" />
+    <link rel="preload" href="dispatcher.css" as="style" />
+    <link rel="preload" href="table.css" as="style" />
+    <!-- CSS INCLUDE -->
+    <link rel="stylesheet" href="general.css" />
+    <link rel="stylesheet" href="grid.css" />
+    <link rel="stylesheet" href="view.css" />
+    <link rel="stylesheet" href="dispatcher.css" />
+    <link rel="stylesheet" href="table.css" />
+
+    <script src="/grid.js"></script>
+    <script src="/table.js"></script>
+    <script src="/application.js"></script>
+    <script src="/dispatcher.js"></script>
+    <script src="/metadataCollector.js"></script>
+    <script src="/helper.js"></script>
+    <script src="/duration.js"></script>
+    <script src="/timer.js"></script>
+    <script src="/select.js"></script>
+</head>
+
+<body>
+    <main>
+        <section class="views"></section>
+    </main>
+    <script>
+        let dispatcher = new Dispatcher();
+        dispatcher.RegisterPanel("InstalledApps");
+        dispatcher.RegisterPanel("CreatedApps");
+        MetadataCollector.Initialization();
+        //* Metadata items which are used by MSAPI Frontend views
+        MetadataCollector.AddMetadata(1, { name: "Create", type: "system" }, true);
+        MetadataCollector.AddMetadata(2, { name: "Change state", type: "system" }, true);
+        MetadataCollector.AddMetadata(3, { name: "Modify", type: "system" }, true);
+        MetadataCollector.AddMetadata(4, { name: "Delete", type: "system" }, true);
+        MetadataCollector.AddMetadata(5, { name: "Type", type: "String" }, true);
+        MetadataCollector.AddMetadata(6, {
+            name: "Table template with boolean operator",
+            type: "TableData",
+            columns: [{
+                name: "Boolean operator", type: "Int8", stringInterpretation: {
+                    0: "Equal"
+                }
+            }]
+        }, true);
+        MetadataCollector.AddMetadata(7,
+            {
+                name: "Table template with number operator", type: "TableData",
+                columns: [{
+                    name: "Number operator", type: "Int8", stringInterpretation: {
+                        0: "Equal"
+                        , 1: "Not equal"
+                        , 2: "Less than"
+                        , 3: "Greater than"
+                        , 4: "Less than or equal to"
+                        , 5: "Greater than or equal to"
+                    }
+                }]
+            }, true);
+        MetadataCollector.AddMetadata(8, {
+            name: "Table template with string operator", type: "TableData",
+            columns:
+                [{
+                    name: "String operator", type: "Int8", stringInterpretation: {
+                        0: "Equal case sensitive"
+                        , 1: "Equal case insensitive"
+                        , 2: "Not equal case sensitive"
+                        , 3: "Not equal case insensitive"
+                        , 4: "Contains case sensitive"
+                        , 5: "Contains case insensitive"
+                    }
+                }]
+        }, true);
+        MetadataCollector.AddMetadata(9, {
+            name: "Table template with optional number operator", type: "TableData", columns: [{
+                name: "Optional number operator", type: "Int8", stringInterpretation: {
+                    0: "Equal"
+                    , 1: "Not equal"
+                    , 2: "Less than"
+                    , 3: "Greater than"
+                    , 4: "Less than or equal to"
+                    , 5: "Greater than or equal to"
+                }
+            }]
+        }, true);
+        MetadataCollector.AddMetadata(10, { name: "Open view", type: "system" }, true);
+
+        // Firstly, created instance of installed app view asks for metadata in case if any of already created
+        void new Application("InstalledApps");
+
+        document.addEventListener('keydown', function (event) {
+            if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
+                event.preventDefault();
+                dispatcher.m_control.dispatchEvent(new Event('click', { bubbles: true }));
+            }
+        });
+
+        window.addEventListener('message', function (event) {
+            if (event.data && event.data.type === 'iframeClick') {
+                const app = Application.GetCreatedApplications().get(event.data.uid);
+                if (!app) {
+                    console.error('Application not found for UID:', event.data.uid);
+                    return;
+                }
+
+                app.m_parentView.dispatchEvent(new Event('mousedown', { bubbles: true }));
+            }
+        });
+
+    </script>
+</body>
+
+</html>

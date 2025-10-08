@@ -1,0 +1,105 @@
+add_compile_options(
+    -Wall
+    -Wno-unknown-pragmas
+    -Wextra
+    -Wpedantic
+
+    -Wcast-align
+    -Wcast-qual
+    -Wconversion
+    -Wctor-dtor-privacy
+    -Wenum-compare
+    -Wfloat-equal
+    -Wnon-virtual-dtor
+    -Wold-style-cast
+    -Woverloaded-virtual
+    -Wredundant-decls
+    -Wsign-conversion
+    -Wsign-promo
+
+    -pedantic
+    #-Werror
+
+    -O3 # TODO: Find a way to build with -Ofast
+    -march=native
+    -flto=auto
+    -v
+    -funroll-loops
+    -finline-functions
+    -fomit-frame-pointer
+
+    -fconcepts-diagnostics-depth=2
+
+    -fdiagnostics-color=always
+)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Build Type: Debug")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Build Type: Release")
+elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    message(STATUS "Build Type: RelWithDebInfo")
+elseif(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    message(STATUS "Build Type: MinSizeRel")
+else()
+    message(STATUS "Build Type: Unknown")
+endif()
+
+# Check if CMAKE_CXX_FLAGS is defined and not empty
+if(DEFINED CMAKE_CXX_FLAGS AND NOT CMAKE_CXX_FLAGS STREQUAL "")
+    message(STATUS "C++ Compile Options: ${CMAKE_CXX_FLAGS}")
+endif()
+
+# Check if CMAKE_C_FLAGS is defined and not empty
+if(DEFINED CMAKE_C_FLAGS AND NOT CMAKE_C_FLAGS STREQUAL "")
+    message(STATUS "C Compile Options: ${CMAKE_C_FLAGS}")
+endif()
+
+# Check if CMAKE_CXX_DEFINES (compile definitions) is defined and not empty
+if(DEFINED CMAKE_CXX_DEFINES AND NOT CMAKE_CXX_DEFINES STREQUAL "")
+    message(STATUS "Compile Definitions: ${CMAKE_CXX_DEFINES}")
+endif()
+
+# Check if additional compile options (from add_compile_options()) are not empty
+get_property(CXX_COMPILE_OPTIONS DIRECTORY PROPERTY COMPILE_OPTIONS)
+if(CXX_COMPILE_OPTIONS)
+    message(STATUS "C++ Additional Compile Options: ${CXX_COMPILE_OPTIONS}")
+endif()
+
+# Check if the project is being compiled in 32-bit or 64-bit mode
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(STATUS "Data Model: 64-bit")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    message(STATUS "Data Model: 32-bit")
+else()
+    message(STATUS "Unknown Data Model")
+endif()
+
+# Print the compiler version and information
+message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "Compiler Target: ${CMAKE_SYSTEM_PROCESSOR}")
+
+set(SANITIZE_OPTIONS
+    "-fsanitize=leak,undefined,shift,integer-divide-by-zero,vla-bound,null,signed-integer-overflow,bounds,float-divide-by-zero,float-cast-overflow,bool,enum,vptr,pointer-overflow \
+     -fsanitize-address-use-after-scope \
+     -fvar-tracking-assignments \
+     --param=max-vartrack-size=999999999"
+)
+# address option cannot be used due to unexpected crash in HTTP data handler.
+
+# Check if the build type is DEBUG
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZE_OPTIONS}")
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZE_OPTIONS}")
+endif()
+
+# Function to set common properties to MSAPI application target
+function(msapi_set_target_properties target)
+    set_target_properties(${target} PROPERTIES
+        CXX_STANDARD 23
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+    )
+
+    target_link_options(${target} PRIVATE -static-libstdc++ -static-libgcc)
+endfunction()

@@ -1,0 +1,196 @@
+/**************************
+ * This file is part of MSAPI.
+ * License: see LICENSE.md
+ * Contributor terms: see CONTRIBUTING.md
+ *
+ * This software is licensed under the Polyform Noncommercial License 1.0.0.
+ * You may use, copy, modify, and distribute it for noncommercial purposes only.
+ *
+ * For commercial use, please contact: maks.angels@mail.ru
+ *
+ * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ */
+
+.tableWrapper>div {
+    display: inline-block;
+}
+
+.tableWrapper>div .table .header {
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.tableWrapper>div .table {
+    margin-top: 5px;
+    padding: 5px;
+    background: var(--background-element-general);
+}
+
+.tableWrapper>div .table .header>div:last-child {
+    width: 33px;
+    background: var(--background-element-general);
+    position: relative;
+}
+
+.tableWrapper>div .table .header>div:last-child::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transition: all 0.3s ease 0s;
+    opacity: 0;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z'/%3E%3C/svg%3E");
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
+    background-color: var(--text-color-general);
+}
+
+.tableWrapper.changed>div .table .header>div:last-child::after {
+    opacity: 1;
+}
+
+.tableWrapper>div>.buttons {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 5px;
+}
+
+.tableWrapper>div>.buttons>div:not(:last-child) {
+    margin-right: 5px;
+}
+
+.tableWrapper>div>.buttons>div {
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: normal;
+    cursor: pointer;
+    background: var(--background-element-general);
+    transition: all 0.3s ease 0s;
+    user-select: none;
+}
+
+.tableWrapper>div>.buttons>div:hover {
+    background: var(--background-element-general-hover);
+}
+
+.tableWrapper:not(:last-child) {
+    margin-right: 15px;
+}
+
+.tableWrapper>div .table .row> :not(:last-child) {
+    width: 200px;
+    margin-right: 5px;
+}
+
+.tableWrapper>div .table>.row:not(:last-child) {
+    margin-bottom: 5px;
+}
+
+.tableWrapper>div .table .row {
+    display: flex;
+}
+
+.tableWrapper>div .table .row .add,
+.tableWrapper>div .table .row .remove {
+    width: 33px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease 0s;
+}
+
+.tableWrapper>div .table .row .add,
+.tableWrapper>div .table .row .remove {
+    background: var(--background-element-sub-general);
+}
+
+.tableWrapper>div .table .row .add:hover,
+.tableWrapper>div .table .row .remove:hover {
+    background: var(--background-element-general-hover);
+}
+
+.tableWrapper>div .table .row .remove::before,
+.tableWrapper>div .table .row .add::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transition: all 0.3s ease 0s;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: 12px;
+    background-color: var(--text-color-general);
+}
+
+.tableWrapper>div .table .row .add::before {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'/%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3C/svg%3E");
+}
+
+.tableWrapper>div .table .row .remove::before {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3C/svg%3E");
+}
+
+.tableWrapper>div .table .row>input {
+    flex-grow: unset;
+    font-size: 12px;
+    padding: 3px;
+    transition: all 0.3s ease 0s;
+    background: var(--background-element-sub-general);
+    border: 1px solid transparent;
+}
+
+.tableWrapper>div .table .row>input:active,
+.tableWrapper>div .table .row>input:focus,
+.tableWrapper>div .table .row>input:hover {
+    background: var(--background-element-general-hover);
+}
+
+.tableWrapper>div .table .row.added>*,
+.tableWrapper>div .table .row input.changed {
+    border: 1px solid var(--border-color-general);
+}
+
+.tableWrapper>div .table .row input.invalid {
+    background: var(--background-element-invalid);
+}
+
+.tableWrapper>div .table .row.removed {
+    display: none;
+}
+
+.tableWrapper>div>.header {
+    font-size: 12px;
+}
+
+.tableWrapper.const>div .table>.row:last-child {
+    display: none;
+}
+
+.tableWrapper.const>div .table>.row>div:last-child {
+    display: none;
+}
+
+.tableWrapper.const>div .table .row>input {
+    appearance: textfield;
+    cursor: default;
+}
+
+.tableWrapper.const>div .table .row> :nth-last-child(-n+2) {
+    margin-right: 0;
+}
+
+.tableWrapper.const>div .table :nth-last-child(-n+2) {
+    margin-bottom: 0;
+}
+
+.tableWrapper>div .table .row>label>input:checked {
+    background: var(--background-element-enabled);
+}
+
+.tableWrapper>div .table .row>label>input {
+    width: 100%;
+    height: 100%;
+    background: var(--background-element-disabled);
+    transition: all 0.3s ease 0s;
+    cursor: pointer;
+}
