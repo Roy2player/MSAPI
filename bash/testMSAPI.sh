@@ -4,7 +4,7 @@
 taskName="Build MSAPI library, apps, tests and run them"
 echo -e "${VIOLET}START:${ENDCOLOR} ${taskName}"
 
-. ${BASH_HELPER_PATH}/helper.sh
+. $(dirname "$0")/helper.sh
 
 CheckGlobalVariables MSAPI_PATH
 ExitIfError $?

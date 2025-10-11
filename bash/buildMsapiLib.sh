@@ -4,7 +4,7 @@
 taskName="Build MSAPI library"
 echo -e "${VIOLET}START:${ENDCOLOR} ${taskName}"
 
-. ${BASH_HELPER_PATH}/helper.sh
+. $(dirname "$0")/helper.sh
 
 CheckGlobalVariables MSAPI_PATH
 ExitIfError $?
@@ -16,7 +16,7 @@ fi
 RunCommand "cmake -DCMAKE_BUILD_TYPE=${BUILD_PROFILE} -B ${MSAPI_PATH}/library/build ${MSAPI_PATH}/library/build \
 	2>&1 | tee ${MSAPI_PATH}/library/build/cmake.txt" "cmake MSAPI library"
 ExitIfError $?
-RunCommand "cmake --build ${MSAPI_PATH}/library/build -j ${NPROC} \
+RunCommand "cmake --build ${MSAPI_PATH}/library/build -j $(nproc) \
 	2>&1 | tee ${MSAPI_PATH}/library/build/cmake_build.txt" "cmake build MSAPI library"
 ExitIfError $?
 

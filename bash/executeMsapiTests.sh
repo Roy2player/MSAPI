@@ -4,7 +4,7 @@
 taskName="Build MSAPI library, tests and run them"
 echo -e "${VIOLET}START:${ENDCOLOR} ${taskName}"
 
-. ${BASH_HELPER_PATH}/helper.sh
+. $(dirname "$0")/helper.sh
 
 CheckGlobalVariables MSAPI_PATH
 ExitIfError $?
@@ -22,7 +22,7 @@ for i in "${tests[@]}"; do
     RunCommand "cmake -DCMAKE_BUILD_TYPE=${BUILD_PROFILE} -B ${MSAPI_PATH}/tests/${i}/build ${MSAPI_PATH}/tests/${i}/build \
 		2>&1 | tee ${MSAPI_PATH}/tests/${i}/build/cmake.txt" "cmake MSAPI ${i} test"
 	ExitIfError $?
-	RunCommand "cmake --build ${MSAPI_PATH}/tests/${i}/build -j ${NPROC} \
+	RunCommand "cmake --build ${MSAPI_PATH}/tests/${i}/build -j $(nproc) \
 		2>&1 | tee ${MSAPI_PATH}/tests/${i}/build/cmake_build.txt" "cmake build MSAPI ${i} test"
 	ExitIfError $?
 
