@@ -3,8 +3,12 @@ name: Build and test
 on:
   push:
     branches: [ "master" ]
+    paths-ignore:
+      - 'apps/manager/web/js/**'
   pull_request:
     branches: [ "master" ]
+    paths-ignore:
+      - 'apps/manager/web/js/**'
 
 jobs:
   build:
