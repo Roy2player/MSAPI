@@ -174,7 +174,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"Parameters:\n{\n\tSeconds between try to connect(1000001) : 1\n\tLimit of attempts to connection(1000002) : "
 		"1000\n\tLimit of connections from one IP(1000003) : 5\n\tRecv buffer size(1000004) : 1024\n\tRecv buffer "
 		"size limit(1000005) : 10485760\n\tServer state(1000006) const : Running\n\tMax connections(1000007) const "
-		": 4096\n\tListening IP(1000008) const : 16777343\n\tListening port(1000009) const : "
+		": 4096\n\tListening IP(1000008) const : 127.0.0.1\n\tListening port(1000009) const : "
 			+ _S(managerPtr->GetPort())
 			+ "\n\tName(2000001) const : Manager\n\tApplication state(2000002) const : Paused\n}",
 		"Server default parameters");
