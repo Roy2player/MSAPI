@@ -35,4 +35,4 @@ jobs:
           echo "NODE_PATH=$NODE_PATH" >> $GITHUB_ENV
 
       - name: Run JS tests
-        run: bash ${MSAPI_PATH}/apps/manager/web/js/tests/runJsTests.sh
+        run: bash ${MSAPI_PATH}/apps/manager/web/js/tests/runJsTests.sh ${MSAPI_PATH}/apps/manager/web/js/tests
