@@ -1,0 +1,29 @@
+name: Build and test
+
+on:
+  push:
+    branches: [ "master" ]
+    paths-ignore:
+      - 'apps/manager/web/js/**'
+  pull_request:
+    branches: [ "master" ]
+    paths-ignore:
+      - 'apps/manager/web/js/**'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    env:
+      MSAPI_PATH: ${{ github.workspace }}
+      BUILD_PROFILE: Release
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: build library
+      run: bash ${MSAPI_PATH}/bash/buildMsapiLib.sh
+    - name: build apps
+      run: bash ${MSAPI_PATH}/bash/buildMsapiApps.sh
+    - name: execute tests
+      run: bash ${MSAPI_PATH}/bash/executeMsapiTests.sh
