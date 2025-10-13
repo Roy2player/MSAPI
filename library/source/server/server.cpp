@@ -46,7 +46,7 @@ Server::Server()
 	RegisterParameter(1000005, { "Recv buffer size limit", &recvBufferSizeLimit, 1024 });
 	RegisterConstParameter(1000006, { "Server state", &m_state, &EnumToString });
 	RegisterConstParameter(1000007, { "Max connections", &m_somaxconn });
-	RegisterConstParameter(1000008, { "Listening IP", &m_addr.sin_addr.s_addr });
+	RegisterConstParameter(1000008, { "Listening IP", &m_listeningIp });
 	RegisterConstParameter(1000009, { "Listening port", &m_listeningPort });
 }
 
@@ -87,6 +87,7 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 
 	m_addr.sin_addr.s_addr = htonl(ip);
 	m_listeningPort = port;
+	m_listeningIp = Helper::GetStringIp(m_addr);
 	m_addr.sin_port = htons(port);
 	m_addr.sin_family = AF_INET;
 

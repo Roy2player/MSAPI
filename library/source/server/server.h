@@ -141,6 +141,7 @@ private:
 	State m_state{ State::Initialization };
 	sockaddr_in m_addr{ 0, 0, 0, 0 };
 	in_port_t m_listeningPort{};
+	std::string m_listeningIp;
 	socklen_t m_sizeAddr{ sizeof(sockaddr_in) };
 	//* Accepted connections
 	std::map<int, int> m_connectionToId;
