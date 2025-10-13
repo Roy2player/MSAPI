@@ -361,24 +361,6 @@ class Helper {
 
 		return { width : rect.width + marginX, height : rect.height + marginY };
 	}
-
-	static Uint32ToIp(uint32)
-	{
-		if (typeof uint32 === "bigint") {
-			uint32 = Number(uint32);
-		}
-
-		if (typeof uint32 !== "number" || uint32 < 0 || uint32 > 4294967295) {
-			return "127.0.0.1";
-		}
-
-		const byte1 = (uint32 >>> 24) & 0xFF;
-		const byte2 = (uint32 >>> 16) & 0xFF;
-		const byte3 = (uint32 >>> 8) & 0xFF;
-		const byte4 = uint32 & 0xFF;
-
-		return `${byte1}.${byte2}.${byte3}.${byte4}`;
-	}
 };
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {

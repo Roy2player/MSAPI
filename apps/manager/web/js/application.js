@@ -612,7 +612,7 @@ class Application {
 			// Create an iframe to display the app at the given URL and port
 			// Use parameter 1000008 (Listening IP) if available, otherwise fallback to 127.0.0.1
 			const listeningIp = parametersToPort && parametersToPort[1000008] 
-				? Helper.Uint32ToIp(parametersToPort[1000008])
+				? parametersToPort[1000008]
 				: "127.0.0.1";
 			const url = parameters.url || `http://${listeningIp}:${parametersToPort[parameters.viewPortParameter]}/`;
 			const iframe = document.createElement("iframe");
