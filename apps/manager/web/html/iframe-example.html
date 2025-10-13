@@ -1,0 +1,68 @@
+<!--
+* This file is part of MSAPI.
+* License: see LICENSE.md
+* Contributor terms: see CONTRIBUTING.md
+*
+* This software is licensed under the Polyform Noncommercial License 1.0.0.
+* You may use, copy, modify, and distribute it for noncommercial purposes only.
+*
+* For commercial use, please contact: maks.angels@mail.ru
+*
+* Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSAPI App View Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .info {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Example MSAPI Application View</h1>
+    
+    <div class="info">
+        <h2>Integration Instructions</h2>
+        <p>To integrate your app with MSAPI Manager, include the iframe-bridge.js script:</p>
+        <pre>&lt;script src="/iframe-bridge.js"&gt;&lt;/script&gt;</pre>
+        
+        <p>This script will:</p>
+        <ul>
+            <li>Receive initialization messages from the parent manager window</li>
+            <li>Forward click events to update the z-index of your app view</li>
+        </ul>
+        
+        <h3>What the script does:</h3>
+        <ol>
+            <li>Listens for "init" messages containing the parent origin and unique ID</li>
+            <li>Stores these values for communication with the parent window</li>
+            <li>Forwards click events to the parent to bring your app view to front</li>
+        </ol>
+    </div>
+
+    <!-- Include the iframe-bridge.js script -->
+    <script src="/iframe-bridge.js"></script>
+    
+    <script>
+        // Your app-specific code can go here
+        // The iframe-bridge.js will handle communication with the manager automatically
+        
+        console.log('App view loaded and ready for communication with MSAPI Manager');
+    </script>
+</body>
+</html>
