@@ -610,10 +610,16 @@ class Application {
 			const parametersToPort = Application.#privateFields.m_parametersToPort.get(parameters.port);
 
 			// Create an iframe to display the app at the given URL and port
-			// Use parameter 1000008 (Listening IP) if available, otherwise fallback to 127.0.0.1
+			// Use parameter 1000008 (Listening IP) - required for each app
 			const listeningIp = parametersToPort && parametersToPort[1000008] 
 				? parametersToPort[1000008]
-				: "127.0.0.1";
+				: null;
+			
+			if (!listeningIp) {
+				console.error("Parameter 1000008 (Listening IP) is not available for app on port", parameters.port);
+				return false;
+			}
+			
 			const url = parameters.url || `http://${listeningIp}:${parametersToPort[parameters.viewPortParameter]}/`;
 			const iframe = document.createElement("iframe");
 			iframe.src = url;
