@@ -265,7 +265,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"state\",\"type\":\"Int16\",\"stringInterpretation\":{\"0\":\"Undefined\",\"1\":\"Initialization\",\"2\":"
 		"\"Running\",\"3\":\"Stopped\"}},\"1000007\":{\"name\":\"Max "
 		"connections\",\"type\":\"Int32\"},\"1000008\":{\"name\":\"Listening "
-		"IP\",\"type\":\"Uint32\"},\"1000009\":{\"name\":\"Listening "
+		"IP\",\"type\":\"String\"},\"1000009\":{\"name\":\"Listening "
 		"port\",\"type\":\"Uint16\"},\"2000001\":{\"name\":\"Name\",\"type\":\"String\"},\"2000002\":{\"name\":"
 		"\"Application "
 		"state\",\"type\":\"Int16\",\"stringInterpretation\":{\"0\":\"Undefined\",\"1\":\"Paused\",\"2\":\"Running\"}}}"
