@@ -582,6 +582,7 @@ class Application {
 
 				if (typeof parameters != "undefined") {
 					if (parameters.hasOwnProperty("postCreateFunction")) {
+						console.log("--> ", this.m_parentView.outerHTML, this.m_view.outerHTML);
 						parameters.postCreateFunction({ view : this })
 					}
 
