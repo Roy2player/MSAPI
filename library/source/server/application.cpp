@@ -1369,8 +1369,7 @@ bool Application::UNITTEST()
 		return true;
 	} };
 
-#define POEF(v)                                                                                                        \
-	std::string { v.has_value() ? (*f)(v.value()) : "" }
+#define POEF(v) std::string(v.has_value() ? (*f)(v.value()) : "")
 #define PE(v) _S(static_cast<const UnderlyingType*>(static_cast<const void*>(&v)))
 #define ASE(v)                                                                                                         \
 	std::format("\n\tName(2000001) const : TestApp\n\tApplication state(2000002) const : {}\n}}", EnumToString(v))

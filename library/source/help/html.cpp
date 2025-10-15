@@ -67,10 +67,13 @@ std::string HTML::Tag::ToString() const noexcept
 
 #define format std::left << std::setw(11)
 
-	stream << std::fixed << std::setprecision(16) << "HTML Tag:\n{\n\t" << format << "valid" << " : " << valid << "\n\t"
-		   << format << "is open tag" << " : " << isOpenTag << "\n\t" << format << "type" << " : " << type << "\n\t"
-		   << format << "begin" << " : " << begin << "\n\t" << format << "end" << " : " << end << "\n\t" << format
-		   << "depth" << " : " << depth;
+	stream << std::fixed << std::setprecision(16) << "HTML Tag:\n{\n\t" << format << "valid"
+		   << " : " << valid << "\n\t" << format << "is open tag"
+		   << " : " << isOpenTag << "\n\t" << format << "type"
+		   << " : " << type << "\n\t" << format << "begin"
+		   << " : " << begin << "\n\t" << format << "end"
+		   << " : " << end << "\n\t" << format << "depth"
+		   << " : " << depth;
 
 	stream << "\n}";
 
@@ -219,9 +222,10 @@ std::string HTML::ToString() const noexcept
 
 #define format std::setw(9)
 
-	stream << std::fixed << std::setprecision(16) << "HTML:\n{\n\t" << std::left << format << "tags size" << " : "
-		   << m_tags.size() << "\n\t" << std::left << format << "max depth" << " : " << m_maxDepth << "\n\t"
-		   << std::left << format << "body size" << " : " << m_size << "\n}";
+	stream << std::fixed << std::setprecision(16) << "HTML:\n{\n\t" << std::left << format << "tags size"
+		   << " : " << m_tags.size() << "\n\t" << std::left << format << "max depth"
+		   << " : " << m_maxDepth << "\n\t" << std::left << format << "body size"
+		   << " : " << m_size << "\n}";
 
 #undef format
 
