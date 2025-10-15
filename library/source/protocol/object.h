@@ -663,9 +663,10 @@ public:
 
 #define format std::left << std::setw(11)
 
-		stream << std::fixed << std::setprecision(16) << "Filter special:\n{\n\t" << format << "obj. hash" << " : "
-			   << _S(m_hash) << "\n\t" << format << "filt. size" << " : " << _S(m_objects.size()) << "\n\t" << format
-			   << "Base filter" << " :\n"
+		stream << std::fixed << std::setprecision(16) << "Filter special:\n{\n\t" << format << "obj. hash"
+			   << " : " << _S(m_hash) << "\n\t" << format << "filt. size"
+			   << " : " << _S(m_objects.size()) << "\n\t" << format << "Base filter"
+			   << " :\n"
 			   << FilterBase::ToString() << "\n}";
 
 #undef format
