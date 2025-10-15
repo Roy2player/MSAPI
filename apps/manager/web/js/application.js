@@ -316,6 +316,7 @@ class Application {
 				this.m_parentView.querySelector(".viewContent")
 					.appendChild(specificTemplate.templateElement.content.cloneNode(true));
 				this.m_view = this.m_parentView.querySelector(".viewContent").lastElementChild;
+				console.log("--> add view", this.m_view.outerHTML, this.m_parentView.querySelector(".viewContent").lastElementChild.outerHTML);
 				this.m_footer = this.m_parentView.querySelector(".viewFooter");
 				this.m_parentNode.appendChild(this.m_parentView);
 
@@ -582,7 +583,8 @@ class Application {
 
 				if (typeof parameters != "undefined") {
 					if (parameters.hasOwnProperty("postCreateFunction")) {
-						console.log("--> ", this.m_parentView.outerHTML, this.m_view.outerHTML);
+						console.log("--> 1", this.m_parentView.outerHTML, this.m_view.outerHTML);
+						console.log("--> 2", this);
 						parameters.postCreateFunction({ view : this })
 					}
 
