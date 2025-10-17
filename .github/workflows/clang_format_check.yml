@@ -24,4 +24,4 @@ jobs:
       - name: Run clang-format check
         run: |
           find . -type f \( -iname "*.cpp" -o -iname "*.h" -o -iname "*.hpp" -o -iname "*.js" \) -not -path "*/CMakeFiles/*" -print0 \
-            | xargs -0 -r clang-format-18 --dry-run --Werror --style=file:${{ github.workspace }}/.clang-format --verbose
+            | xargs -0 -r clang-format-18 --dry-run --Werror --style=file --verbose
