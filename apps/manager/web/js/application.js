@@ -316,6 +316,7 @@ class Application {
 				this.m_parentView.querySelector(".viewContent")
 					.appendChild(specificTemplate.templateElement.content.cloneNode(true));
 				this.m_view = this.m_parentView.querySelector(".viewContent").lastElementChild;
+				console.log(this.m_view.offsetHeight); 
 				this.m_footer = this.m_parentView.querySelector(".viewFooter");
 				this.m_parentNode.appendChild(this.m_parentView);
 

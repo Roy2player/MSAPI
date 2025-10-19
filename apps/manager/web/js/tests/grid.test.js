@@ -1344,9 +1344,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 		timer_parameter, bool_parameter, scalar_parameter, string_parameter, float_point_parameter,
 		optional_scalar_parameter
 	];
-	await Promise.resolve();
 	const grid = new Grid({ parent : body, indexColumnId : timer_parameter, columns });
-	await Promise.resolve();
 
 	testRunner.Assert(grid.m_parent, body);
 	testRunner.Assert(grid.m_indexColumnId, timer_parameter);
