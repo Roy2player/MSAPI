@@ -381,46 +381,46 @@ class Grid {
 				canBeSticked : false,
 				canBeClinged : false,
 				postCreateFunction : ({ view }) => {
-					for (const el of view.m_view.querySelectorAll("*")) {
-						console.log(" ", el.tagName, el.className);
-					}
-					let alignLeft = view.m_view.querySelector(".gridSettingsView > .group > .action.alignLeft");
+					// for (const el of view.m_view.querySelectorAll("*")) {
+						// console.log(" ", el.tagName, el.className);
+					// }
+					let alignLeft = view.m_view.querySelector(".group > .action.alignLeft");
 					if (alignLeft == null) {
 						console.error("Align left is not found");
 						return;
 					}
-					let alignCenter = view.m_view.querySelector(".gridSettingsView > .group > .action.alignCenter");
+					let alignCenter = view.m_view.querySelector(".group > .action.alignCenter");
 					if (alignCenter == null) {
 						console.error("Align center is not found");
 						return;
 					}
-					let alignRight = view.m_view.querySelector(".gridSettingsView > .group > .action.alignRight");
+					let alignRight = view.m_view.querySelector(".group > .action.alignRight");
 					if (alignRight == null) {
 						console.error("Align right is not found");
 						return;
 					}
-					let sortingAscending = view.m_view.querySelector(".gridSettingsView > .group > .action.ascending");
+					let sortingAscending = view.m_view.querySelector(".group > .action.ascending");
 					if (sortingAscending == null) {
 						console.error("Ascending is not found");
 						return;
 					}
-					let sortingNone = view.m_view.querySelector(".gridSettingsView > .group > .action.none");
+					let sortingNone = view.m_view.querySelector(".group > .action.none");
 					if (sortingNone == null) {
 						console.error("None is not found");
 						return;
 					}
 					let sortingDescending
-						= view.m_view.querySelector(".gridSettingsView > .group > .action.descending");
+						= view.m_view.querySelector(".group > .action.descending");
 					if (sortingDescending == null) {
 						console.error("Descending is not found");
 						return;
 					}
-					let filterGeneral = view.m_view.querySelector(".gridSettingsView > .group > .action.filter");
+					let filterGeneral = view.m_view.querySelector(".group > .action.filter");
 					if (filterGeneral == null) {
 						console.error("Filter is not found");
 						return;
 					}
-					let filters = view.m_view.querySelector(".gridSettingsView > .filters");
+					let filters = view.m_view.querySelector(".filters");
 					if (filters == null) {
 						console.error("Container for filters is not found");
 						return;
