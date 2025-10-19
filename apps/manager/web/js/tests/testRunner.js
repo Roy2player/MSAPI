@@ -90,12 +90,7 @@ class TestRunner {
 	constructor(
 		html = '<html><body><div class="tables"></div><main><section class="views"></section></main></body></html>')
 	{
-		this.m_dom = new JSDOM(html, { 
-			resources: "usable",
-			pretendToBeVisual: true,
-			includeNodeLocations: true,
-			storageQuota: 10000000,
-		});
+		this.m_dom = new JSDOM(html);
 		global.document = this.m_dom.window.document;
 		global.Node = this.m_dom.window.Node;
 		global.Event = this.m_dom.window.Event;
