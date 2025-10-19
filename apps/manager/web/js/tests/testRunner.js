@@ -11,7 +11,7 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { JSDOM } = require('/opt/jsnode/node_modules/jsdom');
+const { JSDOM } = require('jsdom');
 const Helper = require('../helper.js');
 
 global.createdApps = new Map();
@@ -90,7 +90,12 @@ class TestRunner {
 	constructor(
 		html = '<html><body><div class="tables"></div><main><section class="views"></section></main></body></html>')
 	{
-		this.m_dom = new JSDOM(html);
+		this.m_dom = new JSDOM(html, { 
+			resources: "usable",
+			pretendToBeVisual: true,
+			includeNodeLocations: true,
+			storageQuota: 10000000,
+		});
 		global.document = this.m_dom.window.document;
 		global.Node = this.m_dom.window.Node;
 		global.Event = this.m_dom.window.Event;
@@ -135,7 +140,7 @@ class TestRunner {
 		this.m_tests = [];
 
 		global.window = this.m_dom.window;
-		global.MutationObserver = require('/opt/jsnode/node_modules/mutation-observer');
+		global.MutationObserver = require('mutation-observer');
 	}
 
 	SetPostTestFunction(func) { this.m_postTestFunction = func; }

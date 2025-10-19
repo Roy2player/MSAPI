@@ -16,7 +16,7 @@ BraceWrapping:
   BeforeElse: true
   BeforeCatch: true
 BreakBeforeConceptDeclarations: Always
-AllowShortCompoundRequirementOnASingleLine : true
+AllowShortCompoundRequirementOnASingleLine: true
 IndentRequiresClause: true
 RequiresClausePosition: OwnLine
 ---
