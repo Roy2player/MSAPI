@@ -381,10 +381,10 @@ class Grid {
 				canBeSticked : false,
 				canBeClinged : false,
 				postCreateFunction : ({ view }) => {
+					for (const el of view.m_view.querySelectorAll("*")) {
+						console.log(" ", el.tagName, el.className);
+					}
 					let alignLeft = view.m_view.querySelector(".gridSettingsView > .group > .action.alignLeft");
-					let alignLeft2 = view.m_view.querySelector(".alignLeft");
-					console.log(alignLeft, alignLeft2);
-					console.log()
 					if (alignLeft == null) {
 						console.error("Align left is not found");
 						return;
