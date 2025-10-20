@@ -1044,7 +1044,7 @@ class Grid {
 		if (hasFilteredRows) {
 			filter.classList.add("active");
 			if (settingsView != undefined) {
-				settingsView.m_view.querySelector(".gridSettingsView > .group > .action.filter")
+				settingsView.m_view.querySelector(".group > .action.filter")
 					.classList.add("active");
 			}
 		}
@@ -1052,7 +1052,7 @@ class Grid {
 			filter.classList.remove("active");
 			columnObject.isFilterActive = false;
 			if (settingsView != undefined) {
-				settingsView.m_view.querySelector(".gridSettingsView > .group > .action.filter")
+				settingsView.m_view.querySelector(".group > .action.filter")
 					.classList.remove("active");
 			}
 		}
