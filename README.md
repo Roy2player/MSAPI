@@ -2,7 +2,9 @@
 
 MSAPI is a modular, high-performance C++ library for building Linux-based microservice and macrosystem architectures. It provides internal protocols, utilities, and server logic for efficient, scalable system development.
 
-MSAPI does not depend on any third-party libraries.
+✅ Does not depend on any third-party libraries.
+✅ Perfectly documented.
+✅ Well covered by unit and end-to-end tests.
 
 ## 🔧 Building
 
