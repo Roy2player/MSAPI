@@ -11,7 +11,7 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { JSDOM } = require('/opt/jsnode/node_modules/jsdom');
+const { JSDOM } = require('jsdom');
 const Helper = require('../helper.js');
 
 global.createdApps = new Map();
@@ -135,7 +135,7 @@ class TestRunner {
 		this.m_tests = [];
 
 		global.window = this.m_dom.window;
-		global.MutationObserver = require('/opt/jsnode/node_modules/mutation-observer');
+		global.MutationObserver = require('mutation-observer');
 	}
 
 	SetPostTestFunction(func) { this.m_postTestFunction = func; }

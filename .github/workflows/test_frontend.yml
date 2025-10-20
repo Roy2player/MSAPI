@@ -1,0 +1,37 @@
+name: Test frontend
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'apps/manager/web/js/**'
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'apps/manager/web/js/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      MSAPI_PATH: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: apps/manager/web/js
+        run: |
+          mkdir -p /opt/jsnode/node_modules
+          npm install jsdom mutation-observer
+          export NODE_PATH=/opt/jsnode/node_modules
+          echo "NODE_PATH=$NODE_PATH" >> $GITHUB_ENV
+
+      - name: Run JS tests
+        run: bash ${MSAPI_PATH}/apps/manager/web/js/tests/runJsTests.sh ${MSAPI_PATH}/apps/manager/web/js/tests
