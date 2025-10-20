@@ -97,7 +97,7 @@ class Timer {
 		return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${
 			String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${
 			String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}.${
-			String(Number(timestamp % 1000000000n)).padStart(9, '0')} UTC${utc > 0 ? `+${utc}` : utc}`;
+			String(Number(timestamp % 1000000000n)).padStart(9, '0')} UTC${utc >= 0 ? `+${utc}` : utc}`;
 	}
 
 	static Normalize(input)
