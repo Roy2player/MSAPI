@@ -191,7 +191,7 @@ testRunner.Test('Create mutable and immutable tables', () => {
 	testRunner.Assert(
 		tableNode1.getAttribute("parameter-id"), "30015", "Table wrapper should have the correct parameter-id");
 
-	const tableHeader1 = tableNode1.querySelector(":scope > div > .header");
+	const tableHeader1 = tableNode1.querySelector("div > .header");
 	testRunner.Assert(tableHeader1 != null, true, "Table header should not be null");
 	testRunner.Assert(tableHeader1.textContent, "Important data (30015)", "Table header should have the correct text");
 
