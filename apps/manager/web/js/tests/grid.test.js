@@ -429,7 +429,7 @@ class GridChecking {
 
 			const columnId = +columnHeaders[index].getAttribute('parameter-id');
 
-			GridChecking.CheckColumnAlignement({ grid, columnId, align : values[index].align });
+			GridChecking.CheckColumnAlignment({ grid, columnId, align : values[index].align });
 
 			const filterInView = settingsView.m_view.querySelector('.filter');
 			testRunner.Assert(filterInView != null, true);
@@ -465,7 +465,7 @@ class GridChecking {
 	}
 
 	static async ChangeSettingsByClick(
-		{ grid, inView /* on column otherview */, columnId, align, sorting, filter, filters, headers })
+		{ grid, inView /* on column overview */, columnId, align, sorting, filter, filters, headers })
 	{
 		let fillPropertyInData = (property, value) => {
 			if (headers == null) {
@@ -475,7 +475,7 @@ class GridChecking {
 			headers.get(columnId)[property] = value;
 		};
 
-		const headerCell = grid.m_view.querySelector(`.grid > .header .cell[parameter-id="${columnId}"]`);
+		const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${columnId}"]`);
 		testRunner.Assert(headerCell != null, true);
 		if (inView) {
 			const sizeBefore = Application.GetCreatedApplications().size;
@@ -603,7 +603,7 @@ class GridChecking {
 		testRunner.Assert(table.GetData(), filters);
 	}
 
-	static CheckRowsVisability(grid, indexes)
+	static CheckRowsVisibility(grid, indexes)
 	{
 		const rows = grid.m_view.querySelectorAll('.row:not(.header)');
 		for (let index = 0; index < grid.m_rowByGridRow.size; index++) {
@@ -612,9 +612,9 @@ class GridChecking {
 		}
 	}
 
-	static CheckColumnAlignement({ grid, columnId, align })
+	static CheckColumnAlignment({ grid, columnId, align })
 	{
-		const cells = grid.m_view.querySelectorAll(`.grid .row:not(.header) .cell[parameter-id="${columnId}"]`);
+		const cells = grid.m_view.querySelectorAll(`.row:not(.header) .cell[parameter-id="${columnId}"]`);
 		testRunner.Assert(cells.length > 0, true);
 		cells.forEach((cell) => {
 			testRunner.Assert(
@@ -1450,7 +1450,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 	await GridChecking.CheckColumnHeaders(grid, Array.from(headers.values()));
 
 	GridChecking.CheckRowsInOrder(grid, [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]);
-	GridChecking.CheckRowsVisability(grid, [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]);
+	GridChecking.CheckRowsVisibility(grid, [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]);
 
 	for (const [order, columnObject] of grid.m_columnByOrder.entries()) {
 		TestRunner.Step("Change align to left for " + columnObject.id);
@@ -1581,7 +1581,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 			if (index != 0) {
 				await GridChecking.ChangeSettingsByClick(
 					{ grid, inView : true, columnId : arr[index - 1][0], filters : [], headers });
-				GridChecking.CheckRowsVisability(
+				GridChecking.CheckRowsVisibility(
 					grid, [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]);
 			}
 
@@ -1591,7 +1591,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 				TestRunner.Step(`Set filter №${i + 1} for column ${parameter}`);
 				await GridChecking.ChangeSettingsByClick(
 					{ grid, inView : true, columnId : parameter, filters : filters[i].filters, headers });
-				GridChecking.CheckRowsVisability(grid, filters[i].shownRows);
+				GridChecking.CheckRowsVisibility(grid, filters[i].shownRows);
 			}
 
 			if (filters.length > 1) {
@@ -1606,7 +1606,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 						parameter}: ${"Filter(s) " + combinations[p].indexes.map((_, index) => `${_}`).join(", ")}`);
 					await GridChecking.ChangeSettingsByClick(
 						{ grid, inView : true, columnId : parameter, filters : combinedFilters, headers });
-					GridChecking.CheckRowsVisability(grid, combinedShownRows);
+					GridChecking.CheckRowsVisibility(grid, combinedShownRows);
 				}
 			}
 
@@ -1664,7 +1664,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 			await GridChecking.ChangeSettingsByClick(
 				{ grid, inView : true, columnId : columns[i], filters : [], headers });
 		}
-		GridChecking.CheckRowsVisability(
+		GridChecking.CheckRowsVisibility(
 			grid, [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]);
 
 		for (let i = 0; i < combinations.length; i++) {
@@ -1674,7 +1674,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 					await GridChecking.ChangeSettingsByClick(
 						{ grid, inView : true, columnId : filter.column, filters : [], headers });
 				}
-				GridChecking.CheckRowsVisability(
+				GridChecking.CheckRowsVisibility(
 					grid, [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]);
 			}
 
@@ -1686,7 +1686,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 				await GridChecking.ChangeSettingsByClick(
 					{ grid, inView : true, columnId : filter.column, filters : filter.filters, headers });
 			}
-			GridChecking.CheckRowsVisability(grid, combination.shownRows);
+			GridChecking.CheckRowsVisibility(grid, combination.shownRows);
 			await GridChecking.CheckRows(grid, data);
 		}
 
@@ -1695,7 +1695,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 			await GridChecking.ChangeSettingsByClick(
 				{ grid, inView : true, columnId : columns[i], filters : [], headers });
 		}
-		GridChecking.CheckRowsVisability(
+		GridChecking.CheckRowsVisibility(
 			grid, [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]);
 
 		for (let j = 0; j < combinations[0].filters.length; j++) {
@@ -1703,7 +1703,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 			await GridChecking.ChangeSettingsByClick(
 				{ grid, inView : true, columnId : filter.column, filters : filter.filters, headers });
 		}
-		GridChecking.CheckRowsVisability(grid, combinations[0].shownRows);
+		GridChecking.CheckRowsVisibility(grid, combinations[0].shownRows);
 		await GridChecking.CheckColumnHeaders(grid, Array.from(headers.values()));
 
 		for (let i = 0; i < 20; i++) {
@@ -1801,10 +1801,10 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 
 		GridChecking.CheckRowsInOrder(grid, rowsOrders.get(optional_scalar_parameter).descending);
 
-		GridChecking.CheckRowsVisability(grid, [ 13, 15, 19, 33, 35, 39 ]);
+		GridChecking.CheckRowsVisibility(grid, [ 13, 15, 19, 33, 35, 39 ]);
 		await GridChecking.CheckRows(grid, data);
 
-		TestRunner.Step(`Update some rows which are visable`);
+		TestRunner.Step(`Update some rows which are visible`);
 		let swappedData = structuredClone(data);
 		for (let swapIndex of [13, 15, 19, 33, 35, 39]) {
 			swapIndex = swapIndex - 2;
@@ -1844,12 +1844,11 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 		}
 
 		GridChecking.CheckRowsInOrder(grid, rowsOrders.get(optional_scalar_parameter).descending);
-		GridChecking.CheckRowsVisability(grid, [ 12, 14, 18, 32, 34, 38 ]);
+		GridChecking.CheckRowsVisibility(grid, [ 12, 14, 18, 32, 34, 38 ]);
 
 		TestRunner.Step(`Remove column with active filters`);
 		{
-			const headerCell
-				= grid.m_view.querySelector(`.grid > .header .cell[parameter-id="${optional_scalar_parameter}"]`);
+			const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${optional_scalar_parameter}"]`);
 			testRunner.Assert(headerCell != null, true);
 			const sizeBefore = Application.GetCreatedApplications().size;
 			headerCell.querySelector(`.settings`).dispatchEvent(new Event('click'));
@@ -1864,7 +1863,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 			header.align = Grid.ALIGN_TYPE.center;
 			header.isFilterActive = false;
 		}
-		GridChecking.CheckRowsVisability(grid, [ 12, 14, 17, 18, 32, 34, 37, 38 ]);
+		GridChecking.CheckRowsVisibility(grid, [ 12, 14, 17, 18, 32, 34, 37, 38 ]);
 		GridChecking.CheckColumnsInOrder(grid, [
 			{ name : 'Timer', order : 0 }, { name : 'Active minimum trend strike mode', order : 1 },
 			{ name : 'Object identifier', order : 2 }, { name : 'Name', order : 3 },
@@ -1876,7 +1875,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 		]);
 
 		grid.AddColumn({ id : optional_scalar_parameter });
-		GridChecking.CheckRowsVisability(grid, [ 12, 14, 17, 18, 32, 34, 37, 38 ]);
+		GridChecking.CheckRowsVisibility(grid, [ 12, 14, 17, 18, 32, 34, 37, 38 ]);
 		GridChecking.CheckColumnsInOrder(grid, [
 			{ name : 'Timer', order : 0 }, { name : 'Active minimum trend strike mode', order : 1 },
 			{ name : 'Object identifier', order : 2 }, { name : 'Name', order : 3 },
@@ -1892,7 +1891,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 		for (let columnId of columns.slice(0, 5)) {
 			GridChecking.ChangeSettingsByClick({ grid, inView : false, columnId, filter : false });
 		}
-		GridChecking.CheckRowsVisability(grid, [
+		GridChecking.CheckRowsVisibility(grid, [
 			2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 			31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41
 		]);
@@ -1900,10 +1899,10 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 		for (let columnId of columns.slice(0, 5)) {
 			GridChecking.ChangeSettingsByClick({ grid, inView : false, columnId, filter : true });
 		}
-		GridChecking.CheckRowsVisability(grid, [ 12, 14, 17, 18, 32, 34, 37, 38 ]);
+		GridChecking.CheckRowsVisibility(grid, [ 12, 14, 17, 18, 32, 34, 37, 38 ]);
 	}
 
-	TestRunner.Step('CHeck number of settings views');
+	TestRunner.Step('Check number of settings views');
 	testRunner.Assert(Grid.GetSettingsViewsNumber(), 1);
 	document.dispatchEvent(new Event('click'));
 	testRunner.Assert(Grid.GetSettingsViewsNumber(), 0);
@@ -1976,7 +1975,7 @@ testRunner.Test('Test table type, its view logic', async () => {
 
 	TestRunner.Step('Check, that there is not settings button for table and system parameters');
 	for (let parameter of [table_parameter_1, system_create_parameter]) {
-		const headerCell = grid.m_view.querySelector(`.grid > .header .cell[parameter-id="${parameter}"]`);
+		const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${parameter}"]`);
 		testRunner.Assert(headerCell != null, true);
 		testRunner.Assert(headerCell.querySelector(`.settings`), null);
 	}
