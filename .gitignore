@@ -18,3 +18,4 @@ tests/applicationHandlers/build/TestApplicationHandlers
 tests/units/build/TestUnits
 tests/objectProtocol/build/TestObjectProtocol
 tests/http/build/TestHttp
+tests/server/build/TestServer

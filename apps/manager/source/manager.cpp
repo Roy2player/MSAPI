@@ -766,8 +766,9 @@ void Manager::HandleRunRequest()
 	}
 
 	if (m_installedAppDataToHash.empty()) {
-		LOG_ERROR("No apps registered");
+		LOG_ERROR("No apps registered, manager is going to end its work");
 		HandlePauseRequest();
+		Server::Stop();
 		return;
 	}
 }
