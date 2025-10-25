@@ -16,7 +16,7 @@ fi
 bash $(dirname ${BASH_SOURCE})/buildMsapiLib.sh
 ExitIfError $?
 
-declare -a tests=("units" "applicationHandlers" "objectProtocol" "http")
+declare -a tests=("units" "applicationHandlers" "objectProtocol" "http" "server")
 
 for i in "${tests[@]}"; do
     RunCommand "cmake -DCMAKE_BUILD_TYPE=${BUILD_PROFILE} -B ${MSAPI_PATH}/tests/${i}/build ${MSAPI_PATH}/tests/${i}/build \
