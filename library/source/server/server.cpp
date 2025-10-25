@@ -80,8 +80,8 @@ std::string Server::GetIp(const int connection) const
 
 void Server::Start(const in_addr_t ip, const in_port_t port)
 {
-	if (m_state == State::Running) [[unlikely]] {
-		LOG_DEBUG("Server already running");
+	if (m_state != State::Initialization) [[unlikely]] {
+		LOG_DEBUG_NEW("Server is not in initialization state and cannot be started, current state is {}", EnumToString(m_state));
 		return;
 	}
 
