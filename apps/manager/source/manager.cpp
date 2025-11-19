@@ -24,6 +24,7 @@
 
 Manager::Manager()
 	: MSAPI::HTTP::IHandler(this)
+	, m_authorization("/tmp/msapi_users.txt", "/tmp/msapi_history")
 {
 	if (access("/bin/bash", X_OK) != 0) {
 		LOG_ERROR("Can't access to /bin/bash, terminate application");
@@ -32,6 +33,12 @@ Manager::Manager()
 	}
 
 	RegisterParameter(1001, { "Web sources path", &m_webSourcesPath });
+
+	//* Start authorization module
+	if (!m_authorization.Start()) {
+		LOG_ERROR("Failed to start authorization module");
+		Server::Stop();
+	}
 }
 
 Manager::~Manager()
@@ -64,11 +71,7 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 		return;
 	}
 
-	if (url == "/") {
-		data.SendSource(connection, m_webSourcesPath + "html/index.html");
-		return;
-	}
-
+	//* Allow access to static resources before authorization check
 	if (data.GetFormat() == "css") {
 		data.SendSource(connection, m_webSourcesPath + "css" + url);
 		return;
@@ -84,6 +87,73 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 		return;
 	}
 
+	//* Check authorization before processing other requests
+	if (!m_authorization.IsAuthorized(connection)) {
+		if (url == "/") {
+			data.SendSource(connection, m_webSourcesPath + "html/login.html");
+			return;
+		}
+
+		//* Handle authentication API requests
+		if (url == "/api") {
+			const auto* type{ data.GetValue("Type") };
+			if (type == nullptr) {
+				sendNegativeResponse("Key by Type is not found");
+				return;
+			}
+			LOG_DEBUG("Type key: " + *type);
+
+			if (*type == "register") {
+				const auto* email{ data.GetValue("email") };
+				const auto* password{ data.GetValue("password") };
+
+				if (email == nullptr || password == nullptr) {
+					sendNegativeResponse("Email and password are required");
+					return;
+				}
+
+				if (m_authorization.Register(*email, *password)) {
+					data.SendResponse(connection, "{\"status\":true,\"message\":\"User registered successfully\"}\n\n");
+				}
+				else {
+					sendNegativeResponse("Registration failed");
+				}
+				return;
+			}
+
+			if (*type == "login") {
+				const auto* email{ data.GetValue("email") };
+				const auto* password{ data.GetValue("password") };
+
+				if (email == nullptr || password == nullptr) {
+					sendNegativeResponse("Email and password are required");
+					return;
+				}
+
+				if (m_authorization.Login(connection, *email, *password)) {
+					data.SendResponse(connection, "{\"status\":true,\"message\":\"Login successful\"}\n\n");
+				}
+				else {
+					sendNegativeResponse("Login failed");
+				}
+				return;
+			}
+
+			//* All other API requests require authorization
+			sendNegativeResponse("Access denied");
+			return;
+		}
+
+		sendNegativeResponse("Access denied");
+		return;
+	}
+
+	//* User is authorized, process the request
+	if (url == "/") {
+		data.SendSource(connection, m_webSourcesPath + "html/index.html");
+		return;
+	}
+
 	if (url == "/api") {
 		const auto* type{ data.GetValue("Type") };
 		if (type == nullptr) {
@@ -91,6 +161,16 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 			return;
 		}
 		LOG_DEBUG("Type key: " + *type);
+
+		if (*type == "logout") {
+			if (m_authorization.Logout(connection)) {
+				data.SendResponse(connection, "{\"status\":true,\"message\":\"Logout successful\"}\n\n");
+			}
+			else {
+				sendNegativeResponse("Logout failed");
+			}
+			return;
+		}
 
 		if (*type == "getInstalledApps") {
 			std::string body{ "{\"status\":true,\"apps\":[" };
