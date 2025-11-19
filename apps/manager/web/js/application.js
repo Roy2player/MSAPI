@@ -10,7 +10,11 @@
  *
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
- * @brief Abstraction for any view that can be created. Can represent interface unit or application.
+ * @brief Base class for any view that can be created. Can represent interface unit or application.
+ *
+ * This is a base class providing common functionality for all views. Specific view types
+ * should ideally inherit from this class and override the Constructor() method for
+ * type-specific initialization logic. This promotes better encapsulation and separation of concerns.
  *
  * Has three parts:
  * 1) Header which contains view tile and on view options:
@@ -57,7 +61,8 @@
  * @brief m_maximizeButton - maximize button element.
  *
  * @todo Think if web sockets can be used for communication.
- * @todo New app type should be added fully independently from Application class.
+ * @todo Refactor: Each view type should be in its own file, inheriting from View class.
+ * @todo Refactor: Constructor method should be overridden in subclasses instead of having type checks.
  */
 class View {
 	static #privateFields = (() => {
@@ -601,6 +606,17 @@ class View {
 		})();
 	}
 
+	/**
+	 * Type-specific initialization logic for different view types.
+	 * 
+	 * @note Future refactoring: This method contains type-specific logic that should ideally be
+	 * moved to separate view subclasses. Each view type (AppView, TableView, etc.) should be
+	 * in its own file, inherit from View, and override this method with its specific logic.
+	 * 
+	 * @param {string} viewType - The type of view being created
+	 * @param {Object} parameters - Parameters for view initialization
+	 * @returns {Promise<boolean>} True if initialization succeeded, false otherwise
+	 */
 	async Constructor(viewType, parameters)
 	{
 		if (viewType == "AppView") {
