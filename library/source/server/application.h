@@ -670,7 +670,7 @@ protected:
 	 *		Recv buffer size limit(1000005) : 10485760
 	 *		Server state(1000006) const : Running
 	 *		Max connections(1000007) const : 4096
-	 *		Listening IP(1000008) const : 0
+	 *		Listening IP(1000008) const : 127.0.0.1
 	 *		Listening port(1000009) const : 60328
 	 *		Name(2000001) const : Distributor
 	 *		Application state(2000002) const : Paused
@@ -851,8 +851,6 @@ protected:
  * @param ip (out) IP address of application [std::string]. INADDR_LOOPBACK by default.
  * @param port (out) Port of application [unsigned short]. Random from 3000 by default. Can't be equal to zero.
  * @param managerPort (out) Port of manager [unsigned short]. Can't be equal to zero.
- * @param parentPath (internal) Parent directory for logger, root of build directory or executable directory by default
- * (512 bytes are reserved).
  * @param logLevel (internal) Level of logging, WARNING by default.
  * @param logInConsole (internal) Enable logging in console, false by default.
  * @param logInFile (internal) Enable logging in file, false by default.
@@ -953,32 +951,15 @@ protected:
 		return 1;                                                                                                      \
 	}                                                                                                                  \
                                                                                                                        \
-	if (const auto* parentPath{ parameters.GetValue("parentPath") }; parentPath != nullptr) {                          \
-		if (const auto* value{ std::get_if<std::string>(&parentPath->GetValue()) }; value != nullptr) {                \
-			if (!value->empty()) {                                                                                     \
-				MSAPI::logger.SetParentPath(*value);                                                                   \
-			}                                                                                                          \
-			else {                                                                                                     \
-				goto setDefaultParentPath;                                                                             \
-			}                                                                                                          \
-		}                                                                                                              \
-		else {                                                                                                         \
-			std::cerr << "Invalid type of parent path in parameters, string is expected." << std::endl;                \
-			return 1;                                                                                                  \
-		}                                                                                                              \
+	std::string executablePath;                                                                                        \
+	executablePath.resize(512);                                                                                        \
+	MSAPI::Helper::GetExecutableDir(executablePath);                                                                   \
+	if (executablePath.empty()) {                                                                                      \
+		std::cerr << "Cannot get executable path." << std::endl;                                                       \
+		return 1;                                                                                                      \
 	}                                                                                                                  \
-	else {                                                                                                             \
-	setDefaultParentPath:                                                                                              \
-		std::string executablePath;                                                                                    \
-		executablePath.resize(512);                                                                                    \
-		MSAPI::Helper::GetExecutableDir(executablePath);                                                               \
-		if (executablePath.empty()) {                                                                                  \
-			std::cerr << "Cannot get executable path." << std::endl;                                                   \
-			return 1;                                                                                                  \
-		}                                                                                                              \
                                                                                                                        \
-		MSAPI::logger.SetParentPath(executablePath + "../");                                                           \
-	}                                                                                                                  \
+	MSAPI::logger.SetParentPath(executablePath + "../");                                                               \
                                                                                                                        \
 	if (const auto* logLevelStr{ parameters.GetValue("logLevel") }; logLevelStr != nullptr) {                          \
 		if (const auto* value{ std::get_if<std::string>(&logLevelStr->GetValue()) }; value != nullptr) {               \
