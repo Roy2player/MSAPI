@@ -182,7 +182,8 @@ class Helper {
 
 	static IsFloat(num)
 	{
-		return (typeof num == "string" && num.includes('.') && !isNaN(Number(num))) || (Number(num) === num && num % 1 !== 0);
+		return (typeof num == "string" && num.includes('.') && !isNaN(Number(num)))
+			|| (Number(num) === num && num % 1 !== 0);
 	}
 
 	/**************************

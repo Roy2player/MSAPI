@@ -1274,26 +1274,6 @@ uint16_t Manager::CreateApp(
 		} while (true);
 	}
 
-	std::string parentPath;
-	if (const auto parentPathStr{ data.GetValue("parentPath") }; parentPathStr != nullptr && !parentPathStr->empty()) {
-		parentPath = *parentPathStr;
-	}
-	else {
-		if (std::string::size_type pos = appDataIt->second.bin.rfind("build/"); pos != std::string::npos) {
-			parentPath = std::string{ appDataIt->second.bin.begin(), appDataIt->second.bin.begin() + INT64(pos) };
-		}
-		else {
-			pos = appDataIt->second.bin.rfind("/");
-			if (pos != std::string::npos) {
-				parentPath = std::string{ appDataIt->second.bin.begin(), appDataIt->second.bin.begin() + INT64(pos) };
-			}
-			else {
-				error = "Invalid bin path in http request: " + appDataIt->second.bin;
-				return 0;
-			}
-		}
-	}
-
 	short logLevel{ static_cast<short>(MSAPI::Log::Level::WARNING) };
 	if (const auto logLevelStr{ data.GetValue("logLevel") }; logLevelStr != nullptr && !logLevelStr->empty()) {
 
@@ -1338,8 +1318,8 @@ uint16_t Manager::CreateApp(
 	}
 
 	MSAPI::Json parameters{ "{\"name\":\"" + name + "\",\"ip\":\"" + _S(ip) + "\",\"port\":\"" + _S(port)
-		+ "\",\"managerPort\":\"" + _S(GetListenedPort()) + "\"	,\"parentPath\":\"" + parentPath + "\",\"logLevel\":\""
-		+ _S(logLevel) + "\",\"logInConsole\":\"" + _S(logInConsole) + "\",\"logInFile\":\"" + _S(logInFile)
+		+ "\",\"managerPort\":\"" + _S(GetListenedPort()) + "\",\"logLevel\":\"" + _S(logLevel)
+		+ "\",\"logInConsole\":\"" + _S(logInConsole) + "\",\"logInFile\":\"" + _S(logInFile)
 		+ "\",\"separateDaysLogging\":\"" + _S(separateDaysLogging) + "\"}" };
 
 	if (!parameters.Valid()) {
