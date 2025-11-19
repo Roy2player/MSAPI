@@ -610,7 +610,13 @@ class Application {
 			const parametersToPort = Application.#privateFields.m_parametersToPort.get(parameters.port);
 
 			// Create an iframe to display the app at the given URL and port
-			const url = parameters.url || `http://127.0.0.1:${parametersToPort[parameters.viewPortParameter]}/`;
+			const listeningIp = parametersToPort && parametersToPort[1000008] ? parametersToPort[1000008] : null;
+			if (!listeningIp) {
+				console.error("Parameter 1000008 (Listening IP) is not available for app on port", parameters.port);
+				return false;
+			}
+
+			const url = parameters.url || `http://${listeningIp}:${parametersToPort[parameters.viewPortParameter]}/`;
 			const iframe = document.createElement("iframe");
 			iframe.src = url;
 			iframe.style.width = "100%";
@@ -1706,7 +1712,6 @@ Application.AddViewTemplate("NewApp", `<div class="customView">
 			<div class="item"><input name="name" type="text" placeholder="Name"/></div>
 			<div class="item"><input value="127.0.0.1" name="ip" type="text" placeholder="Listening IP" canBeEmpty="false" /></div>
             <div class="item"><input name="port" type="number" placeholder="Listening Port" /></div>
-			<div class="item"><input value="../logs/"name="parentPath" type="text" placeholder="Parent directory for logging" /></div>
             <div class="item">
 				<label>
 					<input name="logInConsole" type="checkbox" />
