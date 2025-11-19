@@ -611,6 +611,7 @@ class Application {
 
 			// Create an iframe to display the app at the given URL and port
 			// Use parameter 1000008 (Listening IP) - required for each app
+			// (Rebased from master)
 			const listeningIp = parametersToPort && parametersToPort[1000008] 
 				? parametersToPort[1000008]
 				: null;
