@@ -13,6 +13,7 @@
 
 const { TestRunner } = require('./testRunner');
 const View = require('../application');
+const viewTemplates = require('../viewTemplates');
 const Table = require('../table');
 const Grid = require('../grid');
 

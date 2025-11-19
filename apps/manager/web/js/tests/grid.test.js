@@ -15,6 +15,7 @@ const { TestRunner, TableChecker } = require('./testRunner');
 const Grid = require('../grid');
 const MetadataCollector = require('../metadataCollector');
 const View = require('../application');
+const viewTemplates = require('../viewTemplates');
 global.dispatcher = undefined;
 
 const testRunner = new TestRunner();

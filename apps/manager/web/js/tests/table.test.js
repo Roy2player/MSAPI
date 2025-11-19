@@ -14,6 +14,7 @@
 const { TestRunner } = require('./testRunner');
 const Table = require('../table');
 const Application = require('../application');
+const viewTemplates = require('../viewTemplates');
 const MetadataCollector = require('../metadataCollector');
 
 global.dispatcher = undefined;

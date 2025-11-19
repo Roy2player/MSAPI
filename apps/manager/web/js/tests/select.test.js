@@ -15,6 +15,7 @@ const { TestRunner } = require('./testRunner');
 const Select = require('../select');
 const MetadataCollector = require('../metadataCollector');
 const Application = require('../application');
+const viewTemplates = require('../viewTemplates');
 global.dispatcher = undefined;
 
 let testRunner = new TestRunner();
