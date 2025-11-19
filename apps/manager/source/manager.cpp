@@ -1246,6 +1246,7 @@ uint16_t Manager::CreateApp(
 			error = "Invalid IP address: " + *ipStr;
 			return 0;
 		}
+		ip = ntohl(ip); //* Convert to LE
 	}
 
 	uint16_t port{ 0 };
