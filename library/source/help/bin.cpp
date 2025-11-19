@@ -176,11 +176,9 @@ bool ReadStr(std::string& str, const std::string& path)
 	stream.seekg(0, stream.end);
 	std::streampos length{ stream.tellg() };
 	stream.seekg(0, stream.beg);
-	char* ptr{ static_cast<char*>(malloc(UINT64(length) + 1)) };
-	stream.read(ptr, length);
+	str.resize(UINT64(length));
+	stream.read(str.data(), length);
 	stream.close();
-	str = std::move(std::string{ ptr, static_cast<std::size_t>(length) });
-	free(ptr);
 
 	return true;
 }
