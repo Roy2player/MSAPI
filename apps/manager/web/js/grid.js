@@ -152,7 +152,7 @@ class Grid {
 					}
 
 					if (!settingView.m_parentView.contains(event.target)) {
-						const lastApp = Application.GetLastCreatedApplication();
+						const lastApp = View.GetLastCreatedApplication();
 						if (lastApp != null && lastApp.m_viewType == "SelectView"
 							&& lastApp.m_parentView.contains(event.target)) {
 
@@ -160,7 +160,7 @@ class Grid {
 						}
 
 						if (event.target == settingView.m_eventTarget) {
-							Application.UpdateZIndex(settingView);
+							View.UpdateZIndex(settingView);
 							return;
 						}
 
@@ -371,7 +371,7 @@ class Grid {
 				return;
 			}
 
-			settingsView = new Application("GridSettingsView", {
+			settingsView = new View("GridSettingsView", {
 				eventTarget : settings,
 				parameterId : id,
 				appTitle : "Manage column settings",
@@ -1138,7 +1138,7 @@ class Grid {
 
 		if (metadata.type == "TableData") {
 			cell.classList.add("action", "table");
-			if (typeof Application === "undefined") {
+			if (typeof View === "undefined") {
 				console.error("Application is not defined");
 				return undefined;
 			}
@@ -1151,7 +1151,7 @@ class Grid {
 					return;
 				}
 
-				tableView = new Application("TableView", {
+				tableView = new View("TableView", {
 					tableId : id,
 					metadata : metadata,
 					appTitle : MetadataCollector.GetMetadata(indexColumn).metadata.name + " " + indexValue,
@@ -1516,7 +1516,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	Timer = require('./timer');
 	Select = require('./select');
 	Duration = require('./duration');
-	Application = require('./application');
+	View = require('./application');
 	Table = require('./table');
 	MetadataCollector = require('./metadataCollector');
 }

@@ -14,7 +14,7 @@
 const { TestRunner, TableChecker } = require('./testRunner');
 const Grid = require('../grid');
 const MetadataCollector = require('../metadataCollector');
-const Application = require('../application');
+const View = require('../application');
 global.dispatcher = undefined;
 
 const testRunner = new TestRunner();
@@ -234,7 +234,7 @@ class GridChecking {
 						testRunner.Assert(getEventListeners(cell).input, undefined);
 
 						TestRunner.Step('Click on the table cell, verify table view content');
-						const createdApplications = Application.GetCreatedApplications();
+						const createdApplications = View.GetCreatedApplications();
 						const sizeBefore = createdApplications.size;
 						cell.dispatchEvent(new Event('click'));
 						await TestRunner.WaitFor(() => createdApplications.size > sizeBefore, 'Table view is created');
@@ -387,13 +387,13 @@ class GridChecking {
 				settingsView = columnHeaders[index].settingsView;
 			}
 			else {
-				const sizeBefore = Application.GetCreatedApplications().size;
+				const sizeBefore = View.GetCreatedApplications().size;
 				settings.dispatchEvent(new Event('click'), { bubbles : true });
 				await TestRunner.WaitFor(
-					() => Application.GetCreatedApplications().size > sizeBefore, 'Settings view is created');
+					() => View.GetCreatedApplications().size > sizeBefore, 'Settings view is created');
 
 				const views = document.querySelectorAll('.views > .view');
-				settingsView = Application.GetCreatedApplications().get(+views[views.length - 1].getAttribute('uid'));
+				settingsView = View.GetCreatedApplications().get(+views[views.length - 1].getAttribute('uid'));
 			}
 
 			testRunner.Assert(
@@ -444,22 +444,22 @@ class GridChecking {
 			// 'Click on the selection input, check that select view is created and choose one of the values');
 			const select = table.m_wrapper.querySelector('.select');
 			testRunner.Assert(select != null, true);
-			let sizeBefore = Application.GetCreatedApplications().size;
+			let sizeBefore = View.GetCreatedApplications().size;
 			select.dispatchEvent(new Event('click'));
 			await TestRunner.WaitFor(
-				() => Application.GetCreatedApplications().size > sizeBefore, 'Select view is created');
+				() => View.GetCreatedApplications().size > sizeBefore, 'Select view is created');
 			const views = document.querySelectorAll('.views > .view');
-			const selectView = Application.GetCreatedApplications().get(+views[views.length - 1].getAttribute('uid'));
+			const selectView = View.GetCreatedApplications().get(+views[views.length - 1].getAttribute('uid'));
 			selectView.m_view.querySelector('.options > div').dispatchEvent(new Event('click'));
 			await TestRunner.WaitFor(
-				() => Application.GetCreatedApplications().size == sizeBefore, 'Select view is destroyed');
+				() => View.GetCreatedApplications().size == sizeBefore, 'Select view is destroyed');
 			testRunner.Assert(selectView.m_parentView.parentView == null, true);
 			testRunner.Assert(settingsView.m_parentView != null, true);
 
 			if (values[index].settingsView == null) {
 				document.dispatchEvent(new Event('click'));
 				await TestRunner.WaitFor(
-					() => Application.GetCreatedApplications().size == sizeBefore - 1, 'Settings view is destroyed');
+					() => View.GetCreatedApplications().size == sizeBefore - 1, 'Settings view is destroyed');
 			}
 		}
 	}
@@ -478,9 +478,9 @@ class GridChecking {
 		const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${columnId}"]`);
 		testRunner.Assert(headerCell != null, true);
 		if (inView) {
-			const sizeBefore = Application.GetCreatedApplications().size;
+			const sizeBefore = View.GetCreatedApplications().size;
 			headerCell.querySelector(`.settings`).dispatchEvent(new Event('click'));
-			await TestRunner.WaitFor(() => Application.GetCreatedApplications().size > sizeBefore,
+			await TestRunner.WaitFor(() => View.GetCreatedApplications().size > sizeBefore,
 				'Settings view is created', 'Settings view is created');
 			const views = document.querySelectorAll('.views > .view');
 			const settingsView = views[views.length - 1];
@@ -542,7 +542,7 @@ class GridChecking {
 
 			document.dispatchEvent(new Event('click'));
 			await TestRunner.WaitFor(
-				() => Application.GetCreatedApplications().size == sizeBefore, 'Settings view is destroyed');
+				() => View.GetCreatedApplications().size == sizeBefore, 'Settings view is destroyed');
 
 			if (headers != null) {
 				await GridChecking.CheckColumnHeaders(grid, Array.from(headers.values()));
@@ -588,7 +588,7 @@ class GridChecking {
 
 	static async SetFilters(settingsViewId, filters)
 	{
-		const settings = Application.GetCreatedApplications().get(+settingsViewId);
+		const settings = View.GetCreatedApplications().get(+settingsViewId);
 		testRunner.Assert(settings != undefined, true);
 		testRunner.Assert(settings.m_tables.size, 1);
 		const tableIt = settings.m_tables[Symbol.iterator]();
@@ -1850,12 +1850,12 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 		{
 			const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${optional_scalar_parameter}"]`);
 			testRunner.Assert(headerCell != null, true);
-			const sizeBefore = Application.GetCreatedApplications().size;
+			const sizeBefore = View.GetCreatedApplications().size;
 			headerCell.querySelector(`.settings`).dispatchEvent(new Event('click'));
-			await TestRunner.WaitFor(() => Application.GetCreatedApplications().size > sizeBefore);
+			await TestRunner.WaitFor(() => View.GetCreatedApplications().size > sizeBefore);
 
 			grid.RemoveColumn({ order : 5 });
-			await TestRunner.WaitFor(() => Application.GetCreatedApplications().size == sizeBefore);
+			await TestRunner.WaitFor(() => View.GetCreatedApplications().size == sizeBefore);
 
 			let header = headers.get(optional_scalar_parameter);
 			header.sorting = Grid.SORTING_TYPE.none;
@@ -1985,12 +1985,12 @@ testRunner.Test('Test table type, its view logic', async () => {
 		const tableCells = grid.m_view.querySelectorAll(`.row:not(.header) .cell[parameter-id="${table_parameter_1}"]`);
 		testRunner.Assert(tableCells.length, 2);
 
-		const applicationsBefore = Application.GetCreatedApplications().size;
+		const applicationsBefore = View.GetCreatedApplications().size;
 		tableCells[0].dispatchEvent(new Event('click'));
 		tableCells[1].dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => Application.GetCreatedApplications().size == applicationsBefore + 2);
+		await TestRunner.WaitFor(() => View.GetCreatedApplications().size == applicationsBefore + 2);
 
-		let views = Array.from(Application.GetCreatedApplications().values());
+		let views = Array.from(View.GetCreatedApplications().values());
 		let tableView1 = views[applicationsBefore];
 		let tableView2 = views[applicationsBefore + 1];
 
@@ -2015,7 +2015,7 @@ testRunner.Test('Test table type, its view logic', async () => {
 		TestRunner.Step('Close table views');
 		tableView1.m_parentView.querySelector('.close').dispatchEvent(new Event('click'));
 		tableView2.m_parentView.querySelector('.close').dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => Application.GetCreatedApplications().size == applicationsBefore);
+		await TestRunner.WaitFor(() => View.GetCreatedApplications().size == applicationsBefore);
 		testRunner.Assert(Grid.GetTablesViewsNumber(), 2);
 
 		document.dispatchEvent(new Event('click'));
@@ -2024,9 +2024,9 @@ testRunner.Test('Test table type, its view logic', async () => {
 		TestRunner.Step('Open table views again and check, that they are the same');
 		tableCells[0].dispatchEvent(new Event('click'));
 		tableCells[1].dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => Application.GetCreatedApplications().size == applicationsBefore + 2);
+		await TestRunner.WaitFor(() => View.GetCreatedApplications().size == applicationsBefore + 2);
 
-		views = Array.from(Application.GetCreatedApplications().values());
+		views = Array.from(View.GetCreatedApplications().values());
 		tableView1 = views[applicationsBefore];
 		tableView2 = views[applicationsBefore + 1];
 		TableChecker.CheckValues(

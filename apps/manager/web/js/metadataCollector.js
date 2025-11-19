@@ -76,12 +76,12 @@ class MetadataCollector {
 	static Initialization()
 	{
 		let ready = true;
-		if (typeof Application === "undefined") {
+		if (typeof View === "undefined") {
 			console.error("Application is not defined");
 			ready = false;
 		}
 		else {
-			Application.AddViewTemplate("Metadata", `<div class="customView"></div>`);
+			View.AddViewTemplate("Metadata", `<div class="customView"></div>`);
 		}
 
 		if (typeof dispatcher === "undefined") {

@@ -70,7 +70,7 @@ class Select {
 
 			let selectViews = Select.#privateFields.m_selectsViews;
 
-			view = new Application("SelectView", {
+			view = new View("SelectView", {
 				eventTarget : input,
 				parameterId : parameterId,
 				appTitle : (() => {
@@ -131,7 +131,7 @@ class Select {
 
 						if (!selectView.m_parentView.contains(event.target)) {
 							if (event.target == selectView.m_eventTarget) {
-								Application.UpdateZIndex(selectView);
+								View.UpdateZIndex(selectView);
 								return;
 							}
 
@@ -206,5 +206,5 @@ class Select {
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	module.exports = Select;
 	MetadataCollector = require('./metadataCollector');
-	Application = require('./application');
+	View = require('./application');
 }

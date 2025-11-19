@@ -124,7 +124,7 @@
         MetadataCollector.AddMetadata(10, { name: "Open view", type: "system" }, true);
 
         // Firstly, created instance of installed app view asks for metadata in case if any of already created
-        void new Application("InstalledApps");
+        void new View("InstalledApps");
 
         document.addEventListener('keydown', function (event) {
             if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
@@ -135,9 +135,9 @@
 
         window.addEventListener('message', function (event) {
             if (event.data && event.data.type === 'iframeClick') {
-                const app = Application.GetCreatedApplications().get(event.data.uid);
+                const app = View.GetCreatedApplications().get(event.data.uid);
                 if (!app) {
-                    console.error('Application not found for UID:', event.data.uid);
+                    console.error('View not found for UID:', event.data.uid);
                     return;
                 }
 
