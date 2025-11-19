@@ -670,7 +670,7 @@ protected:
 	 *		Recv buffer size limit(1000005) : 10485760
 	 *		Server state(1000006) const : Running
 	 *		Max connections(1000007) const : 4096
-	 *		Listening IP(1000008) const : 0
+	 *		Listening IP(1000008) const : 127.0.0.1
 	 *		Listening port(1000009) const : 60328
 	 *		Name(2000001) const : Distributor
 	 *		Application state(2000002) const : Paused
