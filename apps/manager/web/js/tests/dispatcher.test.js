@@ -14,7 +14,7 @@
 const { TestRunner } = require('./testRunner');
 const Dispatcher = require('../dispatcher');
 const Grid = require('../grid');
-const View = require('../application');
+const View = require('../view');
 const viewTemplates = require('../viewTemplates');
 
 global.Grid = Grid;
@@ -26,7 +26,7 @@ function DestroyViews()
 {
 	document.querySelectorAll('body > main > section.views .viewHeader .close')
 		.forEach((button) => button.dispatchEvent(new Event('click', { bubbles : true })));
-	testRunner.Assert(View.GetCreatedApplications().size, 0, 'Unexpected created applications count');
+	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created applications count');
 }
 
 function CheckHiddenViewsList(expectedSize)
@@ -292,31 +292,31 @@ testRunner.Test('Manage list of registered panels', async () => {
 
 	//* Click to create panel
 	registeredPanelsList.childNodes[0].dispatchEvent(new Event('click', { bubbles : true }));
-	await TestRunner.WaitFor(() => View.GetCreatedApplications().size === 1, 'view is created');
+	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 1, 'view is created');
 	checkRegisteredPanelsList(2, 0);
 
-	testRunner.Assert(View.GetCreatedApplications().size, 1, 'Unexpected created views count');
-	testRunner.Assert(Array.from(View.GetCreatedApplications().values())[0].m_title, 'InstalledApps',
+	testRunner.Assert(View.GetCreatedViews().size, 1, 'Unexpected created views count');
+	testRunner.Assert(Array.from(View.GetCreatedViews().values())[0].m_title, 'InstalledApps',
 		'Unexpected name on created view');
 
 	//* Click to create panel
 	registeredPanelsList.childNodes[1].dispatchEvent(new Event('click', { bubbles : true }));
-	await TestRunner.WaitFor(() => View.GetCreatedApplications().size === 2, 'view is created');
+	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 2, 'view is created');
 	checkRegisteredPanelsList(2, 0);
-	testRunner.Assert(View.GetCreatedApplications().size, 2, 'Unexpected created views count');
-	testRunner.Assert(Array.from(View.GetCreatedApplications().values())[1].m_title, 'CreatedApps',
+	testRunner.Assert(View.GetCreatedViews().size, 2, 'Unexpected created views count');
+	testRunner.Assert(Array.from(View.GetCreatedViews().values())[1].m_title, 'CreatedApps',
 		'Unexpected name on created view');
 
 	//* Click to create panel
 	registeredPanelsList.childNodes[1].dispatchEvent(new Event('click', { bubbles : true }));
-	await TestRunner.WaitFor(() => View.GetCreatedApplications().size === 3, 'view is created');
+	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 3, 'view is created');
 	checkRegisteredPanelsList(2, 0);
-	testRunner.Assert(View.GetCreatedApplications().size, 3, 'Unexpected created views count');
-	testRunner.Assert(Array.from(View.GetCreatedApplications().values())[2].m_title, 'CreatedApps',
+	testRunner.Assert(View.GetCreatedViews().size, 3, 'Unexpected created views count');
+	testRunner.Assert(Array.from(View.GetCreatedViews().values())[2].m_title, 'CreatedApps',
 		'Unexpected name on created view');
 
 	//* Hide views
-	let views = Array.from(View.GetCreatedApplications().values());
+	let views = Array.from(View.GetCreatedViews().values());
 	views[0].Hide();
 	views[1].Hide();
 	checkRegisteredPanelsList(2, 2);

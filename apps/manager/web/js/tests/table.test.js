@@ -13,7 +13,7 @@
 
 const { TestRunner } = require('./testRunner');
 const Table = require('../table');
-const Application = require('../application');
+const Application = require('../view');
 const viewTemplates = require('../viewTemplates');
 const MetadataCollector = require('../metadataCollector');
 

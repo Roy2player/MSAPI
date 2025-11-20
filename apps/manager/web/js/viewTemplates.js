@@ -16,7 +16,7 @@
 
 // Import View class if in Node.js environment
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require("./application");
+	View = require('./view');
 }
 
 // Parameter templates

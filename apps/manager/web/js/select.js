@@ -206,5 +206,5 @@ class Select {
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	module.exports = Select;
 	MetadataCollector = require('./metadataCollector');
-	View = require('./application');
+	View = require('./view');
 }

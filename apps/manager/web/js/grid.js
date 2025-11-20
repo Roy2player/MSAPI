@@ -152,7 +152,7 @@ class Grid {
 					}
 
 					if (!settingView.m_parentView.contains(event.target)) {
-						const lastApp = View.GetLastCreatedApplication();
+						const lastApp = View.GetLastCreatedView();
 						if (lastApp != null && lastApp.m_viewType == "SelectView"
 							&& lastApp.m_parentView.contains(event.target)) {
 
@@ -1516,7 +1516,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	Timer = require('./timer');
 	Select = require('./select');
 	Duration = require('./duration');
-	View = require('./application');
+	View = require('./view');
 	Table = require('./table');
 	MetadataCollector = require('./metadataCollector');
 }

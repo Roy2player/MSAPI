@@ -12,7 +12,7 @@
  */
 
 const { TestRunner } = require('./testRunner');
-const View = require('../application');
+const View = require('../view');
 const viewTemplates = require('../viewTemplates');
 const Table = require('../table');
 const Grid = require('../grid');
@@ -92,7 +92,7 @@ function DestroyViews()
 {
 	document.querySelectorAll('body > main > section.views .viewHeader .close')
 		.forEach((button) => button.dispatchEvent(new Event('click', { bubbles : true })));
-	testRunner.Assert(View.GetCreatedApplications().size, 0, 'Unexpected created applications count');
+	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created applications count');
 }
 
 let testRunner = new TestRunner();
