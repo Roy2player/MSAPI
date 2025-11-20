@@ -63,6 +63,31 @@
  * @todo Think if web sockets can be used for communication.
  * @todo Refactor: Each view type should be in its own file, inheriting from View class.
  * @todo Refactor: Constructor method should be overridden in subclasses instead of having type checks.
+ * 
+ * @usage Creating a custom view type that inherits from View:
+ * ```javascript
+ * class CustomView extends View {
+ *     async Constructor(viewType, parameters) {
+ *         // Custom initialization logic
+ *         this.m_title = parameters.title || viewType;
+ *         this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+ *         // Set up custom UI elements
+ *         const customElement = this.m_view.querySelector('.customElement');
+ *         customElement.addEventListener('click', () => this.handleClick());
+ *         return true;
+ *     }
+ *     
+ *     handleClick() {
+ *         // Custom event handler
+ *     }
+ * }
+ * 
+ * // Register template for the view type
+ * View.AddViewTemplate("CustomView", `<div class="customView">...</div>`);
+ * 
+ * // Create instance
+ * const myView = new CustomView("CustomView", { title: "My Custom View" });
+ * ```
  */
 class View {
 	static #privateFields = (() => {
