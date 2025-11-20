@@ -136,13 +136,13 @@
 
         window.addEventListener('message', function (event) {
             if (event.data && event.data.type === 'iframeClick') {
-                const app = View.GetCreatedViews().get(event.data.uid);
-                if (!app) {
+                const view = View.GetCreatedViews().get(event.data.uid);
+                if (!view) {
                     console.error('View not found for UID:', event.data.uid);
                     return;
                 }
 
-                app.m_parentView.dispatchEvent(new Event('mousedown', { bubbles: true }));
+                view.m_parentView.dispatchEvent(new Event('mousedown', { bubbles: true }));
             }
         });
 

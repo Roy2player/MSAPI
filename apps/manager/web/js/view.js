@@ -241,7 +241,7 @@ class View {
 		return null;
 	}
 
-	static SaveView(app)
+	static SaveView(view)
 	{
 		if (!app) {
 			console.error("Invalid view instance");
@@ -249,7 +249,7 @@ class View {
 		}
 
 		View.#privateFields.m_lastCreatedView = app;
-		View.#privateFields.m_createdViews.set(app.m_uid, app);
+		View.#privateFields.m_createdViews.set(view.m_uid, app);
 	}
 
 	static GetLastCreatedView() { return View.#privateFields.m_lastCreatedView; }
@@ -258,8 +258,8 @@ class View {
 
 	static GetViewByPort(port)
 	{
-		for (let app of View.#privateFields.m_createdViews.values()) {
-			if (app.m_port == port) {
+		for (let view of View.#privateFields.m_createdViews.values()) {
+			if (view.m_port == port) {
 				return app;
 			}
 		}
@@ -267,13 +267,13 @@ class View {
 		return null;
 	}
 
-	static RemoveCreatedView(app) { View.#privateFields.m_createdViews.delete(app.m_uid); }
+	static RemoveCreatedView(view) { View.#privateFields.m_createdViews.delete(view.m_uid); }
 
 	static HandleResponse(type, response, parameters)
 	{
 		const callbackName = "Handle" + type.charAt(0).toUpperCase() + type.slice(1) + "Response";
-		for (let app of View.#privateFields.m_createdViews.values()) {
-			if (app.hasOwnProperty(callbackName)) {
+		for (let view of View.#privateFields.m_createdViews.values()) {
+			if (view.hasOwnProperty(callbackName)) {
 				app[callbackName](response, parameters);
 			}
 		}
@@ -424,7 +424,7 @@ class View {
 
 					savedThis.m_parentView.classList.add("resizing");
 					View.GetCreatedViews().values().forEach(
-						(app) => { app.m_view.classList.add("changing"); });
+						(view) => { view.m_view.classList.add("changing"); });
 
 					element.preventDefault();
 					const startX = element.clientX;
@@ -541,7 +541,7 @@ class View {
 					{
 						savedThis.m_parentView.classList.remove("resizing");
 						View.GetCreatedViews().values().forEach(
-							(app) => { app.m_view.classList.remove("changing"); });
+							(view) => { view.m_view.classList.remove("changing"); });
 						document.removeEventListener('mousemove', OnMouseMove);
 						document.removeEventListener('mouseup', OnMouseUp);
 					}
@@ -816,9 +816,9 @@ class View {
 		}
 
 		if (viewType === "ModifyApp") {
-			let existedApp = View.GetViewByPort(parameters.port);
+			let existedView = View.GetViewByPort(parameters.port);
 			if (existedApp) {
-				existedApp.Show();
+				existedView.Show();
 				return false;
 			}
 
@@ -1317,9 +1317,9 @@ class View {
 
 			this.AddCallback("delete", (response, extraParameters) => {
 				this.m_grid.RemoveRow({ indexValue : extraParameters.port });
-				for (let app of View.GetCreatedViews().values()) {
-					if (app.m_port == extraParameters.port) {
-						app.Destructor();
+				for (let view of View.GetCreatedViews().values()) {
+					if (view.m_port == extraParameters.port) {
+						view.Destructor();
 						return true;
 					}
 				}
@@ -1459,7 +1459,7 @@ class View {
 				return;
 			}
 
-			View.GetCreatedViews().values().forEach((app) => { app.m_view.classList.add("changing"); });
+			View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.add("changing"); });
 
 			startX = e.clientX;
 			startY = e.clientY;
@@ -1522,7 +1522,7 @@ class View {
 			document.removeEventListener("mousemove", onMouseMove);
 			document.removeEventListener("mouseup", onMouseUp);
 			View.GetCreatedViews().values().forEach(
-				(app) => { app.m_view.classList.remove("changing"); });
+				(view) => { view.m_view.classList.remove("changing"); });
 		};
 	}
 
@@ -1720,16 +1720,16 @@ class View {
 		return await sendRequest();
 	}
 
-	static UpdateZIndex(app)
+	static UpdateZIndex(view)
 	{
-		if (app.m_parentView.style.zIndex == View.#privateFields.m_createdViews.size) {
+		if (view.m_parentView.style.zIndex == View.#privateFields.m_createdViews.size) {
 			return;
 		}
 
-		const shiftedPosition = app.m_parentView.style.zIndex;
+		const shiftedPosition = view.m_parentView.style.zIndex;
 
 		View.#privateFields.m_createdViews.forEach((item, uid) => {
-			if (uid != app.m_uid) {
+			if (uid != view.m_uid) {
 				if (item.m_parentView.style.zIndex > shiftedPosition) {
 					item.m_parentView.style.zIndex = item.m_parentView.style.zIndex - 1;
 				}
