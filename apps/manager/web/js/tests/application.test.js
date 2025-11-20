@@ -12,7 +12,8 @@
  */
 
 const { TestRunner } = require('./testRunner');
-const Application = require('../application');
+const View = require('../view');
+const viewTemplates = require('../viewTemplates');
 const Table = require('../table');
 const Grid = require('../grid');
 
@@ -91,84 +92,84 @@ function DestroyViews()
 {
 	document.querySelectorAll('body > main > section.views .viewHeader .close')
 		.forEach((button) => button.dispatchEvent(new Event('click', { bubbles : true })));
-	testRunner.Assert(Application.GetCreatedApplications().size, 0, 'Unexpected created applications count');
+	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created applications count');
 }
 
 let testRunner = new TestRunner();
 testRunner.SetPostTestFunction(DestroyViews);
 
 testRunner.Test('Create InstalledApps panel', async () => {
-	const app = new Application("InstalledApps");
+	const view = new View("InstalledApps");
 
-	testRunner.Assert(app.m_viewType, 'InstalledApps', 'View type is unexpected');
-	testRunner.Assert(app.m_title, 'InstalledApps', 'Title is unexpected');
-	testRunner.Assert(app.m_appType, undefined, 'App type is unexpected');
-	testRunner.Assert(app.m_parameters, null, 'Parameters are unexpected');
-	testRunner.Assert(app.m_parentNode, body.querySelector('main > section.views'), 'Parent node is unexpected');
+	testRunner.Assert(view.m_viewType, 'InstalledApps', 'View type is unexpected');
+	testRunner.Assert(view.m_title, 'InstalledApps', 'Title is unexpected');
+	testRunner.Assert(view.m_appType, undefined, 'App type is unexpected');
+	testRunner.Assert(view.m_parameters, null, 'Parameters are unexpected');
+	testRunner.Assert(view.m_parentNode, body.querySelector('main > section.views'), 'Parent node is unexpected');
 	testRunner.Assert(
-		app.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
+		view.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
 
-	testRunner.Assert(Application.GetViewTemplate('InstalledApps') !== null, true, 'View template is unexpected');
-	testRunner.Assert(app.m_grid !== null, true, 'Grid is not created');
+	testRunner.Assert(View.GetViewTemplate('InstalledApps') !== null, true, 'View template is unexpected');
+	testRunner.Assert(view.m_grid !== null, true, 'Grid is not created');
 
-	await TestRunner.WaitFor(() => app.m_grid.m_view.children.length == 5, "Installed apps are loaded");
-	testRunner.Assert(app.m_grid.m_view.childNodes.length, 5, 'Grid has unexpected number of children');
-	testRunner.Assert(app.m_grid.m_columnById.size, 2, 'Columns size is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.size, 2, 'Columns size is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.get(0).headerCell.querySelector("span.text").innerHTML, 'Create',
+	await TestRunner.WaitFor(() => view.m_grid.m_view.children.length == 5, "Installed apps are loaded");
+	testRunner.Assert(view.m_grid.m_view.childNodes.length, 5, 'Grid has unexpected number of children');
+	testRunner.Assert(view.m_grid.m_columnById.size, 2, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.size, 2, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(0).headerCell.querySelector("span.text").innerHTML, 'Create',
 		'First column name is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.get(1).headerCell.querySelector("span.text").innerHTML, 'Type',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(1).headerCell.querySelector("span.text").innerHTML, 'Type',
 		'Second column name is unexpected');
 });
 
 testRunner.Test('Create NewApp and Modify panels', () => {
-	testRunner.Assert(Application.GetParametersTemplate('NewApp', "default") !== null, true,
+	testRunner.Assert(View.GetParametersTemplate('NewApp', "default") !== null, true,
 		'Default parameters template is unexpected');
 
 	let parameters = { appType : "Strategy" };
-	const app = new Application("NewApp", parameters);
+	const view = new View("NewApp", parameters);
 
-	testRunner.Assert(app.m_viewType, 'NewApp', 'View type is unexpected');
-	testRunner.Assert(app.m_title, 'NewApp: Strategy', 'Title is unexpected');
-	testRunner.Assert(app.m_appType, "Strategy", 'Alias is unexpected');
-	testRunner.Assert(app.m_parameters, parameters, 'Parameters are unexpected');
-	testRunner.Assert(app.m_parentNode, body.querySelector('main > section.views'), 'Parent node is unexpected');
+	testRunner.Assert(view.m_viewType, 'NewApp', 'View type is unexpected');
+	testRunner.Assert(view.m_title, 'NewApp: Strategy', 'Title is unexpected');
+	testRunner.Assert(view.m_appType, "Strategy", 'Alias is unexpected');
+	testRunner.Assert(view.m_parameters, parameters, 'Parameters are unexpected');
+	testRunner.Assert(view.m_parentNode, body.querySelector('main > section.views'), 'Parent node is unexpected');
 	testRunner.Assert(
-		app.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
+		view.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
 
-	testRunner.Assert(Application.GetViewTemplate('NewApp') !== null, true, 'View template is unexpected');
+	testRunner.Assert(View.GetViewTemplate('NewApp') !== null, true, 'View template is unexpected');
 });
 
 testRunner.Test('Add app to CreatedApps panel', () => {
-	const app = new Application("CreatedApps");
+	const view = new View("CreatedApps");
 
-	testRunner.Assert(app.m_viewType, 'CreatedApps', 'View type is unexpected');
-	testRunner.Assert(app.m_title, 'CreatedApps', 'Title is unexpected');
-	testRunner.Assert(app.m_appType, undefined, 'App type is unexpected');
-	testRunner.Assert(app.m_parameters, null, 'Parameters are unexpected');
-	testRunner.Assert(app.m_parentNode, body.querySelector('main > section.views'), 'Parent node is unexpected');
+	testRunner.Assert(view.m_viewType, 'CreatedApps', 'View type is unexpected');
+	testRunner.Assert(view.m_title, 'CreatedApps', 'Title is unexpected');
+	testRunner.Assert(view.m_appType, undefined, 'App type is unexpected');
+	testRunner.Assert(view.m_parameters, null, 'Parameters are unexpected');
+	testRunner.Assert(view.m_parentNode, body.querySelector('main > section.views'), 'Parent node is unexpected');
 	testRunner.Assert(
-		app.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
+		view.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
 
-	testRunner.Assert(Application.GetViewTemplate('CreatedApps') !== null, true, 'View template is unexpected');
+	testRunner.Assert(View.GetViewTemplate('CreatedApps') !== null, true, 'View template is unexpected');
 
-	testRunner.Assert(app.m_grid !== null, true, 'Grid not created');
-	testRunner.Assert(app.m_grid.m_view.childNodes.length, 1, 'Grid has unexpected number of children');
-	testRunner.Assert(app.m_grid.m_columnById.size, 7, 'Columns size is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.size, 7, 'Columns size is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.get(0).headerCell.querySelector("span.text").innerHTML, 'Change state',
+	testRunner.Assert(view.m_grid !== null, true, 'Grid not created');
+	testRunner.Assert(view.m_grid.m_view.childNodes.length, 1, 'Grid has unexpected number of children');
+	testRunner.Assert(view.m_grid.m_columnById.size, 7, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.size, 7, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(0).headerCell.querySelector("span.text").innerHTML, 'Change state',
 		'Column name is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.get(1).headerCell.querySelector("span.text").innerHTML, 'Modify',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(1).headerCell.querySelector("span.text").innerHTML, 'Modify',
 		'Column name is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.get(2).headerCell.querySelector("span.text").innerHTML, 'Delete',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(2).headerCell.querySelector("span.text").innerHTML, 'Delete',
 		'Column name is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.get(3).headerCell.querySelector("span.text").innerHTML, 'Name',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(3).headerCell.querySelector("span.text").innerHTML, 'Name',
 		'Column name is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.get(4).headerCell.querySelector("span.text").innerHTML, 'Type',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(4).headerCell.querySelector("span.text").innerHTML, 'Type',
 		'Column name is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.get(5).headerCell.querySelector("span.text").innerHTML, 'Listening IP',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(5).headerCell.querySelector("span.text").innerHTML, 'Listening IP',
 		'Column name is unexpected');
-	testRunner.Assert(app.m_grid.m_columnByOrder.get(6).headerCell.querySelector("span.text").innerHTML,
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(6).headerCell.querySelector("span.text").innerHTML,
 		'Listening port', 'Column name is unexpected');
 });
 

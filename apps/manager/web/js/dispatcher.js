@@ -114,7 +114,7 @@ class Dispatcher {
 		span.innerHTML = panelName;
 		div.appendChild(span);
 
-		div.addEventListener('click', () => { new Application(panelName); });
+		div.addEventListener('click', () => { new View(panelName); });
 
 		let registeredPanelsList = this.m_registeredPanels.querySelector('.list');
 		registeredPanelsList.appendChild(div);

@@ -10,7 +10,11 @@
  *
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
- * @brief Abstraction for any view that can be created. Can represent interface unit or application.
+ * @brief Base class for any view that can be created. Can represent interface unit or application.
+ *
+ * This is a base class providing common functionality for all views. Specific view types
+ * should ideally inherit from this class and override the Constructor() method for
+ * type-specific initialization logic. This promotes better encapsulation and separation of concerns.
  *
  * Has three parts:
  * 1) Header which contains view tile and on view options:
@@ -57,25 +61,51 @@
  * @brief m_maximizeButton - maximize button element.
  *
  * @todo Think if web sockets can be used for communication.
- * @todo New app type should be added fully independently from Application class.
+ * @todo Refactor: Each view type should be in its own file, inheriting from View class.
+ * @todo Refactor: Constructor method should be overridden in subclasses instead of having type checks.
+ * 
+ * @usage Creating a custom view type that inherits from View:
+ * ```javascript
+ * class CustomView extends View {
+ *     async Constructor(viewType, parameters) {
+ *         // Custom initialization logic
+ *         this.m_title = parameters.title || viewType;
+ *         this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+ *         // Set up custom UI elements
+ *         const customElement = this.m_view.querySelector('.customElement');
+ *         customElement.addEventListener('click', () => this.handleClick());
+ *         return true;
+ *     }
+ *     
+ *     handleClick() {
+ *         // Custom event handler
+ *     }
+ * }
+ * 
+ * // Register template for the view type
+ * View.AddViewTemplate("CustomView", `<div class="customView">...</div>`);
+ * 
+ * // Create instance
+ * const myView = new CustomView("CustomView", { title: "My Custom View" });
+ * ```
  */
-class Application {
+class View {
 	static #privateFields = (() => {
 		const m_viewTemplateToViewType = new Map();
 		const m_parametersTemplateToAppType = new Map();
 		const m_metadataToAppType = new Map();
 		const m_viewPortParameterToAppType = new Map();
 		const m_parametersToPort = new Map();
-		const m_createdApplications = new Map();
-		const m_lastCreatedApplication = null;
+		const m_createdViews = new Map();
+		const m_lastCreatedView = null;
 		return {
 			m_viewTemplateToViewType,
 			m_parametersTemplateToAppType,
 			m_metadataToAppType,
 			m_viewPortParameterToAppType,
 			m_parametersToPort,
-			m_createdApplications,
-			m_lastCreatedApplication
+			m_createdViews,
+			m_lastCreatedView
 		};
 	})();
 
@@ -87,7 +117,7 @@ class Application {
 		right = Math.round(right);
 		bottom = Math.round(bottom);
 		left = Math.round(left);
-		let mins = { x : Application.m_clingSensitive + 1, y : Application.m_clingSensitive + 1 };
+		let mins = { x : View.m_clingSensitive + 1, y : View.m_clingSensitive + 1 };
 		let clingData = { left : left, top : top, clinged : false };
 
 		function CheckX(aPos, bPos)
@@ -122,7 +152,7 @@ class Application {
 		CheckX(window.innerWidth, right);
 		CheckY(0, top);
 
-		for (const other of Application.GetCreatedApplications().values()) {
+		for (const other of View.GetCreatedViews().values()) {
 			if (other == this || !other.m_canBeClinged) {
 				continue;
 			}
@@ -143,34 +173,34 @@ class Application {
 			CheckY(oBottom, bottom);
 		}
 
-		return mins.x <= Application.m_clingSensitive || mins.y <= Application.m_clingSensitive ? clingData : undefined;
+		return mins.x <= View.m_clingSensitive || mins.y <= View.m_clingSensitive ? clingData : undefined;
 	}
 
 	static AddViewTemplate(viewType, template)
 	{
-		if (Application.#privateFields.m_viewTemplateToViewType.has(viewType)) {
-			Application.#privateFields.m_viewTemplateToViewType.set(viewType, { template, templateElement : null });
+		if (View.#privateFields.m_viewTemplateToViewType.has(viewType)) {
+			View.#privateFields.m_viewTemplateToViewType.set(viewType, { template, templateElement : null });
 			return;
 		}
-		Application.#privateFields.m_viewTemplateToViewType.set(viewType, { template, templateElement : null });
+		View.#privateFields.m_viewTemplateToViewType.set(viewType, { template, templateElement : null });
 	}
 
-	static GetViewTemplate(viewType) { return Application.#privateFields.m_viewTemplateToViewType.get(viewType); }
+	static GetViewTemplate(viewType) { return View.#privateFields.m_viewTemplateToViewType.get(viewType); }
 
 	static AddParametersTemplate(appType, templateName, template)
 	{
-		if (!Application.#privateFields.m_parametersTemplateToAppType.has(appType)) {
-			Application.#privateFields.m_parametersTemplateToAppType.set(appType, new Map());
-			Application.#privateFields.m_parametersTemplateToAppType.get(appType).set(templateName, template);
+		if (!View.#privateFields.m_parametersTemplateToAppType.has(appType)) {
+			View.#privateFields.m_parametersTemplateToAppType.set(appType, new Map());
+			View.#privateFields.m_parametersTemplateToAppType.get(appType).set(templateName, template);
 			return;
 		}
-		Application.#privateFields.m_parametersTemplateToAppType.get(appType).set(templateName, template);
+		View.#privateFields.m_parametersTemplateToAppType.get(appType).set(templateName, template);
 	}
 
 	static GetParametersTemplates(appType)
 	{
-		if (Application.#privateFields.m_parametersTemplateToAppType.has(appType)) {
-			return Application.#privateFields.m_parametersTemplateToAppType.get(appType);
+		if (View.#privateFields.m_parametersTemplateToAppType.has(appType)) {
+			return View.#privateFields.m_parametersTemplateToAppType.get(appType);
 		}
 
 		return null;
@@ -178,9 +208,9 @@ class Application {
 
 	static GetParametersTemplate(appType, templateName)
 	{
-		if (Application.#privateFields.m_parametersTemplateToAppType.has(appType)) {
-			if (Application.#privateFields.m_parametersTemplateToAppType.get(appType).has(templateName)) {
-				return Application.#privateFields.m_parametersTemplateToAppType.get(appType).get(templateName);
+		if (View.#privateFields.m_parametersTemplateToAppType.has(appType)) {
+			if (View.#privateFields.m_parametersTemplateToAppType.get(appType).has(templateName)) {
+				return View.#privateFields.m_parametersTemplateToAppType.get(appType).get(templateName);
 			}
 		}
 
@@ -189,47 +219,47 @@ class Application {
 
 	static GetMetadata(appType)
 	{
-		if (Application.#privateFields.m_metadataToAppType.has(appType)) {
-			return Application.#privateFields.m_metadataToAppType.get(appType);
+		if (View.#privateFields.m_metadataToAppType.has(appType)) {
+			return View.#privateFields.m_metadataToAppType.get(appType);
 		}
 
 		return null;
 	}
 
-	static AddMetadata(appType, metadata) { Application.#privateFields.m_metadataToAppType.set(appType, metadata); }
+	static AddMetadata(appType, metadata) { View.#privateFields.m_metadataToAppType.set(appType, metadata); }
 
-	static GetAllMetadata() { return Array.from(Application.#privateFields.m_metadataToAppType.values()); }
+	static GetAllMetadata() { return Array.from(View.#privateFields.m_metadataToAppType.values()); }
 
-	static HasParameters(port) { return Application.#privateFields.m_parametersToPort.has(port); }
+	static HasParameters(port) { return View.#privateFields.m_parametersToPort.has(port); }
 
 	static GetParameters(port)
 	{
-		if (Application.#privateFields.m_parametersToPort.has(port)) {
-			return Application.#privateFields.m_parametersToPort.get(port);
+		if (View.#privateFields.m_parametersToPort.has(port)) {
+			return View.#privateFields.m_parametersToPort.get(port);
 		}
 
 		return null;
 	}
 
-	static SaveApplication(app)
+	static SaveView(view)
 	{
 		if (!app) {
-			console.error("Invalid application instance");
+			console.error("Invalid view instance");
 			return;
 		}
 
-		Application.#privateFields.m_lastCreatedApplication = app;
-		Application.#privateFields.m_createdApplications.set(app.m_uid, app);
+		View.#privateFields.m_lastCreatedView = app;
+		View.#privateFields.m_createdViews.set(view.m_uid, app);
 	}
 
-	static GetLastCreatedApplication() { return Application.#privateFields.m_lastCreatedApplication; }
+	static GetLastCreatedView() { return View.#privateFields.m_lastCreatedView; }
 
-	static GetCreatedApplications() { return Application.#privateFields.m_createdApplications; }
+	static GetCreatedViews() { return View.#privateFields.m_createdViews; }
 
-	static GetApplicationByPort(port)
+	static GetViewByPort(port)
 	{
-		for (let app of Application.#privateFields.m_createdApplications.values()) {
-			if (app.m_port == port) {
+		for (let view of View.#privateFields.m_createdViews.values()) {
+			if (view.m_port == port) {
 				return app;
 			}
 		}
@@ -237,13 +267,13 @@ class Application {
 		return null;
 	}
 
-	static RemoveCreatedApplication(app) { Application.#privateFields.m_createdApplications.delete(app.m_uid); }
+	static RemoveCreatedView(view) { View.#privateFields.m_createdViews.delete(view.m_uid); }
 
 	static HandleResponse(type, response, parameters)
 	{
 		const callbackName = "Handle" + type.charAt(0).toUpperCase() + type.slice(1) + "Response";
-		for (let app of Application.#privateFields.m_createdApplications.values()) {
-			if (app.hasOwnProperty(callbackName)) {
+		for (let view of View.#privateFields.m_createdViews.values()) {
+			if (view.hasOwnProperty(callbackName)) {
 				app[callbackName](response, parameters);
 			}
 		}
@@ -289,29 +319,29 @@ class Application {
 				}
 
 				if (this.m_parentNode === null) {
-					console.error("Can't find parent node for application.");
+					console.error("Can't find parent node for view.");
 					return false;
 				}
 
-				if (!Application.#privateFields.m_viewTemplateToViewType.has(viewType)) {
-					console.error("Can't find view template for application.");
+				if (!View.#privateFields.m_viewTemplateToViewType.has(viewType)) {
+					console.error("Can't find view template for view.");
 					return false;
 				}
 
-				if (Application.#generalTemplateElement === null) {
+				if (View.#generalTemplateElement === null) {
 					const template = document.createElement("template");
-					template.innerHTML = Application.#generalTemplate;
-					Application.#generalTemplateElement = template;
+					template.innerHTML = View.#generalTemplate;
+					View.#generalTemplateElement = template;
 				}
 
-				let specificTemplate = Application.#privateFields.m_viewTemplateToViewType.get(viewType);
+				let specificTemplate = View.#privateFields.m_viewTemplateToViewType.get(viewType);
 				if (specificTemplate.templateElement === null) {
 					const template = document.createElement("template");
 					template.innerHTML = specificTemplate.template;
 					specificTemplate.templateElement = template;
 				}
 
-				this.m_parentView = Application.#generalTemplateElement.content.cloneNode(true).firstElementChild;
+				this.m_parentView = View.#generalTemplateElement.content.cloneNode(true).firstElementChild;
 				this.m_parentView.querySelector(".title > span").textContent = this.m_title;
 				this.m_parentView.querySelector(".viewContent")
 					.appendChild(specificTemplate.templateElement.content.cloneNode(true));
@@ -322,12 +352,12 @@ class Application {
 				this.m_tables = new Map();
 
 				this.MakeDraggable(this.m_parentView.querySelector(".viewHeader .title"), this.m_parentView);
-				this.m_parentView.addEventListener("mousedown", () => { Application.UpdateZIndex(this); });
+				this.m_parentView.addEventListener("mousedown", () => { View.UpdateZIndex(this); });
 
 				this.m_uid = Helper.GenerateUid();
 				this.m_parentView.setAttribute("uid", this.m_uid);
-				Application.SaveApplication(this);
-				this.m_parentView.style.zIndex = Application.#privateFields.m_createdApplications.size;
+				View.SaveView(this);
+				this.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
 
 				if (dispatcher !== undefined) {
 					this.m_parentView.style.left = dispatcher.m_view.getBoundingClientRect().right + "px";
@@ -393,8 +423,8 @@ class Application {
 					}
 
 					savedThis.m_parentView.classList.add("resizing");
-					Application.GetCreatedApplications().values().forEach(
-						(app) => { app.m_view.classList.add("changing"); });
+					View.GetCreatedViews().values().forEach(
+						(view) => { view.m_view.classList.add("changing"); });
 
 					element.preventDefault();
 					const startX = element.clientX;
@@ -510,8 +540,8 @@ class Application {
 					function OnMouseUp()
 					{
 						savedThis.m_parentView.classList.remove("resizing");
-						Application.GetCreatedApplications().values().forEach(
-							(app) => { app.m_view.classList.remove("changing"); });
+						View.GetCreatedViews().values().forEach(
+							(view) => { view.m_view.classList.remove("changing"); });
 						document.removeEventListener('mousemove', OnMouseMove);
 						document.removeEventListener('mouseup', OnMouseUp);
 					}
@@ -522,7 +552,7 @@ class Application {
 
 				let closeButton = this.m_parentView.querySelector(".viewHeader .close");
 				if (!closeButton) {
-					console.error("Can't find close button for application.");
+					console.error("Can't find close button for view.");
 					return;
 				}
 				if (this.m_canBeClosed) {
@@ -539,12 +569,12 @@ class Application {
 
 				let hideButton = this.m_parentView.querySelector(".viewHeader .hide");
 				if (!hideButton) {
-					console.error("Can't find hide button for application.");
+					console.error("Can't find hide button for view.");
 					this.Destructor();
 				}
 				this.m_maximizeButton = this.m_parentView.querySelector(".viewHeader .maximize");
 				if (!this.m_maximizeButton) {
-					console.error("Can't find maximize button for application.");
+					console.error("Can't find maximize button for view.");
 					this.Destructor();
 				}
 
@@ -559,7 +589,7 @@ class Application {
 
 				let stickButton = this.m_parentView.querySelector(".viewHeader .stick");
 				if (!stickButton) {
-					console.error("Can't find stick button for application.");
+					console.error("Can't find stick button for view.");
 					this.Destructor();
 				}
 				if (this.m_canBeSticked) {
@@ -576,7 +606,7 @@ class Application {
 
 				if (!(await this.Constructor(viewType, parameters))) {
 					this.Destructor();
-					console.error("Can't create application.");
+					console.error("Can't create view.");
 					return;
 				}
 
@@ -595,19 +625,30 @@ class Application {
 				this.m_created = true;
 			}
 			catch (error) {
-				console.error("Can't create application.", error);
+				console.error("Can't create view.", error);
 				this.Destructor();
 			}
 		})();
 	}
 
+	/**
+	 * Type-specific initialization logic for different view types.
+	 * 
+	 * @note Future refactoring: This method contains type-specific logic that should ideally be
+	 * moved to separate view subclasses. Each view type (AppView, TableView, etc.) should be
+	 * in its own file, inherit from View, and override this method with its specific logic.
+	 * 
+	 * @param {string} viewType - The type of view being created
+	 * @param {Object} parameters - Parameters for view initialization
+	 * @returns {Promise<boolean>} True if initialization succeeded, false otherwise
+	 */
 	async Constructor(viewType, parameters)
 	{
 		if (viewType == "AppView") {
 			this.m_title += ": " + parameters.appType + " (port: " + parameters.port + ")";
 			this.m_parentView.querySelector(".title > span").textContent = this.m_title;
 
-			const parametersToPort = Application.#privateFields.m_parametersToPort.get(parameters.port);
+			const parametersToPort = View.#privateFields.m_parametersToPort.get(parameters.port);
 
 			// Create an iframe to display the app at the given URL and port
 			const listeningIp = parametersToPort && parametersToPort[1000008] ? parametersToPort[1000008] : null;
@@ -708,7 +749,7 @@ class Application {
 					let createCell = rowObject.row.querySelector(".cell[parameter-id='1']");
 					if (createCell !== null && rowObject.values.hasOwnProperty(5)) {
 						createCell.addEventListener(
-							"click", () => { new Application("NewApp", { appType : rowObject.values[5] }); });
+							"click", () => { new View("NewApp", { appType : rowObject.values[5] }); });
 						createCell.classList.add("action", "create");
 					}
 				}
@@ -719,8 +760,8 @@ class Application {
 					response.apps.forEach(app => { this.m_grid.AddOrUpdateRow({ 5 : app.type }); });
 
 					response.apps.forEach(app => {
-						if (!Application.#privateFields.m_metadataToAppType.has(app.type)) {
-							Application.SendRequest({
+						if (!View.#privateFields.m_metadataToAppType.has(app.type)) {
+							View.SendRequest({
 								method : "GET",
 								mode : "cors",
 								headers :
@@ -728,15 +769,15 @@ class Application {
 							});
 						}
 
-						if (!Application.#privateFields.m_viewPortParameterToAppType.has(app.type)) {
-							Application.#privateFields.m_viewPortParameterToAppType.set(
+						if (!View.#privateFields.m_viewPortParameterToAppType.has(app.type)) {
+							View.#privateFields.m_viewPortParameterToAppType.set(
 								app.type, app.viewPortParameter);
 						}
 					});
 				}
 			});
 
-			void Application.SendRequest({
+			void View.SendRequest({
 				method : "GET",
 				mode : "cors",
 				headers : { "Accept" : "application/json", "Type" : "getInstalledApps" }
@@ -752,16 +793,16 @@ class Application {
 
 			this.m_view.querySelector(".button").addEventListener("click", async () => {
 				this.HideErrorMessage();
-				if (!Application.ValidateInputs(this.m_view)) {
+				if (!View.ValidateInputs(this.m_view)) {
 					return;
 				}
 
 				this.m_parentView.classList.add("loading");
-				let headers = Application.ParseInputs(this.m_view, true);
+				let headers = View.ParseInputs(this.m_view, true);
 				headers["Accept"] = "application/json";
 				headers["Type"] = "createApp";
 				headers["AppType"] = this.m_appType;
-				let result = await Application.SendRequest({ method : "GET", mode : "cors", headers });
+				let result = await View.SendRequest({ method : "GET", mode : "cors", headers });
 				if (result.status) {
 					this.Destructor();
 				}
@@ -775,17 +816,17 @@ class Application {
 		}
 
 		if (viewType === "ModifyApp") {
-			let existedApp = Application.GetApplicationByPort(parameters.port);
+			let existedView = View.GetViewByPort(parameters.port);
 			if (existedApp) {
-				existedApp.Show();
+				existedView.Show();
 				return false;
 			}
 
 			this.m_appType = parameters.appType;
 			this.m_viewPortParameter = parameters.viewPortParameter;
 
-			if (!Application.#privateFields.m_metadataToAppType.has(this.m_appType)) {
-				let result = await Application.SendRequest({
+			if (!View.#privateFields.m_metadataToAppType.has(this.m_appType)) {
+				let result = await View.SendRequest({
 					method : "GET",
 					mode : "cors",
 					headers : { "Accept" : "application/json", "Type" : "getMetadata", "AppType" : this.m_appType }
@@ -797,7 +838,7 @@ class Application {
 			}
 
 			this.m_port = parameters.port;
-			let result = await Application.SendRequest({
+			let result = await View.SendRequest({
 				method : "GET",
 				mode : "cors",
 				headers : { "Accept" : "application/json", "Type" : "getParameters", "Port" : this.m_port }
@@ -807,12 +848,12 @@ class Application {
 				return false;
 			}
 
-			if (!Application.#privateFields.m_metadataToAppType.has(this.m_appType)) {
+			if (!View.#privateFields.m_metadataToAppType.has(this.m_appType)) {
 				console.error("Can't find metadata for application", this.m_appType);
 				return false;
 			}
 
-			const metadata = Application.#privateFields.m_metadataToAppType.get(this.m_appType);
+			const metadata = View.#privateFields.m_metadataToAppType.get(this.m_appType);
 			let inputs = this.m_view.querySelector(".inputs");
 
 			function parseParameter(parameterId, parameter, parent, mutable, saveThis)
@@ -953,7 +994,7 @@ class Application {
 			function displayParameters(saveThis)
 			{
 				for (let [key, value] of Object.entries(
-						 Application.#privateFields.m_parametersToPort.get(parameters.port))) {
+						 View.#privateFields.m_parametersToPort.get(parameters.port))) {
 
 					let parameter = false;
 					if (metadata.hasOwnProperty("mutable")) {
@@ -1008,12 +1049,12 @@ class Application {
 					}
 				}
 
-				Application.ValidateInputs(containerWithInputs);
+				View.ValidateInputs(containerWithInputs);
 			}
 
 			displayParameters(this);
 
-			const parametersToPort = Application.#privateFields.m_parametersToPort.get(this.m_port);
+			const parametersToPort = View.#privateFields.m_parametersToPort.get(this.m_port);
 			parametersToPort[5] = this.m_appType;
 			parametersToPort[10] = this.m_viewPortParameter;
 			if (parametersToPort && parametersToPort.hasOwnProperty(2000001)) {
@@ -1032,7 +1073,7 @@ class Application {
 
 			this.m_view.querySelector(".button").addEventListener("click", async () => {
 				this.HideErrorMessage();
-				if (!Application.ValidateInputs(containerWithInputs)) {
+				if (!View.ValidateInputs(containerWithInputs)) {
 					return;
 				}
 
@@ -1044,8 +1085,8 @@ class Application {
 
 				this.m_parentView.classList.add("loading");
 				let headers = { "Accept" : "application/json", "Type" : "modify", "Port" : this.m_port };
-				let newParameters = Application.ParseInputs(
-					containerWithInputs, false, Application.#privateFields.m_metadataToAppType.get(this.m_appType));
+				let newParameters = View.ParseInputs(
+					containerWithInputs, false, View.#privateFields.m_metadataToAppType.get(this.m_appType));
 
 				for (const table of this.m_tables.values()) {
 					newParameters[table.m_id] = table.GetData();
@@ -1053,14 +1094,14 @@ class Application {
 
 				headers["Parameters"] = Helper.ParametersToJson(newParameters);
 
-				let result = await Application.SendRequest({ method : "GET", mode : "cors", headers });
+				let result = await View.SendRequest({ method : "GET", mode : "cors", headers });
 				if ("status" in result) {
 					this.m_parentView.classList.remove("loading");
 					if (!result.status) {
 						this.DisplayErrorMessage(result.message);
 					}
 
-					Application.SendRequest({
+					View.SendRequest({
 						method : "GET",
 						mode : "cors",
 						headers : { "Accept" : "application/json", "Type" : "getParameters", "Port" : this.m_port }
@@ -1100,7 +1141,7 @@ class Application {
 								return;
 							}
 
-							Application.SendRequest({
+							View.SendRequest({
 								method : "GET",
 								mode : "cors",
 								headers : {
@@ -1130,7 +1171,7 @@ class Application {
 								return;
 							}
 
-							new Application("ModifyApp", { appType, port });
+							new View("ModifyApp", { appType, port });
 						});
 
 						modifyCell.classList.add("action", "modify");
@@ -1150,7 +1191,7 @@ class Application {
 
 								return;
 							}
-							Application.SendRequest({
+							View.SendRequest({
 								method : "GET",
 								mode : "cors",
 								headers : { "Accept" : "application/json", "Type" : "delete", "Port" : port }
@@ -1167,7 +1208,7 @@ class Application {
 							console.error("Can't find application type in row values.");
 							return;
 						}
-						const viewPortParameter = Application.#privateFields.m_viewPortParameterToAppType.get(appType);
+						const viewPortParameter = View.#privateFields.m_viewPortParameterToAppType.get(appType);
 						if (viewPortParameter != undefined) {
 							viewCell.addEventListener("click", () => {
 								const port = rowObject.values[1000009];
@@ -1176,7 +1217,7 @@ class Application {
 									return;
 								}
 
-								new Application("AppView", { appType, port, viewPortParameter })
+								new View("AppView", { appType, port, viewPortParameter })
 							});
 
 							viewCell.classList.add("action", "view");
@@ -1213,7 +1254,7 @@ class Application {
 							5 : app.type,
 							10 : app.viewPortParameter,
 						});
-						Application.SendRequest({
+						View.SendRequest({
 							method : "GET",
 							mode : "cors",
 							headers : { "Accept" : "application/json", "Type" : "getParameters", "Port" : app.port }
@@ -1225,7 +1266,7 @@ class Application {
 			this.AddCallback("run", (response, extraParameters) => {
 				if (response.status && "result" in response && response.result) {
 					(async () => {
-						await Application.SendRequest({
+						await View.SendRequest({
 							method : "GET",
 							mode : "cors",
 							headers : {
@@ -1251,7 +1292,7 @@ class Application {
 			this.AddCallback("pause", (response, extraParameters) => {
 				if (response.status && "result" in response && response.result) {
 					(async () => {
-						await Application.SendRequest({
+						await View.SendRequest({
 							method : "GET",
 							mode : "cors",
 							headers : {
@@ -1276,9 +1317,9 @@ class Application {
 
 			this.AddCallback("delete", (response, extraParameters) => {
 				this.m_grid.RemoveRow({ indexValue : extraParameters.port });
-				for (let app of Application.GetCreatedApplications().values()) {
-					if (app.m_port == extraParameters.port) {
-						app.Destructor();
+				for (let view of View.GetCreatedViews().values()) {
+					if (view.m_port == extraParameters.port) {
+						view.Destructor();
 						return true;
 					}
 				}
@@ -1292,7 +1333,7 @@ class Application {
 				}
 			});
 
-			Application.SendRequest({
+			View.SendRequest({
 				method : "GET",
 				mode : "cors",
 				headers : { "Accept" : "application/json", "Type" : "getCreatedApps" }
@@ -1304,7 +1345,7 @@ class Application {
 
 	Destructor()
 	{
-		Application.RemoveCreatedApplication(this);
+		View.RemoveCreatedView(this);
 		this.Show();
 		if (this.m_tables !== undefined) {
 			this.m_tables.forEach(table => { table.Destructor(); });
@@ -1323,7 +1364,7 @@ class Application {
 			return;
 		}
 
-		Application.UpdateZIndex(this);
+		View.UpdateZIndex(this);
 
 		if (this.m_maximized) {
 			this.Normalize();
@@ -1385,7 +1426,7 @@ class Application {
 			return;
 		}
 
-		Application.UpdateZIndex(this);
+		View.UpdateZIndex(this);
 		if (!this.m_parentView.classList.contains("hidden")) {
 			return;
 		}
@@ -1418,7 +1459,7 @@ class Application {
 				return;
 			}
 
-			Application.GetCreatedApplications().values().forEach((app) => { app.m_view.classList.add("changing"); });
+			View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.add("changing"); });
 
 			startX = e.clientX;
 			startY = e.clientY;
@@ -1480,8 +1521,8 @@ class Application {
 			isDragging = false;
 			document.removeEventListener("mousemove", onMouseMove);
 			document.removeEventListener("mouseup", onMouseUp);
-			Application.GetCreatedApplications().values().forEach(
-				(app) => { app.m_view.classList.remove("changing"); });
+			View.GetCreatedViews().values().forEach(
+				(view) => { view.m_view.classList.remove("changing"); });
 		};
 	}
 
@@ -1611,26 +1652,26 @@ class Application {
 				if ("status" in json && json["status"]) {
 					let type = options.headers["Type"];
 					if (type === "createApp") {
-						void new Application("ModifyApp", {
+						void new View("ModifyApp", {
 							appType : options.headers["AppType"],
 							port : json.port,
 						});
 
-						Application.SendRequest({
+						View.SendRequest({
 							method : "GET",
 							mode : "cors",
 							headers : { "Accept" : "application/json", "Type" : "getCreatedApps" }
 						});
 					}
 					else if (type == "getCreatedApps") {
-						Application.HandleResponse(type, json);
+						View.HandleResponse(type, json);
 					}
 					else if (type == "getInstalledApps") {
-						Application.HandleResponse(type, json);
+						View.HandleResponse(type, json);
 					}
 					else if (type == "getMetadata") {
 						if ("metadata" in json) {
-							Application.#privateFields.m_metadataToAppType.set(
+							View.#privateFields.m_metadataToAppType.set(
 								options.headers["AppType"], json["metadata"]);
 							if (json["metadata"].hasOwnProperty("mutable")) {
 								for (let [parameterId, parameter] of Object.entries(json["metadata"].mutable)) {
@@ -1649,16 +1690,16 @@ class Application {
 					}
 					else if (type == "getParameters") {
 						if ("parameters" in json) {
-							Application.#privateFields.m_parametersToPort.set(
+							View.#privateFields.m_parametersToPort.set(
 								options.headers["Port"], json["parameters"]);
-							Application.HandleResponse(type, json, { "port" : options.headers["Port"] });
+							View.HandleResponse(type, json, { "port" : options.headers["Port"] });
 						}
 						else {
 							return { "status" : false, "message" : "Parameters are not specified in response" };
 						}
 					}
 					else if (type == "run" || type == "pause" || type == "delete") {
-						Application.HandleResponse(type, json, { "port" : options.headers["Port"] });
+						View.HandleResponse(type, json, { "port" : options.headers["Port"] });
 					}
 					else if (type == "modify") {
 					}
@@ -1679,105 +1720,28 @@ class Application {
 		return await sendRequest();
 	}
 
-	static UpdateZIndex(app)
+	static UpdateZIndex(view)
 	{
-		if (app.m_parentView.style.zIndex == Application.#privateFields.m_createdApplications.size) {
+		if (view.m_parentView.style.zIndex == View.#privateFields.m_createdViews.size) {
 			return;
 		}
 
-		const shiftedPosition = app.m_parentView.style.zIndex;
+		const shiftedPosition = view.m_parentView.style.zIndex;
 
-		Application.#privateFields.m_createdApplications.forEach((item, uid) => {
-			if (uid != app.m_uid) {
+		View.#privateFields.m_createdViews.forEach((item, uid) => {
+			if (uid != view.m_uid) {
 				if (item.m_parentView.style.zIndex > shiftedPosition) {
 					item.m_parentView.style.zIndex = item.m_parentView.style.zIndex - 1;
 				}
 			}
 			else {
-				item.m_parentView.style.zIndex = Application.#privateFields.m_createdApplications.size;
+				item.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
 			}
 		});
 	}
 }
 
-Application.AddParametersTemplate("NewApp", "default", [
-	{ "inputs" : [ { "key" : "ip", "value" : 0 } ] }, { "selects" : [ { "key" : "LogLevel", "value" : 5 } ] },
-	{ "checkboxes" : [ { "key" : "lofInFile", "value" : true }, { "key" : "separateDaysLogging", "value" : true } ] }
-]);
-
-Application.AddViewTemplate("AppView", `<div class="appView"></div>`);
-Application.AddViewTemplate("InstalledApps", `<div></div>`);
-Application.AddViewTemplate("NewApp", `<div class="customView">
-        <div class="items vertical">
-			<div class="item"><input name="name" type="text" placeholder="Name"/></div>
-			<div class="item"><input value="127.0.0.1" name="ip" type="text" placeholder="Listening IP" canBeEmpty="false" /></div>
-            <div class="item"><input name="port" type="number" placeholder="Listening Port" /></div>
-            <div class="item">
-				<label>
-					<input name="logInConsole" type="checkbox" />
-					<span>Log in console</span>
-				</label>
-			</div>
-            <div class="item">
-				<label>
-					<input name="logInFile" type="checkbox" />
-					<span>Log in file</span>
-				</label>
-			</div>
-			<div class="item">
-				<span class="title">Log level:</span>
-				<select name="logLevel" canBeEmpty="false">
-					<option value="1">ERROR</option>
-					<option value="2">WARNING</option>
-					<option value="3">INFO</option>
-					<option value="4">DEBUG</option>
-					<option value="5">PROTOCOL</option>
-				</select>
-			</div>
-            <div class="item">
-				<label>
-					<input name="separateDaysLogging" type="checkbox" />
-					<span>Separate days logging</span>
-				</label>
-			</div>
-        </div>
-        <div class="button">Create</div>
-    </div>`);
-Application.AddViewTemplate("ModifyApp", `<div class="customView">
-        <div class="inputs"></div>
-        <div class="button">Modify</div>
-    </div>`);
-Application.AddViewTemplate("CreatedApps", `<div></div>`);
-Application.AddViewTemplate("TableView", `<div class="tableView"></div>`);
-Application.AddViewTemplate("GridSettingsView", `<div class="gridSettingsView customView">
-		<div class="group">
-			<span class="text">Align:</span>
-			<span class="action alignLeft"></span>
-			<span class="action alignCenter"></span>
-			<span class="action alignRight"></span>
-		</div>
-		<div class="group">
-			<span class="text">Sorting:</span>
-			<span class="action ascending"></span>
-			<span class="action none"></span>
-			<span class="action descending"></span>
-		</div>
-		<div class="group">
-			<span class="text">Filter:</span>
-			<span class="action filter"></span>
-		</div>
-		<div class="filters"></div>
-	</div>`);
-Application.AddViewTemplate("SelectView", `<div class="selectView customView">
-		<div class="search">
-			<div class="searchIco"></div>
-			<input type="text" placeholder="Search">
-			<div class="caseSensitive"></div>
-		</div>
-		<div class="options"></div>
-	</div>`);
-
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	Helper = require("./helper");
-	module.exports = Application;
+	module.exports = View;
 }
