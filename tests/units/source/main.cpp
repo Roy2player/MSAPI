@@ -1,7 +1,7 @@
 /**************************
  * @file        main.cpp
  * @version     6.0
- * @date        2023-09-24
+ * @date        2025-11-20
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2025 Maksim Andreevich Leonov
  *
@@ -18,13 +18,18 @@
  */
 
 #include "../../../library/source/help/bin.h"
-#include "../../../library/source/help/html.h"
-#include "../../../library/source/help/json.h"
-#include "../../../library/source/help/table.h"
-#include "../../../library/source/protocol/object.h"
-#include "../../../library/source/protocol/standard.h"
-#include "../../../library/source/server/application.h"
 #include "../../../library/source/test/test.h"
+
+// Include all unit test .inl files
+#include "../dataHeader/source/dataHeader.inl"
+#include "../application/source/application.inl"
+#include "../objectData/source/objectData.inl"
+#include "../standardData/source/standardData.inl"
+#include "../htmlHelper/source/htmlHelper.inl"
+#include "../json/source/json.inl"
+#include "../table/source/table.inl"
+#include "../helper/source/helper.inl"
+#include "../timer/source/timer.inl"
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
@@ -54,10 +59,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.Start();
 
 	LOG_INFO("Unit tests");
-	if (!MSAPI::Json::UNITTEST() || !MSAPI::HTML::UNITTEST() || !MSAPI::Timer::UNITTEST()
-		|| !MSAPI::ObjectProtocol::Data::UNITTEST() || !MSAPI::Helper::UNITTEST() || !MSAPI::Application::UNITTEST()
-		|| !MSAPI::DataHeader::UNITTEST() || !MSAPI::StandardProtocol::Data::UNITTEST()
-		|| !MSAPI::TableData::UNITTEST()) {
+	if (!MSAPI::Test::TestJson() || !MSAPI::Test::TestHTML() || !MSAPI::Test::TestTimer()
+		|| !MSAPI::Test::TestObjectData() || !MSAPI::Test::TestHelper() || !MSAPI::Test::TestApplication()
+		|| !MSAPI::Test::TestDataHeader() || !MSAPI::Test::TestStandardData()
+		|| !MSAPI::Test::TestTableData()) {
 
 		return 1;
 	};

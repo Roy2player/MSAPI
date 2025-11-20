@@ -275,11 +275,6 @@ public:
 
 		return memcmp(firstBuffer, secondBuffer, first.m_bufferSize) == 0;
 	}
-
-	/**************************
-	 * @return True if all unit tests are passed, otherwise false.
-	 */
-	static bool UNITTEST();
 };
 
 template <typename T>

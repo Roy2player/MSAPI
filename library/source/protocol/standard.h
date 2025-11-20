@@ -291,11 +291,6 @@ public:
 	 * @return Readable reference to data types.
 	 */
 	const std::map<size_t, StandardType::Type>& GetDataTypes() const noexcept;
-
-	/**************************
-	 * @return True if test passed, false otherwise.
-	 */
-	static bool UNITTEST();
 };
 
 /**************************

@@ -607,11 +607,6 @@ public:
 	 */
 	static std::string_view EnumToString(State state);
 
-	/**************************
-	 * @return True if all tests passed and false if something went wrong.
-	 */
-	static bool UNITTEST();
-
 protected:
 	/**************************
 	 * @brief Set the State to application.
