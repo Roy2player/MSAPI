@@ -269,11 +269,6 @@ public:
 	 * @brief Call ToString() inside.
 	 */
 	friend std::ostream& operator<<(std::ostream& os, HTML& html);
-
-	/**************************
-	 * @return True if all tests passed and false if something went wrong.
-	 */
-	static bool UNITTEST();
 };
 
 }; //* namespace MSAPI

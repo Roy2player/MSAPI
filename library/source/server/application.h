@@ -27,6 +27,17 @@
 
 namespace MSAPI {
 
+namespace UnitTest {
+
+/**************************
+ * @brief Unit test for Application class.
+ *
+ * @return True if all tests passed and false if something went wrong.
+ */
+[[nodiscard]] bool Application();
+
+} // namespace UnitTest
+
 /**************************
  * @brief Basic class with separate state for creating an application, contains core logic to handle specific callbacks
  * based on standard protocol, allows set parameters that can be any standard type. Specific fields are not necessary to
@@ -319,6 +330,7 @@ public:
 		 */
 		bool Merge(size_t id, const std::variant<standardTypes>& value);
 
+		friend bool UnitTest::Application();
 		//* For access in RegisterValidation and Merge methods and direct access to fields.
 		friend class Application;
 	};
@@ -607,11 +619,6 @@ public:
 	 */
 	static std::string_view EnumToString(State state);
 
-	/**************************
-	 * @return True if all tests passed and false if something went wrong.
-	 */
-	static bool UNITTEST();
-
 protected:
 	/**************************
 	 * @brief Set the State to application.
@@ -716,6 +723,8 @@ protected:
 	 * @test Has unit tests.
 	 */
 	void SetCustomError(size_t id, const std::string& error);
+
+	friend bool UnitTest::Application();
 };
 
 }; //* namespace MSAPI
