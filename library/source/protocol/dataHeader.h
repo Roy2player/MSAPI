@@ -87,11 +87,6 @@ public:
 	 * @test Has unit test.
 	 */
 	bool operator!=(const DataHeader& x) const noexcept = default;
-
-	/**************************
-	 * @return True if all unit tests are passed and false otherwise.
-	 */
-	static bool UNITTEST();
 };
 
 }; //* namespace MSAPI

@@ -14,8 +14,16 @@ Makefile
 **/logs
 
 apps/manager/build/MSAPIManager
-tests/applicationHandlers/build/TestApplicationHandlers
-tests/units/build/TestUnits
-tests/objectProtocol/build/TestObjectProtocol
-tests/http/build/TestHttp
-tests/server/build/TestServer
+tests/integration/applicationHandlers/build/TestApplicationHandlers
+tests/integration/objectProtocol/build/TestObjectProtocol
+tests/integration/http/build/TestHttp
+tests/integration/server/build/TestServer
+tests/units/application/build/UnitTestApplication
+tests/units/dataHeader/build/UnitTestDataHeader
+tests/units/helper/build/UnitTestHelper
+tests/units/html/build/UnitTestHTML
+tests/units/json/build/UnitTestJson
+tests/units/objectData/build/UnitTestObjectData
+tests/units/standardData/build/UnitTestStandardData
+tests/units/table/build/UnitTestTable
+tests/units/timer/build/UnitTestTimer

@@ -259,11 +259,6 @@ public:
 	 * @test Has unit test.
 	 */
 	std::string ToString() const;
-
-	/**************************
-	 * @return True if all unit tests are passed and false otherwise.
-	 */
-	static bool UNITTEST();
 };
 
 /**************************

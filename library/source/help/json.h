@@ -143,11 +143,6 @@ public:
 	 * @brief Call ToString() inside.
 	 */
 	friend std::ostream& operator<<(std::ostream& os, Json& json);
-
-	/**************************
-	 * @return True if all tests passed, false otherwise.
-	 */
-	static bool UNITTEST();
 };
 
 #define JsonNodeTypes                                                                                                  \

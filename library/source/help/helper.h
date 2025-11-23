@@ -469,11 +469,6 @@ FORCE_INLINE T Exponent10Of(T value)
  */
 std::string GetStringIp(sockaddr_in addr);
 
-/**************************
- * @return True if all units tests passed, false otherwise.
- */
-bool UNITTEST();
-
 }; //* namespace Helper
 
 }; //* namespace MSAPI
