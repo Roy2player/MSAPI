@@ -22,8 +22,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: build library
-      run: bash ${MSAPI_PATH}/bash/buildMsapiLib.sh
+      run: bash ${MSAPI_PATH}/bash/buildLib.sh
     - name: build apps
-      run: bash ${MSAPI_PATH}/bash/buildMsapiApps.sh
+      run: bash ${MSAPI_PATH}/bash/buildApps.sh
     - name: execute tests
-      run: bash ${MSAPI_PATH}/bash/executeMsapiTests.sh
+      run: bash ${MSAPI_PATH}/bash/executeTests.sh

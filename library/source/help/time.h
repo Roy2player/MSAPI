@@ -789,11 +789,6 @@ public:
 	 * @return Chrono microseconds converted from timeval.
 	 */
 	static std::chrono::microseconds TimevalToDuration(timeval tv);
-
-	/**************************
-	 * @return True if all tests passed and false if something went wrong.
-	 */
-	static bool UNITTEST();
 };
 
 }; //* namespace MSAPI
