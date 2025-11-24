@@ -13,7 +13,7 @@
 
 const { TestRunner } = require('./testRunner');
 const Table = require('../table');
-const Application = require('../application');
+const View = require('../view');
 const MetadataCollector = require('../metadataCollector');
 
 global.dispatcher = undefined;
@@ -1504,9 +1504,9 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 	{
 		testRunner.Assert(
 			Select.GetSelectViewsNumber(), 0, "There should be no select views before click on select input");
-		let appsBefore = Application.GetCreatedApplications().size;
+		let viewsBefore = View.GetCreatedViews().size;
 		newInputs[0].dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => { return Application.GetCreatedApplications().size > appsBefore },
+		await TestRunner.WaitFor(() => { return View.GetCreatedViews().size > viewsBefore },
 			"Select view should be created after click on select input");
 		testRunner.Assert(
 			Select.GetSelectViewsNumber(), 1, "There should be one select view after click on select input");
@@ -1516,7 +1516,7 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 		let options = selectView.querySelectorAll(".options > div");
 		testRunner.Assert(options.length, 11, "Select view should have the correct number of options");
 		options[2].dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => { return Application.GetCreatedApplications().size === appsBefore },
+		await TestRunner.WaitFor(() => { return View.GetCreatedViews().size === viewsBefore },
 			"Select view should be closed after click on option");
 		testRunner.Assert(Select.GetSelectViewsNumber(), 0, "There should be no select views after click on option");
 
@@ -1524,7 +1524,7 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 		newInputs[1].dispatchEvent(new Event('input'));
 
 		newInputs[2].dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => { return Application.GetCreatedApplications().size > appsBefore },
+		await TestRunner.WaitFor(() => { return View.GetCreatedViews().size > viewsBefore },
 			"Select view should be created after click on select input");
 		testRunner.Assert(
 			Select.GetSelectViewsNumber(), 1, "There should be one select view after click on select input");
@@ -1533,7 +1533,7 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 		options = selectView.querySelectorAll(".options > div");
 		testRunner.Assert(options.length, 11, "Select view should have the correct number of options");
 		options[7].dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => { return Application.GetCreatedApplications().size === appsBefore },
+		await TestRunner.WaitFor(() => { return View.GetCreatedViews().size === viewsBefore },
 			"Select view should be closed after click on option");
 		testRunner.Assert(Select.GetSelectViewsNumber(), 0, "There should be no select views after click on option");
 	}
@@ -1552,9 +1552,9 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 	{
 		testRunner.Assert(
 			Select.GetSelectViewsNumber(), 0, "There should be no select views before click on select input");
-		let appsBefore = Application.GetCreatedApplications().size;
+		let viewsBefore = View.GetCreatedViews().size;
 		table.AddRow([ 1, 4.5, 5 ]);
-		await TestRunner.WaitFor(() => { return Application.GetCreatedApplications().size === appsBefore },
+		await TestRunner.WaitFor(() => { return View.GetCreatedViews().size === viewsBefore },
 			"Select view should be closed after click on option");
 		testRunner.Assert(Select.GetSelectViewsNumber(), 0, "There should be no select views after click on option");
 

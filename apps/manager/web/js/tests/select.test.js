@@ -14,7 +14,7 @@
 const { TestRunner } = require('./testRunner');
 const Select = require('../select');
 const MetadataCollector = require('../metadataCollector');
-const Application = require('../application');
+const View = require('../view');
 global.dispatcher = undefined;
 
 let testRunner = new TestRunner();
@@ -126,9 +126,8 @@ testRunner.Test('Cast input to select and check', async () => {
 
 	TestRunner.Step('Click to the input with event listener');
 	input.dispatchEvent(new Event('click'));
-	await TestRunner.WaitFor(() => {
-		return Application.GetCreatedApplications().has(0) && Application.GetCreatedApplications().get(0).m_created;
-	});
+	await TestRunner.WaitFor(
+		() => { return View.GetCreatedViews().has(0) && View.GetCreatedViews().get(0).m_created; });
 
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 1);
@@ -201,7 +200,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	testRunner.Assert(options.children[2].style.display, 'none');
 
 	options.children[1].dispatchEvent(new Event('click'));
-	await TestRunner.WaitFor(() => { return !Application.GetCreatedApplications().has(0) });
+	await TestRunner.WaitFor(() => { return !View.GetCreatedViews().has(0) });
 	testRunner.Assert(Select.GetSelectViewsNumber(), 0);
 
 	testRunner.Assert(getEventListeners(document).click.length, 1);
@@ -213,16 +212,15 @@ testRunner.Test('Cast input to select and check', async () => {
 
 	TestRunner.Step('Click to the input with event listener and close view');
 	input.dispatchEvent(new Event('click'));
-	await TestRunner.WaitFor(() => {
-		return Application.GetCreatedApplications().has(1) && Application.GetCreatedApplications().get(1).m_created;
-	});
+	await TestRunner.WaitFor(
+		() => { return View.GetCreatedViews().has(1) && View.GetCreatedViews().get(1).m_created; });
 
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 1);
 	views = document.querySelector('.views').querySelectorAll('.view');
 	testRunner.Assert(views.length, 1);
 	views[0].querySelector('.viewHeader .close').dispatchEvent(new Event('click'));
-	await TestRunner.WaitFor(() => { return !Application.GetCreatedApplications().has(1) });
+	await TestRunner.WaitFor(() => { return !View.GetCreatedViews().has(1) });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(getEventListeners(input).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 1);
@@ -235,9 +233,8 @@ testRunner.Test('Cast input to select and check', async () => {
 	TestRunner.Step('Click to the input with event listener and click again');
 	input.dispatchEvent(new Event('click'));
 	testRunner.Assert(getEventListeners(document).click.length, 1);
-	await TestRunner.WaitFor(() => {
-		return Application.GetCreatedApplications().has(2) && Application.GetCreatedApplications().get(2).m_created;
-	});
+	await TestRunner.WaitFor(
+		() => { return View.GetCreatedViews().has(2) && View.GetCreatedViews().get(2).m_created; });
 	testRunner.Assert(getEventListeners(input).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 2);
 	testRunner.Assert(input.getAttribute('select'), '1');
@@ -249,7 +246,7 @@ testRunner.Test('Cast input to select and check', async () => {
 
 	TestRunner.Step('Click outside select view');
 	document.dispatchEvent(new Event('click'));
-	await TestRunner.WaitFor(() => { return !Application.GetCreatedApplications().has(2) });
+	await TestRunner.WaitFor(() => { return !View.GetCreatedViews().has(2) });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 1);
 	testRunner.Assert(getEventListeners(input).click.length, 1);
@@ -265,9 +262,8 @@ testRunner.Test('Cast input to select and check', async () => {
 	Select.Apply({ input : input3 });
 	input3.setAttribute('parameter-id', parameter_const);
 	input3.dispatchEvent(new Event('click'));
-	await TestRunner.WaitFor(() => {
-		return Application.GetCreatedApplications().has(3) && Application.GetCreatedApplications().get(3).m_created;
-	});
+	await TestRunner.WaitFor(
+		() => { return View.GetCreatedViews().has(3) && View.GetCreatedViews().get(3).m_created; });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 2);
 	testRunner.Assert(getEventListeners(input3).click.length, 1);
@@ -281,9 +277,8 @@ testRunner.Test('Cast input to select and check', async () => {
 
 	TestRunner.Step('Click to the input with event listener and click to another option');
 	input.dispatchEvent(new Event('click'));
-	await TestRunner.WaitFor(() => {
-		return Application.GetCreatedApplications().has(4) && Application.GetCreatedApplications().get(4).m_created;
-	});
+	await TestRunner.WaitFor(
+		() => { return View.GetCreatedViews().has(4) && View.GetCreatedViews().get(4).m_created; });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 3);
 	testRunner.Assert(getEventListeners(input).click.length, 1);
@@ -297,7 +292,7 @@ testRunner.Test('Cast input to select and check', async () => {
 		.querySelector('.selectView > .options')
 		.children[2]
 		.dispatchEvent(new Event('click'));
-	await TestRunner.WaitFor(() => { return !Application.GetCreatedApplications().has(4) });
+	await TestRunner.WaitFor(() => { return !View.GetCreatedViews().has(4) });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 1);
 	testRunner.Assert(input.getAttribute('select'), '2');
