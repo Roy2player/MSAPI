@@ -48,13 +48,21 @@
 
     <script src="/grid.js"></script>
     <script src="/table.js"></script>
-    <script src="/application.js"></script>
+    <script src="/view.js"></script>
     <script src="/dispatcher.js"></script>
     <script src="/metadataCollector.js"></script>
     <script src="/helper.js"></script>
     <script src="/duration.js"></script>
     <script src="/timer.js"></script>
     <script src="/select.js"></script>
+    <script src="/views/appView.js"></script>
+    <script src="/views/createdApps.js"></script>
+    <script src="/views/gridSettingsView.js"></script>
+    <script src="/views/installedApps.js"></script>
+    <script src="/views/modifyApp.js"></script>
+    <script src="/views/newApp.js"></script>
+    <script src="/views/selectView.js"></script>
+    <script src="/views/tableView.js"></script>
 </head>
 
 <body>
@@ -63,8 +71,8 @@
     </main>
     <script>
         let dispatcher = new Dispatcher();
-        dispatcher.RegisterPanel("InstalledApps");
-        dispatcher.RegisterPanel("CreatedApps");
+        dispatcher.RegisterPanel("InstalledApps", () => new InstalledApps());
+        dispatcher.RegisterPanel("CreatedApps", () => new CreatedApps());
         MetadataCollector.Initialization();
         //* Metadata items which are used by MSAPI Frontend views
         MetadataCollector.AddMetadata(1, { name: "Create", type: "system" }, true);
@@ -123,8 +131,8 @@
         }, true);
         MetadataCollector.AddMetadata(10, { name: "Open view", type: "system" }, true);
 
-        // Firstly, created instance of installed app view asks for metadata in case if any of already created
-        void new Application("InstalledApps");
+        // Firstly, created instance of installed apps view asks for metadata in case if any of already created
+        void new InstalledApps();
 
         document.addEventListener('keydown', function (event) {
             if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
@@ -135,13 +143,13 @@
 
         window.addEventListener('message', function (event) {
             if (event.data && event.data.type === 'iframeClick') {
-                const app = Application.GetCreatedApplications().get(event.data.uid);
-                if (!app) {
-                    console.error('Application not found for UID:', event.data.uid);
+                const view = View.GetCreatedViews().get(event.data.uid);
+                if (!view) {
+                    console.error('View not found for UID:', event.data.uid);
                     return;
                 }
 
-                app.m_parentView.dispatchEvent(new Event('mousedown', { bubbles: true }));
+                view.m_parentView.dispatchEvent(new Event('mousedown', { bubbles: true }));
             }
         });
 

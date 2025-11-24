@@ -66,7 +66,7 @@ class Table {
 		this.m_data = null;
 		this.m_postSaveFunction = postSaveFunction;
 
-		if (Table.#templateElement === null) {
+		if (!Table.#templateElement) {
 			const template = document.createElement("template");
 			template.innerHTML = Table.#template;
 			Table.#templateElement = template;
@@ -297,7 +297,7 @@ class Table {
 
 		inputs.forEach(input => { Helper.ValidateLimits(input); });
 
-		if (values == null && Array.from(inputs).some(input => input.classList.contains("invalid"))) {
+		if (!values && Array.from(inputs).some(input => input.classList.contains("invalid"))) {
 			return;
 		}
 
@@ -366,7 +366,7 @@ class Table {
 
 		newRowCopy.querySelectorAll("input").forEach(input => {
 			if (input.hasAttribute("select")) {
-				if (this.m_mutationObserver == undefined) {
+				if (!this.m_mutationObserver) {
 					this.m_mutationObserver = new MutationObserver((mutationsList) => {
 						for (const mutation of mutationsList) {
 							if (mutation.type != "attributes" || mutation.attributeName != "select") {
@@ -480,7 +480,7 @@ class Table {
 			&& Array.from(allRows).some(
 				row => Array.from(row.querySelectorAll("input")).some(input => input.classList.contains("invalid")))) {
 
-			if (this.m_postSaveFunction != undefined) {
+			if (this.m_postSaveFunction) {
 				this.m_postSaveFunction();
 			}
 			return;
@@ -522,7 +522,7 @@ class Table {
 
 		this.m_newRowsReferences = [];
 		this.m_wrapper.classList.remove("changed");
-		if (this.m_postSaveFunction != undefined) {
+		if (this.m_postSaveFunction) {
 			this.m_postSaveFunction();
 		}
 	}
@@ -559,7 +559,7 @@ class Table {
 	Destructor()
 	{
 		this.m_wrapper.remove();
-		if (this.m_mutationObserver != undefined) {
+		if (this.m_mutationObserver) {
 			this.m_mutationObserver.disconnect();
 			this.m_mutationObserver = null;
 		}
@@ -567,7 +567,7 @@ class Table {
 
 	GetData()
 	{
-		if (this.m_data != null) {
+		if (this.m_data) {
 			return this.m_data;
 		}
 

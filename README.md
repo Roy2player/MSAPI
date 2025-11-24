@@ -50,7 +50,7 @@ Unit/end-to-end tests utilities with ability to run servers as daemons.
 
 ## 🖥️ Frontend
 
-[Manager app](apps/manager/source/manager.h) for orchestrating custom apps on the same host, with a user-friendly web interface.
+[Manager app](apps/manager/source/manager.h) for orchestrating custom apps on the same host, with a user-friendly web interface
 
 Provides a robust and user-friendly interface for managing applications built on the framework.
 
@@ -65,7 +65,30 @@ Provides a robust and user-friendly interface for managing applications built on
 - ***Error Handling:*** Provides mechanisms to handle invalid operations or configurations, ensuring robustness and reliability.
 - ***Full Customization:*** Define each view using unique HTML templates on top of standardized structures, further customizable with CSS and extendable via JavaScript.
 
+MSAPI frontend provides a modular set of views for managing, configuring, and interacting with MSAPI applications and their parameters through a unified web interface.
+
 ![Short preview](./apps/manager/web/images/MSAPI_Manager_preview.gif)
+
+### JS Core
+
+- [**View:**](apps/manager/web/js/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling.
+- [**Table:**](apps/manager/web/js/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types.
+- [**Grid:**](apps/manager/web/js/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations.
+- [**Timer:**](apps/manager/web/js/timer.js) Timestamp input handling, normalization, and validation with timezone support.
+- [**Duration:**](apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time units.
+- [**Select:**](apps/manager/web/js/select.js) Custom select input with searchable options, validation, and dynamic metadata integration.
+- [**Helper:**](apps/manager/web/js/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more.
+
+### Default views
+
+- [**InstalledApps:**](apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications.
+- [**CreatedApps:**](apps/manager/web/js/views/createdApps.js) Shows a grid of created/running apps with parameters and action buttons.
+- [**NewApp:**](apps/manager/web/js/views/newApp.js) Presents a form for creating new applications.
+- [**ModifyApp:**](apps/manager/web/js/views/modifyApp.js) Allows modification of application parameters.
+- [**AppView:**](apps/manager/web/js/views/appView.js) Embeds the application’s custom UI in an iframe.
+- [**TableView:**](apps/manager/web/js/views/tableView.js) Displays a read-only MSAPI table for a given parameter.
+- [**SelectView:**](apps/manager/web/js/views/selectView.js) Provides a searchable, case-sensitive select dialog for choosing parameter values.
+- [**GridSettingsView:**](apps/manager/web/js/views/gridSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options.
 
 ## ⚖️ License
 
