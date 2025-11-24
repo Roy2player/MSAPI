@@ -51,7 +51,7 @@ class Select {
 	{
 		let view = undefined;
 		input.addEventListener('click', () => {
-			if (view != undefined && view.m_parentView.parentNode != null) {
+			if (view && view.m_parentView.parentNode) {
 				return;
 			}
 
@@ -63,22 +63,27 @@ class Select {
 			const parameterId = +input.getAttribute("parameter-id");
 			const stringInterpretation = MetadataCollector.GetStringInterpretation(parameterId);
 
-			if (stringInterpretation == null) {
+			if (!stringInterpretation) {
 				console.error("No string interpretation is found for parameter id", parameterId);
 				return;
 			}
 
 			let selectViews = Select.#privateFields.m_selectsViews;
+			let viewTitle = ""
+			const selectMetadata = MetadataCollector.GetMetadata(parameterId)
+			if (selectMetadata)
+			{
+				viewTitle = "Select: " + selectMetadata.metadata.name + " " + parameterId;
+			}
+			else
+			{
+				viewTitle = "Select: " + parameterId;
+			}
 
-			view = new Application("SelectView", {
+			view = new SelectView({
 				eventTarget : input,
 				parameterId : parameterId,
-				appTitle : (() => {
-					const selectMetadata = MetadataCollector.GetMetadata(parameterId).metadata;
-					if ("name" in selectMetadata) {
-						return "Select: " + selectMetadata.name + " " + parameterId;
-					}
-				})(),
+				viewTitle,
 				positionUnder : input,
 				canBeHidden : false,
 				canBeMaximized : false,
@@ -86,7 +91,7 @@ class Select {
 				canBeClinged : false,
 				postCreateFunction : () => {
 					let selectItems = view.m_view.querySelector(".options");
-					if (selectItems == null) {
+					if (!selectItems) {
 						console.error(`Select container for options is not found, parameter id: ${parameterId}`);
 						return;
 					}
@@ -107,7 +112,7 @@ class Select {
 							view.Destructor();
 
 							selectViews.forEach(selectView => {
-								if (selectView.m_parentView.parentNode == null) {
+								if (!selectView.m_parentView.parentNode) {
 									selectViews.delete(selectView);
 								}
 							});
@@ -124,14 +129,14 @@ class Select {
 				Select.#privateFields.m_hasGlobalEventListener = true;
 				document.addEventListener("click", (event) => {
 					selectViews.forEach(selectView => {
-						if (selectView.m_parentView.parentNode == null) {
+						if (!selectView.m_parentView.parentNode) {
 							selectViews.delete(selectView);
 							return;
 						}
 
 						if (!selectView.m_parentView.contains(event.target)) {
 							if (event.target == selectView.m_eventTarget) {
-								Application.UpdateZIndex(selectView);
+								View.UpdateZIndex(selectView);
 								return;
 							}
 
@@ -158,7 +163,8 @@ class Select {
 		const parameterId = +input.getAttribute("parameter-id");
 		const stringInterpretation = MetadataCollector.GetStringInterpretation(parameterId);
 
-		if (stringInterpretation == null) {
+		if (!stringInterpretation) {
+			console.error("No string interpretation is found for parameter id", parameterId);
 			return;
 		}
 
@@ -203,8 +209,9 @@ class Select {
 	}
 }
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (module && module.exports) {
 	module.exports = Select;
 	MetadataCollector = require('./metadataCollector');
-	Application = require('./application');
+	View = require('./view');
+	SelectView = require('./views/selectView');
 }

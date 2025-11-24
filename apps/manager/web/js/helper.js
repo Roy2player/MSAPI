@@ -364,6 +364,6 @@ class Helper {
 	}
 };
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (module && module.exports) {
 	module.exports = Helper;
 }

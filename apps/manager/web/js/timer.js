@@ -58,7 +58,7 @@ class Timer {
 			Timer.#privateFields.m_hasGlobalEventListener = true;
 			document.addEventListener("click", (event) => {
 				timers.forEach((isActive, input) => {
-					if (input.parentNode == null) {
+					if (!input.parentNode) {
 						timers.delete(input);
 						return;
 					}
@@ -249,6 +249,6 @@ class Timer {
 	}
 };
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (module && module.exports) {
 	module.exports = Timer;
 }

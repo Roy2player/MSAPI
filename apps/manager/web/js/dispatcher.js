@@ -42,12 +42,12 @@ class Dispatcher {
 	constructor()
 	{
 		this.m_parentNode = document.querySelector('main');
-		if (this.m_parentNode === null) {
+		if (!this.m_parentNode) {
 			console.error('Parent node not found');
 			return;
 		}
 
-		if (Dispatcher.#generalTemplateElement === null) {
+		if (!Dispatcher.#generalTemplateElement) {
 			const template = document.createElement("template");
 			template.innerHTML = Dispatcher.#generalTemplate;
 			Dispatcher.#generalTemplateElement = template;
@@ -102,7 +102,7 @@ class Dispatcher {
 		view.m_parentView.classList.remove("hidden");
 	}
 
-	RegisterPanel(panelName)
+	RegisterPanel(panelName, creatorFunction)
 	{
 		if (Dispatcher.#privateFields.m_registeredPanelsNames.has(panelName)) {
 			return;
@@ -114,7 +114,7 @@ class Dispatcher {
 		span.innerHTML = panelName;
 		div.appendChild(span);
 
-		div.addEventListener('click', () => { new Application(panelName); });
+		div.addEventListener('click', () => { const panelView = creatorFunction(); });
 
 		let registeredPanelsList = this.m_registeredPanels.querySelector('.list');
 		registeredPanelsList.appendChild(div);
@@ -138,6 +138,6 @@ class Dispatcher {
 	}
 }
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (module && module.exports) {
 	module.exports = Dispatcher;
 }

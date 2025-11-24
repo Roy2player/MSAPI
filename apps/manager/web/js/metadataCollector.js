@@ -67,7 +67,7 @@ class MetadataCollector {
 	{
 		if (!MetadataCollector.#privateFields.m_metadataToId.has(+id)) {
 			console.warn(`Metadata with id: ${id} not found`);
-			return null;
+			return undefined;
 		}
 
 		return MetadataCollector.#privateFields.m_metadataToId.get(+id);
@@ -76,20 +76,14 @@ class MetadataCollector {
 	static Initialization()
 	{
 		let ready = true;
-		if (typeof Application === "undefined") {
-			console.error("Application is not defined");
-			ready = false;
-		}
-		else {
-			Application.AddViewTemplate("Metadata", `<div class="customView"></div>`);
-		}
+		View.AddViewTemplate("Metadata", `<div class="customView"></div>`);
 
-		if (typeof dispatcher === "undefined") {
+		if (!dispatcher) {
 			console.error("Dispatcher is not defined");
 			ready = false;
 		}
 		else {
-			dispatcher.RegisterPanel("Metadata");
+			dispatcher.RegisterPanel("Metadata", () => console.error("Not implemented yet"));
 		}
 
 		if (!ready) {
@@ -100,9 +94,9 @@ class MetadataCollector {
 	static GetStringInterpretation(id)
 	{
 		const stringInterpretation = MetadataCollector.#privateFields.m_stringInterpretationToId.get(+id);
-		if (stringInterpretation == null) {
+		if (!stringInterpretation) {
 			console.error(`String interpretation for parameter id ${id} is not found`);
-			return null;
+			return undefined;
 		}
 
 		return stringInterpretation;
@@ -111,6 +105,6 @@ class MetadataCollector {
 	static IsSelect(id) { return MetadataCollector.#privateFields.m_stringInterpretationToId.has(+id); }
 };
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (module && module.exports) {
 	module.exports = MetadataCollector;
 }
