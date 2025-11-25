@@ -96,7 +96,7 @@ class Grid {
 		}
 		this.m_indexColumnId = indexColumnId;
 
-		if (postAddRowFunction != undefined) {
+		if (postAddRowFunction) {
 			if (typeof postAddRowFunction !== "function") {
 				console.error("Invalid post add row function type, function is expected", postAddRowFunction);
 			}
@@ -105,7 +105,7 @@ class Grid {
 			}
 		}
 
-		if (postUpdateRowFunction != undefined) {
+		if (postUpdateRowFunction) {
 			if (typeof postUpdateRowFunction !== "function") {
 				console.error("Invalid post update row function type, function is expected", postUpdateRowFunction);
 			}
@@ -119,7 +119,7 @@ class Grid {
 		this.m_rowByGridRow = new Map();
 		this.m_rowByIndexValue = new Map();
 
-		if (Grid.#templateElement === undefined) {
+		if (!Grid.#templateElement) {
 			const template = document.createElement("template");
 			template.innerHTML = Grid.#template;
 			Grid.#templateElement = template;
@@ -146,21 +146,21 @@ class Grid {
 
 			document.addEventListener("click", (event) => {
 				settingsViews.forEach(settingView => {
-					if (settingView.m_parentView.parentNode == null) {
+					if (!settingView.m_parentView.parentNode) {
 						settingsViews.delete(settingView);
 						return;
 					}
 
 					if (!settingView.m_parentView.contains(event.target)) {
-						const lastApp = Application.GetLastCreatedApplication();
-						if (lastApp != null && lastApp.m_viewType == "SelectView"
-							&& lastApp.m_parentView.contains(event.target)) {
+						const lastView = View.GetLastCreatedView();
+						if (lastView && lastView.m_viewType == "SelectView"
+							&& lastView.m_parentView.contains(event.target)) {
 
 							return;
 						}
 
 						if (event.target == settingView.m_eventTarget) {
-							Application.UpdateZIndex(settingView);
+							View.UpdateZIndex(settingView);
 							return;
 						}
 
@@ -170,7 +170,7 @@ class Grid {
 
 				tablesViews.forEach((container, rowId) => {
 					container.forEach((tableView, columnId) => {
-						if (tableView.m_parentView.parentNode == null) {
+						if (!tableView.m_parentView.parentNode) {
 							container.delete(columnId);
 							return;
 						}
@@ -207,7 +207,7 @@ class Grid {
 
 			for (let i = bound; i >= order; --i) {
 				let column = this.m_columnByOrder.get(i);
-				if (column == undefined) {
+				if (!column) {
 					console.error("Shifting is interrupted, column not found", i);
 					return;
 				}
@@ -233,7 +233,7 @@ class Grid {
 
 		for (let i = order; i <= bound; ++i) {
 			let column = this.m_columnByOrder.get(i);
-			if (column == undefined) {
+			if (!column) {
 				console.error("Shifting is interrupted, column not found", i);
 				return;
 			}
@@ -251,13 +251,13 @@ class Grid {
 		}
 
 		let row1 = this.m_rowByGridRow.get(+gridRow1);
-		if (row1 == undefined) {
+		if (!row1) {
 			console.error(`Row with grid row ${gridRow1} not found`);
 			return;
 		}
 
 		let row2 = this.m_rowByGridRow.get(+gridRow2);
-		if (row2 == undefined) {
+		if (!row2) {
 			console.error(`Row with grid row ${gridRow2} not found`);
 			return;
 		}
@@ -281,7 +281,7 @@ class Grid {
 	AddColumn({ id, order = -1 })
 	{
 		const metadata = MetadataCollector.GetMetadata(id);
-		if (metadata === null) {
+		if (!metadata) {
 			return;
 		}
 
@@ -367,14 +367,14 @@ class Grid {
 		let savedThis = this;
 
 		settings.addEventListener("click", () => {
-			if (settingsView != undefined && settingsView.m_parentView.parentNode != null) {
+			if (settingsView && settingsView.m_parentView.parentNode) {
 				return;
 			}
 
-			settingsView = new Application("GridSettingsView", {
+			settingsView = new GridSettingsView({
 				eventTarget : settings,
 				parameterId : id,
-				appTitle : "Manage column settings",
+				viewTitle : "Manage column settings",
 				positionUnder : headerCell,
 				canBeHidden : false,
 				canBeMaximized : false,
@@ -382,42 +382,42 @@ class Grid {
 				canBeClinged : false,
 				postCreateFunction : ({ view }) => {
 					let alignLeft = view.m_view.querySelector(".group > .action.alignLeft");
-					if (alignLeft == null) {
+					if (!alignLeft) {
 						console.error("Align left is not found");
 						return;
 					}
 					let alignCenter = view.m_view.querySelector(".group > .action.alignCenter");
-					if (alignCenter == null) {
+					if (!alignCenter) {
 						console.error("Align center is not found");
 						return;
 					}
 					let alignRight = view.m_view.querySelector(".group > .action.alignRight");
-					if (alignRight == null) {
+					if (!alignRight) {
 						console.error("Align right is not found");
 						return;
 					}
 					let sortingAscending = view.m_view.querySelector(".group > .action.ascending");
-					if (sortingAscending == null) {
+					if (!sortingAscending) {
 						console.error("Ascending is not found");
 						return;
 					}
 					let sortingNone = view.m_view.querySelector(".group > .action.none");
-					if (sortingNone == null) {
+					if (!sortingNone) {
 						console.error("None is not found");
 						return;
 					}
 					let sortingDescending = view.m_view.querySelector(".group > .action.descending");
-					if (sortingDescending == null) {
+					if (!sortingDescending) {
 						console.error("Descending is not found");
 						return;
 					}
 					let filterGeneral = view.m_view.querySelector(".group > .action.filter");
-					if (filterGeneral == null) {
+					if (!filterGeneral) {
 						console.error("Filter is not found");
 						return;
 					}
 					let filters = view.m_view.querySelector(".filters");
-					if (filters == null) {
+					if (!filters) {
 						console.error("Container for filters is not found");
 						return;
 					}
@@ -541,41 +541,44 @@ class Grid {
 						savedThis.ApplyFilters({ columnObject });
 					});
 
-					let filtersTable = new Table({
-						parent : filters,
-						metadata : {
-							"name" : "Filters",
-							"type" : "TableData",
-							"canBeEmpty" : true,
-							"columns" : [
-								MetadataCollector.GetMetadata(columnObject.systemTableMetadataId).metadata.columns[0],
-								columnObject.metadata.metadata,
-							]
-						},
-						isMutable : true,
-						id : columnObject.systemTableMetadataId,
-						postSaveFunction : () => {
-							const newData = filtersTable.GetData();
-							if (columnObject.filters != newData) {
-								if (newData.length == 0) {
-									columnObject.isFilterActive = false;
-									filterGeneral.classList.remove("active");
-								}
-								else {
-									columnObject.isFilterActive = true;
-									filterGeneral.classList.add("active");
-								}
+					const filterTypeMetadata = MetadataCollector.GetMetadata(columnObject.systemTableMetadataId);
+					if (filterTypeMetadata) {
+						let filtersTable = new Table({
+							parent : filters,
+							metadata : {
+								"name" : "Filters",
+								"type" : "TableData",
+								"canBeEmpty" : true,
+								"columns" : [
+									filterTypeMetadata.metadata.columns[0],
+									columnObject.metadata.metadata,
+								]
+							},
+							isMutable : true,
+							id : columnObject.systemTableMetadataId,
+							postSaveFunction : () => {
+								const newData = filtersTable.GetData();
+								if (columnObject.filters != newData) {
+									if (newData.length == 0) {
+										columnObject.isFilterActive = false;
+										filterGeneral.classList.remove("active");
+									}
+									else {
+										columnObject.isFilterActive = true;
+										filterGeneral.classList.add("active");
+									}
 
-								columnObject.filters = newData;
-								savedThis.ApplyFilters({ columnObject });
+									columnObject.filters = newData;
+									savedThis.ApplyFilters({ columnObject });
+								}
 							}
-						}
-					});
+						});
 
-					view.m_tables.set(columnObject.systemTableMetadataId, filtersTable);
+						view.m_tables.set(columnObject.systemTableMetadataId, filtersTable);
 
-					columnObject.filters.forEach((filter) => { filtersTable.AddRow(filter); });
-					filtersTable.Save();
+						columnObject.filters.forEach((filter) => { filtersTable.AddRow(filter); });
+						filtersTable.Save();
+					}
 				}
 			});
 
@@ -655,7 +658,7 @@ class Grid {
 				return a.value < b.value ? -1 : a.value > b.value ? 1 : 0;
 			});
 			let sorting = columnObject.headerCell.querySelector(".sorting");
-			if (sorting != null) {
+			if (sorting) {
 				sorting.classList.remove("disabled", "descending");
 				sorting.classList.remove("active", "ascending");
 			}
@@ -682,7 +685,7 @@ class Grid {
 					return a.value < b.value ? -1 : a.value > b.value ? 1 : 0;
 				});
 				let sorting = columnObject.headerCell.querySelector(".sorting");
-				if (sorting != null) {
+				if (sorting) {
 					sorting.classList.remove("disabled", "descending");
 					sorting.classList.add("active", "ascending");
 				}
@@ -705,7 +708,7 @@ class Grid {
 				});
 
 				let sorting = columnObject.headerCell.querySelector(".sorting");
-				if (sorting != null) {
+				if (sorting) {
 					sorting.classList.remove("disabled", "ascending");
 					sorting.classList.add("active", "descending");
 				}
@@ -719,7 +722,7 @@ class Grid {
 				if (object.id != columnObject.id) {
 					let sorting = object.headerCell.querySelector(".sorting");
 					if (object.sorting == Grid.SORTING_TYPE.ascending) {
-						if (sorting != null) {
+						if (sorting) {
 							sorting.classList.remove("active", "ascending");
 							sorting.classList.add("disabled");
 						}
@@ -728,7 +731,7 @@ class Grid {
 						}
 					}
 					else if (object.sorting == Grid.SORTING_TYPE.descending) {
-						if (sorting != null) {
+						if (sorting) {
 							sorting.classList.remove("active", "descending");
 							sorting.classList.add("disabled");
 						}
@@ -778,7 +781,7 @@ class Grid {
 			});
 
 			let filter = columnObject.headerCell.querySelector(".filter");
-			if (filter != null) {
+			if (filter) {
 				filter.classList.add("disabled");
 				filter.classList.remove("active");
 			}
@@ -811,7 +814,7 @@ class Grid {
 			});
 
 			let filter = columnObject.headerCell.querySelector(".filter");
-			if (filter != null) {
+			if (filter) {
 				filter.classList.remove("disabled", "active");
 			}
 			else {
@@ -1023,7 +1026,7 @@ class Grid {
 		});
 
 		let filter = columnObject.headerCell.querySelector(".filter");
-		if (filter == null) {
+		if (!filter) {
 			console.error("Filter ico element is not found in header cell");
 			return;
 		}
@@ -1031,7 +1034,7 @@ class Grid {
 
 		let settingsView;
 		for (let view of Grid.#privateFields.m_settingsViews) {
-			if (view.m_parentView.parentNode != null && view.m_parameterId == columnObject.id) {
+			if (view.m_parentView.parentNode && view.m_parameterId == columnObject.id) {
 				settingsView = view;
 				break;
 			}
@@ -1039,14 +1042,14 @@ class Grid {
 
 		if (hasFilteredRows) {
 			filter.classList.add("active");
-			if (settingsView != undefined) {
+			if (settingsView) {
 				settingsView.m_view.querySelector(".group > .action.filter").classList.add("active");
 			}
 		}
 		else {
 			filter.classList.remove("active");
 			columnObject.isFilterActive = false;
-			if (settingsView != undefined) {
+			if (settingsView) {
 				settingsView.m_view.querySelector(".group > .action.filter").classList.remove("active");
 			}
 		}
@@ -1066,7 +1069,7 @@ class Grid {
 		}
 
 		let column = this.m_columnByOrder.get(order);
-		if (column == undefined) {
+		if (!column) {
 			console.error("Move columns is interrupted, column to move not found, order:", order);
 			return;
 		}
@@ -1096,7 +1099,7 @@ class Grid {
 		}
 
 		let columnObject = this.m_columnByOrder.get(order);
-		if (columnObject === undefined) {
+		if (!columnObject) {
 			console.error("Column not found", order);
 			return;
 		}
@@ -1138,23 +1141,28 @@ class Grid {
 
 		if (metadata.type == "TableData") {
 			cell.classList.add("action", "table");
-			if (typeof Application === "undefined") {
-				console.error("Application is not defined");
-				return undefined;
-			}
 
 			let tableViews = Grid.#privateFields.m_tablesViewsForColumnsByRows;
 
 			let tableView;
 			cell.addEventListener("click", () => {
-				if (tableView != undefined && tableView.m_parentView.parentNode != null) {
+				if (tableView && tableView.m_parentView.parentNode) {
 					return;
 				}
 
-				tableView = new Application("TableView", {
+				const tableMetadata = MetadataCollector.GetMetadata(indexColumn);
+				let viewTitle = "";
+				if (tableMetadata) {
+					viewTitle = tableMetadata.metadata.name + " " + indexValue;
+				}
+				else {
+					viewTitle = "Table " + indexValue;
+				}
+
+				tableView = new TableView({
 					tableId : id,
 					metadata : metadata,
-					appTitle : MetadataCollector.GetMetadata(indexColumn).metadata.name + " " + indexValue,
+					viewTitle,
 					positionUnder : cell,
 					canBeHidden : false,
 					canBeMaximized : false,
@@ -1162,13 +1170,13 @@ class Grid {
 					canBeClinged : false,
 					postCreateFunction : () => {
 						let table = tableView.m_tables.get(id);
-						if (table === undefined) {
+						if (!table) {
 							console.error("Table is not found", id);
 							return;
 						}
 
 						const tableValue = values[id];
-						if (tableValue != undefined) {
+						if (tableValue) {
 							if ("Rows" in tableValue) {
 								for (let row of tableValue.Rows) {
 									table.AddRow(row);
@@ -1233,11 +1241,11 @@ class Grid {
 	{
 		if (values instanceof Object === false) {
 			console.error("Invalid values", values);
-			return null;
+			return undefined;
 		}
 		if (!values.hasOwnProperty(this.m_indexColumnId)) {
 			console.error("Index column", this.m_indexColumnId, "is not found in values:", values);
-			return null;
+			return undefined;
 		}
 		if (this.m_rowByIndexValue.has(values[this.m_indexColumnId])) {
 			return this.UpdateRow(values[this.m_indexColumnId], values);
@@ -1260,7 +1268,7 @@ class Grid {
 				this.ApplyFilters({ columnObject });
 			}
 
-			if (cell == undefined) {
+			if (!cell) {
 				return;
 			}
 
@@ -1280,10 +1288,10 @@ class Grid {
 
 		this.m_view.appendChild(row);
 
-		if (this.m_postAddRowFunction !== undefined) {
+		if (this.m_postAddRowFunction) {
 			this.m_postAddRowFunction(rowObject);
 		}
-		if (this.m_postUpdateRowFunction !== undefined) {
+		if (this.m_postUpdateRowFunction) {
 			this.m_postUpdateRowFunction(rowObject, values);
 		}
 
@@ -1332,13 +1340,13 @@ class Grid {
 	{
 		if (values instanceof Object === false) {
 			console.error("Invalid values", values);
-			return null;
+			return undefined;
 		}
 
 		let rowObject = this.m_rowByIndexValue.get(indexValue);
-		if (rowObject === undefined) {
+		if (!rowObject) {
 			console.error(`Row with index ${indexValue} as ${indexValue} is not found`);
-			return null;
+			return undefined;
 		}
 
 		let changedColumns = [];
@@ -1355,15 +1363,15 @@ class Grid {
 			}
 
 			const metadata = MetadataCollector.GetMetadata(columnId);
-			if (metadata === null) {
+			if (!metadata) {
 				return;
 			}
 
 			if (metadata.metadata.type == "TableData") {
 				let tableView = Grid.#privateFields.m_tablesViewsForColumnsByRows.get(indexValue)?.get(columnId);
-				if (tableView != undefined) {
+				if (tableView) {
 					let table = tableView.m_tables.get(columnId);
-					if (table == undefined) {
+					if (!table) {
 						console.error("Table is not found", columnId);
 						return;
 					}
@@ -1378,7 +1386,7 @@ class Grid {
 				Grid.SetValueToCell(cell, values[columnId], metadata.metadata);
 			}
 			let columnObject = this.m_columnById.get(columnId);
-			if (columnObject === undefined) {
+			if (!columnObject) {
 				console.error("Column object is not found", columnId);
 				return;
 			}
@@ -1389,7 +1397,7 @@ class Grid {
 			}
 		});
 
-		if (this.m_postUpdateRowFunction !== undefined) {
+		if (this.m_postUpdateRowFunction) {
 			this.m_postUpdateRowFunction(rowObject, values);
 		}
 
@@ -1458,7 +1466,7 @@ class Grid {
 	RemoveRow({ indexValue })
 	{
 		let rowObject = this.m_rowByIndexValue.get(indexValue);
-		if (rowObject === undefined) {
+		if (!rowObject) {
 			return;
 		}
 
@@ -1487,23 +1495,23 @@ class Grid {
 
 	Destructor()
 	{
-		if (this.m_view !== undefined) {
+		if (this.m_view) {
 			this.m_view.remove();
 			this.m_view = null;
 		}
-		if (this.m_columnByOrder !== undefined) {
+		if (this.m_columnByOrder) {
 			this.m_columnByOrder.clear();
 			this.m_columnByOrder = null;
 		}
-		if (this.m_columnById !== undefined) {
+		if (this.m_columnById) {
 			this.m_columnById.clear();
 			this.m_columnById = null;
 		}
-		if (this.m_rowByGridRow !== undefined) {
+		if (this.m_rowByGridRow) {
 			this.m_rowByGridRow.clear();
 			this.m_rowByGridRow = null;
 		}
-		if (this.m_rowByIndexValue !== undefined) {
+		if (this.m_rowByIndexValue) {
 			this.m_rowByIndexValue.clear();
 			this.m_rowByIndexValue = null;
 		}
@@ -1516,7 +1524,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	Timer = require('./timer');
 	Select = require('./select');
 	Duration = require('./duration');
-	Application = require('./application');
+	View = require('./view');
 	Table = require('./table');
+	TableView = require('./views/tableView');
+	GridSettingsView = require('./views/gridSettingsView');
+	SelectView = require('./views/selectView');
 	MetadataCollector = require('./metadataCollector');
 }

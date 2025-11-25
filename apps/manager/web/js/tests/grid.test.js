@@ -14,7 +14,7 @@
 const { TestRunner, TableChecker } = require('./testRunner');
 const Grid = require('../grid');
 const MetadataCollector = require('../metadataCollector');
-const Application = require('../application');
+const View = require('../view');
 global.dispatcher = undefined;
 
 const testRunner = new TestRunner();
@@ -212,7 +212,7 @@ class GridChecking {
 				++cellCounter;
 				const cell = rows[index + 1].querySelector(`[parameter-id="${key}"]`);
 				const input = cell.querySelector('input');
-				if (input !== null) {
+				if (input) {
 					testRunner.Assert(
 						input.value, value, `Cell value is unexpected for row ${index + 1} and column ${key}`);
 					if (input.hasAttribute('nanoseconds') || input.hasAttribute('timestamp')) {
@@ -234,15 +234,15 @@ class GridChecking {
 						testRunner.Assert(getEventListeners(cell).input, undefined);
 
 						TestRunner.Step('Click on the table cell, verify table view content');
-						const createdApplications = Application.GetCreatedApplications();
-						const sizeBefore = createdApplications.size;
+						const createdViews = View.GetCreatedViews();
+						const sizeBefore = createdViews.size;
 						cell.dispatchEvent(new Event('click'));
-						await TestRunner.WaitFor(() => createdApplications.size > sizeBefore, 'Table view is created');
+						await TestRunner.WaitFor(() => createdViews.size > sizeBefore, 'Table view is created');
 
 						const views = document.querySelectorAll('.views > .view');
 						const tableView = views[views.length - 1];
 						const viewUid = +tableView.getAttribute('uid');
-						const tableViewInstance = createdApplications.get(viewUid);
+						const tableViewInstance = createdViews.get(viewUid);
 
 						await TestRunner.WaitFor(() => tableViewInstance.m_created, 'Table view is created');
 						testRunner.Assert(tableView.querySelector('.tableWrapper').classList.contains('const'), true);
@@ -281,21 +281,20 @@ class GridChecking {
 						TestRunner.Step('Click on the cell again and verify that one more table view is not created');
 						cell.dispatchEvent(new Event('click'));
 						await TestRunner.Wait(100);
-						testRunner.Assert(createdApplications.size, sizeBefore + 1);
+						testRunner.Assert(createdViews.size, sizeBefore + 1);
 
 						TestRunner.Step('Click on the table view and outside view, verify table view is not destroyed');
 						tableView.dispatchEvent(new Event('click'), { bubbles : true });
 						await TestRunner.Wait(100);
-						testRunner.Assert(createdApplications.size, sizeBefore + 1);
+						testRunner.Assert(createdViews.size, sizeBefore + 1);
 
 						document.dispatchEvent(new Event('click'), { bubbles : true });
 						await TestRunner.Wait(100);
-						testRunner.Assert(createdApplications.size, sizeBefore + 1);
+						testRunner.Assert(createdViews.size, sizeBefore + 1);
 
 						TestRunner.Step('Click on the table view close button, verify table view is destroyed');
 						tableView.querySelector('.viewHeader .close').dispatchEvent(new Event('click'));
-						await TestRunner.WaitFor(
-							() => createdApplications.size == sizeBefore, 'Table view is destroyed');
+						await TestRunner.WaitFor(() => createdViews.size == sizeBefore, 'Table view is destroyed');
 					}
 					else {
 						testRunner.Assert(
@@ -387,13 +386,12 @@ class GridChecking {
 				settingsView = columnHeaders[index].settingsView;
 			}
 			else {
-				const sizeBefore = Application.GetCreatedApplications().size;
+				const sizeBefore = View.GetCreatedViews().size;
 				settings.dispatchEvent(new Event('click'), { bubbles : true });
-				await TestRunner.WaitFor(
-					() => Application.GetCreatedApplications().size > sizeBefore, 'Settings view is created');
+				await TestRunner.WaitFor(() => View.GetCreatedViews().size > sizeBefore, 'Settings view is created');
 
 				const views = document.querySelectorAll('.views > .view');
-				settingsView = Application.GetCreatedApplications().get(+views[views.length - 1].getAttribute('uid'));
+				settingsView = View.GetCreatedViews().get(+views[views.length - 1].getAttribute('uid'));
 			}
 
 			testRunner.Assert(
@@ -444,22 +442,20 @@ class GridChecking {
 			// 'Click on the selection input, check that select view is created and choose one of the values');
 			const select = table.m_wrapper.querySelector('.select');
 			testRunner.Assert(select != null, true);
-			let sizeBefore = Application.GetCreatedApplications().size;
+			let sizeBefore = View.GetCreatedViews().size;
 			select.dispatchEvent(new Event('click'));
-			await TestRunner.WaitFor(
-				() => Application.GetCreatedApplications().size > sizeBefore, 'Select view is created');
+			await TestRunner.WaitFor(() => View.GetCreatedViews().size > sizeBefore, 'Select view is created');
 			const views = document.querySelectorAll('.views > .view');
-			const selectView = Application.GetCreatedApplications().get(+views[views.length - 1].getAttribute('uid'));
+			const selectView = View.GetCreatedViews().get(+views[views.length - 1].getAttribute('uid'));
 			selectView.m_view.querySelector('.options > div').dispatchEvent(new Event('click'));
-			await TestRunner.WaitFor(
-				() => Application.GetCreatedApplications().size == sizeBefore, 'Select view is destroyed');
+			await TestRunner.WaitFor(() => View.GetCreatedViews().size == sizeBefore, 'Select view is destroyed');
 			testRunner.Assert(selectView.m_parentView.parentView == null, true);
 			testRunner.Assert(settingsView.m_parentView != null, true);
 
 			if (values[index].settingsView == null) {
 				document.dispatchEvent(new Event('click'));
 				await TestRunner.WaitFor(
-					() => Application.GetCreatedApplications().size == sizeBefore - 1, 'Settings view is destroyed');
+					() => View.GetCreatedViews().size == sizeBefore - 1, 'Settings view is destroyed');
 			}
 		}
 	}
@@ -468,7 +464,7 @@ class GridChecking {
 		{ grid, inView /* on column overview */, columnId, align, sorting, filter, filters, headers })
 	{
 		let fillPropertyInData = (property, value) => {
-			if (headers == null) {
+			if (!headers) {
 				return;
 			}
 
@@ -478,10 +474,10 @@ class GridChecking {
 		const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${columnId}"]`);
 		testRunner.Assert(headerCell != null, true);
 		if (inView) {
-			const sizeBefore = Application.GetCreatedApplications().size;
+			const sizeBefore = View.GetCreatedViews().size;
 			headerCell.querySelector(`.settings`).dispatchEvent(new Event('click'));
-			await TestRunner.WaitFor(() => Application.GetCreatedApplications().size > sizeBefore,
-				'Settings view is created', 'Settings view is created');
+			await TestRunner.WaitFor(
+				() => View.GetCreatedViews().size > sizeBefore, 'Settings view is created', 'Settings view is created');
 			const views = document.querySelectorAll('.views > .view');
 			const settingsView = views[views.length - 1];
 			testRunner.Assert(settingsView != null, true);
@@ -520,7 +516,7 @@ class GridChecking {
 				fillPropertyInData('sorting', sorting);
 			}
 
-			if (filters != null) {
+			if (filters) {
 				const filteredBefore = GridChecking.SizeOfFilteredRows(grid);
 				await GridChecking.SetFilters(settingsView.getAttribute('uid'), filters);
 				const filteredAfter = GridChecking.SizeOfFilteredRows(grid);
@@ -541,10 +537,9 @@ class GridChecking {
 			}
 
 			document.dispatchEvent(new Event('click'));
-			await TestRunner.WaitFor(
-				() => Application.GetCreatedApplications().size == sizeBefore, 'Settings view is destroyed');
+			await TestRunner.WaitFor(() => View.GetCreatedViews().size == sizeBefore, 'Settings view is destroyed');
 
-			if (headers != null) {
+			if (headers) {
 				await GridChecking.CheckColumnHeaders(grid, Array.from(headers.values()));
 			}
 			return;
@@ -581,14 +576,14 @@ class GridChecking {
 			}
 		}
 
-		if (headers != null) {
+		if (headers) {
 			await GridChecking.CheckColumnHeaders(grid, Array.from(headers.values()));
 		}
 	}
 
 	static async SetFilters(settingsViewId, filters)
 	{
-		const settings = Application.GetCreatedApplications().get(+settingsViewId);
+		const settings = View.GetCreatedViews().get(+settingsViewId);
 		testRunner.Assert(settings != undefined, true);
 		testRunner.Assert(settings.m_tables.size, 1);
 		const tableIt = settings.m_tables[Symbol.iterator]();
@@ -1850,12 +1845,12 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 		{
 			const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${optional_scalar_parameter}"]`);
 			testRunner.Assert(headerCell != null, true);
-			const sizeBefore = Application.GetCreatedApplications().size;
+			const sizeBefore = View.GetCreatedViews().size;
 			headerCell.querySelector(`.settings`).dispatchEvent(new Event('click'));
-			await TestRunner.WaitFor(() => Application.GetCreatedApplications().size > sizeBefore);
+			await TestRunner.WaitFor(() => View.GetCreatedViews().size > sizeBefore);
 
 			grid.RemoveColumn({ order : 5 });
-			await TestRunner.WaitFor(() => Application.GetCreatedApplications().size == sizeBefore);
+			await TestRunner.WaitFor(() => View.GetCreatedViews().size == sizeBefore);
 
 			let header = headers.get(optional_scalar_parameter);
 			header.sorting = Grid.SORTING_TYPE.none;
@@ -1985,14 +1980,14 @@ testRunner.Test('Test table type, its view logic', async () => {
 		const tableCells = grid.m_view.querySelectorAll(`.row:not(.header) .cell[parameter-id="${table_parameter_1}"]`);
 		testRunner.Assert(tableCells.length, 2);
 
-		const applicationsBefore = Application.GetCreatedApplications().size;
+		const viewsBefore = View.GetCreatedViews().size;
 		tableCells[0].dispatchEvent(new Event('click'));
 		tableCells[1].dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => Application.GetCreatedApplications().size == applicationsBefore + 2);
+		await TestRunner.WaitFor(() => View.GetCreatedViews().size == viewsBefore + 2);
 
-		let views = Array.from(Application.GetCreatedApplications().values());
-		let tableView1 = views[applicationsBefore];
-		let tableView2 = views[applicationsBefore + 1];
+		let views = Array.from(View.GetCreatedViews().values());
+		let tableView1 = views[viewsBefore];
+		let tableView2 = views[viewsBefore + 1];
 
 		TableChecker.CheckValues(testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), []);
 		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'), []);
@@ -2015,7 +2010,7 @@ testRunner.Test('Test table type, its view logic', async () => {
 		TestRunner.Step('Close table views');
 		tableView1.m_parentView.querySelector('.close').dispatchEvent(new Event('click'));
 		tableView2.m_parentView.querySelector('.close').dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => Application.GetCreatedApplications().size == applicationsBefore);
+		await TestRunner.WaitFor(() => View.GetCreatedViews().size == viewsBefore);
 		testRunner.Assert(Grid.GetTablesViewsNumber(), 2);
 
 		document.dispatchEvent(new Event('click'));
@@ -2024,11 +2019,11 @@ testRunner.Test('Test table type, its view logic', async () => {
 		TestRunner.Step('Open table views again and check, that they are the same');
 		tableCells[0].dispatchEvent(new Event('click'));
 		tableCells[1].dispatchEvent(new Event('click'));
-		await TestRunner.WaitFor(() => Application.GetCreatedApplications().size == applicationsBefore + 2);
+		await TestRunner.WaitFor(() => View.GetCreatedViews().size == viewsBefore + 2);
 
-		views = Array.from(Application.GetCreatedApplications().values());
-		tableView1 = views[applicationsBefore];
-		tableView2 = views[applicationsBefore + 1];
+		views = Array.from(View.GetCreatedViews().values());
+		tableView1 = views[viewsBefore];
+		tableView2 = views[viewsBefore + 1];
 		TableChecker.CheckValues(
 			testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
 		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'),

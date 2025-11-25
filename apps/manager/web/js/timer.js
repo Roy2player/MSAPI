@@ -58,7 +58,7 @@ class Timer {
 			Timer.#privateFields.m_hasGlobalEventListener = true;
 			document.addEventListener("click", (event) => {
 				timers.forEach((isActive, input) => {
-					if (input.parentNode == null) {
+					if (!input.parentNode) {
 						timers.delete(input);
 						return;
 					}

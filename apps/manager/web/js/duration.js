@@ -72,7 +72,7 @@ class Duration {
 			Duration.#privateFields.m_hasGlobalEventListener = true;
 			document.addEventListener("click", (event) => {
 				durations.forEach((isActive, input) => {
-					if (input.parentNode == null) {
+					if (!input.parentNode) {
 						durations.delete(input);
 						return;
 					}
