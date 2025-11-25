@@ -176,7 +176,7 @@ class TestRunner {
 				console.error(error);
 			}
 
-			if (this.m_postTestFunction !== null) {
+			if (this.m_postTestFunction) {
 				this.m_postTestFunction();
 			}
 		}
