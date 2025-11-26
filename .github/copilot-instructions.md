@@ -85,218 +85,6 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
 - Use `continuousAllocator.hpp` for burst allocations that can be discarded wholesale (e.g., per message batch) to reduce fragmentation.
 - Avoid mixing allocator domains for the same object graph.
 
-## Enum Guidance
-
-### Preferred Form
-- Use `enum class` with explicit underlying type (e.g., `enum class ProtocolType : uint8_t { ... };`) for new enums.
-- Preserve sentinel values (e.g., `Unknown`, `COUNT`, `Invalid`) at end; document semantics.
-
-### String Translation Pattern
-- Follow `meta.hpp` approach: static compile-time array mapping enum values to strings + `static_assert` ensuring array size matches enum count.
-- Conversion pattern example (pseudo):
-  ```cpp
-  constexpr std::array<std::string_view, static_cast<size_t>(MyEnum::COUNT)> kMyEnumNames{ "A", "B" /* ... */ };
-  constexpr std::string_view ToString(MyEnum v) {
-    const auto idx = static_cast<size_t>(v);
-    if (idx >= kMyEnumNames.size()) return "Unknown";
-    return kMyEnumNames[idx];
-  }
-  static_assert(kMyEnumNames.size() == static_cast<size_t>(MyEnum::COUNT));
-  ```
-
-### Migration Strategy
-- Incremental: Convert unscoped legacy enums to `enum class` one at a time; keep adapter functions for ABI stability if exposing symbols.
-- Avoid sweeping changes that alter binary layout without version bump.
-- Document each migrated enum in a CHANGELOG (consider adding if absent).
-
-## Building & Testing (Updated)
-
-### Environment Setup
-```bash
-export MSAPI_PATH=/path/to/MSAPI
-```
-
-### Helper Scripts (Canonical)
-Located in `bash/`:
-- `buildLib.sh`: Builds core library.
-- `buildApps.sh`: Builds applications (e.g., manager).
-- `executeTests.sh`: Builds & runs tests (unit + integration) if configured.
-- `test.sh`: Aggregated test runner (invokes underlying logic).
-- `performanceAnalyzer.sh`: Optional performance / profiling entry.
-
-Usage:
-```bash
-bash ${MSAPI_PATH}/bash/buildLib.sh
-bash ${MSAPI_PATH}/bash/buildApps.sh
-bash ${MSAPI_PATH}/bash/executeTests.sh   # or test.sh for full suite
-```
-
-### Direct CMake (If Needed)
-```bash
-cd ${MSAPI_PATH}/library/build
-cmake .
-cmake --build . -j "$(nproc)"
-```
-
-### Build Profiles
-Set `BUILD_PROFILE` prior to build (see `library/build/CMakeListsCommonOptions.txt`):
-```bash
-export BUILD_PROFILE=Debug   # or Release (default CI)
-```
-
-### Formatting Check
-```bash
-find . -type f \( -iname "*.cpp" -o -iname "*.h" -o -iname "*.hpp" -o -iname "*.js" \) \
-  -not -path "*/CMakeFiles/*" -print0 \
-  | xargs -0 -r clang-format-18 --dry-run --Werror --style=file:.clang-format --verbose
-```
-
-### CI Workflows
-- `build_and_test.yml`: Library + apps build, executes tests.
-- `clang_format_check.yml`: Enforces formatting.
-- `test_frontend.yml`: (Frontend asset validation; recommend adding JS tests—see Frontend Workflow.)
-
-## Frontend Workflow (Manager App)
-
-### Current State
-- Static assets only under `apps/manager/web/` (no `package.json`).
-
-### Static Asset Guidelines
-- Keep JS modular; avoid global pollution—wrap logic in IIFEs or ES modules once `type="module"` adopted.
-- Optimize images (lossless or WebP where useful) before commit.
- 
-### JavaScript Architecture
-- Core scripts in `apps/manager/web/js/` provide UI primitives and application orchestration.
-  - `dispatcher.js`: Central event/message dispatch; coordinates UI components.
-  - `grid.js` / `table.js`: Render and manage tabular & grid-based data views; rely on wrapper elements with CSS classes (`.row`, `.new`, `.add`).
-  - `select.js`: Custom select/dropdown logic with programmatic value setting (`Select.SetValue`).
-  - `duration.js` / `timer.js`: Conversion & validation helpers for time/nanosecond inputs (`Duration.SetValue`, `Timer.SetValue`).
-  - `helper.js`: General utilities (UID generation, numeric parsing, deep equality, JSON transforms).
-  - `iframeBridge.js`: Cross-frame communication; isolate sandbox events (keep surface minimal for security).
-  - `metadataCollector.js`: Aggregates metadata for dynamic forms (strategy parameters, etc.).
-  - `views/*.js`: Individual view controllers (e.g., `appView.js`, `newApp.js`, `tableView.js`)—each should encapsulate DOM creation & event binding.
-
-### Testing (Node-Based)
-- Location: `apps/manager/web/js/tests/`.
-  - Test files: `*.test.js` (e.g., `dispatcher.test.js`, `grid.test.js`).
-  - Harness: `testRunner.js` provides a lightweight framework (`TestRunner`, `TableChecker`).
-  - Runner script: `runJsTests.sh` executes all `*.test.js` with Node.
-  - Dependencies: Uses `jsdom` & `mutation-observer`; currently implicit (no `package.json`).
-
-#### Running Tests
-```bash
-cd apps/manager/web/js/tests
-bash runJsTests.sh          # runs tests in current dir
-bash runJsTests.sh ..       # runs tests one directory up (adjust argument as needed)
-```
-
-#### Writing Tests
-- Require the harness: `const { TestRunner } = require('./testRunner.js');` (path adjusted per test file).
-- Instantiate runner: `const test = new TestRunner();` then define tests with `test.Test(name, async () => { ... });`.
-- Assertions: `test.Assert(actual, expected, message)`—keep messages concise; they are aggregated.
-- Async conditions: use `await TestRunner.WaitFor(() => condition, 'description', timeoutMs);`.
-- Table interactions: `TableChecker.AddRow(test, tableInstance, [values...]);` followed by `tableInstance.Save();` to persist.
-
-### Style & Conventions (JS)
-- File header: Use same Polyform license block as existing JS files.
-- Naming:
-  - Classes / constructors: PascalCase (`TestRunner`, `TableChecker`).
-  - Functions & variables: camelCase (`generateUid`, `addRow`).
-  - Constants: UPPER_SNAKE or PascalCase depending on usage (`TYPES_LIMITS`).
-- Avoid implicit globals—access through explicit exported modules or attach to a controlled namespace object if needed.
-- Prefer pure functions in `helper.js`; isolate DOM mutations inside view/controller modules.
-
-### Module Migration Path
-1. Add `type="module"` to `<script>` tags in `html/index.html` (staged change; verify load order).
-2. Replace `require`/`module.exports` with ES module `import`/`export` syntax.
-3. Introduce a build step (optional): `esbuild` or `rollup` for bundling if network request count becomes a concern.
-4. Maintain backward compatibility by keeping a transitional UMD wrapper for critical files if needed.
-
-### Performance (Frontend)
-- Batch DOM updates: construct fragments off-DOM, then append once.
-- Reuse selectors: cache frequently accessed nodes (`const viewsRoot = document.querySelector('.views');`).
-- Debounce high-frequency events (scroll, resize) at ~16–50ms.
-- Minimize layout thrashing: group `getBoundingClientRect()` calls before mutations.
-- Prefer CSS transitions over JS-driven animations.
-- Clean up event listeners using stored references (see patched `addEventListener` wrapper in `testRunner.js`).
-
-### Security Considerations
-- Sanitize any dynamic HTML insertion—avoid `innerHTML` with untrusted data.
-- Restrict iframe bridge messages to a whitelist of actions; validate payload shapes.
-- Keep fetch mocks in tests isolated; production fetch logic should validate response structure before DOM injection.
-
-### Adding a New View
-1. Create `views/<name>.js` exporting a factory or class.
-2. Register with dispatcher (pattern: ensure unique ID or hash using `Helper.GenerateUid()` if needed).
-3. Provide an initialization method that accepts root container & optional configuration.
-4. Add tests covering rendering + event handling edge cases.
-
-### Frontend Contribution Checklist (Supplemental)
-1. License header on new JS files.
-2. No implicit globals—attach only via controlled namespace or exports.
-3. Provide a test for each new UI component (structure + interactions).
-4. Avoid hard-coded timing constants; centralize in one config module if needed.
-5. Document any added message types used by `dispatcher.js`.
-
-## Performance Recommendations
-
-### Server Loop (`server/server.cpp`)
-- Minimize per-connection dynamic allocations; reuse buffers.
-- Batch reads when possible; avoid per-byte processing.
-- Offload heavy parsing to worker threads only if contention observed—baseline is synchronous, keep overhead low.
-
-### Protocol Encode/Decode (`protocol/*.cpp`)
-- Prefer contiguous layouts; validate `DataHeader` early and bail out on invalid sizes.
-- For `Standard::Data`, precompute total size before writing to a buffer to avoid multiple resizes.
-- For object protocol, confirm `sizeof(T)` stability; adding non-trivial members invalidates copy assumptions.
-
-### Allocators (`help/continuousAllocator.hpp`)
-- Use for short-lived bursts (e.g., message handling cycle). Reset instead of individual frees to reduce fragmentation.
-- Do NOT store long-lived objects allocated from continuous allocator in global structures.
-
-### Table Operations (`help/table.*`)
-- Coalesce updates; avoid frequent row-level small allocations—prefer block updates.
-- If adding indexing features, ensure O(1)/amortized operations do not introduce hidden copy costs.
-
-### Logging (`help/log.*`)
-- Avoid logging in hot inner loops at `TRACE` unless behind a runtime guard.
-- Batch expensive formatting (JSON dumps) outside critical path.
-
-### Scaling Strategies
-- Identify protocol hotspots with `performanceAnalyzer.sh` before optimizing.
-- Introduce lock-free structures only after profiling contention (current pthread wrappers suffice for moderate concurrency).
-- Consider connection sharding by CPU core using epoll sets if scaling beyond baseline.
-
-## Open Questions (Require Maintainer Input)
-1. Table Ownership: Confirm whether `Application` parameters referencing tables should remain non-owning (documented Option A) or migrate to owning smart pointers (Option B).
-2. Enum Migration: Approve incremental `enum class` conversion plan? Provide priority list of enums.
-3. Frontend Dependencies: Is introducing Node-based tooling acceptable (adds dev-only dependencies, not runtime)?
-4. Performance Baseline Metrics: Are there target latency / throughput numbers to include for guidance?
-5. Serialization Strategy: Any planned evolution (e.g., schema versioning) that should be pre-documented?
-
-## Contributor Checklist (Quick Reference)
-1. Add license header to new source files.
-2. Follow `.clang-format` (run formatting check before commit).
-3. Add / update tests (unit or integration) for all new public APIs.
-4. Document enums & new protocol fields; update `meta.hpp` mappings.
-5. Run `buildLib.sh` + `executeTests.sh` locally; ensure no failures.
-6. Avoid new third-party runtime dependencies (pending frontend decision).
-7. Open a PR referencing Open Questions resolution if changing ownership or enum patterns.
-
-## Common Patterns (Unchanged Core)
-
-### Server Implementation
-Servers inherit from `MSAPI::Server` and override `HandleBuffer` for custom data handling.
-
-### Application State Management
-Applications use state-based lifecycle management via `HandleRunRequest`, `HandlePauseRequest`, etc.
-
-### Logging
-Use the global `MSAPI::logger` object with levels: `TRACE`, `DEBUG`, `INFO`, `WARNING`, `ERROR`.
-
-### Testing
-Tests inherit from `MSAPI::Test` and use `AddTest()` to register test cases with pass/fail reporting.
-
 ## Coding Standards
 
 ### C++ Style
@@ -313,6 +101,10 @@ Tests inherit from `MSAPI::Test` and use `AddTest()` to register test cases with
   - Member variables: m_camelCase prefix (e.g., `m_counter`, `m_passedTests`)
   - Functions: PascalCase (e.g., `HandleBuffer`, `GetExecutableDir`)
   - Namespaces: PascalCase (e.g., `MSAPI`, `Helper`)
+- Use modern C++ features (C++20): `[[maybe_unused]]`, `[[unlikely]]`, concepts, etc.
+- Prefer `std::optional` over raw pointers where appropriate
+- Use `namespace MSAPI` for all library code
+- Document public APIs with Doxygen-style comments (`@brief`, `@param`, `@return`)
 
 ### File Headers
 
@@ -338,119 +130,67 @@ All source files must include this copyright header:
  */
 ```
 
-### C++ Features
+### Enum Guidance
 
-- Use modern C++ features (C++20): `[[maybe_unused]]`, `[[unlikely]]`, concepts, etc.
-- Prefer `std::optional` over raw pointers where appropriate
-- Use `namespace MSAPI` for all library code
-- Document public APIs with Doxygen-style comments (`@brief`, `@param`, `@return`)
+- Use `enum class` with explicit underlying type (e.g., `enum class ProtocolType : uint8_t { ... };`) for new enums.
+- Preserve sentinel values (e.g., `Unknown`, `COUNT`, `Invalid`) at end; document semantics.
+- Follow `meta.hpp` approach: static compile-time array mapping enum values to strings + `static_assert` ensuring array size matches enum count.
+- Conversion pattern example:
+  ```cpp
+  constexpr std::array<std::string_view, static_cast<size_t>(MyEnum::COUNT)> kMyEnumNames{ "A", "B" /* ... */ };
+  constexpr std::string_view ToString(MyEnum v) {
+    const auto idx = static_cast<size_t>(v);
+    if (idx >= kMyEnumNames.size()) return "Unknown";
+    return kMyEnumNames[idx];
+  }
+  static_assert(kMyEnumNames.size() == static_cast<size_t>(MyEnum::COUNT));
+  ```
+- Migration: Convert unscoped legacy enums to `enum class` incrementally; keep adapter functions for ABI stability.
 
-## Building and Testing
+## Building & Testing
 
 ### Environment Setup
-
-Set the `MSAPI_PATH` environment variable to the repository root:
 ```bash
 export MSAPI_PATH=/path/to/MSAPI
+export BUILD_PROFILE=Debug   # or Release (default CI)
 ```
 
-### Build Commands
-
-**Using CMake directly:**
+### Helper Scripts (Preferred)
+Located in `bash/`:
 ```bash
-cd library/build
+bash ${MSAPI_PATH}/bash/buildMsapiLib.sh      # Build library
+bash ${MSAPI_PATH}/bash/buildMsapiApps.sh     # Build applications
+bash ${MSAPI_PATH}/bash/executeMsapiTests.sh  # Execute tests
+bash ${MSAPI_PATH}/bash/testMSAPI.sh          # Run full test suite
+```
+
+### Direct CMake
+```bash
+cd ${MSAPI_PATH}/library/build
 cmake .
-cmake --build . -j $(nproc)
+cmake --build . -j "$(nproc)"
 ```
 
-**Using helper scripts** (preferred):
-```bash
-# Build library
-bash ${MSAPI_PATH}/bash/buildMsapiLib.sh
-
-# Build applications
-bash ${MSAPI_PATH}/bash/buildMsapiApps.sh
-
-# Execute tests
-bash ${MSAPI_PATH}/bash/executeMsapiTests.sh
-
-# Run all tests
-bash ${MSAPI_PATH}/bash/testMSAPI.sh
-```
-
-### Build Profiles
-
-Set `BUILD_PROFILE` environment variable to choose build type:
-- `Debug`: Debug build with symbols
-- `Release`: Optimized release build (default in CI)
-
-See `library/build/CMakeListsCommonOptions.txt` for more details.
-
-### Testing
-
-- Test executables are located in `tests/*/build/`
-- Tests use the custom MSAPI test framework (`library/source/test/test.h`)
-- Test structure: Unit tests in `tests/units/`, end-to-end tests in subdirectories
-- Tests output results with colored console output (GREEN for passed, RED for failed)
+### Testing Structure
+- Test executables: `tests/*/build/`
+- Unit tests: `tests/units/`
+- Integration tests: `tests/server/`, `tests/http/`, `tests/objectProtocol/`, `tests/applicationHandlers/`
+- Custom MSAPI test framework (`library/source/test/test.h`)
+- Tests output colored results (GREEN for passed, RED for failed)
 
 ### Code Formatting
-
-Format check is enforced via CI. To check formatting:
 ```bash
 find . -type f \( -iname "*.cpp" -o -iname "*.h" -o -iname "*.hpp" -o -iname "*.js" \) \
   -not -path "*/CMakeFiles/*" -print0 \
   | xargs -0 -r clang-format-18 --dry-run --Werror --style=file:.clang-format --verbose
 ```
 
-## Important Directories
-
-- `library/source/`: Core library source code
-  - `server/`: Server and application framework
-  - `protocol/`: Protocol implementations
-  - `help/`: Utility modules
-  - `test/`: Testing framework
-- `library/build/`: CMake build configuration for library
-- `tests/`: Test suites
-  - `units/`: Unit tests
-  - `server/`, `http/`, `objectProtocol/`, `applicationHandlers/`: Integration tests
-- `apps/`: Applications built on MSAPI
-  - `manager/`: Manager app with web interface
-- `bash/`: Build and test helper scripts
-- `.github/workflows/`: CI/CD configuration
-
-## Dependencies
-
-- **Build system**: CMake 3.2+
-- **Compiler**: C++20 compatible compiler (GCC/Clang)
-- **Runtime**: Linux (uses POSIX threads, Linux sockets)
-- **No third-party libraries**: Pure C++ standard library implementation
-
-## Contribution Guidelines
-
-- By contributing, you agree to the terms in `CONTRIBUTING.md`
-- All contributions must be noncommercial
-- Retain copyright but grant perpetual license to project maintainer
-- Code must pass all tests and formatting checks before merge
-- Update documentation for public API changes
-
-## CI/CD
-
-GitHub Actions workflows:
-- `build_and_test.yml`: Builds library, apps, and runs tests
-- `clang_format_check.yml`: Enforces code formatting standards
-- `test_frontend.yml`: Tests the manager frontend
+### CI Workflows
+- `build_and_test.yml`: Library + apps build, executes tests
+- `clang_format_check.yml`: Enforces formatting
+- `test_frontend.yml`: Frontend asset validation
 
 All workflows run on `ubuntu-latest`.
-
-## When Making Changes
-
-1. **Follow existing patterns**: Match the style and structure of surrounding code
-2. **Update tests**: Add or update tests in the appropriate `tests/` subdirectory
-3. **Run formatting**: Ensure code passes clang-format checks
-4. **Build and test locally**: Use the bash helper scripts
-5. **Document public APIs**: Use Doxygen-style comments for new public methods
-6. **Respect the license**: Ensure all new files include the required copyright header
-7. **No new dependencies**: Do not add third-party libraries
 
 ## Common Patterns
 
@@ -463,5 +203,101 @@ Applications use state-based lifecycle management via `HandleRunRequest`, `Handl
 ### Logging
 Use the global `MSAPI::logger` object with levels: `TRACE`, `DEBUG`, `INFO`, `WARNING`, `ERROR`.
 
-### Testing
+### Testing (C++)
 Tests inherit from `MSAPI::Test` and use `AddTest()` to register test cases with pass/fail reporting.
+
+## Frontend Workflow (Manager App)
+
+### Current State
+- Static assets only under `apps/manager/web/` (no `package.json`).
+- Keep JS modular; avoid global pollution—wrap logic in IIFEs or ES modules.
+- Optimize images (lossless or WebP) before commit.
+
+### JavaScript Architecture
+Core scripts in `apps/manager/web/js/`:
+- `dispatcher.js`: Central event/message dispatch
+- `grid.js` / `table.js`: Tabular & grid-based data views
+- `select.js`: Custom select/dropdown logic
+- `duration.js` / `timer.js`: Time/nanosecond input helpers
+- `helper.js`: General utilities (UID generation, numeric parsing, deep equality)
+- `iframeBridge.js`: Cross-frame communication
+- `metadataCollector.js`: Metadata for dynamic forms
+- `views/*.js`: Individual view controllers
+
+### JS Style & Conventions
+- File header: Use same Polyform license block as existing JS files
+- Classes/constructors: PascalCase (`TestRunner`, `TableChecker`)
+- Functions/variables: camelCase (`generateUid`, `addRow`)
+- Constants: UPPER_SNAKE or PascalCase (`TYPES_LIMITS`)
+- Avoid implicit globals; prefer pure functions in `helper.js`
+
+### Frontend Testing (Node-Based)
+Location: `apps/manager/web/js/tests/`
+```bash
+cd apps/manager/web/js/tests
+bash runJsTests.sh
+```
+- Harness: `testRunner.js` provides `TestRunner`, `TableChecker`
+- Assertions: `test.Assert(actual, expected, message)`
+- Async: `await TestRunner.WaitFor(() => condition, 'description', timeoutMs)`
+
+### Security Considerations
+- Sanitize dynamic HTML insertion—avoid `innerHTML` with untrusted data
+- Restrict iframe bridge messages to whitelist of actions; validate payload shapes
+- Validate response structure before DOM injection
+
+## Performance Recommendations
+
+### Server Loop
+- Minimize per-connection dynamic allocations; reuse buffers
+- Batch reads when possible; avoid per-byte processing
+
+### Protocol Encode/Decode
+- Prefer contiguous layouts; validate `DataHeader` early
+- Precompute total size before writing to avoid multiple resizes
+
+### Allocators
+- Use `continuousAllocator.hpp` for short-lived bursts; reset instead of individual frees
+- Do NOT store long-lived objects from continuous allocator in global structures
+
+### Logging
+- Avoid logging in hot loops at `TRACE` unless behind runtime guard
+- Batch expensive formatting outside critical path
+
+## Important Directories
+
+- `library/source/`: Core library source code
+  - `server/`: Server and application framework
+  - `protocol/`: Protocol implementations
+  - `help/`: Utility modules
+  - `test/`: Testing framework
+- `library/build/`: CMake build configuration
+- `tests/`: Test suites
+- `apps/manager/`: Manager app with web interface
+- `bash/`: Build and test helper scripts
+- `.github/workflows/`: CI/CD configuration
+
+## Dependencies
+
+- **Build system**: CMake 3.2+
+- **Compiler**: C++20 compatible (GCC/Clang)
+- **Runtime**: Linux (POSIX threads, Linux sockets)
+- **No third-party libraries**: Pure C++ standard library
+
+## Contributor Checklist
+
+1. Add license header to new source files
+2. Follow `.clang-format` (run formatting check before commit)
+3. Add/update tests for all new public APIs
+4. Document enums & new protocol fields; update `meta.hpp` mappings
+5. Run `buildMsapiLib.sh` + `executeMsapiTests.sh` locally; ensure no failures
+6. Avoid new third-party runtime dependencies
+7. By contributing, you agree to the terms in `CONTRIBUTING.md`
+
+## Open Questions (Require Maintainer Input)
+
+1. **Table Ownership**: Should `Application` parameters referencing tables remain non-owning or migrate to owning smart pointers?
+2. **Enum Migration**: Approve incremental `enum class` conversion plan?
+3. **Frontend Dependencies**: Is introducing Node-based tooling acceptable (dev-only, not runtime)?
+4. **Performance Baseline**: Are there target latency/throughput numbers for guidance?
+5. **Serialization Strategy**: Any planned evolution (e.g., schema versioning) to pre-document?
