@@ -34,7 +34,6 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
   - `helper.h` / `helper.cpp`: Generic helpers (string ops, path resolution, env utilities).
   - `pthread.hpp`: Threading primitives (mutex/wrappers).
   - `meta.hpp`: Compile-time enum translation patterns (string tables + `static_assert`).
-  - `continuousAllocator.hpp`: Region-style allocator for high-frequency temporary objects.
   - `circleContainer.hpp`: Circular buffer container.
   - `diagnostic.h` / `diagnostic.cpp`: Diagnostic counters / event tracking.
   - `identifier.h` / `identifier.cpp`: ID generation / mapping utilities.
@@ -80,7 +79,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
   - For shared large data (e.g., tables), the field owns the memory; parameters only observe.
 
 ### Memory Strategy
-- Use `continuousAllocator.hpp` for burst allocations that can be discarded wholesale (e.g., per message batch) to reduce fragmentation.
+- Minimize dynamic allocations in hot paths; prefer stack allocation or buffer reuse.
 - Avoid mixing allocator domains for the same object graph.
 
 ## Coding Standards
@@ -202,7 +201,7 @@ Applications use state-based lifecycle management via `HandleRunRequest`, `Handl
 Use the global `MSAPI::logger` object with levels: `TRACE`, `DEBUG`, `INFO`, `WARNING`, `ERROR`.
 
 ### Testing (C++)
-Tests inherit from `MSAPI::Test` and use `AddTest()` to register test cases with pass/fail reporting.
+Tests use the `MSAPI::Test` class and call `Assert()` to compare expected/actual values with pass/fail reporting.
 
 ## Frontend Workflow (Manager App)
 
@@ -253,10 +252,6 @@ bash runJsTests.sh
 ### Protocol Encode/Decode
 - Prefer contiguous layouts; validate `DataHeader` early
 - Precompute total size before writing to avoid multiple resizes
-
-### Allocators
-- Use `continuousAllocator.hpp` for short-lived bursts; reset instead of individual frees
-- Do NOT store long-lived objects from continuous allocator in global structures
 
 ### Logging
 - Avoid logging in hot loops at `TRACE` unless behind runtime guard
