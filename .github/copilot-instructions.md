@@ -80,6 +80,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
 
 ### Memory Strategy
 - Minimize dynamic allocations in hot paths; prefer stack allocation or buffer reuse.
+- `continuousAllocator.hpp` exists but is experimental (requires tests before production use).
 - Avoid mixing allocator domains for the same object graph.
 
 ## Coding Standards
