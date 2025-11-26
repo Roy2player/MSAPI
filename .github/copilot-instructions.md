@@ -70,16 +70,14 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
 
 ### Tabular Data
 - `Table` / `TableData` (`help/table.h`): `TableData` holds the underlying storage; `Table` may provide structural / access helpers.
-- CURRENT OWNERSHIP MODEL (Needs confirmation): Parameters referencing tables inside `Application` are non-owning; the application must ensure lifetime ≥ any consumer callback / request handling.
-  - Option A (Document Non-Owning): Keep as-is; instruct contributors to manage lifetime externally.
-  - Option B (Owning via `std::shared_ptr<Table>`): API change; adds overhead but clarifies ownership and prevents dangling references.
-  - Await maintainer decision—see Open Questions section.
+- **Ownership Model (Confirmed)**: Parameters are observers only—memory is owned by the field. Contributors must manage lifetime externally; ensure lifetime ≥ any consumer callback / request handling.
 
 ### Parameters
-- `Application` (`server/application.h`) maintains parameter registry. Parameters currently appear to store raw pointers / references (non-owning). When adding new parameter types:
+- `Application` (`server/application.h`) maintains parameter registry. Parameters store non-owning references (observer pattern).
+- When adding new parameter types:
   - Prefer value semantics if size small.
   - Use `std::optional<T>` for nullable semantic rather than pointer.
-  - For shared large data (e.g., tables), consider `shared_ptr` pending ownership policy.
+  - For shared large data (e.g., tables), the field owns the memory; parameters only observe.
 
 ### Memory Strategy
 - Use `continuousAllocator.hpp` for burst allocations that can be discarded wholesale (e.g., per message batch) to reduce fragmentation.
@@ -130,9 +128,9 @@ All source files must include this copyright header:
  */
 ```
 
-### Enum Guidance
+### Enum Guidance (Approved)
 
-- Use `enum class` with explicit underlying type (e.g., `enum class ProtocolType : uint8_t { ... };`) for new enums.
+- Use `enum class` with explicit underlying type sized appropriately (e.g., `enum class ProtocolType : uint8_t { ... };`). Prefer integer types for size efficiency.
 - Preserve sentinel values (e.g., `Unknown`, `COUNT`, `Invalid`) at end; document semantics.
 - Follow `meta.hpp` approach: static compile-time array mapping enum values to strings + `static_assert` ensuring array size matches enum count.
 - Conversion pattern example:
@@ -294,10 +292,10 @@ bash runJsTests.sh
 6. Avoid new third-party runtime dependencies
 7. By contributing, you agree to the terms in `CONTRIBUTING.md`
 
-## Open Questions (Require Maintainer Input)
+## Design Decisions (Resolved)
 
-1. **Table Ownership**: Should `Application` parameters referencing tables remain non-owning or migrate to owning smart pointers?
-2. **Enum Migration**: Approve incremental `enum class` conversion plan?
-3. **Frontend Dependencies**: Is introducing Node-based tooling acceptable (dev-only, not runtime)?
-4. **Performance Baseline**: Are there target latency/throughput numbers for guidance?
-5. **Serialization Strategy**: Any planned evolution (e.g., schema versioning) to pre-document?
+1. **Table Ownership**: Parameters are always observers only—memory is owned by the field. Keep non-owning references.
+2. **Enum Migration**: Approved. Use `enum class` with appropriate underlying types; prefer integer versions for size efficiency.
+3. **Frontend Dependencies**: Node-based tooling may only be added in test-manager class context, not as general dependencies.
+4. **Performance Baseline**: Performance is a primary project goal. Optimize accordingly.
+5. **Serialization Strategy**: No schema versioning planned at this time.
