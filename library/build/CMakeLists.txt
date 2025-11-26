@@ -29,6 +29,7 @@ set(SOURCE_CPP
         ../source/protocol/object.cpp
         ../source/protocol/standard.cpp
         ../source/server/application.cpp
+        ../source/server/authorization.cpp
         ../source/server/server.cpp
         ../source/test/test.cpp
         ../source/test/actionsCounter.cpp
