@@ -127,7 +127,7 @@ All source files must include this copyright header:
 
 ### Enum Guidance
 
-- Use `enum class` with explicit underlying type sized appropriately (e.g., `enum class ProtocolType : int8_t { ... };`). Prefer integer types, as they are can be compiled in more efficient code.
+- Use `enum class` with explicit underlying type sized appropriately (e.g., `enum class ProtocolType : int8_t { ... };`). Prefer integer types, as they can be compiled in more efficient code.
 - Preserve sentinel values (e.g., `Undefined`, `Max`) at end; document semantics.
 - Follow `meta.hpp` approach: static compile-time array mapping enum values to strings + `static_assert` ensuring array size matches enum count.
 - Conversion pattern example:
@@ -263,7 +263,7 @@ bash runJsTests.sh
 - Precompute total size before writing to avoid multiple resizes
 
 ### Logging
-- Avoid logging in hot loops at unless behind runtime guard
+- Avoid logging in hot loops unless behind runtime guard
 - Batch expensive formatting outside critical path
 
 - Prefer to use continuous memory allocators for frequently accessed objects.
@@ -297,6 +297,6 @@ bash runJsTests.sh
 2. Follow `.clang-format` (run formatting check before commit)
 3. Add/update tests for all new public APIs
 4. Document enums & new protocol fields; update `meta.hpp` mappings
-5. Run `buildMsapiLib.sh` + `executeMsapiTests.sh` locally; ensure no failures
+5. Run `buildLib.sh` + `executeTests.sh` locally; ensure no failures
 6. Avoid new third-party runtime dependencies
 7. By contributing, you agree to the terms in `CONTRIBUTING.md`
