@@ -183,8 +183,7 @@ cmake --build . -j "$(nproc)"
 - Unit tests: `tests/units/`
 - Integration tests: `tests/integration/server/`
 - MSAPI test framework (`library/source/test/test.h`)
-
-- Each function which is covered by tests must have @test Has unit tests comment in its documentation.
+- Each function which is covered by tests must have a Doxygen `@test` tag in its documentation. For example: `@test Has unit tests`.
 
 ### CI Workflows
 - `.github/workflows`
@@ -198,7 +197,7 @@ Servers inherit from `MSAPI::Server` and override `HandleBuffer` for custom data
 Applications use state-based lifecycle management via `HandleRunRequest`, `HandlePauseRequest`, etc.
 
 ### Logging
-Use macros from `log.h`, prefer NEW versions with formatted strings. FP values should be formatted with specified precision, 9f for float, 17f for double and 21Lf for long double.
+Use macros from `log.h`, prefer NEW versions with formatted strings. Format floating-point (FP) values using printf-style format specifiers with the specified precision: `%.9f` for float, `%.17f` for double, and `%.21Lf` for long double. For example: `LOG_INFO_NEW("Value: {:.9f}", floatValue);`
 
 ### Testing (C++)
 Tests use the `MSAPI::Test` class and call `Assert()` to compare expected/actual values with pass/fail reporting.
@@ -207,28 +206,28 @@ Prefer RETURN_IF_FALSE for early exits on failed assertions.
 ## Frontend Workflow (Manager App)
 
 ### Current State
-- Static assets only under `apps/manager/web/` (no `package.json`).
-- Keep JS modular; avoid global pollution—wrap logic in IIFEs or ES modules.
-- Optimize images (lossless or WebP) before commit.
+- Static assets only under `apps/manager/web/` (no `package.json`)
+- Keep JS modular; avoid global pollution—wrap logic in IIFEs or ES modules
+- Optimize images (lossless or WebP) before commit
 
 ### JS Core
-- **View:** (apps/manager/web/js/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling.
-- **Table:** (apps/manager/web/js/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types.
-- **Grid:** (apps/manager/web/js/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations.
-- **Timer:** (apps/manager/web/js/timer.js) Timestamp input handling, normalization, and validation with timezone support.
-- **Duration:** (apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time units.
-- **Select:** (apps/manager/web/js/select.js) Custom select input with searchable options, validation, and dynamic metadata integration.
-- **Helper:** (apps/manager/web/js/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more.
+- **View:** (apps/manager/web/js/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling
+- **Table:** (apps/manager/web/js/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types
+- **Grid:** (apps/manager/web/js/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations
+- **Timer:** (apps/manager/web/js/timer.js) Timestamp input handling, normalization, and validation with timezone support
+- **Duration:** (apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time units
+- **Select:** (apps/manager/web/js/select.js) Custom select input with searchable options, validation, and dynamic metadata integration
+- **Helper:** (apps/manager/web/js/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more
 
 ### Default views
-- **InstalledApps:** (apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications.
-- **CreatedApps:** (apps/manager/web/js/views/createdApps.js) Shows a grid of created/running apps with parameters and action buttons.
-- **NewApp:** (apps/manager/web/js/views/newApp.js) Presents a form for creating new applications.
-- **ModifyApp:** (apps/manager/web/js/views/modifyApp.js) Allows modification of application parameters.
-- **AppView:** (apps/manager/web/js/views/appView.js) Embeds the application’s custom UI in an iframe.
-- **TableView:** (apps/manager/web/js/views/tableView.js) Displays a read-only MSAPI table for a given parameter.
-- **SelectView:** (apps/manager/web/js/views/selectView.js) Provides a searchable, case-sensitive select dialog for choosing parameter values.
-- **GridSettingsView:** (apps/manager/web/js/views/gridSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options.
+- **InstalledApps:** (apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications
+- **CreatedApps:** (apps/manager/web/js/views/createdApps.js) Shows a grid of created/running apps with parameters and action buttons
+- **NewApp:** (apps/manager/web/js/views/newApp.js) Presents a form for creating new applications
+- **ModifyApp:** (apps/manager/web/js/views/modifyApp.js) Allows modification of application parameters
+- **AppView:** (apps/manager/web/js/views/appView.js) Embeds the application’s custom UI in an iframe
+- **TableView:** (apps/manager/web/js/views/tableView.js) Displays a read-only MSAPI table for a given parameter
+- **SelectView:** (apps/manager/web/js/views/selectView.js) Provides a searchable, case-sensitive select dialog for choosing parameter values
+- **GridSettingsView:** (apps/manager/web/js/views/gridSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options
 
 ### JS Style & Conventions
 - File header: Use same Polyform license block as existing JS files
@@ -253,6 +252,10 @@ bash runJsTests.sh
 - Validate response structure before DOM injection
 
 ## Performance Recommendations
+- Prefer to use continuous memory allocators for frequently accessed objects
+- MSAPI library must never throw exceptions
+- Use .inl files pattern, where the first part of the file is declarations, followed by implementations
+- Use `FORCE_INLINE`
 
 ### Server Loop
 - Minimize per-connection dynamic allocations; reuse buffers
@@ -265,11 +268,6 @@ bash runJsTests.sh
 ### Logging
 - Avoid logging in hot loops unless behind runtime guard
 - Batch expensive formatting outside critical path
-
-- Prefer to use continuous memory allocators for frequently accessed objects.
-- MSAPI library must never throw exceptions.
-- Use .inl files pattern, where first part of file is declarations and right after that is implementations.
-- Use `FORCE_INLINE`.
 
 ## Important Directories
 
@@ -284,8 +282,7 @@ bash runJsTests.sh
 - `bash/`: Build and test helper scripts
 - `.github/workflows/`: CI/CD configuration
 
-## Dependencies
-
+## Requirements
 - **Build system**: CMake 3.2+
 - **Compiler**: C++20 compatible (GCC/Clang)
 - **Runtime**: Linux (POSIX threads, Linux sockets)
