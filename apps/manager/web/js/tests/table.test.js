@@ -15,9 +15,11 @@ const { TestRunner } = require('./testRunner');
 const Table = require('../table');
 const View = require('../view');
 const MetadataCollector = require('../metadataCollector');
+const Dispatcher = require('../dispatcher');
 
-global.dispatcher = undefined;
 let testRunner = new TestRunner();
+
+global.dispatcher = new Dispatcher();
 
 class RowChecking {
 	static CheckInvalidStates(inputs, expectedStates)

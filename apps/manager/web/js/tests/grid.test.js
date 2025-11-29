@@ -15,9 +15,11 @@ const { TestRunner, TableChecker } = require('./testRunner');
 const Grid = require('../grid');
 const MetadataCollector = require('../metadataCollector');
 const View = require('../view');
-global.dispatcher = undefined;
+const Dispatcher = require('../dispatcher');
 
 const testRunner = new TestRunner();
+
+global.dispatcher = new Dispatcher();
 
 MetadataCollector.AddMetadata(1, { name : "Create", type : "system" }, true);
 MetadataCollector.AddMetadata(2, { name : "Change state", type : "system" }, true);

@@ -61,6 +61,8 @@ class Dispatcher {
 
 		this.m_hiddenViews = this.m_view.querySelector('.hiddenViews');
 		this.m_registeredPanels = this.m_view.querySelector('.registeredPanels');
+
+		this.RegisterPanel("Dispatcher", () => { this.m_view.classList.remove('hidden'); });
 	}
 
 	AddHiddenView(view)

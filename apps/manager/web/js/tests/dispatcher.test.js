@@ -28,6 +28,10 @@ function DestroyViews()
 	document.querySelectorAll('body > main > section.views .viewHeader .close')
 		.forEach((button) => button.dispatchEvent(new Event('click', { bubbles : true })));
 	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created views count');
+	//* Reset dispatcher hidden state
+	if (global.dispatcher && global.dispatcher.m_view) {
+		global.dispatcher.m_view.classList.add('hidden');
+	}
 }
 
 function CheckHiddenViewsList(expectedSize)
@@ -42,9 +46,10 @@ function CheckHiddenViewsList(expectedSize)
 		testRunner.Assert(
 			global.dispatcher.m_hiddenViews.classList.contains('visible'), true, 'Unexpected hidden views visibility');
 	}
-	testRunner.Assert(global.dispatcher.m_registeredPanels.querySelector('.list').childElementCount, 0,
+	//* Dispatcher panel is always registered
+	testRunner.Assert(global.dispatcher.m_registeredPanels.querySelector('.list').childElementCount, 1,
 		'Unexpected registered panels list length');
-	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), false,
+	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), true,
 		'Unexpected registered panels visibility');
 }
 
@@ -138,7 +143,8 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 		global.dispatcher.m_hiddenViews.classList.contains('visible'), false, 'Unexpected hidden views visibility');
 	testRunner.Assert(global.dispatcher.m_registeredPanels,
 		document.querySelector('main > .dispatcher > .registeredPanels'), 'Dispatcher registered panels not found');
-	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), false,
+	//* Dispatcher panel is always registered
+	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), true,
 		'Unexpected registered panels visibility');
 
 	let view1 = new InstalledApps();
@@ -249,15 +255,18 @@ testRunner.Test('Manage list of registered panels', async () => {
 		global.dispatcher.m_hiddenViews.classList.contains('visible'), false, 'Unexpected hidden views visibility');
 	testRunner.Assert(global.dispatcher.m_registeredPanels,
 		document.querySelector('main > .dispatcher > .registeredPanels'), 'Dispatcher registered panels not found');
-	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), false,
+	//* Dispatcher panel is always registered
+	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), true,
 		'Unexpected registered panels visibility');
 
 	let registeredPanelsList = global.dispatcher.m_registeredPanels.querySelector('.list');
 	let hiddenViewsList = global.dispatcher.m_hiddenViews.querySelector('.list');
+	//* Starting with 1 registered panel (Dispatcher itself)
+	const basePanelCount = 1;
 	let checkRegisteredPanelsList = (registered, hidden) => {
 		testRunner.Assert(
-			registeredPanelsList.childElementCount, registered, 'Unexpected registered panels list length');
-		if (registered === 0) {
+			registeredPanelsList.childElementCount, registered + basePanelCount, 'Unexpected registered panels list length');
+		if (registered + basePanelCount === 0) {
 			testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), false,
 				'Unexpected registered panels visibility');
 		}
@@ -280,7 +289,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 	//* Register panel
 	global.dispatcher.RegisterPanel('InstalledApps', () => new InstalledApps());
 	checkRegisteredPanelsList(1, 0);
-	testRunner.Assert(registeredPanelsList.childNodes[0].querySelector('span').innerHTML, 'InstalledApps',
+	testRunner.Assert(registeredPanelsList.childNodes[1].querySelector('span').innerHTML, 'InstalledApps',
 		'Unexpected name on registered panel');
 
 	//* Register panel
@@ -291,8 +300,8 @@ testRunner.Test('Manage list of registered panels', async () => {
 	global.dispatcher.RegisterPanel('CreatedApps', () => new CreatedApps());
 	checkRegisteredPanelsList(2, 0);
 
-	//* Click to create panel
-	registeredPanelsList.childNodes[0].dispatchEvent(new Event('click', { bubbles : true }));
+	//* Click to create panel (childNodes[0] is Dispatcher, childNodes[1] is InstalledApps)
+	registeredPanelsList.childNodes[1].dispatchEvent(new Event('click', { bubbles : true }));
 	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 1, 'view is created');
 	checkRegisteredPanelsList(2, 0);
 
@@ -300,16 +309,16 @@ testRunner.Test('Manage list of registered panels', async () => {
 	testRunner.Assert(
 		Array.from(View.GetCreatedViews().values())[0].m_title, 'InstalledApps', 'Unexpected name on created view');
 
-	//* Click to create panel
-	registeredPanelsList.childNodes[1].dispatchEvent(new Event('click', { bubbles : true }));
+	//* Click to create panel (childNodes[2] is CreatedApps)
+	registeredPanelsList.childNodes[2].dispatchEvent(new Event('click', { bubbles : true }));
 	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 2, 'view is created');
 	checkRegisteredPanelsList(2, 0);
 	testRunner.Assert(View.GetCreatedViews().size, 2, 'Unexpected created views count');
 	testRunner.Assert(
 		Array.from(View.GetCreatedViews().values())[1].m_title, 'CreatedApps', 'Unexpected name on created view');
 
-	//* Click to create panel
-	registeredPanelsList.childNodes[1].dispatchEvent(new Event('click', { bubbles : true }));
+	//* Click to create panel (childNodes[2] is CreatedApps)
+	registeredPanelsList.childNodes[2].dispatchEvent(new Event('click', { bubbles : true }));
 	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 3, 'view is created');
 	checkRegisteredPanelsList(2, 0);
 	testRunner.Assert(View.GetCreatedViews().size, 3, 'Unexpected created views count');

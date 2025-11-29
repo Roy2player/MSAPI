@@ -18,10 +18,14 @@ const NewApp = require('../views/newApp');
 const CreatedApps = require('../views/createdApps');
 const Table = require('../table');
 const Grid = require('../grid');
+const Dispatcher = require('../dispatcher');
 
 global.Grid = Grid;
 global.Table = Table;
-global.dispatcher = undefined;
+
+let testRunner = new TestRunner();
+
+global.dispatcher = new Dispatcher();
 
 MetadataCollector.AddMetadata(1, { name : "Create", type : "system" }, true);
 MetadataCollector.AddMetadata(2, { name : "Change state", type : "system" }, true);
@@ -97,7 +101,6 @@ function DestroyViews()
 	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created views count');
 }
 
-let testRunner = new TestRunner();
 testRunner.SetPostTestFunction(DestroyViews);
 
 testRunner.Test('Create InstalledApps panel', async () => {

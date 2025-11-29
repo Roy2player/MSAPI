@@ -15,9 +15,11 @@ const { TestRunner } = require('./testRunner');
 const Select = require('../select');
 const MetadataCollector = require('../metadataCollector');
 const View = require('../view');
-global.dispatcher = undefined;
+const Dispatcher = require('../dispatcher');
 
 let testRunner = new TestRunner();
+
+global.dispatcher = new Dispatcher();
 
 const parameter_const = 7683294087;
 const parameter_mutable = 908766347869289;

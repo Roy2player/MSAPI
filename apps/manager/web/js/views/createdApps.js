@@ -144,6 +144,27 @@ class CreatedApps extends View {
 						}
 					}
 				}
+
+				let viewCell = rowObject.row.querySelector(".cell[parameter-id='10']");
+				if (viewCell && !viewCell.classList.contains("action")) {
+					let appType = rowObject.values[5];
+					if (appType !== undefined) {
+						const viewPortParameter = View.GetViewPortParameterToAppType(appType);
+						if (viewPortParameter != undefined) {
+							viewCell.addEventListener("click", () => {
+								const port = rowObject.values[1000009];
+								if (port === undefined) {
+									console.error("Can't find server port in row values.");
+									return;
+								}
+
+								new AppView({ appType, port, viewPortParameter })
+							});
+
+							viewCell.classList.add("action", "view");
+						}
+					}
+				}
 			}
 		});
 		this.AddCallback("getCreatedApps", (response) => {
@@ -217,14 +238,18 @@ class CreatedApps extends View {
 
 		this.AddCallback("delete", (response, extraParameters) => {
 			this.m_grid.RemoveRow({ indexValue : extraParameters.port });
+			let viewsToDelete = [];
 			for (let view of View.GetCreatedViews().values()) {
 				if (view.m_port == extraParameters.port) {
-					view.Destructor();
-					return true;
+					viewsToDelete.push(view);
 				}
 			}
 
-			return false;
+			for (let view of viewsToDelete) {
+				view.Destructor();
+			}
+
+			return viewsToDelete.length > 0;
 		});
 
 		this.AddCallback("getParameters", (response, extraParameters) => {
