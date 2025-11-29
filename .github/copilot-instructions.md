@@ -255,7 +255,7 @@ bash runJsTests.sh
 ## Performance Recommendations
 - Prefer to use continuous memory allocators for frequently accessed objects
 - MSAPI library must never throw exceptions
-- Use .inl files pattern, where the first part of the file is declarations, followed by implementations
+- Use `.inl` files pattern: the first part of the file contains inline function declarations, followed by their implementations.
 - Use `FORCE_INLINE`
 
 ### Server Loop
@@ -291,6 +291,7 @@ bash runJsTests.sh
 
 ## Contributor Checklist
 
+0. Look at documentation in files with definitions to understand existing implementations ideas and capabilities
 1. Add license header to new source files
 2. Follow `.clang-format` (run formatting check before commit)
 3. Add/update tests for all new public APIs
