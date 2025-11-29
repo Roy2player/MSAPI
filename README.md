@@ -15,6 +15,11 @@ cmake -DCMAKE_BUILD_TYPE=Release .
 cmake --build . -j $(nproc)
 ```
 
+- ***Build system:*** CMake 3.2+
+- ***Compiler:*** C++20 compatible (GCC/Clang)
+- ***Runtime:*** Linux (POSIX threads, Linux sockets)
+- Pure C++ standard library
+
 ***BUILD_PROFILE*** variable can be set to choose build type: Debug or Release.
 See [CMakeListsCommonOptions.txt](library/build/CMakeListsCommonOptions.txt) for more details.
 
