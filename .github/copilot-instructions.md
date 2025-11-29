@@ -40,7 +40,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
 
 4. **Testing Framework** (`library/source/test/`)
   - `test.h` / `test.cpp`: Base test registration, output formatting.
-  - `daemon.hpp`: Support for running servers on background with direct access.
+  - `daemon.hpp`: Support for running servers in the background with direct access.
   - `actionsCounter.*`: Helper for counting test actions.
   - No external test frameworks; everything is custom.
 
@@ -73,7 +73,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
 - `Application` (`server/application.h`) maintains parameter registry. Parameters store non-owning references (observer pattern).
 - When adding new parameter types:
   - Prefer value semantics if size small.
-  - Use `std::optional<T>` for nullable semantic rather than pointer.
+  - Use `std::optional<T>` for values that cannot be empty by default.
   - For shared large data (e.g., tables), the field owns the memory; parameters only observe.
 
 ### Memory Strategy
@@ -124,12 +124,13 @@ All source files must include this copyright header:
  * Required Notice: MSAPI, copyright © 2021–YYYY Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 ```
+- Replacing `filename.ext`, `CURRENT_VERSION`, and `YYYY` as appropriate. Current version can be found in another files, e.g., `library/source/help/log.cpp`.
 
 ### Enum Guidance
 
 - Use `enum class` with explicit underlying type sized appropriately (e.g., `enum class ProtocolType : int8_t { ... };`). Prefer integer types, as they can be compiled in more efficient code.
 - Preserve sentinel values (e.g., `Undefined`, `Max`) at end; document semantics.
-- Follow `meta.hpp` approach: static compile-time array mapping enum values to strings + `static_assert` ensuring array size matches enum count.
+- Use switch statements with `static_assert` to ensure all enum values are covered, including sentinel values. Add a default case with `LOG_ERROR` for unknown values. This matches the established pattern in the codebase (see `standardType.hpp`, `object.cpp`, `log.cpp`, etc.).
 - Conversion pattern example:
   ```cpp
 static FORCE_INLINE std::string_view EnumToString(const InternalAction value)
