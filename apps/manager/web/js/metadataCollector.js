@@ -112,12 +112,12 @@ class MetadataCollector {
 		if (MetadataCollector.#IsNumericType(metadata.type)) {
 			if (metadata.hasOwnProperty("min") && metadata.min !== "null" && typeof metadata.min !== "number"
 				&& typeof metadata.min !== "string") {
-				console.error("'min' field must be a number or null");
+				console.error("'min' field must be a number, string, or null");
 				return false;
 			}
 			if (metadata.hasOwnProperty("max") && metadata.max !== "null" && typeof metadata.max !== "number"
 				&& typeof metadata.max !== "string") {
-				console.error("'max' field must be a number or null");
+				console.error("'max' field must be a number, string, or null");
 				return false;
 			}
 		}
@@ -267,6 +267,11 @@ class MetadataCollector {
 		if (typeof appType !== "string" || typeof metadata !== "object" || metadata === null) {
 			console.error(`Invalid app type or metadata: ${appType}, ${metadata}`);
 			return false;
+		}
+
+		//* Validate structure: should have at least 'mutable' or 'const' sections
+		if (!metadata.hasOwnProperty("mutable") && !metadata.hasOwnProperty("const")) {
+			console.warn(`App metadata for '${appType}' should have 'mutable' or 'const' sections`);
 		}
 
 		MetadataCollector.#privateFields.m_metadataToAppType.set(appType, metadata);
