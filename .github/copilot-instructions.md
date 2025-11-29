@@ -121,7 +121,7 @@ All source files must include this copyright header:
  *
  * For commercial use, please contact: maks.angels@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–YYYY Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 ```
 
