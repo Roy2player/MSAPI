@@ -61,7 +61,7 @@ class Select {
 			}
 
 			const parameterId = +input.getAttribute("parameter-id");
-			const stringInterpretation = MetadataCollector.GetStringInterpretation(parameterId);
+			const stringInterpretation = MetadataCollector.GetStringInterpretations(parameterId);
 
 			if (!stringInterpretation) {
 				console.error("No string interpretation is found for parameter id", parameterId);
@@ -159,7 +159,7 @@ class Select {
 		}
 
 		const parameterId = +input.getAttribute("parameter-id");
-		const stringInterpretation = MetadataCollector.GetStringInterpretation(parameterId);
+		const stringInterpretation = MetadataCollector.GetStringInterpretations(parameterId);
 
 		if (!stringInterpretation) {
 			console.error("No string interpretation is found for parameter id", parameterId);

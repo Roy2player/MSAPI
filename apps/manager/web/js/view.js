@@ -70,16 +70,12 @@ class View {
 	static #privateFields = (() => {
 		const m_viewTemplateToViewType = new Map();
 		const m_parametersTemplateToViewType = new Map();
-		const m_metadataToAppType = new Map();
-		const m_viewPortParameterToAppType = new Map();
 		const m_parametersToPort = new Map();
 		const m_createdViews = new Map();
 		const m_lastCreatedView = null;
 		return {
 			m_viewTemplateToViewType,
 			m_parametersTemplateToViewType,
-			m_metadataToAppType,
-			m_viewPortParameterToAppType,
 			m_parametersToPort,
 			m_createdViews,
 			m_lastCreatedView
@@ -163,15 +159,18 @@ class View {
 
 	static GetViewTemplate(viewType) { return View.#privateFields.m_viewTemplateToViewType.get(viewType); }
 
+	/**************************
+	 * @deprecated Use MetadataCollector.SetViewPortParameterToAppType instead.
+	 */
 	static SetViewPortParameterToAppType(appType, parameterId)
 	{
-		View.#privateFields.m_viewPortParameterToAppType.set(appType, parameterId);
+		MetadataCollector.SetViewPortParameterToAppType(appType, parameterId);
 	}
 
-	static GetViewPortParameterToAppType(appType)
-	{
-		return View.#privateFields.m_viewPortParameterToAppType.get(appType);
-	}
+	/**************************
+	 * @deprecated Use MetadataCollector.GetViewPortParameterToAppType instead.
+	 */
+	static GetViewPortParameterToAppType(appType) { return MetadataCollector.GetViewPortParameterToAppType(appType); }
 
 	static AddParametersTemplate(viewType, templateName, template)
 	{
@@ -196,11 +195,20 @@ class View {
 		return undefined;
 	}
 
-	static GetMetadata(appType) { return View.#privateFields.m_metadataToAppType.get(appType); }
+	/**************************
+	 * @deprecated Use MetadataCollector.GetAppMetadata instead.
+	 */
+	static GetMetadata(appType) { return MetadataCollector.GetAppMetadata(appType); }
 
-	static AddMetadata(appType, metadata) { View.#privateFields.m_metadataToAppType.set(appType, metadata); }
+	/**************************
+	 * @deprecated Use MetadataCollector.AddAppMetadata instead.
+	 */
+	static AddMetadata(appType, metadata) { MetadataCollector.AddAppMetadata(appType, metadata); }
 
-	static GetAllMetadata() { return Array.from(View.#privateFields.m_metadataToAppType.values()); }
+	/**************************
+	 * @deprecated Use MetadataCollector.GetAllAppMetadata instead.
+	 */
+	static GetAllMetadata() { return MetadataCollector.GetAllAppMetadata(); }
 
 	static HasParameters(port) { return View.#privateFields.m_parametersToPort.has(port); }
 
@@ -324,9 +332,7 @@ class View {
 				View.SaveView(this);
 				this.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
 
-				if (dispatcher) {
-					this.m_parentView.style.left = dispatcher.m_view.getBoundingClientRect().right + "px";
-				}
+				this.m_parentView.style.left = dispatcher.m_view.getBoundingClientRect().right + "px";
 				this.m_parentView.style.top = "0px";
 
 				if (parameters) {
@@ -676,12 +682,7 @@ class View {
 			return;
 		}
 
-		if (dispatcher) {
-			dispatcher.AddHiddenView(this);
-		}
-		else {
-			this.m_parentView.classList.add("hidden");
-		}
+		dispatcher.AddHiddenView(this);
 	}
 
 	Show()
@@ -695,12 +696,7 @@ class View {
 			return;
 		}
 
-		if (dispatcher) {
-			dispatcher.RemoveHiddenView(this);
-		}
-		else {
-			this.m_parentView.classList.remove("hidden");
-		}
+		dispatcher.RemoveHiddenView(this);
 	}
 
 	AddCallback(type, callback)
@@ -934,7 +930,7 @@ class View {
 					}
 					else if (type == "getMetadata") {
 						if ("metadata" in json) {
-							View.#privateFields.m_metadataToAppType.set(options.headers["AppType"], json["metadata"]);
+							MetadataCollector.AddAppMetadata(options.headers["AppType"], json["metadata"]);
 							if (json["metadata"].hasOwnProperty("mutable")) {
 								for (let [parameterId, parameter] of Object.entries(json["metadata"].mutable)) {
 									MetadataCollector.AddMetadata(parameterId, parameter, false);
