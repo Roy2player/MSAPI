@@ -132,27 +132,27 @@ All source files must include this copyright header:
 - Follow `meta.hpp` approach: static compile-time array mapping enum values to strings + `static_assert` ensuring array size matches enum count.
 - Conversion pattern example:
   ```cpp
-  static FORCE_INLINE std::string_view EnumToString(const InternalAction value)
-	{
-		static_assert(U(InternalAction::Max) == 4, "Need to specify a new internal action");
+static FORCE_INLINE std::string_view EnumToString(const InternalAction value)
+{
+  static_assert(U(InternalAction::Max) == 4, "Need to specify a new internal action");
 
-		switch (value) {
-		case InternalAction::Undefined:
-			return "Undefined";
-		case InternalAction::Usual:
-			return "Usual";
-		case InternalAction::Fill:
-			return "Fill";
-		case InternalAction::Cancel:
-			return "Cancel";
-		case InternalAction::Max:
-			return "Max";
-		default:
-			LOG_ERROR("Unknown internal action: " + _S(U(value)));
-			return "Unknown";
-		}
-	}
-  ```
+  switch (value) {
+  case InternalAction::Undefined:
+    return "Undefined";
+  case InternalAction::Usual:
+    return "Usual";
+  case InternalAction::Fill:
+    return "Fill";
+  case InternalAction::Cancel:
+    return "Cancel";
+  case InternalAction::Max:
+    return "Max";
+  default:
+    LOG_ERROR("Unknown internal action: " + _S(U(value)));
+    return "Unknown";
+  }
+}
+```
 
 ## Building & Testing
 
@@ -183,7 +183,7 @@ cmake --build . -j "$(nproc)"
 - Unit tests: `tests/units/`
 - Integration tests: `tests/integration/server/`
 - MSAPI test framework (`library/source/test/test.h`)
-- Each function which is covered by tests must have a Doxygen `@test` tag in its documentation. For example: `@test Has unit tests`.
+- Each function covered by tests must have a Doxygen `@test` tag in its documentation. For example: `@test Has unit tests`.
 
 ### CI Workflows
 - `.github/workflows`
