@@ -12,7 +12,53 @@
  */
 
 const { JSDOM } = require('jsdom');
-const Helper = require('../helper.js');
+
+let jsdom
+	= new JSDOM(`<html><body><div class="tables"></div><main><section class="views"></section></main></body></html>`);
+global.document = jsdom.window.document;
+global.Node = jsdom.window.Node;
+global.Event = jsdom.window.Event;
+global.EventTarget = jsdom.window.EventTarget;
+global.body = document.querySelector('body');
+
+const originalAddEventListener = EventTarget.prototype.addEventListener;
+const eventListeners = new WeakMap();
+
+EventTarget.prototype.addEventListener = function(type, listener, options) {
+	if (!eventListeners.has(this)) {
+		eventListeners.set(this, {});
+	}
+	if (!eventListeners.get(this)[type]) {
+		eventListeners.get(this)[type] = [];
+	}
+
+	eventListeners.get(this)[type].push({ listener, options });
+	originalAddEventListener.call(this, type, listener, options);
+};
+
+EventTarget.prototype.removeEventListener = function(type, listener, options) {
+	if (!eventListeners.has(this) || !eventListeners.get(this)[type]) {
+		return;
+	}
+
+	const index = eventListeners.get(this)[type].findIndex(
+		({ listener : registeredListener, options : registeredOptions }) => listener === registeredListener
+			&& options === registeredOptions);
+
+	if (index !== -1) {
+		eventListeners.get(this)[type].splice(index, 1);
+	}
+};
+
+global.getEventListeners = function(target) { return eventListeners.get(target) || {}; };
+global.window = jsdom.window;
+global.MutationObserver = require('mutation-observer');
+
+const { Dispatcher } = require('../dispatcher');
+const event = new jsdom.window.Event('DOMContentLoaded', { bubbles : true, cancelable : true });
+global.document.dispatchEvent(event);
+
+const Helper = require('../helper');
 
 global.createdApps = new Map();
 
@@ -67,8 +113,11 @@ global.fetch = (url, options) => {
 			});
 		}
 
-		return Promise.resolve(
-			{ ok : true, status : 200, text : () => Promise.resolve(`{"status":true,"metadata":{}}`) });
+		return Promise.resolve({
+			ok : true,
+			status : 200,
+			text : () => Promise.resolve(`{"status":true,"metadata":{"mutable":{},"const":{}}}`)
+		});
 	}
 
 	if (options.headers.Type === 'getParameters') {
@@ -87,55 +136,13 @@ global.fetch = (url, options) => {
 };
 
 class TestRunner {
-	constructor(
-		html = '<html><body><div class="tables"></div><main><section class="views"></section></main></body></html>')
+	constructor()
 	{
-		this.m_dom = new JSDOM(html);
-		global.document = this.m_dom.window.document;
-		global.Node = this.m_dom.window.Node;
-		global.Event = this.m_dom.window.Event;
-		global.EventTarget = this.m_dom.window.EventTarget;
-		global.body = document.querySelector('body');
-
-		const originalAddEventListener = EventTarget.prototype.addEventListener;
-		const eventListeners = new WeakMap();
-
-		EventTarget.prototype.addEventListener = function(type, listener, options) {
-			if (!eventListeners.has(this)) {
-				eventListeners.set(this, {});
-			}
-			if (!eventListeners.get(this)[type]) {
-				eventListeners.get(this)[type] = [];
-			}
-
-			eventListeners.get(this)[type].push({ listener, options });
-			originalAddEventListener.call(this, type, listener, options);
-		};
-
-		EventTarget.prototype.removeEventListener = function(type, listener, options) {
-			if (!eventListeners.has(this) || !eventListeners.get(this)[type]) {
-				return;
-			}
-
-			const index = eventListeners.get(this)[type].findIndex(
-				({ listener : registeredListener, options : registeredOptions }) => listener === registeredListener
-					&& options === registeredOptions);
-
-			if (index !== -1) {
-				eventListeners.get(this)[type].splice(index, 1);
-			}
-		};
-
-		global.getEventListeners = function(target) { return eventListeners.get(target) || {}; };
-
 		this.m_postTestFunction = null;
 		this.m_failedAssertions = 0;
 		this.m_failedTests = 0;
 		this.m_totalTests = 0;
 		this.m_tests = [];
-
-		global.window = this.m_dom.window;
-		global.MutationObserver = require('mutation-observer');
 	}
 
 	SetPostTestFunction(func) { this.m_postTestFunction = func; }
@@ -226,7 +233,9 @@ class TestRunner {
 
 		return String(shift).padStart(2, '0')
 	};
-}
+};
+
+let testRunner = new TestRunner();
 
 class TableChecker {
 	static CheckValues(test, inputs, values)
@@ -282,7 +291,8 @@ class TableChecker {
 		}
 		test.Assert(false, true, "Add button not found");
 	}
-}
+};
 
 module.exports.TestRunner = TestRunner;
+module.exports.testRunner = testRunner;
 module.exports.TableChecker = TableChecker;

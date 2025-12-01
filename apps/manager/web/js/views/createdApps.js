@@ -11,10 +11,24 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief View to display grid with created apps.
+ *
+ * By default contains several columns:
+ * - 10 (Open view) to open application view if possible;
+ * - 2 (Change state) to run/pause application;
+ * - 3 (Modify) to modify application settings;
+ * - 4 (Delete) to delete application;
+ * - 2000001 (Name) application name;
+ * - 5 (Type) application type;
+ * - 1000008 (Listening IP) application listening IP;
+ * - 1000009 (Port) application port.
+ *
+ * Delete action also destroys all views related to the deleted application in terms of same port.
  */
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	View = require('../view');
+	MetadataCollector = require('../metadataCollector');
+	Dispatcher = require('../dispatcher').Dispatcher;
 }
 
 class CreatedApps extends View {
@@ -114,7 +128,7 @@ class CreatedApps extends View {
 						console.error("Can't find application type in row values.");
 						return;
 					}
-					const viewPortParameter = View.GetViewPortParameterToAppType(appType);
+					const viewPortParameter = MetadataCollector.GetViewPortParameterToAppType(appType);
 					if (viewPortParameter != undefined) {
 						viewCell.addEventListener("click", () => {
 							const port = rowObject.values[1000009];
@@ -126,7 +140,7 @@ class CreatedApps extends View {
 							new AppView({ appType, port, viewPortParameter })
 						});
 
-						viewCell.classList.add("action", "view");
+						viewCell.classList.add("action", "openAppView");
 					}
 				}
 			},
@@ -149,7 +163,7 @@ class CreatedApps extends View {
 		this.AddCallback("getCreatedApps", (response) => {
 			if ("apps" in response) {
 				for (let index of response.apps.map(app => app.port)) {
-					if (!this.m_grid.m_rowByIndexValue.has(index)) {
+					if (this.m_grid.m_rowByIndexValue.has(index)) {
 						this.m_grid.RemoveRow({ indexValue : index });
 					}
 				}
@@ -217,14 +231,14 @@ class CreatedApps extends View {
 
 		this.AddCallback("delete", (response, extraParameters) => {
 			this.m_grid.RemoveRow({ indexValue : extraParameters.port });
+			let destructed = 0;
 			for (let view of View.GetCreatedViews().values()) {
 				if (view.m_port == extraParameters.port) {
 					view.Destructor();
-					return true;
+					destructed++;
 				}
 			}
-
-			return false;
+			return destructed > 0;
 		});
 
 		this.AddCallback("getParameters", (response, extraParameters) => {
@@ -241,6 +255,7 @@ class CreatedApps extends View {
 }
 
 View.AddViewTemplate("CreatedApps", `<div></div>`);
+Dispatcher.RegisterPanel("CreatedApps", () => new CreatedApps());
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	module.exports = CreatedApps;

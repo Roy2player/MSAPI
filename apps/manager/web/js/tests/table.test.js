@@ -11,13 +11,10 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner } = require('./testRunner');
+const { TestRunner, testRunner } = require('./testRunner');
 const Table = require('../table');
 const View = require('../view');
 const MetadataCollector = require('../metadataCollector');
-
-global.dispatcher = undefined;
-let testRunner = new TestRunner();
 
 class RowChecking {
 	static CheckInvalidStates(inputs, expectedStates)

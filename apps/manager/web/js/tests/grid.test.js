@@ -11,13 +11,10 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, TableChecker } = require('./testRunner');
+const { TestRunner, testRunner, TableChecker } = require('./testRunner');
 const Grid = require('../grid');
 const MetadataCollector = require('../metadataCollector');
 const View = require('../view');
-global.dispatcher = undefined;
-
-const testRunner = new TestRunner();
 
 MetadataCollector.AddMetadata(1, { name : "Create", type : "system" }, true);
 MetadataCollector.AddMetadata(2, { name : "Change state", type : "system" }, true);

@@ -10,11 +10,12 @@
  *
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
- * @brief View to display settings of MSAPI application.
+ * @brief View to display settings of MSAPI application. Only one instance per application port can be created.
  */
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	View = require('../view');
+	MetadataCollector = require('../metadataCollector');
 }
 
 class ModifyApp extends View {
@@ -22,16 +23,17 @@ class ModifyApp extends View {
 
 	async Constructor(parameters)
 	{
-		let existedApp = View.GetViewByPort(parameters.port);
+		let existedApp = View.GetViewByTypeAndPort(this.m_viewType, this.m_port);
 		if (existedApp) {
 			existedApp.Show();
+			this.m_silentExit = true;
 			return false;
 		}
 
 		this.m_appType = parameters.appType;
 		this.m_viewPortParameter = parameters.viewPortParameter;
 
-		let metadata = View.GetMetadata(this.m_appType);
+		let metadata = MetadataCollector.GetAppMetadata(this.m_appType);
 		if (!metadata) {
 			let result = await View.SendRequest({
 				method : "GET",
@@ -43,9 +45,8 @@ class ModifyApp extends View {
 				return false;
 			}
 		}
-		metadata = View.GetMetadata(this.m_appType);
+		metadata = MetadataCollector.GetAppMetadata(this.m_appType);
 
-		this.m_port = parameters.port;
 		let result = await View.SendRequest({
 			method : "GET",
 			mode : "cors",
@@ -287,7 +288,8 @@ class ModifyApp extends View {
 
 			this.m_parentView.classList.add("loading");
 			let headers = { "Accept" : "application/json", "Type" : "modify", "Port" : this.m_port };
-			let newParameters = View.ParseInputs(containerWithInputs, false, View.GetMetadata(this.m_appType));
+			let newParameters
+				= View.ParseInputs(containerWithInputs, false, MetadataCollector.GetAppMetadata(this.m_appType));
 
 			for (const table of this.m_tables.values()) {
 				newParameters[table.m_id] = table.GetData();

@@ -801,14 +801,20 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 
 #define TMP_MSAPI_APPLICATION_TABLE_COLUMNS_PART                                                                       \
 	const auto& columns{ reinterpret_cast<const TableBase*>(arg)->GetColumns() };                                      \
-	if (columns == nullptr) {                                                                                          \
-		std::format_to(std::back_inserter(m_metadata), ",\"columns\":null");                                           \
-	}                                                                                                                  \
-	else {                                                                                                             \
-		std::format_to(std::back_inserter(m_metadata), ",\"columns\":{{");                                             \
-		if (!columns->empty()) {                                                                                       \
-			auto begin{ columns->begin() }, end{ columns->end() };                                                     \
-			std::format_to(std::back_inserter(m_metadata), "\"{}\":{{\"type\":\"{}\"", begin->id,                      \
+	std::format_to(std::back_inserter(m_metadata), ",\"columns\":{{");                                                 \
+	if (columns != nullptr && !columns->empty()) {                                                                     \
+		auto begin{ columns->begin() }, end{ columns->end() };                                                         \
+		std::format_to(std::back_inserter(m_metadata), "\"{}\":{{\"type\":\"{}\"", begin->id,                          \
+			StandardType::EnumToString(begin->type));                                                                  \
+		if (!begin->metadata.empty()) {                                                                                \
+			std::format_to(std::back_inserter(m_metadata), ",{}}}", begin->metadata);                                  \
+		}                                                                                                              \
+		else {                                                                                                         \
+			std::format_to(std::back_inserter(m_metadata), "}}");                                                      \
+		}                                                                                                              \
+                                                                                                                       \
+		while (++begin != end) {                                                                                       \
+			std::format_to(std::back_inserter(m_metadata), ",\"{}\":{{\"type\":\"{}\"", begin->id,                     \
 				StandardType::EnumToString(begin->type));                                                              \
 			if (!begin->metadata.empty()) {                                                                            \
 				std::format_to(std::back_inserter(m_metadata), ",{}}}", begin->metadata);                              \
@@ -816,20 +822,9 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 			else {                                                                                                     \
 				std::format_to(std::back_inserter(m_metadata), "}}");                                                  \
 			}                                                                                                          \
-                                                                                                                       \
-			while (++begin != end) {                                                                                   \
-				std::format_to(std::back_inserter(m_metadata), ",\"{}\":{{\"type\":\"{}\"", begin->id,                 \
-					StandardType::EnumToString(begin->type));                                                          \
-				if (!begin->metadata.empty()) {                                                                        \
-					std::format_to(std::back_inserter(m_metadata), ",{}}}", begin->metadata);                          \
-				}                                                                                                      \
-				else {                                                                                                 \
-					std::format_to(std::back_inserter(m_metadata), "}}");                                              \
-				}                                                                                                      \
-			}                                                                                                          \
 		}                                                                                                              \
-		std::format_to(std::back_inserter(m_metadata), "}}");                                                          \
-	}
+	}                                                                                                                  \
+	std::format_to(std::back_inserter(m_metadata), "}}");
 
 						TMP_MSAPI_APPLICATION_TABLE_COLUMNS_PART
 					}

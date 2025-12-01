@@ -11,13 +11,10 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner } = require('./testRunner');
+const { TestRunner, testRunner } = require('./testRunner');
 const Select = require('../select');
 const MetadataCollector = require('../metadataCollector');
 const View = require('../view');
-global.dispatcher = undefined;
-
-let testRunner = new TestRunner();
 
 const parameter_const = 7683294087;
 const parameter_mutable = 908766347869289;
@@ -25,8 +22,8 @@ const parameter_mutable = 908766347869289;
 MetadataCollector.AddMetadata(parameter_const, {
 	"name" : "Price type",
 	"type" : "Int16",
-	"min" : 1,
-	"max" : 3,
+	"min" : 1n,
+	"max" : 3n,
 	"stringInterpretation" : { "0" : "Undefined", "1" : "Fair", "2" : "Soft" }
 },
 	true);
@@ -43,7 +40,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	let input = document.createElement('input');
 	Select.Apply({ input });
 	input.setAttribute('parameter-id', parameter_const);
-	testRunner.Assert(Object.keys(getEventListeners(document)).length, 0)
+	testRunner.Assert(getEventListeners(document).click, undefined)
 	testRunner.Assert(getEventListeners(input).click.length, 1)
 	testRunner.Assert(Select.GetSelectViewsNumber(), 0);
 	testRunner.Assert(input.type, 'text');
@@ -106,7 +103,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	Select.Apply({ input : input2, setEvent : false });
 	testRunner.Assert(Select.GetSelectViewsNumber(), 0);
 	input2.setAttribute('parameter-id', parameter_mutable);
-	testRunner.Assert(Object.keys(getEventListeners(document)).length, 0)
+	testRunner.Assert(getEventListeners(document).click, undefined)
 	testRunner.Assert(Object.keys(getEventListeners(input2)).length, 0)
 	testRunner.Assert(input2.type, 'text');
 	testRunner.Assert(input2.getAttribute('select'), '');

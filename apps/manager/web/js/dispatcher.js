@@ -17,50 +17,44 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief Dispatcher class for managing hidden views and registered panels. Has its own html without separate view.
+ *
+ * @shortcuts
+ * - Ctrl+D to toggle visibility.
  */
-class Dispatcher {
+
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+	View = require('./view');
+}
+
+class Dispatcher extends View {
 	static #privateFields = (() => {
 		const m_nodeToHiddenViews = new Map();
-		const m_registeredPanelsNames = new Set();
-		return { m_nodeToHiddenViews, m_registeredPanelsNames };
+		const m_panelToCreateFunc = new Map();
+		return { m_nodeToHiddenViews, m_panelToCreateFunc };
 	})();
 
-	static #generalTemplate = `
-	<div class="dispatcher hidden">
-		<div class="hiddenViews">
-			<div class="title">Hidden views</div>
-			<div class="list"></div>
-		</div>
-		<div class="registeredPanels">
-			<div class="title">Registered panels</div>
-			<div class="list"></div>
-		</div>
-        <div class="control"><span></span></div>
-	</div>`;
-	static #generalTemplateElement = null;
+	constructor() { super("Dispatcher", { "isInterfaceUnit" : true }); }
 
-	constructor()
+	async Constructor()
 	{
-		this.m_parentNode = document.querySelector('main');
-		if (!this.m_parentNode) {
-			console.error('Parent node not found');
-			return;
-		}
-
-		if (!Dispatcher.#generalTemplateElement) {
-			const template = document.createElement("template");
-			template.innerHTML = Dispatcher.#generalTemplate;
-			Dispatcher.#generalTemplateElement = template;
-		}
-
-		this.m_view = Dispatcher.#generalTemplateElement.content.cloneNode(true).firstElementChild;
-		this.m_parentNode.appendChild(this.m_view);
-
 		this.m_control = this.m_view.querySelector('.control');
 		this.m_control.addEventListener('click', () => { this.m_view.classList.toggle('hidden'); });
+		let savedThis = this;
+		document.addEventListener('keydown', function(event) {
+			if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
+				event.preventDefault();
+				savedThis.m_control.dispatchEvent(new Event('click', { bubbles : true }));
+			}
+		});
 
 		this.m_hiddenViews = this.m_view.querySelector('.hiddenViews');
 		this.m_registeredPanels = this.m_view.querySelector('.registeredPanels');
+
+		for (let [panelName, creatorFunction] of Dispatcher.#privateFields.m_panelToCreateFunc) {
+			this.AddPanel(panelName, creatorFunction);
+		}
+
+		return true;
 	}
 
 	AddHiddenView(view)
@@ -102,19 +96,28 @@ class Dispatcher {
 		view.m_parentView.classList.remove("hidden");
 	}
 
-	RegisterPanel(panelName, creatorFunction)
+	static RegisterPanel(panelName, creatorFunction)
 	{
 		if (typeof creatorFunction !== 'function') {
 			console.error("Invalid creator function type, function is expected", creatorFunction);
 			return;
 		}
 
-		if (Dispatcher.#privateFields.m_registeredPanelsNames.has(panelName)) {
+		if (Dispatcher.#privateFields.m_panelToCreateFunc.has(panelName)) {
 			return;
 		}
 
-		Dispatcher.#privateFields.m_registeredPanelsNames.add(panelName);
+		Dispatcher.#privateFields.m_panelToCreateFunc.set(panelName, creatorFunction);
+
+		if (dispatcher) {
+			dispatcher.AddPanel(panelName, creatorFunction);
+		}
+	}
+
+	AddPanel(panelName, creatorFunction)
+	{
 		let div = document.createElement('div');
+		div.setAttribute('type', panelName);
 		let span = document.createElement('span');
 		span.innerHTML = panelName;
 		div.appendChild(span);
@@ -130,19 +133,55 @@ class Dispatcher {
 
 	UnregisterPanel(panelName)
 	{
-		if (!Dispatcher.#privateFields.m_registeredPanelsNames.has(panelName)) {
+		if (!Dispatcher.#privateFields.m_panelToCreateFunc.has(panelName)) {
 			return;
 		}
 
-		Dispatcher.#privateFields.m_registeredPanelsNames.delete(panelName);
+		Dispatcher.#privateFields.m_panelToCreateFunc.delete(panelName);
+
 		let registeredPanelsList = this.m_registeredPanels.querySelector('.list');
-		registeredPanelsList.querySelector('span').remove();
+		if (!registeredPanelsList) {
+			console.error("Registered panels list not found for unregistering", panelName);
+			return;
+		}
+
+		let node = registeredPanelsList.querySelector(`div[type="${panelName}"]`);
+		if (!node) {
+			console.error("Panel node not found for unregistering", panelName);
+			return;
+		}
+
+		node.remove();
 		if (registeredPanelsList.childElementCount === 0) {
 			this.m_registeredPanels.classList.remove('visible');
 		}
 	}
 }
 
+View.AddViewTemplate("Dispatcher", `<div class="dispatcher hidden">
+		<div class="hiddenViews">
+			<div class="title">Hidden views</div>
+			<div class="list"></div>
+		</div>
+		<div class="registeredPanels">
+			<div class="title">Registered panels</div>
+			<div class="list"></div>
+		</div>
+        <div class="control"><span></span></div>
+	</div>`);
+
+let dispatcher = undefined;
+document.addEventListener('DOMContentLoaded', () => {
+	// That check is needed for node js tests as there this can be called multiple times
+	// Firstly, when it is required to be sure it is defined
+	// Secondly, when jsdom dispatches DOMContentLoaded event
+	// It is pure hack because of nodejs module system limitations
+	if (!dispatcher) {
+		dispatcher = new Dispatcher();
+	}
+});
+
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	module.exports = Dispatcher;
+	module.exports.Dispatcher = Dispatcher;
+	document.addEventListener('DOMContentLoaded', () => { global.dispatcher = dispatcher; });
 }

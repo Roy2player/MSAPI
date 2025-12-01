@@ -11,8 +11,9 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner } = require('./testRunner');
-const Dispatcher = require('../dispatcher');
+const { TestRunner, testRunner } = require('./testRunner');
+const { Dispatcher } = require('../dispatcher');
+
 const Grid = require('../grid');
 const View = require('../view');
 const InstalledApps = require('../views/installedApps');
@@ -21,13 +22,25 @@ const CreatedApps = require('../views/createdApps');
 global.Grid = Grid;
 global.View = View;
 
-let testRunner = new TestRunner();
+global.dispatcher.UnregisterPanel('MetadataCollector');
+global.dispatcher.UnregisterPanel('InstalledApps');
+global.dispatcher.UnregisterPanel('CreatedApps');
 
 function DestroyViews()
 {
 	document.querySelectorAll('body > main > section.views .viewHeader .close')
 		.forEach((button) => button.dispatchEvent(new Event('click', { bubbles : true })));
 	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created views count');
+	if (global.dispatcher && global.dispatcher.m_view) {
+		global.dispatcher.m_view.classList.add('hidden');
+	}
+}
+
+function UnregisterPanels()
+{
+	global.dispatcher.UnregisterPanel('MetadataCollector');
+	global.dispatcher.UnregisterPanel('InstalledApps');
+	global.dispatcher.UnregisterPanel('CreatedApps');
 }
 
 function CheckHiddenViewsList(expectedSize)
@@ -54,8 +67,10 @@ function CheckClassList(element, expectedClasses)
 	testRunner.Assert(JSON.stringify(classListArray), JSON.stringify(expectedClasses), 'Unexpected class list');
 }
 
-testRunner.SetPostTestFunction(DestroyViews);
-global.dispatcher = new Dispatcher();
+testRunner.SetPostTestFunction(() => {
+	DestroyViews();
+	UnregisterPanels();
+});
 
 MetadataCollector.AddMetadata(1, { name : "Create", type : "system" }, true);
 MetadataCollector.AddMetadata(2, { name : "Change state", type : "system" }, true);
@@ -127,17 +142,19 @@ MetadataCollector.AddMetadata(9, {
 testRunner.Test('Manage list of hidden views via dispatcher and directly via view objects\' callbacks', async () => {
 	testRunner.Assert(
 		global.dispatcher.m_parentNode, document.querySelector('main'), 'Dispatcher parent node not found');
-	testRunner.Assert(
-		global.dispatcher.m_view, document.querySelector('main > .dispatcher'), 'Dispatcher view not found');
+	testRunner.Assert(global.dispatcher.m_view, document.querySelector('main > section.views > .dispatcher'),
+		'Dispatcher view not found');
 	testRunner.Assert(global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
-	testRunner.Assert(global.dispatcher.m_control, document.querySelector('main > .dispatcher > .control'),
-		'Dispatcher control not found');
-	testRunner.Assert(global.dispatcher.m_hiddenViews, document.querySelector('main > .dispatcher > .hiddenViews'),
+	testRunner.Assert(global.dispatcher.m_control,
+		document.querySelector('main > section.views > .dispatcher > .control'), 'Dispatcher control not found');
+	testRunner.Assert(global.dispatcher.m_hiddenViews,
+		document.querySelector('main > section.views > .dispatcher > .hiddenViews'),
 		'Dispatcher hidden views not found');
 	testRunner.Assert(
 		global.dispatcher.m_hiddenViews.classList.contains('visible'), false, 'Unexpected hidden views visibility');
 	testRunner.Assert(global.dispatcher.m_registeredPanels,
-		document.querySelector('main > .dispatcher > .registeredPanels'), 'Dispatcher registered panels not found');
+		document.querySelector('main > section.views > .dispatcher > .registeredPanels'),
+		'Dispatcher registered panels not found');
 	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), false,
 		'Unexpected registered panels visibility');
 
@@ -238,17 +255,19 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 testRunner.Test('Manage list of registered panels', async () => {
 	testRunner.Assert(
 		global.dispatcher.m_parentNode, document.querySelector('main'), 'Dispatcher parent node not found');
-	testRunner.Assert(
-		global.dispatcher.m_view, document.querySelector('main > .dispatcher'), 'Dispatcher view not found');
+	testRunner.Assert(global.dispatcher.m_view, document.querySelector('main > section.views > .dispatcher'),
+		'Dispatcher view not found');
 	testRunner.Assert(global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
-	testRunner.Assert(global.dispatcher.m_control, document.querySelector('main > .dispatcher > .control'),
-		'Dispatcher control not found');
-	testRunner.Assert(global.dispatcher.m_hiddenViews, document.querySelector('main > .dispatcher > .hiddenViews'),
+	testRunner.Assert(global.dispatcher.m_control,
+		document.querySelector('main > section.views > .dispatcher > .control'), 'Dispatcher control not found');
+	testRunner.Assert(global.dispatcher.m_hiddenViews,
+		document.querySelector('main > section.views > .dispatcher > .hiddenViews'),
 		'Dispatcher hidden views not found');
 	testRunner.Assert(
 		global.dispatcher.m_hiddenViews.classList.contains('visible'), false, 'Unexpected hidden views visibility');
 	testRunner.Assert(global.dispatcher.m_registeredPanels,
-		document.querySelector('main > .dispatcher > .registeredPanels'), 'Dispatcher registered panels not found');
+		document.querySelector('main > section.views > .dispatcher > .registeredPanels'),
+		'Dispatcher registered panels not found');
 	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), false,
 		'Unexpected registered panels visibility');
 
@@ -278,17 +297,17 @@ testRunner.Test('Manage list of registered panels', async () => {
 	};
 
 	//* Register panel
-	global.dispatcher.RegisterPanel('InstalledApps', () => new InstalledApps());
+	Dispatcher.RegisterPanel('InstalledApps', () => new InstalledApps());
 	checkRegisteredPanelsList(1, 0);
 	testRunner.Assert(registeredPanelsList.childNodes[0].querySelector('span').innerHTML, 'InstalledApps',
 		'Unexpected name on registered panel');
 
 	//* Register panel
-	global.dispatcher.RegisterPanel('InstalledApps', () => new InstalledApps());
+	Dispatcher.RegisterPanel('InstalledApps', () => new InstalledApps());
 	checkRegisteredPanelsList(1, 0);
 
 	//* Register panel
-	global.dispatcher.RegisterPanel('CreatedApps', () => new CreatedApps());
+	Dispatcher.RegisterPanel('CreatedApps', () => new CreatedApps());
 	checkRegisteredPanelsList(2, 0);
 
 	//* Click to create panel
@@ -325,24 +344,29 @@ testRunner.Test('Manage list of registered panels', async () => {
 	//* Destroy views
 	DestroyViews();
 	checkRegisteredPanelsList(2, 0);
+
+	//* Unregister panels
+	UnregisterPanels();
+	checkRegisteredPanelsList(0, 0);
 });
 
 testRunner.Test('Hide and show dispatcher', () => {
 	testRunner.Assert(
 		global.dispatcher.m_parentNode, document.querySelector('main'), 'Dispatcher parent node not found');
-	testRunner.Assert(
-		global.dispatcher.m_view, document.querySelector('main > .dispatcher'), 'Dispatcher view not found');
+	testRunner.Assert(global.dispatcher.m_view, document.querySelector('main > section.views > .dispatcher'),
+		'Dispatcher view not found');
 	testRunner.Assert(global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
-	testRunner.Assert(global.dispatcher.m_control, document.querySelector('main > .dispatcher > .control'),
-		'Dispatcher control not found');
-	testRunner.Assert(global.dispatcher.m_hiddenViews, document.querySelector('main > .dispatcher > .hiddenViews'),
+	testRunner.Assert(global.dispatcher.m_control,
+		document.querySelector('main > section.views > .dispatcher > .control'), 'Dispatcher control not found');
+	testRunner.Assert(global.dispatcher.m_hiddenViews,
+		document.querySelector('main > section.views > .dispatcher > .hiddenViews'),
 		'Dispatcher hidden views not found');
 	testRunner.Assert(
-		!global.dispatcher.m_hiddenViews.classList.contains('visible'), true, 'Unexpected hidden views visibility');
+		global.dispatcher.m_hiddenViews.classList.contains('visible'), false, 'Unexpected hidden views visibility');
 	testRunner.Assert(global.dispatcher.m_registeredPanels,
-		document.querySelector('main > .dispatcher > .registeredPanels'), 'Dispatcher registered panels not found');
-	//* Was initialized in previous tests
-	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), true,
+		document.querySelector('main > section.views > .dispatcher > .registeredPanels'),
+		'Dispatcher registered panels not found');
+	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), false,
 		'Unexpected registered panels visibility');
 
 	global.dispatcher.m_control.dispatchEvent(new Event('click'));

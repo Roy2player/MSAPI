@@ -58,11 +58,21 @@
  *
  * Common fields are:
  * @brief m_parameters - parameters of view.
+ * @brief m_uid - unique identifier of view.
+ * @brief m_port - port associated with view.
+ * @brief m_title - title of view.
+ * @brief m_parentView - parent view element.
  * @brief m_parentNode - parent node of view.
  * @brief m_tables - map of tables in view.
  * @brief m_grid - grid in view.
  * @brief m_created - flag of view creation.
  * @brief m_maximizeButton - maximize button element.
+ * @brief m_footer - footer element of view.
+ * @brief m_errorMessage - error message element in footer.
+ * @brief m_silentExit - flag to suppress error logging on failed Constructor call.
+ *
+ * Parameters:
+ * - isInterfaceUnit - if true, view will be created without default view wrapper.
  *
  * @todo Think if web sockets can be used for communication.
  */
@@ -70,16 +80,12 @@ class View {
 	static #privateFields = (() => {
 		const m_viewTemplateToViewType = new Map();
 		const m_parametersTemplateToViewType = new Map();
-		const m_metadataToAppType = new Map();
-		const m_viewPortParameterToAppType = new Map();
 		const m_parametersToPort = new Map();
 		const m_createdViews = new Map();
 		const m_lastCreatedView = null;
 		return {
 			m_viewTemplateToViewType,
 			m_parametersTemplateToViewType,
-			m_metadataToAppType,
-			m_viewPortParameterToAppType,
 			m_parametersToPort,
 			m_createdViews,
 			m_lastCreatedView
@@ -163,16 +169,6 @@ class View {
 
 	static GetViewTemplate(viewType) { return View.#privateFields.m_viewTemplateToViewType.get(viewType); }
 
-	static SetViewPortParameterToAppType(appType, parameterId)
-	{
-		View.#privateFields.m_viewPortParameterToAppType.set(appType, parameterId);
-	}
-
-	static GetViewPortParameterToAppType(appType)
-	{
-		return View.#privateFields.m_viewPortParameterToAppType.get(appType);
-	}
-
 	static AddParametersTemplate(viewType, templateName, template)
 	{
 		if (!View.#privateFields.m_parametersTemplateToViewType.has(viewType)) {
@@ -196,12 +192,6 @@ class View {
 		return undefined;
 	}
 
-	static GetMetadata(appType) { return View.#privateFields.m_metadataToAppType.get(appType); }
-
-	static AddMetadata(appType, metadata) { View.#privateFields.m_metadataToAppType.set(appType, metadata); }
-
-	static GetAllMetadata() { return Array.from(View.#privateFields.m_metadataToAppType.values()); }
-
 	static HasParameters(port) { return View.#privateFields.m_parametersToPort.has(port); }
 
 	static GetParameters(port) { return View.#privateFields.m_parametersToPort.get(port); }
@@ -221,10 +211,10 @@ class View {
 
 	static GetCreatedViews() { return View.#privateFields.m_createdViews; }
 
-	static GetViewByPort(port)
+	static GetViewByTypeAndPort(viewType, port)
 	{
 		for (let view of View.#privateFields.m_createdViews.values()) {
-			if (view.m_port == port) {
+			if (view.m_viewType == viewType && view.m_port == port) {
 				return view;
 			}
 		}
@@ -293,17 +283,30 @@ class View {
 					return false;
 				}
 
-				if (!View.#generalTemplateElement) {
-					const template = document.createElement("template");
-					template.innerHTML = View.#generalTemplate;
-					View.#generalTemplateElement = template;
-				}
-
 				let specificTemplate = View.#privateFields.m_viewTemplateToViewType.get(viewType);
 				if (!specificTemplate.templateElement) {
 					const template = document.createElement("template");
 					template.innerHTML = specificTemplate.template;
 					specificTemplate.templateElement = template;
+				}
+
+				if (parameters && parameters.isInterfaceUnit) {
+					this.m_view = specificTemplate.templateElement.content.cloneNode(true).firstElementChild;
+					this.m_parentNode.appendChild(this.m_view);
+
+					if (!(await this.Constructor(parameters))) {
+						this.Destructor();
+						console.error("Can't create view.");
+						return;
+					}
+
+					return;
+				}
+
+				if (!View.#generalTemplateElement) {
+					const template = document.createElement("template");
+					template.innerHTML = View.#generalTemplate;
+					View.#generalTemplateElement = template;
 				}
 
 				this.m_parentView = View.#generalTemplateElement.content.cloneNode(true).firstElementChild;
@@ -321,12 +324,9 @@ class View {
 
 				this.m_uid = Helper.GenerateUid();
 				this.m_parentView.setAttribute("uid", this.m_uid);
-				View.SaveView(this);
 				this.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
 
-				if (dispatcher) {
-					this.m_parentView.style.left = dispatcher.m_view.getBoundingClientRect().right + "px";
-				}
+				this.m_parentView.style.left = "0px";
 				this.m_parentView.style.top = "0px";
 
 				if (parameters) {
@@ -568,11 +568,19 @@ class View {
 					stickButton.style.display = "none";
 				}
 
+				if (parameters && parameters.hasOwnProperty("port")) {
+					this.m_port = parameters.port;
+				}
+
 				if (!(await this.Constructor(parameters))) {
 					this.Destructor();
-					console.error("Can't create view.");
+					if (!this.m_silentExit) {
+						console.error("Can't create view.");
+					}
 					return;
 				}
+
+				View.SaveView(this);
 
 				if (parameters) {
 					if (parameters.hasOwnProperty("postCreateFunction")) {
@@ -676,12 +684,7 @@ class View {
 			return;
 		}
 
-		if (dispatcher) {
-			dispatcher.AddHiddenView(this);
-		}
-		else {
-			this.m_parentView.classList.add("hidden");
-		}
+		dispatcher.AddHiddenView(this);
 	}
 
 	Show()
@@ -695,12 +698,7 @@ class View {
 			return;
 		}
 
-		if (dispatcher) {
-			dispatcher.RemoveHiddenView(this);
-		}
-		else {
-			this.m_parentView.classList.remove("hidden");
-		}
+		dispatcher.RemoveHiddenView(this);
 	}
 
 	AddCallback(type, callback)
@@ -934,17 +932,7 @@ class View {
 					}
 					else if (type == "getMetadata") {
 						if ("metadata" in json) {
-							View.#privateFields.m_metadataToAppType.set(options.headers["AppType"], json["metadata"]);
-							if (json["metadata"].hasOwnProperty("mutable")) {
-								for (let [parameterId, parameter] of Object.entries(json["metadata"].mutable)) {
-									MetadataCollector.AddMetadata(parameterId, parameter, false);
-								}
-							}
-							if (json["metadata"].hasOwnProperty("const")) {
-								for (let [parameterId, parameter] of Object.entries(json["metadata"].const)) {
-									MetadataCollector.AddMetadata(parameterId, parameter, true);
-								}
-							}
+							MetadataCollector.AddAppMetadata(options.headers["AppType"], json["metadata"]);
 						}
 						else {
 							return { "status" : false, "message" : "Metadata are not specified in response" };
@@ -1001,6 +989,19 @@ class View {
 		});
 	}
 }
+
+// Handle clicks inside iframes to prevent losing focus
+window.addEventListener('message', function(event) {
+	if (event.data && event.data.type === 'iframeClick') {
+		const view = View.GetCreatedViews().get(event.data.uid);
+		if (!view) {
+			console.error('View not found for UID:', event.data.uid);
+			return;
+		}
+
+		view.m_parentView.dispatchEvent(new Event('mousedown', { bubbles : true }));
+	}
+});
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 	Helper = require("./helper");

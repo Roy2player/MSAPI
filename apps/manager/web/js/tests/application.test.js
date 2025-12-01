@@ -11,7 +11,7 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner } = require('./testRunner');
+const { TestRunner, testRunner } = require('./testRunner');
 const View = require('../view');
 const InstalledApps = require('../views/installedApps');
 const NewApp = require('../views/newApp');
@@ -21,7 +21,6 @@ const Grid = require('../grid');
 
 global.Grid = Grid;
 global.Table = Table;
-global.dispatcher = undefined;
 
 MetadataCollector.AddMetadata(1, { name : "Create", type : "system" }, true);
 MetadataCollector.AddMetadata(2, { name : "Change state", type : "system" }, true);
@@ -97,7 +96,6 @@ function DestroyViews()
 	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created views count');
 }
 
-let testRunner = new TestRunner();
 testRunner.SetPostTestFunction(DestroyViews);
 
 testRunner.Test('Create InstalledApps panel', async () => {
@@ -157,21 +155,23 @@ testRunner.Test('Add view to CreatedApps panel', () => {
 
 	testRunner.Assert(view.m_grid !== null, true, 'Grid not created');
 	testRunner.Assert(view.m_grid.m_view.childNodes.length, 1, 'Grid has unexpected number of children');
-	testRunner.Assert(view.m_grid.m_columnById.size, 7, 'Columns size is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.size, 7, 'Columns size is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(0).headerCell.querySelector("span.text").innerHTML,
+	testRunner.Assert(view.m_grid.m_columnById.size, 8, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.size, 8, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(0).headerCell.querySelector("span.text").innerHTML, 'Open view',
+		'Column name is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(1).headerCell.querySelector("span.text").innerHTML,
 		'Change state', 'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(1).headerCell.querySelector("span.text").innerHTML, 'Modify',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(2).headerCell.querySelector("span.text").innerHTML, 'Modify',
 		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(2).headerCell.querySelector("span.text").innerHTML, 'Delete',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(3).headerCell.querySelector("span.text").innerHTML, 'Delete',
 		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(3).headerCell.querySelector("span.text").innerHTML, 'Name',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(4).headerCell.querySelector("span.text").innerHTML, 'Name',
 		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(4).headerCell.querySelector("span.text").innerHTML, 'Type',
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(5).headerCell.querySelector("span.text").innerHTML, 'Type',
 		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(5).headerCell.querySelector("span.text").innerHTML,
-		'Listening IP', 'Column name is unexpected');
 	testRunner.Assert(view.m_grid.m_columnByOrder.get(6).headerCell.querySelector("span.text").innerHTML,
+		'Listening IP', 'Column name is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(7).headerCell.querySelector("span.text").innerHTML,
 		'Listening port', 'Column name is unexpected');
 });
 
