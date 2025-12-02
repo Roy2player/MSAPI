@@ -13,7 +13,7 @@
 
 const { TestRunner, testRunner, TableChecker } = require("./testRunner");
 const Grid = require("../grid");
-const MetadataCollector = require("../metadataCollector");
+const MetadataCollector = require("../views/metadataCollector");
 const View = require("../view");
 
 MetadataCollector.AddMetadata(1, { name : "Create", type : "system" }, true);

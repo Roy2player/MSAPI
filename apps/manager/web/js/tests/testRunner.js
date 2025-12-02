@@ -54,7 +54,7 @@ global.getEventListeners = function(target) { return eventListeners.get(target) 
 global.window = jsdom.window;
 global.MutationObserver = require("mutation-observer");
 
-const { Dispatcher } = require("../dispatcher"); // Required for View in Select in Helper
+const { Dispatcher } = require("../views/dispatcher"); // Required for View in Select in Helper
 const event = new jsdom.window.Event("DOMContentLoaded", { bubbles : true, cancelable : true });
 global.document.dispatchEvent(event);
 

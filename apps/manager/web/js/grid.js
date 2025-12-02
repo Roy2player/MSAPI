@@ -1529,5 +1529,5 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	TableView = require("./views/tableView");
 	GridSettingsView = require("./views/gridSettingsView");
 	SelectView = require("./views/selectView");
-	MetadataCollector = require("./metadataCollector");
+	MetadataCollector = require("./views/metadataCollector");
 }

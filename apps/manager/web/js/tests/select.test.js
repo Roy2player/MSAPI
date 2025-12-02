@@ -13,7 +13,7 @@
 
 const { TestRunner, testRunner } = require("./testRunner");
 const Select = require("../select");
-const MetadataCollector = require("../metadataCollector");
+const MetadataCollector = require("../views/metadataCollector");
 const View = require("../view");
 
 const parameter_const = 7683294087;
@@ -55,7 +55,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	TestRunner.Step(`Set value by method`);
 	Select.SetValue(input, 0);
 	testRunner.Assert(input.getAttribute('select'), '0');
-	testRunner.Assert(input.value, "undefined");
+	testRunner.Assert(input.value, "Undefined");
 	testRunner.Assert(input.classList.contains('invalid'), false);
 	testRunner.Assert(
 		input.outerHTML, `<input class="select" select="0" type="text" readonly="" parameter-id="${parameter_const}">`);
@@ -71,7 +71,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	input.setAttribute('min', '1');
 	Select.SetValue(input, 0);
 	testRunner.Assert(input.getAttribute('select'), '0');
-	testRunner.Assert(input.value, "undefined");
+	testRunner.Assert(input.value, "Undefined");
 	testRunner.Assert(input.classList.contains('invalid'), true);
 	testRunner.Assert(input.outerHTML,
 		`<input class="select invalid" select="0" type="text" readonly="" parameter-id="${parameter_const}" min="1">`);
@@ -150,7 +150,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	let options = views[0].querySelector('.selectView > .options');
 	testRunner.Assert(options != null, true);
 	testRunner.Assert(options.children.length, 3);
-	testRunner.Assert(options.children[0].querySelectorAll('span')[0].innerHTML, "undefined");
+	testRunner.Assert(options.children[0].querySelectorAll('span')[0].innerHTML, "Undefined");
 	testRunner.Assert(options.children[0].querySelectorAll('span')[1].innerHTML, '0');
 	testRunner.Assert(options.children[0].style.display, '');
 	testRunner.Assert(options.children[1].querySelectorAll('span')[0].innerHTML, 'Fair');
@@ -301,7 +301,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	TestRunner.Step('Set value by method for first mutable input');
 	Select.SetValue(input, 0);
 	testRunner.Assert(input.getAttribute('select'), '0');
-	testRunner.Assert(input.value, "undefined");
+	testRunner.Assert(input.value, "Undefined");
 	testRunner.Assert(input.classList.contains('invalid'), true);
 	testRunner.Assert(input.outerHTML,
 		`<input class="select invalid" select="0" type="text" readonly="" parameter-id="${

@@ -16,14 +16,14 @@
  *
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
- * @brief Dispatcher class for managing hidden views and registered panels. Has its own html without separate view.
+ * @brief Dispatcher interface unit view for managing hidden views and registered panels.
  *
  * @shortcuts
  * - Ctrl+D to toggle visibility.
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("./view");
+	View = require("../view");
 }
 
 class Dispatcher extends View {

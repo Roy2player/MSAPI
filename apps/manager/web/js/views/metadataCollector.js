@@ -20,7 +20,7 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("./view");
+	View = require("../view");
 	Dispatcher = require("./dispatcher").Dispatcher;
 }
 

@@ -209,7 +209,7 @@ class Select {
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Select;
-	MetadataCollector = require("./metadataCollector");
+	MetadataCollector = require("./views/metadataCollector");
 	View = require("./view");
 	SelectView = require("./views/selectView");
 }

@@ -625,5 +625,5 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	Timer = require("./timer");
 	Select = require("./select");
 	Duration = require("./duration");
-	MetadataCollector = require("./metadataCollector");
+	MetadataCollector = require("./views/metadataCollector");
 }

@@ -12,7 +12,7 @@
  */
 
 const { TestRunner, testRunner } = require("./testRunner");
-const { Dispatcher } = require("../dispatcher");
+const { Dispatcher } = require("../views/dispatcher");
 
 const Grid = require("../grid");
 const View = require("../view");

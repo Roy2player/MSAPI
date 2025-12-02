@@ -16,8 +16,8 @@
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	View = require("../view");
-	MetadataCollector = require("../metadataCollector");
-	Dispatcher = require("../dispatcher").Dispatcher;
+	MetadataCollector = require("../views/metadataCollector");
+	Dispatcher = require("../views/dispatcher").Dispatcher;
 }
 
 class InstalledApps extends View {

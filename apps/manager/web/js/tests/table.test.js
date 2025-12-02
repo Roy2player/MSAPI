@@ -14,7 +14,7 @@
 const { TestRunner, testRunner } = require("./testRunner");
 const Table = require("../table");
 const View = require("../view");
-const MetadataCollector = require("../metadataCollector");
+const MetadataCollector = require("../views/metadataCollector");
 
 class RowChecking {
 	static CheckInvalidStates(inputs, expectedStates)
