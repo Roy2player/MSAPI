@@ -13,8 +13,8 @@
  * @brief View to display pre-creation settings of MSAPI application.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('../view');
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("../view");
 }
 
 class NewApp extends View {
@@ -93,6 +93,6 @@ View.AddViewTemplate("NewApp", `<div class="customView">
         <div class="button">Create</div>
     </div>`);
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = NewApp;
 }

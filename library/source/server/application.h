@@ -66,7 +66,7 @@ namespace UnitTest {
  * - Metadata object fields: name (string), type (string: Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64,
  * Double, Float, Bool, OptionalInt8, OptionalInt16, OptionalInt32, OptionalInt64, OptionalUint8, OptionalUint16,
  * OptionalUint32, OptionalUint64, OptionalDouble, OptionalFloat, String, Timer, Duration, TableData). Optionally: min,
- * max, canBeEmpty, durationType, columns, stringInterpretation;
+ * max, canBeEmpty, durationType, columns, stringInterpretations;
  * - Metadata object column fields: take a look at TableBase::Column documentation.
  * @brief HandleParameters - handler of response for parameters request. Contains all application parameters.
  *
@@ -140,7 +140,7 @@ public:
 		const Timer::Duration::Type m_durationType{ Timer::Duration::Type::Nanoseconds };
 		//* For enums
 		std::string_view (*const m_printFunc)(int){ nullptr };
-		std::string m_stringInterpretation;
+		std::string m_stringInterpretations;
 
 	public:
 		/**************************
@@ -189,14 +189,14 @@ public:
                                                                                                                        \
 	using Base = std::underlying_type_t<std::remove_pointer_t<T>>;                                                     \
 	using Enum = std::remove_pointer_t<T>;                                                                             \
-	m_stringInterpretation = "{";                                                                                      \
+	m_stringInterpretations = "{";                                                                                     \
 	for (Base index{}; index < static_cast<Base>(Enum::Max); ++index) {                                                \
-		m_stringInterpretation += std::format("\"{}\":\"{}\",", index, printFunc(static_cast<Enum>(index)));           \
+		m_stringInterpretations += std::format("\"{}\":\"{}\",", index, printFunc(static_cast<Enum>(index)));          \
 	}                                                                                                                  \
-	m_stringInterpretation[m_stringInterpretation.size() - 1] = '}';
+	m_stringInterpretations[m_stringInterpretations.size() - 1] = '}';
 
 		/**************************
-		 * @brief Construct a new Parameter object for enum, initialize a string interpretation metadata if a print
+		 * @brief Construct a new Parameter object for enum, initialize a string interpretations metadata if a print
 		 * function is provided. Minimum is Enum::Undefined + 1 and maximum is Enum::Max - 1 by default.
 		 *
 		 * @tparam T Pointer to enum.
@@ -348,7 +348,7 @@ public:
 		const Timer::Duration::Type m_durationType{ Timer::Duration::Type::Nanoseconds };
 		//* For enums
 		std::string_view (*const m_printFunc)(int){ nullptr };
-		std::string m_stringInterpretation;
+		std::string m_stringInterpretations;
 
 	public:
 		/**************************
@@ -416,7 +416,7 @@ public:
 		}
 
 		/**************************
-		 * @brief Construct a new Const Parameter object for enum, initialize string interpretation metadata if a print
+		 * @brief Construct a new Const Parameter object for enum, initialize string interpretations metadata if a print
 		 * function is provided.
 		 *
 		 * @tparam T pointer to enum.

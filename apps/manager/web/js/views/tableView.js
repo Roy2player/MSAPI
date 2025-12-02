@@ -13,8 +13,8 @@
  * @brief View to display the MSAPI Table.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('../view');
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("../view");
 }
 
 class TableView extends View {
@@ -35,6 +35,6 @@ class TableView extends View {
 
 View.AddViewTemplate("TableView", `<div class="tableView"></div>`);
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = TableView;
 }

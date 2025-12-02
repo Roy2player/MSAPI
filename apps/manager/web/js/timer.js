@@ -52,7 +52,7 @@ class Timer {
 		let timers = Timer.#privateFields.m_timers;
 		timers.set(input, isActive);
 
-		input.addEventListener('input', () => { isActive.isActive = true; });
+		input.addEventListener("input", () => { isActive.isActive = true; });
 
 		if (!Timer.#privateFields.m_hasGlobalEventListener) {
 			Timer.#privateFields.m_hasGlobalEventListener = true;
@@ -249,6 +249,6 @@ class Timer {
 	}
 };
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Timer;
 }

@@ -13,8 +13,8 @@
  * @brief View to display a select view.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('../view');
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("../view");
 }
 
 class SelectView extends View {
@@ -72,6 +72,6 @@ View.AddViewTemplate("SelectView", `<div class="selectView customView">
     <div class="options"></div>
 </div>`);
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = SelectView;
 }

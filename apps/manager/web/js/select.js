@@ -50,7 +50,7 @@ class Select {
 	static SetEvent(input)
 	{
 		let view = undefined;
-		input.addEventListener('click', () => {
+		input.addEventListener("click", () => {
 			if (view && view.m_parentView.parentNode) {
 				return;
 			}
@@ -61,10 +61,10 @@ class Select {
 			}
 
 			const parameterId = +input.getAttribute("parameter-id");
-			const stringInterpretation = MetadataCollector.GetStringInterpretation(parameterId);
+			const stringInterpretations = MetadataCollector.GetStringInterpretations(parameterId);
 
-			if (!stringInterpretation) {
-				console.error("No string interpretation is found for parameter id", parameterId);
+			if (!stringInterpretations) {
+				console.error("No string interpretations are found for parameter id", parameterId);
 				return;
 			}
 
@@ -94,7 +94,7 @@ class Select {
 						return;
 					}
 
-					for (let [key, value] of Object.entries(stringInterpretation)) {
+					for (let [key, value] of Object.entries(stringInterpretations)) {
 						let divElement = document.createElement("div");
 						let valueSpan = document.createElement("span");
 						let keySpan = document.createElement("span");
@@ -159,18 +159,18 @@ class Select {
 		}
 
 		const parameterId = +input.getAttribute("parameter-id");
-		const stringInterpretation = MetadataCollector.GetStringInterpretation(parameterId);
+		const stringInterpretations = MetadataCollector.GetStringInterpretations(parameterId);
 
-		if (!stringInterpretation) {
-			console.error("No string interpretation is found for parameter id", parameterId);
+		if (!stringInterpretations) {
+			console.error("No string interpretations are found for parameter id", parameterId);
 			return;
 		}
 
-		if (!(key in stringInterpretation)) {
+		if (!(key in stringInterpretations)) {
 			input.value = key + " - not found";
 		}
 		else {
-			input.value = stringInterpretation[key];
+			input.value = stringInterpretations[key];
 		}
 
 		input.setAttribute("select", key);
@@ -207,9 +207,9 @@ class Select {
 	}
 }
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Select;
-	MetadataCollector = require('./metadataCollector');
-	View = require('./view');
-	SelectView = require('./views/selectView');
+	MetadataCollector = require("./views/metadataCollector");
+	View = require("./view");
+	SelectView = require("./views/selectView");
 }
