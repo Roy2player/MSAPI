@@ -58,7 +58,7 @@
  * populated by app itself. FE can use metadata items which are not a part of any app, they can be registered there
  * directly. There is no metadata parameters synchronization, if some of parameters from different apps have same id and
  * they both are used in FE, one of them overwrites another one. In case, when parameter contains scalar value which
- * represents a string, like hash of instrument name for example, then custom string interpretation is used.
+ * represents a string, like hash of instrument name for example, then custom string interpretations are used.
  */
 class Manager : public MSAPI::Server, MSAPI::HTTP::IHandler {
 private:

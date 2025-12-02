@@ -10,11 +10,14 @@
  *
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
- * @brief View to display installed MSAPI applications.
+ * @brief View to display installed MSAPI applications. On creation requests metadata for all installed apps if not yet
+ * available.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('../view');
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("../view");
+	MetadataCollector = require("../views/metadataCollector");
+	Dispatcher = require("../views/dispatcher").Dispatcher;
 }
 
 class InstalledApps extends View {
@@ -40,7 +43,7 @@ class InstalledApps extends View {
 				response.apps.forEach(app => { this.m_grid.AddOrUpdateRow({ 5 : app.type }); });
 
 				response.apps.forEach(app => {
-					if (!View.GetMetadata(app.type)) {
+					if (!MetadataCollector.GetAppMetadata(app.type)) {
 						View.SendRequest({
 							method : "GET",
 							mode : "cors",
@@ -49,7 +52,7 @@ class InstalledApps extends View {
 					}
 
 					if ("viewPortParameter" in app) {
-						View.SetViewPortParameterToAppType(app.type, app.viewPortParameter);
+						MetadataCollector.SetViewPortParameterToAppType(app.type, app.viewPortParameter);
 					}
 				});
 			}
@@ -66,7 +69,8 @@ class InstalledApps extends View {
 }
 
 View.AddViewTemplate("InstalledApps", `<div></div>`);
+Dispatcher.RegisterPanel("InstalledApps", () => new InstalledApps());
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = InstalledApps;
 }

@@ -49,9 +49,9 @@
     <script src="/grid.js"></script>
     <script src="/table.js"></script>
     <script src="/view.js"></script>
-    <script src="/dispatcher.js"></script>
-    <script src="/metadataCollector.js"></script>
+    <script src="/views/dispatcher.js"></script>
     <script src="/helper.js"></script>
+    <script src="/views/metadataCollector.js"></script>
     <script src="/duration.js"></script>
     <script src="/timer.js"></script>
     <script src="/select.js"></script>
@@ -70,89 +70,7 @@
         <section class="views"></section>
     </main>
     <script>
-        let dispatcher = new Dispatcher();
-        dispatcher.RegisterPanel("InstalledApps", () => new InstalledApps());
-        dispatcher.RegisterPanel("CreatedApps", () => new CreatedApps());
-        MetadataCollector.Initialization();
-        //* Metadata items which are used by MSAPI Frontend views
-        MetadataCollector.AddMetadata(1, { name: "Create", type: "system" }, true);
-        MetadataCollector.AddMetadata(2, { name: "Change state", type: "system" }, true);
-        MetadataCollector.AddMetadata(3, { name: "Modify", type: "system" }, true);
-        MetadataCollector.AddMetadata(4, { name: "Delete", type: "system" }, true);
-        MetadataCollector.AddMetadata(5, { name: "Type", type: "String" }, true);
-        MetadataCollector.AddMetadata(6, {
-            name: "Table template with boolean operator",
-            type: "TableData",
-            columns: [{
-                name: "Boolean operator", type: "Int8", stringInterpretation: {
-                    0: "Equal"
-                }
-            }]
-        }, true);
-        MetadataCollector.AddMetadata(7,
-            {
-                name: "Table template with number operator", type: "TableData",
-                columns: [{
-                    name: "Number operator", type: "Int8", stringInterpretation: {
-                        0: "Equal"
-                        , 1: "Not equal"
-                        , 2: "Less than"
-                        , 3: "Greater than"
-                        , 4: "Less than or equal to"
-                        , 5: "Greater than or equal to"
-                    }
-                }]
-            }, true);
-        MetadataCollector.AddMetadata(8, {
-            name: "Table template with string operator", type: "TableData",
-            columns:
-                [{
-                    name: "String operator", type: "Int8", stringInterpretation: {
-                        0: "Equal case sensitive"
-                        , 1: "Equal case insensitive"
-                        , 2: "Not equal case sensitive"
-                        , 3: "Not equal case insensitive"
-                        , 4: "Contains case sensitive"
-                        , 5: "Contains case insensitive"
-                    }
-                }]
-        }, true);
-        MetadataCollector.AddMetadata(9, {
-            name: "Table template with optional number operator", type: "TableData", columns: [{
-                name: "Optional number operator", type: "Int8", stringInterpretation: {
-                    0: "Equal"
-                    , 1: "Not equal"
-                    , 2: "Less than"
-                    , 3: "Greater than"
-                    , 4: "Less than or equal to"
-                    , 5: "Greater than or equal to"
-                }
-            }]
-        }, true);
-        MetadataCollector.AddMetadata(10, { name: "Open view", type: "system" }, true);
-
-        // Firstly, created instance of installed apps view asks for metadata in case if any of already created
         void new InstalledApps();
-
-        document.addEventListener('keydown', function (event) {
-            if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
-                event.preventDefault();
-                dispatcher.m_control.dispatchEvent(new Event('click', { bubbles: true }));
-            }
-        });
-
-        window.addEventListener('message', function (event) {
-            if (event.data && event.data.type === 'iframeClick') {
-                const view = View.GetCreatedViews().get(event.data.uid);
-                if (!view) {
-                    console.error('View not found for UID:', event.data.uid);
-                    return;
-                }
-
-                view.m_parentView.dispatchEvent(new Event('mousedown', { bubbles: true }));
-            }
-        });
-
     </script>
 </body>
 

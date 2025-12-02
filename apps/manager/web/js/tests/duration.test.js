@@ -11,14 +11,14 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner } = require('./testRunner');
+const { TestRunner } = require("./testRunner");
 const Duration = require('../duration');
 
 let testRunner = new TestRunner();
 
 testRunner.SetPostTestFunction(() => {
 	//* Trigger global Durations event to clean up if needed
-	document.dispatchEvent(new Event('click'));
+	document.dispatchEvent(new Event("click"));
 });
 
 testRunner.Test('Cast input to duration and check', async () => {
@@ -105,7 +105,7 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 	for (let index = 0; index < testData.length; index++) {
 		TestRunner.Step(`Cast input to duration with type ${testData[index].type} and check`);
-		let input = document.createElement('input');
+		let input = document.createElement("input");
 
 		body.appendChild(input);
 		Duration.Apply(input, testData[index].type);
@@ -268,8 +268,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 		TestRunner.Step(`Set negative value by input for ${testData[index].type}`);
 		input.value = "-" + testData[index].minText;
-		input.dispatchEvent(new Event('input'));
-		body.dispatchEvent(new Event('click', { bubbles : true }));
+		input.dispatchEvent(new Event("input"));
+		body.dispatchEvent(new Event("click", { bubbles : true }));
 		testRunner.Assert(input.value, "-" + testData[index].minText);
 		testRunner.Assert(input.getAttribute('nanoseconds'), "-" + testData[index].min.toString());
 		testRunner.Assert(input.classList.contains('invalid'), false);
@@ -279,8 +279,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 		TestRunner.Step(`Set min value by input for ${testData[index].type}`);
 		input.value = testData[index].minText;
-		input.dispatchEvent(new Event('input'));
-		body.dispatchEvent(new Event('click', { bubbles : true }));
+		input.dispatchEvent(new Event("input"));
+		body.dispatchEvent(new Event("click", { bubbles : true }));
 		testRunner.Assert(input.value, testData[index].minText);
 		testRunner.Assert(input.getAttribute('nanoseconds'), testData[index].min.toString());
 		testRunner.Assert(input.classList.contains('invalid'), false);
@@ -289,8 +289,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 		TestRunner.Step(`Set value by input less than min for ${testData[index].type}`);
 		input.value = testData[index].lessThanMinText;
-		input.dispatchEvent(new Event('input'));
-		body.dispatchEvent(new Event('click', { bubbles : true }));
+		input.dispatchEvent(new Event("input"));
+		body.dispatchEvent(new Event("click", { bubbles : true }));
 		if (testData[index].type != "Nanoseconds") {
 			testRunner.Assert(input.value, testData[index].minText);
 			testRunner.Assert(input.getAttribute('nanoseconds'), testData[index].min.toString());
@@ -310,8 +310,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 		TestRunner.Step(`Set too precise value by input for ${testData[index].type}`);
 		for (let i = index; i < testData.length; i++) {
 			input.value = testData[index].minText + " " + testData[i].lessThanMinText;
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, testData[index].minText);
 			testRunner.Assert(input.getAttribute('nanoseconds'), testData[index].min.toString());
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -323,8 +323,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 		TestRunner.Step(`Set different precise value by input for ${testData[index].type}`);
 		if (testData[index].type == 'Nanoseconds') {
 			input.value = "1d 1h1m  1s 1l 1u   1n";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, "1d 1h 1m 1s 1l 1u 1n");
 			testRunner.Assert(input.getAttribute('nanoseconds'), "90061001001001");
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -333,8 +333,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 		}
 		else if (testData[index].type == 'Microseconds') {
 			input.value = "8d30h65m1373s183l";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, "8d 23h 59m 59s 183l");
 			testRunner.Assert(input.getAttribute('nanoseconds'), "777599183000000");
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -343,8 +343,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 		}
 		else if (testData[index].type == 'Milliseconds') {
 			input.value = "8d0s    999l";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, "8d 999l");
 			testRunner.Assert(input.getAttribute('nanoseconds'), "691200999000000");
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -353,8 +353,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 		}
 		else if (testData[index].type == 'Seconds') {
 			input.value = "8d0h0m0s";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, "8d");
 			testRunner.Assert(input.getAttribute('nanoseconds'), "691200000000000");
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -363,8 +363,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 		}
 		else if (testData[index].type == 'Minutes') {
 			input.value = "8d555m";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, "8d 59m");
 			testRunner.Assert(input.getAttribute('nanoseconds'), "694740000000000");
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -373,8 +373,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 		}
 		else if (testData[index].type == 'Hours' || testData[index].type == 'Days') {
 			input.value = "8d";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, "8d");
 			testRunner.Assert(input.getAttribute('nanoseconds'), "691200000000000");
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -387,8 +387,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 		TestRunner.Step(`Set max value by input for ${testData[index].type}`);
 		input.value = testData[index].maxText;
-		input.dispatchEvent(new Event('input'));
-		body.dispatchEvent(new Event('click', { bubbles : true }));
+		input.dispatchEvent(new Event("input"));
+		body.dispatchEvent(new Event("click", { bubbles : true }));
 		testRunner.Assert(input.value, testData[index].maxText);
 		testRunner.Assert(input.getAttribute('nanoseconds'), testData[index].max.toString());
 		testRunner.Assert(input.classList.contains('invalid'), false);
@@ -397,8 +397,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 		TestRunner.Step(`Set value by input greater than max for ${testData[index].type}`);
 		input.value = testData[index].greaterThanMaxText;
-		input.dispatchEvent(new Event('input'));
-		body.dispatchEvent(new Event('click', { bubbles : true }));
+		input.dispatchEvent(new Event("input"));
+		body.dispatchEvent(new Event("click", { bubbles : true }));
 		if (testData[index].type == 'Nanoseconds') {
 			testRunner.Assert(input.value, '1u');
 			testRunner.Assert(input.getAttribute('nanoseconds'), '1000');
@@ -426,8 +426,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 		TestRunner.Step(`Set overflow value by input for ${testData[index].type}`);
 		input.value = testData[index].overflowText;
-		input.dispatchEvent(new Event('input'));
-		body.dispatchEvent(new Event('click', { bubbles : true }));
+		input.dispatchEvent(new Event("input"));
+		body.dispatchEvent(new Event("click", { bubbles : true }));
 		testRunner.Assert(input.value, testData[index].maxText);
 		testRunner.Assert(input.getAttribute('nanoseconds'), testData[index].max.toString());
 		testRunner.Assert(input.classList.contains('invalid'), false);
@@ -440,8 +440,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 			for (let i = 0; i < testValues.length; i++) {
 				input.value = testValues[i];
-				input.dispatchEvent(new Event('input'));
-				body.dispatchEvent(new Event('click', { bubbles : true }));
+				input.dispatchEvent(new Event("input"));
+				body.dispatchEvent(new Event("click", { bubbles : true }));
 				testRunner.Assert(input.value, '');
 				testRunner.Assert(input.getAttribute('nanoseconds'), '0');
 				testRunner.Assert(input.classList.contains('invalid'), true);
@@ -460,8 +460,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 			input.setAttribute('max', max);
 
 			input.value = "17  " + testData[index].mask[testData[index].mask.length - 1] + "   ()#*$";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, 17 + testData[index].mask[testData[index].mask.length - 1]);
 			testRunner.Assert(input.getAttribute('nanoseconds'), (testData[index].min * 17n).toString());
 			testRunner.Assert(input.classList.contains('invalid'), true);
@@ -472,8 +472,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 			TestRunner.Step(`Set value by input equal to min for ${testData[index].type}`);
 			input.value = "18  " + testData[index].mask[testData[index].mask.length - 1] + "kjdsfh";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, 18 + testData[index].mask[testData[index].mask.length - 1]);
 			testRunner.Assert(input.getAttribute('nanoseconds'), (testData[index].min * 18n).toString());
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -483,8 +483,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 			TestRunner.Step(`Set value by input equal to max for ${testData[index].type}`);
 			input.value = "f m22" + testData[index].mask[testData[index].mask.length - 1] + " ";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, 22 + testData[index].mask[testData[index].mask.length - 1]);
 			testRunner.Assert(input.getAttribute('nanoseconds'), (testData[index].min * 22n).toString());
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -494,8 +494,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 			TestRunner.Step(`Set negative value by input for ${testData[index].type}`);
 			input.value = "-fm22" + testData[index].mask[testData[index].mask.length - 1] + " ";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, `-${22n + testData[index].mask[testData[index].mask.length - 1]}`);
 			testRunner.Assert(input.getAttribute('nanoseconds'), "-" + (testData[index].min * 22n).toString());
 			testRunner.Assert(input.classList.contains('invalid'), true);
@@ -506,8 +506,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 			TestRunner.Step(`Set value by input greater than max for ${testData[index].type}`);
 			input.value = " lkdfjkg23" + testData[index].mask[testData[index].mask.length - 1] + "23423";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, 23 + testData[index].mask[testData[index].mask.length - 1]);
 			testRunner.Assert(input.getAttribute('nanoseconds'), (testData[index].min * 23n).toString());
 			testRunner.Assert(input.classList.contains('invalid'), true);
@@ -518,8 +518,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 			TestRunner.Step(`Set zero value by input for ${testData[index].type}`);
 			input.value = "";
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, '');
 			testRunner.Assert(input.getAttribute('nanoseconds'), '0');
 			testRunner.Assert(input.classList.contains('invalid'), true);
@@ -530,8 +530,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 			TestRunner.Step(`Set value between min and max by input for ${testData[index].type}`);
 			input.value = "   19" + testData[index].mask[testData[index].mask.length - 1];
-			input.dispatchEvent(new Event('input'));
-			body.dispatchEvent(new Event('click', { bubbles : true }));
+			input.dispatchEvent(new Event("input"));
+			body.dispatchEvent(new Event("click", { bubbles : true }));
 			testRunner.Assert(input.value, 19 + testData[index].mask[testData[index].mask.length - 1]);
 			testRunner.Assert(input.getAttribute('nanoseconds'), (testData[index].min * 19n).toString());
 			testRunner.Assert(input.classList.contains('invalid'), false);
@@ -545,8 +545,8 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 				for (let i = 0; i < testValues.length; i++) {
 					input.value = testValues[i];
-					input.dispatchEvent(new Event('input'));
-					body.dispatchEvent(new Event('click', { bubbles : true }));
+					input.dispatchEvent(new Event("input"));
+					body.dispatchEvent(new Event("click", { bubbles : true }));
 					testRunner.Assert(input.value, 19 + testData[index].mask[testData[index].mask.length - 1]);
 					testRunner.Assert(input.getAttribute('nanoseconds'), (testData[index].min * 19n).toString());
 					testRunner.Assert(input.classList.contains('invalid'), false);
@@ -566,7 +566,7 @@ testRunner.Test('Cast input to duration and check', async () => {
 
 testRunner.Test('Verify negative minimum of days', async () => {
 	TestRunner.Step(`Cast input to duration with type Milliseconds and check`);
-	let input = document.createElement('input');
+	let input = document.createElement("input");
 
 	body.appendChild(input);
 	Duration.Apply(input, "Milliseconds");
@@ -599,8 +599,8 @@ testRunner.Test('Verify negative minimum of days', async () => {
 
 	TestRunner.Step(`Set zero value directly`);
 	input.value = '';
-	input.dispatchEvent(new Event('input'));
-	document.dispatchEvent(new Event('click'));
+	input.dispatchEvent(new Event("input"));
+	document.dispatchEvent(new Event("click"));
 	testRunner.Assert(input.value, '');
 	testRunner.Assert(input.getAttribute('nanoseconds'), '0');
 	testRunner.Assert(input.classList.contains('invalid'), true);
@@ -609,8 +609,8 @@ testRunner.Test('Verify negative minimum of days', async () => {
 
 	TestRunner.Step(`Set minimum negative value by input`);
 	input.value = '-' + Duration.DAYS_LIMIT + 'd 1l';
-	input.dispatchEvent(new Event('input'));
-	document.dispatchEvent(new Event('click'));
+	input.dispatchEvent(new Event("input"));
+	document.dispatchEvent(new Event("click"));
 	testRunner.Assert(input.value, '-' + Duration.DAYS_LIMIT + 'd');
 	testRunner.Assert(input.getAttribute('nanoseconds'), `-${Duration.DAYS_LIMIT * 1000000000n * 60n * 60n * 24n}`);
 	testRunner.Assert(input.classList.contains('invalid'), false);

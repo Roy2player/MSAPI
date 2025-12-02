@@ -1755,7 +1755,7 @@ bool Table()
 
 		auto columnIt{ table.GetColumns()->begin() };
 		RETURN_IF_FALSE(t.Assert(columnIt->metadata,
-			"\"stringInterpretation\":{\"0\":\"Undefined 1\",\"1\":\"Zero 1\",\"2\":\"One 1\",\"3\":\"Two "
+			"\"stringInterpretations\":{\"0\":\"Undefined 1\",\"1\":\"Zero 1\",\"2\":\"One 1\",\"3\":\"Two "
 			"1\",\"4\":\"Three 1\",\"5\":\"Four 1\",\"6\":\"Five 1\",\"7\":\"Six 1\",\"8\":\"Seven "
 			"1\",\"9\":\"Eight 1\",\"10\":\"Nine 1\"},\"name\":\"First column\",\"privet\":\"Hello, world!\"",
 			"Table column metadata"));
@@ -1766,7 +1766,7 @@ bool Table()
 
 		table.AddMetadataForEnum<SecondTest::TestEnum>(SecondTest::EnumToString);
 		RETURN_IF_FALSE(t.Assert(columnIt->metadata,
-			"\"name\":\"Second column\",\"privet\":\"Medved\",\"stringInterpretation\":{\"0\":\"Undefined "
+			"\"name\":\"Second column\",\"privet\":\"Medved\",\"stringInterpretations\":{\"0\":\"Undefined "
 			"2\",\"1\":\"Zero 2\",\"2\":\"One 2\",\"3\":\"Two "
 			"2\",\"4\":\"Three 2\",\"5\":\"Four 2\",\"6\":\"Five 2\",\"7\":\"Six 2\",\"8\":\"Seven "
 			"2\",\"9\":\"Eight 2\",\"10\":\"Nine 2\"}",
@@ -1774,7 +1774,7 @@ bool Table()
 
 		table.SetColumnNames("First column", "Second column");
 		RETURN_IF_FALSE(t.Assert(columnIt->metadata,
-			"\"name\":\"Second column\",\"privet\":\"Medved\",\"stringInterpretation\":{\"0\":\"Undefined "
+			"\"name\":\"Second column\",\"privet\":\"Medved\",\"stringInterpretations\":{\"0\":\"Undefined "
 			"2\",\"1\":\"Zero 2\",\"2\":\"One 2\",\"3\":\"Two "
 			"2\",\"4\":\"Three 2\",\"5\":\"Four 2\",\"6\":\"Five 2\",\"7\":\"Six 2\",\"8\":\"Seven "
 			"2\",\"9\":\"Eight 2\",\"10\":\"Nine 2\"},\"name\":\"Second column\"",
@@ -1782,7 +1782,7 @@ bool Table()
 
 		columnIt = table.GetColumns()->begin();
 		RETURN_IF_FALSE(t.Assert(columnIt->metadata,
-			"\"stringInterpretation\":{\"0\":\"Undefined 1\",\"1\":\"Zero 1\",\"2\":\"One 1\",\"3\":\"Two "
+			"\"stringInterpretations\":{\"0\":\"Undefined 1\",\"1\":\"Zero 1\",\"2\":\"One 1\",\"3\":\"Two "
 			"1\",\"4\":\"Three 1\",\"5\":\"Four 1\",\"6\":\"Five 1\",\"7\":\"Six 1\",\"8\":\"Seven "
 			"1\",\"9\":\"Eight 1\",\"10\":\"Nine 1\"},\"name\":\"First column\",\"privet\":\"Hello, "
 			"world!\",\"name\":\"First column\"",

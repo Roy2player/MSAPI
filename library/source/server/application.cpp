@@ -660,10 +660,10 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 #define TMP_MSAPI_APPLICATION_EMPTY_PART                                                                               \
 	std::format_to(std::back_inserter(m_metadata), ",\"canBeEmpty\":{}", _S(parameter.m_canBeEmpty));
 
-#define TMP_MSAPI_APPLICATION_ADDITIONAL_PART                                                                          \
-	if (!parameter.m_stringInterpretation.empty()) {                                                                   \
+#define TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART                                                              \
+	if (!parameter.m_stringInterpretations.empty()) {                                                                  \
 		std::format_to(                                                                                                \
-			std::back_inserter(m_metadata), ",\"stringInterpretation\":{}", parameter.m_stringInterpretation);         \
+			std::back_inserter(m_metadata), ",\"stringInterpretations\":{}", parameter.m_stringInterpretations);       \
 	}
 
 		for (const auto& [id, parameter] : m_parameters) {
@@ -675,42 +675,42 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 					if constexpr (std::is_same_v<T, int8_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Int8\"");
 						TMP_MSAPI_APPLICATION_MIN_MAX_PART;
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, int16_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Int16\"");
 						TMP_MSAPI_APPLICATION_MIN_MAX_PART;
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, int32_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Int32\"");
 						TMP_MSAPI_APPLICATION_MIN_MAX_PART;
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, int64_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Int64\"");
 						TMP_MSAPI_APPLICATION_MIN_MAX_PART;
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, uint8_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Uint8\"");
 						TMP_MSAPI_APPLICATION_MIN_MAX_PART;
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, uint16_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Uint16\"");
 						TMP_MSAPI_APPLICATION_MIN_MAX_PART;
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, uint32_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Uint32\"");
 						TMP_MSAPI_APPLICATION_MIN_MAX_PART;
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, uint64_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Uint64\"");
 						TMP_MSAPI_APPLICATION_MIN_MAX_PART;
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, double>) {
 						std::format_to(std::back_inserter(m_metadata), "Double\"");
@@ -801,14 +801,20 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 
 #define TMP_MSAPI_APPLICATION_TABLE_COLUMNS_PART                                                                       \
 	const auto& columns{ reinterpret_cast<const TableBase*>(arg)->GetColumns() };                                      \
-	if (columns == nullptr) {                                                                                          \
-		std::format_to(std::back_inserter(m_metadata), ",\"columns\":null");                                           \
-	}                                                                                                                  \
-	else {                                                                                                             \
-		std::format_to(std::back_inserter(m_metadata), ",\"columns\":{{");                                             \
-		if (!columns->empty()) {                                                                                       \
-			auto begin{ columns->begin() }, end{ columns->end() };                                                     \
-			std::format_to(std::back_inserter(m_metadata), "\"{}\":{{\"type\":\"{}\"", begin->id,                      \
+	std::format_to(std::back_inserter(m_metadata), ",\"columns\":{{");                                                 \
+	if (columns != nullptr && !columns->empty()) {                                                                     \
+		auto begin{ columns->begin() }, end{ columns->end() };                                                         \
+		std::format_to(std::back_inserter(m_metadata), "\"{}\":{{\"type\":\"{}\"", begin->id,                          \
+			StandardType::EnumToString(begin->type));                                                                  \
+		if (!begin->metadata.empty()) {                                                                                \
+			std::format_to(std::back_inserter(m_metadata), ",{}}}", begin->metadata);                                  \
+		}                                                                                                              \
+		else {                                                                                                         \
+			std::format_to(std::back_inserter(m_metadata), "}}");                                                      \
+		}                                                                                                              \
+                                                                                                                       \
+		while (++begin != end) {                                                                                       \
+			std::format_to(std::back_inserter(m_metadata), ",\"{}\":{{\"type\":\"{}\"", begin->id,                     \
 				StandardType::EnumToString(begin->type));                                                              \
 			if (!begin->metadata.empty()) {                                                                            \
 				std::format_to(std::back_inserter(m_metadata), ",{}}}", begin->metadata);                              \
@@ -816,20 +822,9 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 			else {                                                                                                     \
 				std::format_to(std::back_inserter(m_metadata), "}}");                                                  \
 			}                                                                                                          \
-                                                                                                                       \
-			while (++begin != end) {                                                                                   \
-				std::format_to(std::back_inserter(m_metadata), ",\"{}\":{{\"type\":\"{}\"", begin->id,                 \
-					StandardType::EnumToString(begin->type));                                                          \
-				if (!begin->metadata.empty()) {                                                                        \
-					std::format_to(std::back_inserter(m_metadata), ",{}}}", begin->metadata);                          \
-				}                                                                                                      \
-				else {                                                                                                 \
-					std::format_to(std::back_inserter(m_metadata), "}}");                                              \
-				}                                                                                                      \
-			}                                                                                                          \
 		}                                                                                                              \
-		std::format_to(std::back_inserter(m_metadata), "}}");                                                          \
-	}
+	}                                                                                                                  \
+	std::format_to(std::back_inserter(m_metadata), "}}");
 
 						TMP_MSAPI_APPLICATION_TABLE_COLUMNS_PART
 					}
@@ -856,35 +851,35 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 					using T = std::remove_const_t<std::remove_pointer_t<std::decay_t<decltype(arg)>>>;
 					if constexpr (std::is_same_v<T, int8_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Int8\"");
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, int16_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Int16\"");
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, int32_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Int32\"");
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, int64_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Int64\"");
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, uint8_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Uint8\"");
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, uint16_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Uint16\"");
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, uint32_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Uint32\"");
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, uint64_t>) {
 						std::format_to(std::back_inserter(m_metadata), "Uint64\"");
-						TMP_MSAPI_APPLICATION_ADDITIONAL_PART;
+						TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART;
 					}
 					else if constexpr (std::is_same_v<T, double>) {
 						std::format_to(std::back_inserter(m_metadata), "Double\"");
@@ -957,7 +952,7 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 		metadataData.SetData(0, m_metadata);
 		StandardProtocol::Send(connection, metadataData);
 	}
-#undef TMP_MSAPI_APPLICATION_ADDITIONAL_PART
+#undef TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART
 #undef TMP_MSAPI_APPLICATION_NAME_PART
 		return;
 	case StandardProtocol::cipherParametersResponse:

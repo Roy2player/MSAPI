@@ -77,18 +77,18 @@ class Helper {
 		function customStringify(parameters)
 		{
 			if (parameters === null) {
-				return 'null';
+				return "null";
 			}
 
-			if (typeof parameters === 'bigint') {
+			if (typeof parameters === "bigint") {
 				return parameters.toString();
 			}
 
-			if (typeof parameters === 'number' || typeof parameters === 'boolean') {
+			if (typeof parameters === "number" || typeof parameters === "boolean") {
 				return String(parameters);
 			}
 
-			if (typeof parameters === 'string') {
+			if (typeof parameters === "string") {
 				return "\"" + parameters + "\"";
 			}
 
@@ -96,10 +96,10 @@ class Helper {
 				return '[' + parameters.map(customStringify).join(',') + ']';
 			}
 
-			if (typeof parameters === 'object') {
+			if (typeof parameters === "object") {
 				if (seen.has(parameters)) {
-					console.error('Circular reference found, return null');
-					return 'null';
+					console.error("Circular reference found, return null");
+					return "null";
 				}
 
 				seen.add(parameters);
@@ -109,7 +109,7 @@ class Helper {
 				return '{' + props.join(',') + '}';
 			}
 
-			return 'null';
+			return "null";
 		}
 
 		return customStringify(parameters);
@@ -364,6 +364,6 @@ class Helper {
 	}
 };
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Helper;
 }

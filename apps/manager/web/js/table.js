@@ -619,11 +619,11 @@ class Table {
 	}
 }
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Table;
-	Helper = require('./helper');
-	Timer = require('./timer');
-	Select = require('./select');
-	Duration = require('./duration');
-	MetadataCollector = require('./metadataCollector');
+	Helper = require("./helper");
+	Timer = require("./timer");
+	Select = require("./select");
+	Duration = require("./duration");
+	MetadataCollector = require("./views/metadataCollector");
 }

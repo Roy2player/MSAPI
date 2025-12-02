@@ -13,8 +13,8 @@
  * @brief View to display an MSAPI application with its own UI in the iframe.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('../view');
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("../view");
 }
 
 class AppView extends View {
@@ -42,12 +42,14 @@ class AppView extends View {
 		iframe.style.border = "none";
 
 		this.m_view.appendChild(iframe);
+		this.m_view.classList.add("loading");
 
 		iframe.addEventListener("load", () => {
 			try {
 				const urlObj = new URL(iframe.src, window.location.origin);
 				iframe.contentWindow.postMessage(
 					{ type : "init", uid : this.m_uid, origin : window.location.origin }, urlObj.origin);
+				this.m_view.classList.remove("loading");
 			}
 			catch (e) {
 				console.error("Failed to postMessage to iframe:", e);
@@ -60,6 +62,6 @@ class AppView extends View {
 
 View.AddViewTemplate("AppView", `<div class="appView"></div>`);
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = AppView;
 }
