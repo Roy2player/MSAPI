@@ -12,7 +12,7 @@
  *
  * @brief Collects metadata from a server and provides access to it by id.
  *
- * @brief Metadata can be of diferent types which are the same as MSAPI Standard types: Int8, Int16, Int32, Int64,
+ * @brief Metadata can be of different types which are the same as MSAPI Standard types: Int8, Int16, Int32, Int64,
  * Uint8, Uint16, Uint32, Uint64, Double, Float, OptionalInt8, OptionalInt16, OptionalInt32, OptionalInt64,
  * OptionalUint8, OptionalUint16, OptionalUint32, OptionalUint64, OptionalDouble, OptionalFloat, String, Timer,
  * Duration, TableData. And one additional type: system, which is used for show system properties
