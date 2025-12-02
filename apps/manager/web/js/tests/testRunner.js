@@ -52,13 +52,13 @@ EventTarget.prototype.removeEventListener = function(type, listener, options) {
 
 global.getEventListeners = function(target) { return eventListeners.get(target) || {}; };
 global.window = jsdom.window;
-global.MutationObserver = require('mutation-observer');
+global.MutationObserver = require("mutation-observer");
 
-const { Dispatcher } = require('../dispatcher');
-const event = new jsdom.window.Event('DOMContentLoaded', { bubbles : true, cancelable : true });
+const { Dispatcher } = require("../dispatcher"); // Required for View in Select in Helper
+const event = new jsdom.window.Event("DOMContentLoaded", { bubbles : true, cancelable : true });
 global.document.dispatchEvent(event);
 
-const Helper = require('../helper');
+const Helper = require("../helper");
 
 global.createdApps = new Map();
 
@@ -109,7 +109,7 @@ global.fetch = (url, options) => {
 				ok : true,
 				status : 200,
 				text : () => Promise.resolve(
-					`{"status":true,"metadata":{"mutable":{"30001":{"name":"Price type","type":"Int16","min":1,"max":3,"stringInterpretation":{"0":"Undefined","1":"Fair","2":"Soft"}},"30002":{"name":"Start trading time delay","type":"Duration","canBeEmpty":false,"durationType":"Seconds"},"30003":{"name":"End trading time delay","type":"Duration","canBeEmpty":false,"durationType":"Seconds"},"30004":{"name":"Order hold time","type":"Duration","min":1000000000,"canBeEmpty":false,"durationType":"Seconds"},"30005":{"name":"Active minimum trend strike mode","type":"Bool"},"30006":{"name":"Minimum trend strike","type":"Int64"},"30007":{"name":"Active minimum trend strike price limit","type":"Bool"},"30008":{"name":"Minimum trend strike price limit","type":"Double"},"30009":{"name":"Active target order cost mode","type":"Bool"},"30010":{"name":"Target order cost","type":"Double"},"30011":{"name":"Trend strike barrier","type":"Uint64"},"30012":{"name":"Size buffer soft price change","type":"Uint64","min":1},"30013":{"name":"Gateway id","type":"OptionalInt32","canBeEmpty":false},"30014":{"name":"Commissions","type":"TableData","canBeEmpty":false,"columns":{"0":{"type":"Int16","name":"Instrument type","stringInterpretation":{"0":"Undefined","1":"Bond","2":"Share","3":"Currency","4":"ETF","5":"Futures","6":"StructuralProduct","7":"Option","8":"ClearingCertificate","9":"Index","10":"Commodity"}},"1":{"type":"Double","name":"%"}}},"30015":{"name":"Figis to trade","type":"TableData","canBeEmpty":false,"columns":{"0":{"type":"Uint64","name":"figi"},"1":{"type":"Uint64","name":"Default lots volume"}}},"1000001":{"name":"Seconds between try to connect","type":"Uint32","min":1},"1000002":{"name":"Limit of attempts to connection","type":"Uint64","min":1},"1000003":{"name":"Limit of connections from one IP","type":"Uint64","min":1},"1000004":{"name":"Recv buffer size","type":"Uint64","min":3},"1000005":{"name":"Recv buffer size limit","type":"Uint64","min":1024}},"const":{"1000006":{"name":"Server state","type":"Int16","stringInterpretation":{"0":"Undefined","1":"Initialization","2":"Running","3":"Stopped"}},"1000007":{"name":"Max connections","type":"Int32"},"1000008":{"name":"Listening IP","type":"Uint32"},"1000009":{"name":"Listening port","type":"Uint16"},"2000001":{"name":"Name","type":"String"},"2000002":{"name":"Application state","type":"Int16","stringInterpretation":{"0":"Undefined","1":"Paused","2":"Running"}}}}}`)
+					`{"status":true,"metadata":{"mutable":{"30001":{"name":"Price type","type":"Int16","min":1,"max":3,"stringInterpretations":{"0":"Undefined","1":"Fair","2":"Soft"}},"30002":{"name":"Start trading time delay","type":"Duration","canBeEmpty":false,"durationType":"Seconds"},"30003":{"name":"End trading time delay","type":"Duration","canBeEmpty":false,"durationType":"Seconds"},"30004":{"name":"Order hold time","type":"Duration","min":1000000000,"canBeEmpty":false,"durationType":"Seconds"},"30005":{"name":"Active minimum trend strike mode","type":"Bool"},"30006":{"name":"Minimum trend strike","type":"Int64"},"30007":{"name":"Active minimum trend strike price limit","type":"Bool"},"30008":{"name":"Minimum trend strike price limit","type":"Double"},"30009":{"name":"Active target order cost mode","type":"Bool"},"30010":{"name":"Target order cost","type":"Double"},"30011":{"name":"Trend strike barrier","type":"Uint64"},"30012":{"name":"Size buffer soft price change","type":"Uint64","min":1},"30013":{"name":"Gateway id","type":"OptionalInt32","canBeEmpty":false},"30014":{"name":"Commissions","type":"TableData","canBeEmpty":false,"columns":{"0":{"type":"Int16","name":"Instrument type","stringInterpretations":{"0":"Undefined","1":"Bond","2":"Share","3":"Currency","4":"ETF","5":"Futures","6":"StructuralProduct","7":"Option","8":"ClearingCertificate","9":"Index","10":"Commodity"}},"1":{"type":"Double","name":"%"}}},"30015":{"name":"Figis to trade","type":"TableData","canBeEmpty":false,"columns":{"0":{"type":"Uint64","name":"figi"},"1":{"type":"Uint64","name":"Default lots volume"}}},"1000001":{"name":"Seconds between try to connect","type":"Uint32","min":1},"1000002":{"name":"Limit of attempts to connection","type":"Uint64","min":1},"1000003":{"name":"Limit of connections from one IP","type":"Uint64","min":1},"1000004":{"name":"Recv buffer size","type":"Uint64","min":3},"1000005":{"name":"Recv buffer size limit","type":"Uint64","min":1024}},"const":{"1000006":{"name":"Server state","type":"Int16","stringInterpretations":{"0":"Undefined","1":"Initialization","2":"Running","3":"Stopped"}},"1000007":{"name":"Max connections","type":"Int32"},"1000008":{"name":"Listening IP","type":"Uint32"},"1000009":{"name":"Listening port","type":"Uint16"},"2000001":{"name":"Name","type":"String"},"2000002":{"name":"Application state","type":"Int16","stringInterpretations":{"0":"Undefined","1":"Paused","2":"Running"}}}}}`)
 			});
 		}
 
@@ -231,7 +231,7 @@ class TestRunner {
 			shift -= 1;
 		}
 
-		return String(shift).padStart(2, '0')
+		return String(shift).padStart(2, '0');
 	};
 };
 
@@ -243,7 +243,7 @@ class TableChecker {
 		test.Assert(inputs.length, values.length);
 
 		for (let i = 0; i < values.length; i++) {
-			if (typeof values[i] === 'boolean') {
+			if (typeof values[i] === "boolean") {
 				test.Assert(inputs[i].checked, values[i], `Child ${i + 1} has incorrect value`);
 			}
 			else {
@@ -255,7 +255,7 @@ class TableChecker {
 	static AddRow(test, table, values)
 	{
 		let newRow = table.m_wrapper.querySelector(".row.new");
-		let inputs = newRow.querySelectorAll('input');
+		let inputs = newRow.querySelectorAll("input");
 		test.Assert(inputs.length, values.length);
 
 		for (let i = 0; i < inputs.length; i++) {
@@ -285,7 +285,7 @@ class TableChecker {
 
 		let addButton = table.m_wrapper.querySelector(".add");
 		if (addButton) {
-			addButton.dispatchEvent(new Event('click'));
+			addButton.dispatchEvent(new Event("click"));
 			table.Save();
 			return;
 		}

@@ -1115,7 +1115,7 @@ class Grid {
 
 		for (let settingsView of Grid.#privateFields.m_settingsViews) {
 			if (settingsView.m_parameterId == columnObject.id) {
-				document.dispatchEvent(new Event('click'));
+				document.dispatchEvent(new Event("click"));
 			}
 		}
 
@@ -1518,16 +1518,16 @@ class Grid {
 	}
 }
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Grid;
-	Helper = require('./helper');
-	Timer = require('./timer');
-	Select = require('./select');
-	Duration = require('./duration');
-	View = require('./view');
-	Table = require('./table');
-	TableView = require('./views/tableView');
-	GridSettingsView = require('./views/gridSettingsView');
-	SelectView = require('./views/selectView');
-	MetadataCollector = require('./metadataCollector');
+	Helper = require("./helper");
+	Timer = require("./timer");
+	Select = require("./select");
+	Duration = require("./duration");
+	View = require("./view");
+	Table = require("./table");
+	TableView = require("./views/tableView");
+	GridSettingsView = require("./views/gridSettingsView");
+	SelectView = require("./views/selectView");
+	MetadataCollector = require("./metadataCollector");
 }

@@ -11,10 +11,10 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner } = require('./testRunner');
-const Select = require('../select');
-const MetadataCollector = require('../metadataCollector');
-const View = require('../view');
+const { TestRunner, testRunner } = require("./testRunner");
+const Select = require("../select");
+const MetadataCollector = require("../metadataCollector");
+const View = require("../view");
 
 const parameter_const = 7683294087;
 const parameter_mutable = 908766347869289;
@@ -24,24 +24,24 @@ MetadataCollector.AddMetadata(parameter_const, {
 	"type" : "Int16",
 	"min" : 1n,
 	"max" : 3n,
-	"stringInterpretation" : { "0" : "Undefined", "1" : "Fair", "2" : "Soft" }
+	"stringInterpretations" : { "0" : "Undefined", "1" : "Fair", "2" : "Soft" }
 },
 	true);
 
 MetadataCollector.AddMetadata(parameter_mutable, {
 	"name" : "Application state",
 	"type" : "Int16",
-	"stringInterpretation" : { "0" : "Undefined", "1" : "Paused", "2" : "Running" }
+	"stringInterpretations" : { "0" : "Undefined", "1" : "Paused", "2" : "Running" }
 },
 	false);
 
 testRunner.Test('Cast input to select and check', async () => {
 	TestRunner.Step('Cast input to select');
-	let input = document.createElement('input');
+	let input = document.createElement("input");
 	Select.Apply({ input });
 	input.setAttribute('parameter-id', parameter_const);
-	testRunner.Assert(getEventListeners(document).click, undefined)
-	testRunner.Assert(getEventListeners(input).click.length, 1)
+	testRunner.Assert(getEventListeners(document).click, undefined);
+	testRunner.Assert(getEventListeners(input).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 0);
 	testRunner.Assert(input.type, 'text');
 	testRunner.Assert(input.getAttribute('select'), '');
@@ -55,7 +55,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	TestRunner.Step(`Set value by method`);
 	Select.SetValue(input, 0);
 	testRunner.Assert(input.getAttribute('select'), '0');
-	testRunner.Assert(input.value, 'Undefined');
+	testRunner.Assert(input.value, "undefined");
 	testRunner.Assert(input.classList.contains('invalid'), false);
 	testRunner.Assert(
 		input.outerHTML, `<input class="select" select="0" type="text" readonly="" parameter-id="${parameter_const}">`);
@@ -71,7 +71,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	input.setAttribute('min', '1');
 	Select.SetValue(input, 0);
 	testRunner.Assert(input.getAttribute('select'), '0');
-	testRunner.Assert(input.value, 'Undefined');
+	testRunner.Assert(input.value, "undefined");
 	testRunner.Assert(input.classList.contains('invalid'), true);
 	testRunner.Assert(input.outerHTML,
 		`<input class="select invalid" select="0" type="text" readonly="" parameter-id="${parameter_const}" min="1">`);
@@ -98,13 +98,13 @@ testRunner.Test('Cast input to select and check', async () => {
 		`<input class="select" select="2" type="text" readonly="" parameter-id="${parameter_const}" min="1" max="2">`);
 
 	TestRunner.Step('Cast one more input to select without event listener');
-	let input2 = document.createElement('input');
+	let input2 = document.createElement("input");
 	body.appendChild(input2);
 	Select.Apply({ input : input2, setEvent : false });
 	testRunner.Assert(Select.GetSelectViewsNumber(), 0);
 	input2.setAttribute('parameter-id', parameter_mutable);
-	testRunner.Assert(getEventListeners(document).click, undefined)
-	testRunner.Assert(Object.keys(getEventListeners(input2)).length, 0)
+	testRunner.Assert(getEventListeners(document).click, undefined);
+	testRunner.Assert(Object.keys(getEventListeners(input2)).length, 0);
 	testRunner.Assert(input2.type, 'text');
 	testRunner.Assert(input2.getAttribute('select'), '');
 	testRunner.Assert(input2.value, '');
@@ -122,7 +122,7 @@ testRunner.Test('Cast input to select and check', async () => {
 		`<input class="select" select="2" type="text" readonly="" parameter-id="${parameter_mutable}">`);
 
 	TestRunner.Step('Click to the input with event listener');
-	input.dispatchEvent(new Event('click'));
+	input.dispatchEvent(new Event("click"));
 	await TestRunner.WaitFor(
 		() => { return View.GetCreatedViews().has(0) && View.GetCreatedViews().get(0).m_created; });
 
@@ -150,7 +150,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	let options = views[0].querySelector('.selectView > .options');
 	testRunner.Assert(options != null, true);
 	testRunner.Assert(options.children.length, 3);
-	testRunner.Assert(options.children[0].querySelectorAll('span')[0].innerHTML, 'Undefined');
+	testRunner.Assert(options.children[0].querySelectorAll('span')[0].innerHTML, "undefined");
 	testRunner.Assert(options.children[0].querySelectorAll('span')[1].innerHTML, '0');
 	testRunner.Assert(options.children[0].style.display, '');
 	testRunner.Assert(options.children[1].querySelectorAll('span')[0].innerHTML, 'Fair');
@@ -160,13 +160,13 @@ testRunner.Test('Cast input to select and check', async () => {
 	testRunner.Assert(options.children[2].querySelectorAll('span')[1].innerHTML, '2');
 	testRunner.Assert(options.children[2].style.display, '');
 
-	caseSensitiveButton.dispatchEvent(new Event('click'));
+	caseSensitiveButton.dispatchEvent(new Event("click"));
 	testRunner.Assert(caseSensitiveButton.classList.contains('disabled'), false);
 	options = views[0].querySelector('.selectView > .options');
 	testRunner.Assert(options.children.length, 3);
 
 	searchInput.value = 'f';
-	searchInput.dispatchEvent(new Event('input'));
+	searchInput.dispatchEvent(new Event("input"));
 	options = views[0].querySelector('.selectView > .options');
 	testRunner.Assert(options != null, true);
 	testRunner.Assert(options.children.length, 3);
@@ -175,7 +175,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	testRunner.Assert(options.children[2].style.display, '');
 
 	searchInput.value = 'F';
-	searchInput.dispatchEvent(new Event('input'));
+	searchInput.dispatchEvent(new Event("input"));
 	options = views[0].querySelector('.selectView > .options');
 	testRunner.Assert(options != null, true);
 	testRunner.Assert(options.children.length, 3);
@@ -184,19 +184,19 @@ testRunner.Test('Cast input to select and check', async () => {
 	testRunner.Assert(options.children[2].style.display, 'none');
 
 	searchInput.value = 'fair';
-	searchInput.dispatchEvent(new Event('input'));
+	searchInput.dispatchEvent(new Event("input"));
 	options = views[0].querySelector('.selectView > .options');
 	testRunner.Assert(options.children[0].style.display, 'none');
 	testRunner.Assert(options.children[1].style.display, 'none');
 	testRunner.Assert(options.children[2].style.display, 'none');
 
-	caseSensitiveButton.dispatchEvent(new Event('click'));
+	caseSensitiveButton.dispatchEvent(new Event("click"));
 	options = views[0].querySelector('.selectView > .options');
 	testRunner.Assert(options.children[0].style.display, 'none');
 	testRunner.Assert(options.children[1].style.display, '');
 	testRunner.Assert(options.children[2].style.display, 'none');
 
-	options.children[1].dispatchEvent(new Event('click'));
+	options.children[1].dispatchEvent(new Event("click"));
 	await TestRunner.WaitFor(() => { return !View.GetCreatedViews().has(0) });
 	testRunner.Assert(Select.GetSelectViewsNumber(), 0);
 
@@ -208,7 +208,7 @@ testRunner.Test('Cast input to select and check', async () => {
 		`<input class="select" select="1" type="text" readonly="" parameter-id="${parameter_const}" min="1" max="2">`);
 
 	TestRunner.Step('Click to the input with event listener and close view');
-	input.dispatchEvent(new Event('click'));
+	input.dispatchEvent(new Event("click"));
 	await TestRunner.WaitFor(
 		() => { return View.GetCreatedViews().has(1) && View.GetCreatedViews().get(1).m_created; });
 
@@ -216,7 +216,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	testRunner.Assert(Select.GetSelectViewsNumber(), 1);
 	views = document.querySelector('.views').querySelectorAll('.view');
 	testRunner.Assert(views.length, 1);
-	views[0].querySelector('.viewHeader .close').dispatchEvent(new Event('click'));
+	views[0].querySelector('.viewHeader .close').dispatchEvent(new Event("click"));
 	await TestRunner.WaitFor(() => { return !View.GetCreatedViews().has(1) });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(getEventListeners(input).click.length, 1);
@@ -228,7 +228,7 @@ testRunner.Test('Cast input to select and check', async () => {
 		`<input class="select" select="1" type="text" readonly="" parameter-id="${parameter_const}" min="1" max="2">`);
 
 	TestRunner.Step('Click to the input with event listener and click again');
-	input.dispatchEvent(new Event('click'));
+	input.dispatchEvent(new Event("click"));
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	await TestRunner.WaitFor(
 		() => { return View.GetCreatedViews().has(2) && View.GetCreatedViews().get(2).m_created; });
@@ -239,10 +239,10 @@ testRunner.Test('Cast input to select and check', async () => {
 	testRunner.Assert(input.classList.contains('invalid'), false);
 	testRunner.Assert(input.outerHTML,
 		`<input class="select" select="1" type="text" readonly="" parameter-id="${parameter_const}" min="1" max="2">`);
-	input.dispatchEvent(new Event('click'));
+	input.dispatchEvent(new Event("click"));
 
 	TestRunner.Step('Click outside select view');
-	document.dispatchEvent(new Event('click'));
+	document.dispatchEvent(new Event("click"));
 	await TestRunner.WaitFor(() => { return !View.GetCreatedViews().has(2) });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 1);
@@ -254,11 +254,11 @@ testRunner.Test('Cast input to select and check', async () => {
 		`<input class="select" select="1" type="text" readonly="" parameter-id="${parameter_const}" min="1" max="2">`);
 
 	TestRunner.Step('Add one more input with event listener and click to it');
-	let input3 = document.createElement('input');
+	let input3 = document.createElement("input");
 	body.appendChild(input3);
 	Select.Apply({ input : input3 });
 	input3.setAttribute('parameter-id', parameter_const);
-	input3.dispatchEvent(new Event('click'));
+	input3.dispatchEvent(new Event("click"));
 	await TestRunner.WaitFor(
 		() => { return View.GetCreatedViews().has(3) && View.GetCreatedViews().get(3).m_created; });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
@@ -273,7 +273,7 @@ testRunner.Test('Cast input to select and check', async () => {
 		input3.outerHTML, `<input class="select" select="" type="text" readonly="" parameter-id="${parameter_const}">`);
 
 	TestRunner.Step('Click to the input with event listener and click to another option');
-	input.dispatchEvent(new Event('click'));
+	input.dispatchEvent(new Event("click"));
 	await TestRunner.WaitFor(
 		() => { return View.GetCreatedViews().has(4) && View.GetCreatedViews().get(4).m_created; });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
@@ -288,7 +288,7 @@ testRunner.Test('Cast input to select and check', async () => {
 		.querySelectorAll('.view')[1]
 		.querySelector('.selectView > .options')
 		.children[2]
-		.dispatchEvent(new Event('click'));
+		.dispatchEvent(new Event("click"));
 	await TestRunner.WaitFor(() => { return !View.GetCreatedViews().has(4) });
 	testRunner.Assert(getEventListeners(document).click.length, 1);
 	testRunner.Assert(Select.GetSelectViewsNumber(), 1);
@@ -301,7 +301,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	TestRunner.Step('Set value by method for first mutable input');
 	Select.SetValue(input, 0);
 	testRunner.Assert(input.getAttribute('select'), '0');
-	testRunner.Assert(input.value, 'Undefined');
+	testRunner.Assert(input.value, "undefined");
 	testRunner.Assert(input.classList.contains('invalid'), true);
 	testRunner.Assert(input.outerHTML,
 		`<input class="select invalid" select="0" type="text" readonly="" parameter-id="${

@@ -42,14 +42,14 @@ class JsonNode;
 class TableBase {
 public:
 	/**************************
-	 * @brief Column structure for table. Can contain custom metadata and string interpretation if underlying type is
+	 * @brief Column structure for table. Can contain custom metadata and string interpretations if underlying type is
 	 * enum. Metadata is in JSON format, but without parent brackets. It is only used in Application class and when
 	 * metadata request arrives.
 	 *
-	 * Metadata fields: name (string). For enum string interpretation: stringInterpretation (object) : { id (string) :
+	 * Metadata fields: name (string). For enum string interpretations: stringInterpretations (object) : { id (string) :
 	 * string (string), ... }.
 	 *
-	 * @todo Remove id, and signal about external string interpretation via metadata.
+	 * @todo Remove id, and signal about external string interpretations via metadata.
 	 */
 	struct Column {
 		const size_t id;
@@ -1185,8 +1185,8 @@ public:
 	}
 
 	/**************************
-	 * @brief Add string interpretation for each column with T type.
-	 * @brief Format: stringInterpretation (object) : { id (string) : string (string), ... }.
+	 * @brief Add string interpretations for each column with T type.
+	 * @brief Format: stringInterpretations (object) : { id (string) : string (string), ... }.
 	 *
 	 * @tparam T type of enum.
 	 *
@@ -1243,7 +1243,7 @@ public:
 private:
 	/**************************
 	 * @brief Implementation of extending metadata for enum function.
-	 * @brief Format: stringInterpretation (object) : { id (string) : string (string), ... }.
+	 * @brief Format: stringInterpretations (object) : { id (string) : string (string), ... }.
 	 *
 	 * @tparam T type of enum.
 	 * @tparam N Type under checking.
@@ -1261,7 +1261,7 @@ private:
 				columnIt->metadata.push_back(',');
 			}
 
-			columnIt->metadata += "\"stringInterpretation\":{";
+			columnIt->metadata += "\"stringInterpretations\":{";
 			for (auto index{ U(T::Undefined) }; index < U(T::Max); ++index) {
 				columnIt->metadata += std::format("\"{}\":\"{}\",", index, printFunc(static_cast<T>(index)));
 			}

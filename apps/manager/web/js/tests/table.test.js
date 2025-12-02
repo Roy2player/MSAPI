@@ -11,10 +11,10 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner } = require('./testRunner');
-const Table = require('../table');
-const View = require('../view');
-const MetadataCollector = require('../metadataCollector');
+const { TestRunner, testRunner } = require("./testRunner");
+const Table = require("../table");
+const View = require("../view");
+const MetadataCollector = require("../metadataCollector");
 
 class RowChecking {
 	static CheckInvalidStates(inputs, expectedStates)
@@ -36,7 +36,7 @@ class RowChecking {
 		}
 
 		for (let i = 0; i < values.length; i++) {
-			if (typeof values[i] === 'boolean') {
+			if (typeof values[i] === "boolean") {
 				inputs[i].checked = values[i];
 			}
 			else {
@@ -47,7 +47,7 @@ class RowChecking {
 				inputs[i].dispatchEvent(new Event('change'));
 
 				if (inputs[i].hasAttribute("nanoseconds") || inputs[i].hasAttribute("timestamp")) {
-					inputs[i].dispatchEvent(new Event('input'));
+					inputs[i].dispatchEvent(new Event("input"));
 				}
 				else {
 					testRunner.Assert(getEventListeners(inputs[i]).input == undefined, true,
@@ -55,11 +55,11 @@ class RowChecking {
 				}
 			}
 			else if (getEventListeners(inputs[i]).input != undefined) {
-				inputs[i].dispatchEvent(new Event('input'));
+				inputs[i].dispatchEvent(new Event("input"));
 			}
 
 			//* Trigger global event listeners in case if input type has it
-			document.dispatchEvent(new Event('click'));
+			document.dispatchEvent(new Event("click"));
 		}
 	}
 
@@ -70,7 +70,7 @@ class RowChecking {
 		}
 
 		for (let i = 0; i < values.length; i++) {
-			if (typeof values[i] === 'boolean') {
+			if (typeof values[i] === "boolean") {
 				if (inputs[i].checked.toString() != values[i].toString()) {
 					testRunner.Assert(false, true,
 						`Child ${i + 1} should have the correct value: ${values[i]}, but has ${inputs[i].checked}`);
@@ -482,7 +482,7 @@ testRunner.Test('Add row via button and directly', () => {
 		1, -2, 3, 4, 5, 6, 7, 8, 9, 10, -11, 12, 13, 14, 15, 16, 17, 18, 19, 20.003, -21.002, 22.001, true, "text",
 		"2021-01-01", "44m"
 	]);
-	newRow.querySelector(".add").dispatchEvent(new Event('click', { bubbles : true }));
+	newRow.querySelector(".add").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 
 	RowChecking.CheckInvalidStates(newInputs, [
@@ -715,7 +715,7 @@ testRunner.Test('Remove row', () => {
 	testRunner.Assert(rows[1].classList.contains("added"), true, "New row should be marked as added");
 
 	//* Remove row
-	rows[1].querySelector(".remove").dispatchEvent(new Event('click', { bubbles : true }));
+	rows[1].querySelector(".remove").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
@@ -732,14 +732,14 @@ testRunner.Test('Remove row', () => {
 	testRunner.Assert(rows[2].classList.contains("added"), true, "New row should be marked as added");
 
 	//* Remove first row
-	rows[1].querySelector(".remove").dispatchEvent(new Event('click', { bubbles : true }));
+	rows[1].querySelector(".remove").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 3, "Table should have the correct number of rows: " + 3);
 	testRunner.Assert(rows[1].classList.contains("added"), true, "New row should be marked as added");
 
 	//* Remove second row
-	rows[1].querySelector(".remove").dispatchEvent(new Event('click', { bubbles : true }));
+	rows[1].querySelector(".remove").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
@@ -791,7 +791,7 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	testRunner.Assert(rows[1].classList.contains("added"), false, "New row should not be marked as added");
 
 	//* Clear table
-	tableNode.querySelector(".clear").dispatchEvent(new Event('click', { bubbles : true }));
+	tableNode.querySelector(".clear").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 3, "Table should have the correct number of rows: " + 3);
@@ -829,7 +829,7 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	testRunner.Assert(rows[2].classList.contains("added"), true, "New row should be marked as added");
 
 	//* Revert table
-	tableNode.querySelector(".revert").dispatchEvent(new Event('click', { bubbles : true }));
+	tableNode.querySelector(".revert").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 3, "Table should have the correct number of rows: " + 3);
@@ -873,7 +873,7 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	testRunner.Assert(rows[2].classList.contains("added"), true, "New row should be marked as added");
 
 	//* Save table
-	tableNode.querySelector(".save").dispatchEvent(new Event('click', { bubbles : true }));
+	tableNode.querySelector(".save").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 4, "Table should have the correct number of rows: " + 4);
@@ -974,7 +974,7 @@ testRunner.Test('Min and max limits, step attribute', () => {
 			input.stepUp();
 		}
 
-		input.dispatchEvent(new Event('input', { bubbles : true }));
+		input.dispatchEvent(new Event("input", { bubbles : true }));
 	});
 	RowChecking.CheckInvalidStates(newInputs, [
 		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
@@ -1442,7 +1442,7 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 			"0" : {
 				name : 'Type',
 				type : 'Int16',
-				stringInterpretation : {
+				stringInterpretations : {
 					"0" : "Undefined",
 					"1" : "Bond",
 					"2" : "Share",
@@ -1460,7 +1460,7 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 			"2" : {
 				name : 'Type 2',
 				type : 'Int16',
-				stringInterpretation : {
+				stringInterpretations : {
 					"0" : "Undefined",
 					"1" : "Bond",
 					"2" : "Share",
@@ -1502,7 +1502,7 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 		testRunner.Assert(
 			Select.GetSelectViewsNumber(), 0, "There should be no select views before click on select input");
 		let viewsBefore = View.GetCreatedViews().size;
-		newInputs[0].dispatchEvent(new Event('click'));
+		newInputs[0].dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => { return View.GetCreatedViews().size > viewsBefore },
 			"Select view should be created after click on select input");
 		testRunner.Assert(
@@ -1512,15 +1512,15 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 		testRunner.Assert(selectView != null, true, "Select view should be created");
 		let options = selectView.querySelectorAll(".options > div");
 		testRunner.Assert(options.length, 11, "Select view should have the correct number of options");
-		options[2].dispatchEvent(new Event('click'));
+		options[2].dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => { return View.GetCreatedViews().size === viewsBefore },
 			"Select view should be closed after click on option");
 		testRunner.Assert(Select.GetSelectViewsNumber(), 0, "There should be no select views after click on option");
 
 		newInputs[1].value = "3.5";
-		newInputs[1].dispatchEvent(new Event('input'));
+		newInputs[1].dispatchEvent(new Event("input"));
 
-		newInputs[2].dispatchEvent(new Event('click'));
+		newInputs[2].dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => { return View.GetCreatedViews().size > viewsBefore },
 			"Select view should be created after click on select input");
 		testRunner.Assert(
@@ -1529,13 +1529,13 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 		testRunner.Assert(selectView != null, true, "Select view should be created");
 		options = selectView.querySelectorAll(".options > div");
 		testRunner.Assert(options.length, 11, "Select view should have the correct number of options");
-		options[7].dispatchEvent(new Event('click'));
+		options[7].dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => { return View.GetCreatedViews().size === viewsBefore },
 			"Select view should be closed after click on option");
 		testRunner.Assert(Select.GetSelectViewsNumber(), 0, "There should be no select views after click on option");
 	}
 
-	newRow.querySelector(".add").dispatchEvent(new Event('click'));
+	newRow.querySelector(".add").dispatchEvent(new Event("click"));
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 3, "Table should have the correct number of rows: " + 3);

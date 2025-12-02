@@ -14,10 +14,10 @@
  * available.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('../view');
-	MetadataCollector = require('../metadataCollector');
-	Dispatcher = require('../dispatcher').Dispatcher;
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("../view");
+	MetadataCollector = require("../metadataCollector");
+	Dispatcher = require("../dispatcher").Dispatcher;
 }
 
 class InstalledApps extends View {
@@ -71,6 +71,6 @@ class InstalledApps extends View {
 View.AddViewTemplate("InstalledApps", `<div></div>`);
 Dispatcher.RegisterPanel("InstalledApps", () => new InstalledApps());
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = InstalledApps;
 }

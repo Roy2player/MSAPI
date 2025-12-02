@@ -11,10 +11,10 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner, TableChecker } = require('./testRunner');
-const Grid = require('../grid');
-const MetadataCollector = require('../metadataCollector');
-const View = require('../view');
+const { TestRunner, testRunner, TableChecker } = require("./testRunner");
+const Grid = require("../grid");
+const MetadataCollector = require("../metadataCollector");
+const View = require("../view");
 
 MetadataCollector.AddMetadata(1, { name : "Create", type : "system" }, true);
 MetadataCollector.AddMetadata(2, { name : "Change state", type : "system" }, true);
@@ -25,7 +25,7 @@ MetadataCollector.AddMetadata(6, {
 	name : "Table template with boolean operator",
 	type : "TableData",
 	id : 6,
-	columns : [ { name : "Boolean operator", type : "Int8", stringInterpretation : { 0 : "Equal", 1 : "Not equal" } } ]
+	columns : [ { name : "Boolean operator", type : "Int8", stringInterpretations : { 0 : "Equal", 1 : "Not equal" } } ]
 },
 	true);
 MetadataCollector.AddMetadata(7, {
@@ -35,7 +35,7 @@ MetadataCollector.AddMetadata(7, {
 	columns : [ {
 		name : "Number operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal",
 			1 : "Not equal",
 			2 : "Less than",
@@ -53,7 +53,7 @@ MetadataCollector.AddMetadata(8, {
 	columns : [ {
 		name : "String operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal case sensitive",
 			1 : "Equal case insensitive",
 			2 : "Not equal case sensitive",
@@ -71,7 +71,7 @@ MetadataCollector.AddMetadata(9, {
 	columns : [ {
 		name : "Optional number operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal",
 			1 : "Not equal",
 			2 : "Less than",
@@ -120,7 +120,7 @@ MetadataCollector.AddMetadata(table_parameter_1, {
 		"0" : {
 			"type" : "Int16",
 			"name" : "Instrument type",
-			"stringInterpretation" : {
+			"stringInterpretations" : {
 				"0" : "Undefined",
 				"1" : "Bond",
 				"2" : "Share",
@@ -153,7 +153,7 @@ const select_parameter_1 = 1000006;
 MetadataCollector.AddMetadata(select_parameter_1, {
 	"name" : "Server state",
 	"type" : "Int16",
-	"stringInterpretation" : { "0" : "Undefined", "1" : "Initialization", "2" : "Running", "3" : "Stopped" }
+	"stringInterpretations" : { "0" : "Undefined", "1" : "Initialization", "2" : "Running", "3" : "Stopped" }
 },
 	true);
 
@@ -161,7 +161,7 @@ const select_parameter_2 = 1000007;
 MetadataCollector.AddMetadata(select_parameter_2, {
 	"name" : "Application state",
 	"type" : "Int16",
-	"stringInterpretation" : { "0" : "Undefined", "1" : "Paused", "2" : "Running" }
+	"stringInterpretations" : { "0" : "Undefined", "1" : "Paused", "2" : "Running" }
 },
 	true);
 
@@ -208,7 +208,7 @@ class GridChecking {
 			for (const [key, value] of Object.entries(values[index])) {
 				++cellCounter;
 				const cell = rows[index + 1].querySelector(`[parameter-id="${key}"]`);
-				const input = cell.querySelector('input');
+				const input = cell.querySelector("input");
 				if (input) {
 					testRunner.Assert(
 						input.value, value, `Cell value is unexpected for row ${index + 1} and column ${key}`);
@@ -233,7 +233,7 @@ class GridChecking {
 						TestRunner.Step('Click on the table cell, verify table view content');
 						const createdViews = View.GetCreatedViews();
 						const sizeBefore = createdViews.size;
-						cell.dispatchEvent(new Event('click'));
+						cell.dispatchEvent(new Event("click"));
 						await TestRunner.WaitFor(() => createdViews.size > sizeBefore, 'Table view is created');
 
 						const views = document.querySelectorAll('.views > .view');
@@ -259,7 +259,7 @@ class GridChecking {
 
 						testRunner.Assert(tableRows.length, values[index][key].values.length);
 						for (let i = 0; i < tableRows.length; i++) {
-							let cells = tableRows[i].querySelectorAll('input');
+							let cells = tableRows[i].querySelectorAll("input");
 							testRunner.Assert(cells.length, values[index][key].values[i].length);
 							for (let j = 0; j < cells.length; j++) {
 								testRunner.Assert(cells[j].value, values[index][key].values[i][j]);
@@ -276,21 +276,21 @@ class GridChecking {
 						}
 
 						TestRunner.Step('Click on the cell again and verify that one more table view is not created');
-						cell.dispatchEvent(new Event('click'));
+						cell.dispatchEvent(new Event("click"));
 						await TestRunner.Wait(100);
 						testRunner.Assert(createdViews.size, sizeBefore + 1);
 
 						TestRunner.Step('Click on the table view and outside view, verify table view is not destroyed');
-						tableView.dispatchEvent(new Event('click'), { bubbles : true });
+						tableView.dispatchEvent(new Event("click"), { bubbles : true });
 						await TestRunner.Wait(100);
 						testRunner.Assert(createdViews.size, sizeBefore + 1);
 
-						document.dispatchEvent(new Event('click'), { bubbles : true });
+						document.dispatchEvent(new Event("click"), { bubbles : true });
 						await TestRunner.Wait(100);
 						testRunner.Assert(createdViews.size, sizeBefore + 1);
 
 						TestRunner.Step('Click on the table view close button, verify table view is destroyed');
-						tableView.querySelector('.viewHeader .close').dispatchEvent(new Event('click'));
+						tableView.querySelector('.viewHeader .close').dispatchEvent(new Event("click"));
 						await TestRunner.WaitFor(() => createdViews.size == sizeBefore, 'Table view is destroyed');
 					}
 					else {
@@ -384,7 +384,7 @@ class GridChecking {
 			}
 			else {
 				const sizeBefore = View.GetCreatedViews().size;
-				settings.dispatchEvent(new Event('click'), { bubbles : true });
+				settings.dispatchEvent(new Event("click"), { bubbles : true });
 				await TestRunner.WaitFor(() => View.GetCreatedViews().size > sizeBefore, 'Settings view is created');
 
 				const views = document.querySelectorAll('.views > .view');
@@ -440,17 +440,17 @@ class GridChecking {
 			const select = table.m_wrapper.querySelector('.select');
 			testRunner.Assert(select != null, true);
 			let sizeBefore = View.GetCreatedViews().size;
-			select.dispatchEvent(new Event('click'));
+			select.dispatchEvent(new Event("click"));
 			await TestRunner.WaitFor(() => View.GetCreatedViews().size > sizeBefore, 'Select view is created');
 			const views = document.querySelectorAll('.views > .view');
 			const selectView = View.GetCreatedViews().get(+views[views.length - 1].getAttribute('uid'));
-			selectView.m_view.querySelector('.options > div').dispatchEvent(new Event('click'));
+			selectView.m_view.querySelector('.options > div').dispatchEvent(new Event("click"));
 			await TestRunner.WaitFor(() => View.GetCreatedViews().size == sizeBefore, 'Select view is destroyed');
 			testRunner.Assert(selectView.m_parentView.parentView == null, true);
 			testRunner.Assert(settingsView.m_parentView != null, true);
 
 			if (values[index].settingsView == null) {
-				document.dispatchEvent(new Event('click'));
+				document.dispatchEvent(new Event("click"));
 				await TestRunner.WaitFor(
 					() => View.GetCreatedViews().size == sizeBefore - 1, 'Settings view is destroyed');
 			}
@@ -472,7 +472,7 @@ class GridChecking {
 		testRunner.Assert(headerCell != null, true);
 		if (inView) {
 			const sizeBefore = View.GetCreatedViews().size;
-			headerCell.querySelector(`.settings`).dispatchEvent(new Event('click'));
+			headerCell.querySelector(`.settings`).dispatchEvent(new Event("click"));
 			await TestRunner.WaitFor(
 				() => View.GetCreatedViews().size > sizeBefore, 'Settings view is created', 'Settings view is created');
 			const views = document.querySelectorAll('.views > .view');
@@ -481,13 +481,13 @@ class GridChecking {
 
 			if (align != null) {
 				if (align == Grid.ALIGN_TYPE.left) {
-					settingsView.querySelector('.alignLeft').dispatchEvent(new Event('click'));
+					settingsView.querySelector('.alignLeft').dispatchEvent(new Event("click"));
 				}
 				else if (align == Grid.ALIGN_TYPE.center) {
-					settingsView.querySelector('.alignCenter').dispatchEvent(new Event('click'));
+					settingsView.querySelector('.alignCenter').dispatchEvent(new Event("click"));
 				}
 				else if (align == Grid.ALIGN_TYPE.right) {
-					settingsView.querySelector('.alignRight').dispatchEvent(new Event('click'));
+					settingsView.querySelector('.alignRight').dispatchEvent(new Event("click"));
 				}
 
 				fillPropertyInData('align', align);
@@ -495,10 +495,10 @@ class GridChecking {
 
 			if (sorting != null) {
 				if (sorting == Grid.SORTING_TYPE.ascending) {
-					settingsView.querySelector('.ascending').dispatchEvent(new Event('click'));
+					settingsView.querySelector('.ascending').dispatchEvent(new Event("click"));
 				}
 				else if (sorting == Grid.SORTING_TYPE.descending) {
-					settingsView.querySelector('.descending').dispatchEvent(new Event('click'));
+					settingsView.querySelector('.descending').dispatchEvent(new Event("click"));
 				}
 				else if (sorting == Grid.SORTING_TYPE.none) {
 					sortingButton = settingsView.querySelector('.none');
@@ -506,7 +506,7 @@ class GridChecking {
 						testRunner.Assert(true, false, 'Sorting is not available');
 					}
 					else {
-						settingsView.querySelector('.none').dispatchEvent(new Event('click'));
+						settingsView.querySelector('.none').dispatchEvent(new Event("click"));
 					}
 				}
 
@@ -528,12 +528,12 @@ class GridChecking {
 			}
 
 			if (filter != null) {
-				settingsView.querySelector('.filter').dispatchEvent(new Event('click'));
+				settingsView.querySelector('.filter').dispatchEvent(new Event("click"));
 				fillPropertyInData(
 					'isFilterActive', !settingsView.querySelector('.filter').classList.contains('active'));
 			}
 
-			document.dispatchEvent(new Event('click'));
+			document.dispatchEvent(new Event("click"));
 			await TestRunner.WaitFor(() => View.GetCreatedViews().size == sizeBefore, 'Settings view is destroyed');
 
 			if (headers) {
@@ -553,7 +553,7 @@ class GridChecking {
 			}
 			else {
 				if (sorting == Grid.SORTING_TYPE.ascending || sorting == Grid.SORTING_TYPE.descending) {
-					sortingButton.dispatchEvent(new Event('click'));
+					sortingButton.dispatchEvent(new Event("click"));
 					fillPropertyInData('sorting', sorting);
 				}
 				else if (sorting == Grid.SORTING_TYPE.none) {
@@ -569,7 +569,7 @@ class GridChecking {
 			}
 			else {
 				fillPropertyInData('isFilterActive', !filterButton.classList.contains('active'));
-				filterButton.dispatchEvent(new Event('click'));
+				filterButton.dispatchEvent(new Event("click"));
 			}
 		}
 
@@ -1029,7 +1029,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 			let scalarParamRow = rowObject.row.querySelector(`.cell[parameter-id="${scalar_parameter}"]`);
 			if (scalarParamRow) {
 				incrementButton.addEventListener(
-					'click', () => { scalarParamRow.innerHTML = +scalarParamRow.innerHTML + 1; });
+					"click", () => { scalarParamRow.innerHTML = +scalarParamRow.innerHTML + 1; });
 			}
 		},
 		postUpdateRowFunction : (rowObject, updatedValues) => {
@@ -1073,8 +1073,8 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Click on the button and check that scalar parameter is incremented');
-	incrementButton.dispatchEvent(new Event('click'), { bubbles : true });
-	incrementButton.dispatchEvent(new Event('click'), { bubbles : true });
+	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
+	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
 	await TestRunner.WaitFor(
 		() => grid.m_view.querySelectorAll(`.cell[parameter-id="${scalar_parameter}"]`)[1].innerHTML == 1,
 		'Scalar parameter is incremented');
@@ -1150,10 +1150,10 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Click on the button and check that scalar parameter is incremented');
-	incrementButton.dispatchEvent(new Event('click'), { bubbles : true });
-	incrementButton.dispatchEvent(new Event('click'), { bubbles : true });
-	incrementButton.dispatchEvent(new Event('click'), { bubbles : true });
-	incrementButton.dispatchEvent(new Event('click'), { bubbles : true });
+	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
+	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
+	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
+	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
 	await TestRunner.WaitFor(
 		() => grid.m_view.querySelectorAll(`.cell[parameter-id="${scalar_parameter}"]`)[1].innerHTML == 5,
 		'Scalar parameter is incremented');
@@ -1198,8 +1198,8 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Click on the button and check that scalar parameter is incremented');
-	incrementButton.dispatchEvent(new Event('click'), { bubbles : true });
-	incrementButton.dispatchEvent(new Event('click'), { bubbles : true });
+	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
+	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
 	await TestRunner.WaitFor(
 		() => grid.m_view.querySelectorAll(`.cell[parameter-id="${scalar_parameter}"]`)[1].innerHTML == 7,
 		'Scalar parameter is incremented');
@@ -1843,7 +1843,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 			const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${optional_scalar_parameter}"]`);
 			testRunner.Assert(headerCell != null, true);
 			const sizeBefore = View.GetCreatedViews().size;
-			headerCell.querySelector(`.settings`).dispatchEvent(new Event('click'));
+			headerCell.querySelector(`.settings`).dispatchEvent(new Event("click"));
 			await TestRunner.WaitFor(() => View.GetCreatedViews().size > sizeBefore);
 
 			grid.RemoveColumn({ order : 5 });
@@ -1896,7 +1896,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 
 	TestRunner.Step('Check number of settings views');
 	testRunner.Assert(Grid.GetSettingsViewsNumber(), 1);
-	document.dispatchEvent(new Event('click'));
+	document.dispatchEvent(new Event("click"));
 	testRunner.Assert(Grid.GetSettingsViewsNumber(), 0);
 
 	{
@@ -1978,8 +1978,8 @@ testRunner.Test('Test table type, its view logic', async () => {
 		testRunner.Assert(tableCells.length, 2);
 
 		const viewsBefore = View.GetCreatedViews().size;
-		tableCells[0].dispatchEvent(new Event('click'));
-		tableCells[1].dispatchEvent(new Event('click'));
+		tableCells[0].dispatchEvent(new Event("click"));
+		tableCells[1].dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => View.GetCreatedViews().size == viewsBefore + 2);
 
 		let views = Array.from(View.GetCreatedViews().values());
@@ -2005,17 +2005,17 @@ testRunner.Test('Test table type, its view logic', async () => {
 			[ "Share", "0.2", "Currency", "0.44" ]);
 
 		TestRunner.Step('Close table views');
-		tableView1.m_parentView.querySelector('.close').dispatchEvent(new Event('click'));
-		tableView2.m_parentView.querySelector('.close').dispatchEvent(new Event('click'));
+		tableView1.m_parentView.querySelector('.close').dispatchEvent(new Event("click"));
+		tableView2.m_parentView.querySelector('.close').dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => View.GetCreatedViews().size == viewsBefore);
 		testRunner.Assert(Grid.GetTablesViewsNumber(), 2);
 
-		document.dispatchEvent(new Event('click'));
+		document.dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => Grid.GetSettingsViewsNumber() == 0);
 
 		TestRunner.Step('Open table views again and check, that they are the same');
-		tableCells[0].dispatchEvent(new Event('click'));
-		tableCells[1].dispatchEvent(new Event('click'));
+		tableCells[0].dispatchEvent(new Event("click"));
+		tableCells[1].dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => View.GetCreatedViews().size == viewsBefore + 2);
 
 		views = Array.from(View.GetCreatedViews().values());

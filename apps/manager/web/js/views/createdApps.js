@@ -25,10 +25,10 @@
  * Delete action also destroys all views related to the deleted application in terms of same port.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('../view');
-	MetadataCollector = require('../metadataCollector');
-	Dispatcher = require('../dispatcher').Dispatcher;
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("../view");
+	MetadataCollector = require("../metadataCollector");
+	Dispatcher = require("../dispatcher").Dispatcher;
 }
 
 class CreatedApps extends View {
@@ -51,13 +51,13 @@ class CreatedApps extends View {
 
 						const port = rowObject.values[1000009];
 						if (port === undefined) {
-							console.error("Can't find server port in row values.");
+							console.error("Can't find server port in row values");
 							return;
 						}
 
 						const state = rowObject.values[2000002];
 						if (state === undefined) {
-							console.error("Can't find application state in row values.");
+							console.error("Can't find application state in row values");
 							return;
 						}
 
@@ -81,13 +81,13 @@ class CreatedApps extends View {
 					modifyCell.addEventListener("click", () => {
 						const port = rowObject.values[1000009];
 						if (port === undefined) {
-							console.error("Can't find server port in row values.");
+							console.error("Can't find server port in row values");
 							return;
 						}
 
 						let appType = rowObject.values[5];
 						if (appType === undefined) {
-							console.error("Can't find application type in row values.");
+							console.error("Can't find application type in row values");
 							return;
 						}
 
@@ -102,7 +102,7 @@ class CreatedApps extends View {
 					deleteCell.addEventListener("click", () => {
 						const port = rowObject.values[1000009];
 						if (port === undefined) {
-							console.error("Can't find server port in row values.");
+							console.error("Can't find server port in row values");
 							return;
 						}
 
@@ -120,29 +120,6 @@ class CreatedApps extends View {
 
 					deleteCell.classList.add("action", "delete");
 				}
-
-				let viewCell = rowObject.row.querySelector(".cell[parameter-id='10']");
-				if (viewCell) {
-					let appType = rowObject.values[5];
-					if (appType === undefined) {
-						console.error("Can't find application type in row values.");
-						return;
-					}
-					const viewPortParameter = MetadataCollector.GetViewPortParameterToAppType(appType);
-					if (viewPortParameter != undefined) {
-						viewCell.addEventListener("click", () => {
-							const port = rowObject.values[1000009];
-							if (port === undefined) {
-								console.error("Can't find server port in row values.");
-								return;
-							}
-
-							new AppView({ appType, port, viewPortParameter })
-						});
-
-						viewCell.classList.add("action", "openAppView");
-					}
-				}
 			},
 			postUpdateRowFunction : (rowObject, updatedValues) => {
 				if (updatedValues.hasOwnProperty(2000002)) {
@@ -158,15 +135,40 @@ class CreatedApps extends View {
 						}
 					}
 				}
+
+				if (updatedValues.hasOwnProperty(10)) {
+					let viewCell = rowObject.row.querySelector(".cell[parameter-id='10']");
+					if (viewCell && !viewCell.classList.contains("action", "openAppView")) {
+						let appType = rowObject.values[5];
+						if (appType === undefined) {
+							console.error("Can't find application type in row values", rowObject);
+							return;
+						}
+						const viewPortParameter = MetadataCollector.GetViewPortParameterToAppType(appType);
+						if (viewPortParameter != undefined) {
+							viewCell.addEventListener("click", () => {
+								const port = rowObject.values[1000009];
+								if (port === undefined) {
+									console.error("Can't find server port in row values");
+									return;
+								}
+
+								new AppView({ appType, port, viewPortParameter });
+							});
+
+							viewCell.classList.add("action", "openAppView");
+						}
+					}
+				}
 			}
 		});
 		this.AddCallback("getCreatedApps", (response) => {
 			if ("apps" in response) {
-				for (let index of response.apps.map(app => app.port)) {
-					if (this.m_grid.m_rowByIndexValue.has(index)) {
-						this.m_grid.RemoveRow({ indexValue : index });
+				this.m_grid.m_rowByIndexValue.forEach((rowObject, indexValue) => {
+					if (!response.apps.some(app => app.port == indexValue)) {
+						this.m_grid.RemoveRow({ indexValue : indexValue });
 					}
-				}
+				});
 
 				response.apps.forEach(app => {
 					this.m_grid.AddOrUpdateRow({
@@ -257,6 +259,6 @@ class CreatedApps extends View {
 View.AddViewTemplate("CreatedApps", `<div></div>`);
 Dispatcher.RegisterPanel("CreatedApps", () => new CreatedApps());
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = CreatedApps;
 }

@@ -126,6 +126,7 @@
     mask-repeat: no-repeat;
     mask-position: center;
     background: var(--text-color-general);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'  width='0' height='0' viewBox='0 0 0 0' fill='none' stroke='currentColor' stroke-width='0' stroke-linecap='round'");
 }
 
 .grid>.row:not(.header)>.cell.action:hover {

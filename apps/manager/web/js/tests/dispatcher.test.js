@@ -11,13 +11,13 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner } = require('./testRunner');
-const { Dispatcher } = require('../dispatcher');
+const { TestRunner, testRunner } = require("./testRunner");
+const { Dispatcher } = require("../dispatcher");
 
-const Grid = require('../grid');
-const View = require('../view');
-const InstalledApps = require('../views/installedApps');
-const CreatedApps = require('../views/createdApps');
+const Grid = require("../grid");
+const View = require("../view");
+const InstalledApps = require("../views/installedApps");
+const CreatedApps = require("../views/createdApps");
 
 global.Grid = Grid;
 global.View = View;
@@ -29,7 +29,7 @@ global.dispatcher.UnregisterPanel('CreatedApps');
 function DestroyViews()
 {
 	document.querySelectorAll('body > main > section.views .viewHeader .close')
-		.forEach((button) => button.dispatchEvent(new Event('click', { bubbles : true })));
+		.forEach((button) => button.dispatchEvent(new Event("click", { bubbles : true })));
 	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created views count');
 	if (global.dispatcher && global.dispatcher.m_view) {
 		global.dispatcher.m_view.classList.add('hidden');
@@ -81,7 +81,7 @@ MetadataCollector.AddMetadata(6, {
 	name : "Table template with boolean operator",
 	type : "TableData",
 	id : 6,
-	columns : [ { name : "Boolean operator", type : "Int8", stringInterpretation : { 0 : "Equal" } } ]
+	columns : [ { name : "Boolean operator", type : "Int8", stringInterpretations : { 0 : "Equal" } } ]
 },
 	true);
 MetadataCollector.AddMetadata(7, {
@@ -91,7 +91,7 @@ MetadataCollector.AddMetadata(7, {
 	columns : [ {
 		name : "Number operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal",
 			1 : "Not equal",
 			2 : "Less than",
@@ -109,7 +109,7 @@ MetadataCollector.AddMetadata(8, {
 	columns : [ {
 		name : "String operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal case sensitive",
 			1 : "Equal case insensitive",
 			2 : "Not equal case sensitive",
@@ -127,7 +127,7 @@ MetadataCollector.AddMetadata(9, {
 	columns : [ {
 		name : "Optional number operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal",
 			1 : "Not equal",
 			2 : "Less than",
@@ -172,7 +172,7 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
 
 	//* Click to show
-	hiddenViewsList.firstElementChild.dispatchEvent(new Event('click', { bubbles : true }));
+	hiddenViewsList.firstElementChild.dispatchEvent(new Event("click", { bubbles : true }));
 	CheckHiddenViewsList(0);
 	CheckClassList(view1.m_parentView, [ 'view' ]);
 
@@ -222,9 +222,9 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 	CheckClassList(view2.m_parentView, [ 'view', 'maximized', 'hidden' ]);
 
 	//* Click to show to all
-	hiddenViewsList.childNodes[2].dispatchEvent(new Event('click', { bubbles : true }));
-	hiddenViewsList.childNodes[1].dispatchEvent(new Event('click', { bubbles : true }));
-	hiddenViewsList.childNodes[0].dispatchEvent(new Event('click', { bubbles : true }));
+	hiddenViewsList.childNodes[2].dispatchEvent(new Event("click", { bubbles : true }));
+	hiddenViewsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
+	hiddenViewsList.childNodes[0].dispatchEvent(new Event("click", { bubbles : true }));
 	CheckHiddenViewsList(0);
 	CheckClassList(view1.m_parentView, [ 'view' ]);
 	CheckClassList(view2.m_parentView, [ 'view', 'maximized' ]);
@@ -311,7 +311,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 	checkRegisteredPanelsList(2, 0);
 
 	//* Click to create panel
-	registeredPanelsList.childNodes[0].dispatchEvent(new Event('click', { bubbles : true }));
+	registeredPanelsList.childNodes[0].dispatchEvent(new Event("click", { bubbles : true }));
 	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 1, 'view is created');
 	checkRegisteredPanelsList(2, 0);
 
@@ -320,7 +320,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 		Array.from(View.GetCreatedViews().values())[0].m_title, 'InstalledApps', 'Unexpected name on created view');
 
 	//* Click to create panel
-	registeredPanelsList.childNodes[1].dispatchEvent(new Event('click', { bubbles : true }));
+	registeredPanelsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
 	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 2, 'view is created');
 	checkRegisteredPanelsList(2, 0);
 	testRunner.Assert(View.GetCreatedViews().size, 2, 'Unexpected created views count');
@@ -328,7 +328,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 		Array.from(View.GetCreatedViews().values())[1].m_title, 'CreatedApps', 'Unexpected name on created view');
 
 	//* Click to create panel
-	registeredPanelsList.childNodes[1].dispatchEvent(new Event('click', { bubbles : true }));
+	registeredPanelsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
 	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 3, 'view is created');
 	checkRegisteredPanelsList(2, 0);
 	testRunner.Assert(View.GetCreatedViews().size, 3, 'Unexpected created views count');
@@ -369,10 +369,10 @@ testRunner.Test('Hide and show dispatcher', () => {
 	testRunner.Assert(global.dispatcher.m_registeredPanels.classList.contains('visible'), false,
 		'Unexpected registered panels visibility');
 
-	global.dispatcher.m_control.dispatchEvent(new Event('click'));
+	global.dispatcher.m_control.dispatchEvent(new Event("click"));
 	testRunner.Assert(!global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
 
-	global.dispatcher.m_control.dispatchEvent(new Event('click'));
+	global.dispatcher.m_control.dispatchEvent(new Event("click"));
 	testRunner.Assert(global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
 });
 

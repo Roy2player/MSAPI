@@ -45,7 +45,7 @@ globalActions.GetInstalledApps = function () {
                     let action = document.createElement('span');
                     action.classList.add("action");
                     action.setAttribute("action", "create");
-                    action.addEventListener('click', () => {
+                    action.addEventListener("click", () => {
                         globalActions.CreateApp(app['id'])
                     });
                     row.append(action);
@@ -126,7 +126,7 @@ globalActions.GetCreatedApps = function () {
                     action.classList.add("action");
                     action.setAttribute("action", "create");
                     row.append(action);
-                    // option.addEventListener('click', globalActions.STCGraphGetTrades);
+                    // option.addEventListener("click", globalActions.STCGraphGetTrades);
 
                     let state = document.createElement('span');
                     state.classList.add("text");

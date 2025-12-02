@@ -19,26 +19,26 @@
  * on grids and tables views.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('./view');
-	Dispatcher = require('./dispatcher').Dispatcher;
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("./view");
+	Dispatcher = require("./dispatcher").Dispatcher;
 }
 
 class MetadataCollector extends View {
 	static #SUPPORTED_TYPES = Object.freeze([
-		'Int8', 'Int16', 'Int32', 'Int64', 'Uint8', 'Uint16', 'Uint32', 'Uint64', 'Double', 'Float', 'OptionalInt8',
-		'OptionalInt16', 'OptionalInt32', 'OptionalInt64', 'OptionalUint8', 'OptionalUint16', 'OptionalUint32',
-		'OptionalUint64', 'OptionalDouble', 'OptionalFloat', 'String', 'Timer', 'Duration', 'TableData', 'Bool',
-		'system'
+		"Int8", "Int16", "Int32", "Int64", "Uint8", "Uint16", "Uint32", "Uint64", "Double", "Float", "OptionalInt8",
+		"OptionalInt16", "OptionalInt32", "OptionalInt64", "OptionalUint8", "OptionalUint16", "OptionalUint32",
+		"OptionalUint64", "OptionalDouble", "OptionalFloat", "String", "Timer", "Duration", "TableData", "Bool",
+		"system"
 	]);
 
 	static #privateFields = (() => {
 		let m_metadataToId = new Map();
-		let m_stringInterpretationToId = new Map();
+		let m_stringInterpretationsToId = new Map();
 		let m_metadataToAppType = new Map();
 		let m_viewPortParameterToAppType = new Map();
 
-		return { m_metadataToId, m_stringInterpretationToId, m_metadataToAppType, m_viewPortParameterToAppType };
+		return { m_metadataToId, m_stringInterpretationsToId, m_metadataToAppType, m_viewPortParameterToAppType };
 	})();
 
 	constructor(parameters) { super("MetadataCollector", parameters); }
@@ -62,15 +62,15 @@ class MetadataCollector extends View {
 
 		MetadataCollector.#privateFields.m_metadataToId.set(+id, { metadata, isConst });
 
-		if ("stringInterpretation" in metadata) {
-			MetadataCollector.#privateFields.m_stringInterpretationToId.set(+id, metadata.stringInterpretation);
+		if ("stringInterpretations" in metadata) {
+			MetadataCollector.#privateFields.m_stringInterpretationsToId.set(+id, metadata.stringInterpretations);
 		}
 		else if (metadata.type == "TableData") {
 			for (let column of Object.entries(metadata.columns)) {
-				if (column.length > 1 && "stringInterpretation" in column[1]) {
+				if (column.length > 1 && "stringInterpretations" in column[1]) {
 					const tableColumnHash = Helper.StringHash(id.toString() + "-" + column[0].toString());
-					MetadataCollector.#privateFields.m_stringInterpretationToId.set(
-						tableColumnHash, column[1].stringInterpretation);
+					MetadataCollector.#privateFields.m_stringInterpretationsToId.set(
+						tableColumnHash, column[1].stringInterpretations);
 
 					if (MetadataCollector.#privateFields.m_metadataToId.has(tableColumnHash)) {
 						console.error(
@@ -144,7 +144,7 @@ class MetadataCollector extends View {
 		}
 
 		if (!metadata.type.includes("Optional") && (metadata.type.includes("Int") || metadata.type.includes("Uint"))) {
-			if (metadata.hasOwnProperty("stringInterpretation")) {
+			if (metadata.hasOwnProperty("stringInterpretations")) {
 				if (!MetadataCollector.#ValidateStringInterpretation(metadata)) {
 					return false;
 				}
@@ -162,13 +162,13 @@ class MetadataCollector extends View {
 
 	static #ValidateStringInterpretation(metadata)
 	{
-		const stringInterpretation = metadata.stringInterpretation;
-		if (typeof stringInterpretation !== "object" || stringInterpretation === null) {
-			console.error("'stringInterpretation' must be a non-null object", metadata);
+		const stringInterpretations = metadata.stringInterpretations;
+		if (typeof stringInterpretations !== "object" || stringInterpretations === null) {
+			console.error("'stringInterpretations' must be a non-null object", metadata);
 			return false;
 		}
 
-		for (let [key, value] of Object.entries(stringInterpretation)) {
+		for (let [key, value] of Object.entries(stringInterpretations)) {
 			if (typeof value !== "string") {
 				console.error(`String interpretation value for key '${key}' must be a string`, metadata);
 				return false;
@@ -190,6 +190,7 @@ class MetadataCollector extends View {
 			return false;
 		}
 
+		// It can be as array (internally used) or an object with numeric keys (from MSAPI Application)
 		for (let column of Object.values(metadata.columns)) {
 			if (typeof column !== "object" || column === null) {
 				console.error("Each column must be a non-null object", metadata);
@@ -206,7 +207,7 @@ class MetadataCollector extends View {
 				return false;
 			}
 
-			if (column.hasOwnProperty("stringInterpretation")) {
+			if (column.hasOwnProperty("stringInterpretations")) {
 				if (!MetadataCollector.#ValidateStringInterpretation(column)) {
 					return false;
 				}
@@ -233,16 +234,16 @@ class MetadataCollector extends View {
 	 */
 	static GetStringInterpretations(id)
 	{
-		const stringInterpretation = MetadataCollector.#privateFields.m_stringInterpretationToId.get(+id);
-		if (!stringInterpretation) {
-			console.warn(`String interpretation for parameter id ${id} are not found`);
+		const stringInterpretations = MetadataCollector.#privateFields.m_stringInterpretationsToId.get(+id);
+		if (!stringInterpretations) {
+			console.warn(`String interpretations for parameter id ${id} are not found`);
 			return undefined;
 		}
 
-		return stringInterpretation;
+		return stringInterpretations;
 	}
 
-	static IsSelect(id) { return MetadataCollector.#privateFields.m_stringInterpretationToId.has(+id); }
+	static IsSelect(id) { return MetadataCollector.#privateFields.m_stringInterpretationsToId.has(+id); }
 
 	/**************************
 	 * @brief Adds or updates metadata for a specific application type.
@@ -321,7 +322,7 @@ MetadataCollector.AddMetadata(5, { name : "Type", type : "String" }, true);
 MetadataCollector.AddMetadata(6, {
 	name : "Table template with boolean operator",
 	type : "TableData",
-	columns : [ { name : "Boolean operator", type : "Int8", stringInterpretation : { 0 : "Equal" } } ]
+	columns : [ { name : "Boolean operator", type : "Int8", stringInterpretations : { 0 : "Equal" } } ]
 },
 	true);
 MetadataCollector.AddMetadata(7, {
@@ -330,7 +331,7 @@ MetadataCollector.AddMetadata(7, {
 	columns : [ {
 		name : "Number operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal",
 			1 : "Not equal",
 			2 : "Less than",
@@ -347,7 +348,7 @@ MetadataCollector.AddMetadata(8, {
 	columns : [ {
 		name : "String operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal case sensitive",
 			1 : "Equal case insensitive",
 			2 : "Not equal case sensitive",
@@ -364,7 +365,7 @@ MetadataCollector.AddMetadata(9, {
 	columns : [ {
 		name : "Optional number operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal",
 			1 : "Not equal",
 			2 : "Less than",
@@ -377,6 +378,6 @@ MetadataCollector.AddMetadata(9, {
 	true);
 MetadataCollector.AddMetadata(10, { name : "Open view", type : "system" }, true);
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = MetadataCollector;
 }

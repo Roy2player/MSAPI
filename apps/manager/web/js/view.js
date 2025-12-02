@@ -274,12 +274,12 @@ class View {
 				}
 
 				if (!this.m_parentNode) {
-					console.error("Can't find parent node for view.");
+					console.error("Can't find parent node for view");
 					return false;
 				}
 
 				if (!View.#privateFields.m_viewTemplateToViewType.has(viewType)) {
-					console.error("Can't find view template for view.");
+					console.error("Can't find view template for view");
 					return false;
 				}
 
@@ -296,7 +296,7 @@ class View {
 
 					if (!(await this.Constructor(parameters))) {
 						this.Destructor();
-						console.error("Can't create view.");
+						console.error("Can't create view");
 						return;
 					}
 
@@ -321,10 +321,6 @@ class View {
 
 				this.MakeDraggable(this.m_parentView.querySelector(".viewHeader .title"), this.m_parentView);
 				this.m_parentView.addEventListener("mousedown", () => { View.UpdateZIndex(this); });
-
-				this.m_uid = Helper.GenerateUid();
-				this.m_parentView.setAttribute("uid", this.m_uid);
-				this.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
 
 				this.m_parentView.style.left = "0px";
 				this.m_parentView.style.top = "0px";
@@ -516,7 +512,7 @@ class View {
 
 				let closeButton = this.m_parentView.querySelector(".viewHeader .close");
 				if (!closeButton) {
-					console.error("Can't find close button for view.");
+					console.error("Can't find close button for view");
 					return;
 				}
 				if (this.m_canBeClosed) {
@@ -533,12 +529,12 @@ class View {
 
 				let hideButton = this.m_parentView.querySelector(".viewHeader .hide");
 				if (!hideButton) {
-					console.error("Can't find hide button for view.");
+					console.error("Can't find hide button for view");
 					this.Destructor();
 				}
 				this.m_maximizeButton = this.m_parentView.querySelector(".viewHeader .maximize");
 				if (!this.m_maximizeButton) {
-					console.error("Can't find maximize button for view.");
+					console.error("Can't find maximize button for view");
 					this.Destructor();
 				}
 
@@ -553,7 +549,7 @@ class View {
 
 				let stickButton = this.m_parentView.querySelector(".viewHeader .stick");
 				if (!stickButton) {
-					console.error("Can't find stick button for view.");
+					console.error("Can't find stick button for view");
 					this.Destructor();
 				}
 				if (this.m_canBeSticked) {
@@ -575,12 +571,15 @@ class View {
 				if (!(await this.Constructor(parameters))) {
 					this.Destructor();
 					if (!this.m_silentExit) {
-						console.error("Can't create view.");
+						console.error("Can't create view");
 					}
 					return;
 				}
 
+				this.m_uid = Helper.GenerateUid();
 				View.SaveView(this);
+				this.m_parentView.setAttribute("uid", this.m_uid);
+				this.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
 
 				if (parameters) {
 					if (parameters.hasOwnProperty("postCreateFunction")) {
@@ -603,7 +602,7 @@ class View {
 				this.m_created = true;
 			}
 			catch (error) {
-				console.error("Can't create view.", error);
+				console.error("Can't create view:", error);
 				this.Destructor();
 			}
 		})();
@@ -991,19 +990,19 @@ class View {
 }
 
 // Handle clicks inside iframes to prevent losing focus
-window.addEventListener('message', function(event) {
-	if (event.data && event.data.type === 'iframeClick') {
+window.addEventListener("message", function(event) {
+	if (event.data && event.data.type === "iframeClick") {
 		const view = View.GetCreatedViews().get(event.data.uid);
 		if (!view) {
-			console.error('View not found for UID:', event.data.uid);
+			console.error("View not found for UID:", event.data.uid);
 			return;
 		}
 
-		view.m_parentView.dispatchEvent(new Event('mousedown', { bubbles : true }));
+		view.m_parentView.dispatchEvent(new Event("mousedown", { bubbles : true }));
 	}
 });
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	Helper = require("./helper");
 	module.exports = View;
 }

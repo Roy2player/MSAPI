@@ -22,8 +22,8 @@
  * - Ctrl+D to toggle visibility.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('./view');
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("./view");
 }
 
 class Dispatcher extends View {
@@ -38,12 +38,12 @@ class Dispatcher extends View {
 	async Constructor()
 	{
 		this.m_control = this.m_view.querySelector('.control');
-		this.m_control.addEventListener('click', () => { this.m_view.classList.toggle('hidden'); });
+		this.m_control.addEventListener("click", () => { this.m_view.classList.toggle('hidden'); });
 		let savedThis = this;
 		document.addEventListener('keydown', function(event) {
 			if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
 				event.preventDefault();
-				savedThis.m_control.dispatchEvent(new Event('click', { bubbles : true }));
+				savedThis.m_control.dispatchEvent(new Event("click", { bubbles : true }));
 			}
 		});
 
@@ -69,7 +69,7 @@ class Dispatcher extends View {
 		div.appendChild(span);
 
 		let hiddenViewsList = this.m_hiddenViews.querySelector('.list');
-		div.addEventListener('click', () => {
+		div.addEventListener("click", () => {
 			view.Show();
 			this.RemoveHiddenView(view);
 		});
@@ -122,7 +122,7 @@ class Dispatcher extends View {
 		span.innerHTML = panelName;
 		div.appendChild(span);
 
-		div.addEventListener('click', () => creatorFunction());
+		div.addEventListener("click", () => creatorFunction());
 
 		let registeredPanelsList = this.m_registeredPanels.querySelector('.list');
 		registeredPanelsList.appendChild(div);
@@ -171,7 +171,7 @@ View.AddViewTemplate("Dispatcher", `<div class="dispatcher hidden">
 	</div>`);
 
 let dispatcher = undefined;
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
 	// That check is needed for node js tests as there this can be called multiple times
 	// Firstly, when it is required to be sure it is defined
 	// Secondly, when jsdom dispatches DOMContentLoaded event
@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 });
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports.Dispatcher = Dispatcher;
-	document.addEventListener('DOMContentLoaded', () => { global.dispatcher = dispatcher; });
+	document.addEventListener("DOMContentLoaded", () => { global.dispatcher = dispatcher; });
 }

@@ -66,7 +66,7 @@ class Duration {
 		let durations = Duration.#privateFields.m_durations;
 		durations.set(input, isActive);
 
-		input.addEventListener('input', () => { isActive.isActive = true; });
+		input.addEventListener("input", () => { isActive.isActive = true; });
 
 		if (!Duration.#privateFields.m_hasGlobalEventListener) {
 			Duration.#privateFields.m_hasGlobalEventListener = true;
@@ -437,6 +437,6 @@ class Duration {
 	}
 };
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Duration;
 }

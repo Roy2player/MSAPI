@@ -11,13 +11,13 @@
  * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner } = require('./testRunner');
-const View = require('../view');
-const InstalledApps = require('../views/installedApps');
-const NewApp = require('../views/newApp');
-const CreatedApps = require('../views/createdApps');
-const Table = require('../table');
-const Grid = require('../grid');
+const { TestRunner, testRunner } = require("./testRunner");
+const View = require("../view");
+const InstalledApps = require("../views/installedApps");
+const NewApp = require("../views/newApp");
+const CreatedApps = require("../views/createdApps");
+const Table = require("../table");
+const Grid = require("../grid");
 
 global.Grid = Grid;
 global.Table = Table;
@@ -31,7 +31,7 @@ MetadataCollector.AddMetadata(6, {
 	name : "Table template with boolean operator",
 	type : "TableData",
 	id : 6,
-	columns : [ { name : "Boolean operator", type : "Int8", stringInterpretation : { 0 : "Equal" } } ]
+	columns : [ { name : "Boolean operator", type : "Int8", stringInterpretations : { 0 : "Equal" } } ]
 },
 	true);
 MetadataCollector.AddMetadata(7, {
@@ -41,7 +41,7 @@ MetadataCollector.AddMetadata(7, {
 	columns : [ {
 		name : "Number operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal",
 			1 : "Not equal",
 			2 : "Less than",
@@ -59,7 +59,7 @@ MetadataCollector.AddMetadata(8, {
 	columns : [ {
 		name : "String operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal case sensitive",
 			1 : "Equal case insensitive",
 			2 : "Not equal case sensitive",
@@ -77,7 +77,7 @@ MetadataCollector.AddMetadata(9, {
 	columns : [ {
 		name : "Optional number operator",
 		type : "Int8",
-		stringInterpretation : {
+		stringInterpretations : {
 			0 : "Equal",
 			1 : "Not equal",
 			2 : "Less than",
@@ -92,7 +92,7 @@ MetadataCollector.AddMetadata(9, {
 function DestroyViews()
 {
 	document.querySelectorAll('body > main > section.views .viewHeader .close')
-		.forEach((button) => button.dispatchEvent(new Event('click', { bubbles : true })));
+		.forEach((button) => button.dispatchEvent(new Event("click", { bubbles : true })));
 	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created views count');
 }
 
@@ -152,6 +152,9 @@ testRunner.Test('Add view to CreatedApps panel', () => {
 		view.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
 
 	testRunner.Assert(View.GetViewTemplate('CreatedApps') !== undefined, true, 'View template is unexpected');
+
+	// Check that undefined column is not added
+	view.m_grid.AddColumn({ id : -1 });
 
 	testRunner.Assert(view.m_grid !== null, true, 'Grid not created');
 	testRunner.Assert(view.m_grid.m_view.childNodes.length, 1, 'Grid has unexpected number of children');

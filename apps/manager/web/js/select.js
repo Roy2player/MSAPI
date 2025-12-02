@@ -50,7 +50,7 @@ class Select {
 	static SetEvent(input)
 	{
 		let view = undefined;
-		input.addEventListener('click', () => {
+		input.addEventListener("click", () => {
 			if (view && view.m_parentView.parentNode) {
 				return;
 			}
@@ -64,7 +64,7 @@ class Select {
 			const stringInterpretations = MetadataCollector.GetStringInterpretations(parameterId);
 
 			if (!stringInterpretations) {
-				console.error("No string interpretation is found for parameter id", parameterId);
+				console.error("No string interpretations are found for parameter id", parameterId);
 				return;
 			}
 
@@ -162,7 +162,7 @@ class Select {
 		const stringInterpretations = MetadataCollector.GetStringInterpretations(parameterId);
 
 		if (!stringInterpretations) {
-			console.error("No string interpretation is found for parameter id", parameterId);
+			console.error("No string interpretations are found for parameter id", parameterId);
 			return;
 		}
 
@@ -207,9 +207,9 @@ class Select {
 	}
 }
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Select;
-	MetadataCollector = require('./metadataCollector');
-	View = require('./view');
-	SelectView = require('./views/selectView');
+	MetadataCollector = require("./metadataCollector");
+	View = require("./view");
+	SelectView = require("./views/selectView");
 }

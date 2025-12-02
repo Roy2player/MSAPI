@@ -13,9 +13,9 @@
  * @brief View to display settings of MSAPI application. Only one instance per application port can be created.
  */
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-	View = require('../view');
-	MetadataCollector = require('../metadataCollector');
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
+	View = require("../view");
+	MetadataCollector = require("../metadataCollector");
 }
 
 class ModifyApp extends View {
@@ -311,7 +311,7 @@ class ModifyApp extends View {
 				});
 			}
 			else {
-				this.DisplayErrorMessage("Error: No status in response.");
+				this.DisplayErrorMessage("Error: No status in response");
 			}
 		});
 
@@ -324,6 +324,6 @@ View.AddViewTemplate("ModifyApp", `<div class="customView">
     <div class="button">Modify</div>
 </div>`);
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = ModifyApp;
 }

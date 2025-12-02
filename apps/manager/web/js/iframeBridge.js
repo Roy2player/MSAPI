@@ -17,8 +17,6 @@
  * @usage Include this script in your app's HTML:
  * <script src="/iframeBridge.js"></script>
  */
-(function() {
-'use strict';
 
 // Listen for initialization message from parent window
 window.addEventListener("message", (event) => {
@@ -29,9 +27,8 @@ window.addEventListener("message", (event) => {
 });
 
 // Forward click events to parent window
-window.addEventListener('click', function(event) {
+window.addEventListener("click", (event) => {
 	if (window.parent && window.uid && window.parentOrigin) {
-		window.parent.postMessage({ type : 'iframeClick', uid : window.uid }, window.parentOrigin);
+		window.parent.postMessage({ type : "iframeClick", uid : window.uid }, window.parentOrigin);
 	}
 });
-})();
