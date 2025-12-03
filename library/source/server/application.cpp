@@ -632,6 +632,79 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 	case StandardProtocol::cipherActionModify:
 		HandleModifyRequest(data.GetData());
 		return;
+	case StandardProtocol::cipherActionConnect: {
+		const auto& dataMap{ data.GetData() };
+		auto it{ dataMap.find(1) };
+		if (it == dataMap.end()) {
+			LOG_ERROR("Unexpected connect data, missing ip: " + data.ToString() + ", connection: " + _S(connection));
+			return;
+		}
+		if (!std::holds_alternative<int32_t>(it->second)) {
+			LOG_ERROR(
+				"Unexpected connect data, invalid ip type: " + data.ToString() + ", connection: " + _S(connection));
+			return;
+		}
+		const int32_t ip{ std::get<int32_t>(it->second) };
+
+		it = dataMap.find(2);
+		if (it == dataMap.end()) {
+			LOG_ERROR("Unexpected connect data, missing port: " + data.ToString() + ", connection: " + _S(connection));
+			return;
+		}
+		if (!std::holds_alternative<int16_t>(it->second)) {
+			LOG_ERROR(
+				"Unexpected connect data, invalid port type: " + data.ToString() + ", connection: " + _S(connection));
+			return;
+		}
+		const int16_t port{ std::get<int16_t>(it->second) };
+
+		it = dataMap.find(3);
+		if (it == dataMap.end()) {
+			LOG_ERROR("Unexpected connect data, missing needReconnection: " + data.ToString()
+				+ ", connection: " + _S(connection));
+			return;
+		}
+		if (!std::holds_alternative<bool>(it->second)) {
+			LOG_ERROR("Unexpected connect data, invalid needReconnection type: " + data.ToString()
+				+ ", connection: " + _S(connection));
+			return;
+		}
+		const bool needReconnection{ std::get<bool>(it->second) };
+
+		HandleOpenConnectionRequest(ip, port, needReconnection);
+	}
+		return;
+	case StandardProtocol::cipherActionDisconnect: {
+		const auto& dataMap{ data.GetData() };
+		auto it{ dataMap.find(1) };
+		if (it == dataMap.end()) {
+			LOG_ERROR(
+				"Unexpected disconnect data, missing ip: " + data.ToString() + ", connection: " + _S(connection));
+			return;
+		}
+		if (!std::holds_alternative<int32_t>(it->second)) {
+			LOG_ERROR(
+				"Unexpected disconnect data, invalid ip type: " + data.ToString() + ", connection: " + _S(connection));
+			return;
+		}
+		const int32_t ip{ std::get<int32_t>(it->second) };
+
+		it = dataMap.find(2);
+		if (it == dataMap.end()) {
+			LOG_ERROR(
+				"Unexpected disconnect data, missing port: " + data.ToString() + ", connection: " + _S(connection));
+			return;
+		}
+		if (!std::holds_alternative<int16_t>(it->second)) {
+			LOG_ERROR("Unexpected disconnect data, invalid port type: " + data.ToString()
+				+ ", connection: " + _S(connection));
+			return;
+		}
+		const int16_t port{ std::get<int16_t>(it->second) };
+
+		HandleCloseConnectionRequest(ip, port);
+	}
+		return;
 	case StandardProtocol::cipherActionHello:
 		HandleHello(connection);
 		return;
@@ -1052,6 +1125,18 @@ void Application::HandleReconnect(const int id)
 {
 	LOG_PROTOCOL("Id: " + _S(id));
 	HandleRunRequest();
+}
+
+void Application::HandleOpenConnectionRequest(
+	[[maybe_unused]] const int32_t ip, [[maybe_unused]] const int16_t port, [[maybe_unused]] const bool needReconnection)
+{
+	LOG_PROTOCOL("Action is skipped");
+}
+
+void Application::HandleCloseConnectionRequest(
+	[[maybe_unused]] const int32_t ip, [[maybe_unused]] const int16_t port)
+{
+	LOG_PROTOCOL("Action is skipped");
 }
 
 void Application::SetName(const std::string& name) { m_name = name; }

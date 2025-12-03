@@ -81,6 +81,13 @@ private:
 	MSAPI::Table<int> m_parameter44{ { 1 } };
 
 	MSAPI::ActionsCounter m_unhandledActions;
+	MSAPI::ActionsCounter m_openConnectionActions;
+	MSAPI::ActionsCounter m_closeConnectionActions;
+	int32_t m_lastOpenConnectionIp{ 0 };
+	int16_t m_lastOpenConnectionPort{ 0 };
+	bool m_lastOpenConnectionNeedReconnection{ false };
+	int32_t m_lastCloseConnectionIp{ 0 };
+	int16_t m_lastCloseConnectionPort{ 0 };
 
 public:
 	Client();
@@ -94,6 +101,8 @@ public:
 	void HandleHello(int connection) final;
 	void HandleMetadata(int connection, std::string_view metadata) final;
 	void HandleParameters(int connection, const std::map<size_t, std::variant<standardTypes>>& parameters) final;
+	void HandleOpenConnectionRequest(int32_t ip, int16_t port, bool needReconnection) final;
+	void HandleCloseConnectionRequest(int32_t ip, int16_t port) final;
 
 	int8_t GetParameter1() const noexcept;
 	int16_t GetParameter2() const noexcept;
@@ -145,6 +154,15 @@ public:
 
 	const size_t& GetUnhandledActions() const noexcept;
 	void WaitUnhandledActions(const MSAPI::Test& test, size_t delay, size_t expected);
+	const size_t& GetOpenConnectionActions() const noexcept;
+	void WaitOpenConnectionActions(const MSAPI::Test& test, size_t delay, size_t expected);
+	const size_t& GetCloseConnectionActions() const noexcept;
+	void WaitCloseConnectionActions(const MSAPI::Test& test, size_t delay, size_t expected);
+	int32_t GetLastOpenConnectionIp() const noexcept;
+	int16_t GetLastOpenConnectionPort() const noexcept;
+	bool GetLastOpenConnectionNeedReconnection() const noexcept;
+	int32_t GetLastCloseConnectionIp() const noexcept;
+	int16_t GetLastCloseConnectionPort() const noexcept;
 };
 
 #endif //* APPLICATION_HANDLERS_CLIENT_H

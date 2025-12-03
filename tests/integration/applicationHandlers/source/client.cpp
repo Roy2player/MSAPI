@@ -138,6 +138,26 @@ void Client::HandleParameters(
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
+void Client::HandleOpenConnectionRequest(const int32_t ip, const int16_t port, const bool needReconnection)
+{
+	LOG_DEBUG(
+		"Open connection request received: ip=" + _S(ip) + ", port=" + _S(port) + ", needReconnection=" + _S(needReconnection));
+	m_lastOpenConnectionIp = ip;
+	m_lastOpenConnectionPort = port;
+	m_lastOpenConnectionNeedReconnection = needReconnection;
+	m_openConnectionActions.IncrementActionsNumber();
+	MSAPI::ActionsCounter::IncrementActionsNumber();
+}
+
+void Client::HandleCloseConnectionRequest(const int32_t ip, const int16_t port)
+{
+	LOG_DEBUG("Close connection request received: ip=" + _S(ip) + ", port=" + _S(port));
+	m_lastCloseConnectionIp = ip;
+	m_lastCloseConnectionPort = port;
+	m_closeConnectionActions.IncrementActionsNumber();
+	MSAPI::ActionsCounter::IncrementActionsNumber();
+}
+
 int8_t Client::GetParameter1() const noexcept { return m_parameter1; }
 
 int16_t Client::GetParameter2() const noexcept { return m_parameter2; }
@@ -241,3 +261,30 @@ void Client::WaitUnhandledActions(const MSAPI::Test& test, const size_t delay, c
 {
 	m_unhandledActions.WaitActionsNumber(test, delay, expected);
 }
+
+const size_t& Client::GetOpenConnectionActions() const noexcept { return m_openConnectionActions.GetActionsNumber(); }
+
+void Client::WaitOpenConnectionActions(const MSAPI::Test& test, const size_t delay, const size_t expected)
+{
+	m_openConnectionActions.WaitActionsNumber(test, delay, expected);
+}
+
+const size_t& Client::GetCloseConnectionActions() const noexcept
+{
+	return m_closeConnectionActions.GetActionsNumber();
+}
+
+void Client::WaitCloseConnectionActions(const MSAPI::Test& test, const size_t delay, const size_t expected)
+{
+	m_closeConnectionActions.WaitActionsNumber(test, delay, expected);
+}
+
+int32_t Client::GetLastOpenConnectionIp() const noexcept { return m_lastOpenConnectionIp; }
+
+int16_t Client::GetLastOpenConnectionPort() const noexcept { return m_lastOpenConnectionPort; }
+
+bool Client::GetLastOpenConnectionNeedReconnection() const noexcept { return m_lastOpenConnectionNeedReconnection; }
+
+int32_t Client::GetLastCloseConnectionIp() const noexcept { return m_lastCloseConnectionIp; }
+
+int16_t Client::GetLastCloseConnectionPort() const noexcept { return m_lastCloseConnectionPort; }

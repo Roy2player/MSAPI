@@ -21,7 +21,7 @@
  * contained in map with property identifier as a key and pair of variant and type specifier as a value. Protocol data
  * objects contains cipher which can be used to identify messages for different purposes.
  *
- * @note Ciphers from 934875930 to 934875939 are reserved for standard protocol.
+ * @note Ciphers from 934875930 to 934875941 are reserved for standard protocol.
  */
 
 #ifndef MSAPI_STANDARD_PROTOCOL_H
@@ -45,6 +45,8 @@ constexpr size_t cipherActionPause{ 934875935 };
 constexpr size_t cipherActionRun{ 934875936 };
 constexpr size_t cipherActionDelete{ 934875937 };
 constexpr size_t cipherActionModify{ 934875938 };
+constexpr size_t cipherActionConnect{ 934875939 };
+constexpr size_t cipherActionDisconnect{ 934875940 };
 
 /**************************
  * @brief Object for containing data of standard message.
@@ -58,7 +60,7 @@ public:
 	/**************************
 	 * @brief Constructor for creating empty data before sending, empty constructor.
 	 *
-	 * @note Ciphers from 934875930 to 934875939 are reserved for standard protocol.
+	 * @note Ciphers from 934875930 to 934875941 are reserved for standard protocol.
 	 *
 	 * @test Has unit test.
 	 */
@@ -356,6 +358,29 @@ void SendMetadataRequest(int connection);
  * @test Has unit test.
  */
 void SendParametersRequest(int connection);
+
+/**************************
+ * @brief Send connect action message to connection. Manager-only action that triggers HandleOpenConnectionRequest.
+ *
+ * @param connection Socket to send.
+ * @param ip IPv4 address of target connection in network byte order.
+ * @param port Port of target connection in host byte order.
+ * @param needReconnection If true, server will try to reconnect if connection was closed.
+ *
+ * @test Has unit test.
+ */
+void SendActionConnect(int connection, int32_t ip, int16_t port, bool needReconnection);
+
+/**************************
+ * @brief Send disconnect action message to connection. Manager-only action that triggers HandleCloseConnectionRequest.
+ *
+ * @param connection Socket to send.
+ * @param ip IPv4 address of target connection in network byte order.
+ * @param port Port of target connection in host byte order.
+ *
+ * @test Has unit test.
+ */
+void SendActionDisconnect(int connection, int32_t ip, int16_t port);
 
 }; //* namespace StandardProtocol
 

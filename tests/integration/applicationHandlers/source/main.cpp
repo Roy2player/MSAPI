@@ -881,7 +881,57 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	test.Assert(client->MSAPI::Application::GetState(), MSAPI::Application::State::Running,
 		"Client with valid parameters in running state after reconnect to manager");
 
-	//* 43) Manager sends delete request to the client, state is changed
+	//* 43) Manager sends connect action to the client with ip, port and needReconnection
+	const int32_t testIp{ 0x7F000001 };		   // 127.0.0.1 in network byte order
+	const int16_t testPort{ 8888 };			   // Test port
+	const bool testNeedReconnection{ true };
+	manager->SendActionConnect(testIp, testPort, testNeedReconnection);
+	client->WaitOpenConnectionActions(test, 50000, 1);
+	test.Assert(client->GetOpenConnectionActions(), 1u, "Correct number of open connection actions: 1");
+	test.Assert(client->GetLastOpenConnectionIp(), testIp, "Open connection ip is correct");
+	test.Assert(client->GetLastOpenConnectionPort(), testPort, "Open connection port is correct");
+	test.Assert(client->GetLastOpenConnectionNeedReconnection(), testNeedReconnection,
+		"Open connection needReconnection is correct");
+	client->WaitActionsNumber(test, 50000, 20);
+	test.Assert(actions, 20, "Correct number of actions 20");
+	test.Assert(client->MSAPI::Application::GetState(), MSAPI::Application::State::Running,
+		"Client state is not changed after open connection request");
+
+	//* 44) Manager sends second connect action with different parameters
+	const int32_t testIp2{ static_cast<int32_t>(0xC0A80001) };	   // 192.168.0.1 in network byte order
+	const int16_t testPort2{ 9999 };		   // Test port
+	const bool testNeedReconnection2{ false };
+	manager->SendActionConnect(testIp2, testPort2, testNeedReconnection2);
+	client->WaitOpenConnectionActions(test, 50000, 2);
+	test.Assert(client->GetOpenConnectionActions(), 2u, "Correct number of open connection actions: 2");
+	test.Assert(client->GetLastOpenConnectionIp(), testIp2, "Open connection ip2 is correct");
+	test.Assert(client->GetLastOpenConnectionPort(), testPort2, "Open connection port2 is correct");
+	test.Assert(client->GetLastOpenConnectionNeedReconnection(), testNeedReconnection2,
+		"Open connection needReconnection2 is correct");
+	client->WaitActionsNumber(test, 50000, 21);
+	test.Assert(actions, 21, "Correct number of actions 21");
+
+	//* 45) Manager sends disconnect action to the client with ip and port
+	manager->SendActionDisconnect(testIp, testPort);
+	client->WaitCloseConnectionActions(test, 50000, 1);
+	test.Assert(client->GetCloseConnectionActions(), 1u, "Correct number of close connection actions: 1");
+	test.Assert(client->GetLastCloseConnectionIp(), testIp, "Close connection ip is correct");
+	test.Assert(client->GetLastCloseConnectionPort(), testPort, "Close connection port is correct");
+	client->WaitActionsNumber(test, 50000, 22);
+	test.Assert(actions, 22, "Correct number of actions 22");
+	test.Assert(client->MSAPI::Application::GetState(), MSAPI::Application::State::Running,
+		"Client state is not changed after close connection request");
+
+	//* 46) Manager sends second disconnect action with different parameters
+	manager->SendActionDisconnect(testIp2, testPort2);
+	client->WaitCloseConnectionActions(test, 50000, 2);
+	test.Assert(client->GetCloseConnectionActions(), 2u, "Correct number of close connection actions: 2");
+	test.Assert(client->GetLastCloseConnectionIp(), testIp2, "Close connection ip2 is correct");
+	test.Assert(client->GetLastCloseConnectionPort(), testPort2, "Close connection port2 is correct");
+	client->WaitActionsNumber(test, 50000, 23);
+	test.Assert(actions, 23, "Correct number of actions 23");
+
+	//* 47) Manager sends delete request to the client, state is changed
 	manager->SendActionDelete();
 	MSAPI::Test::Wait(
 		50000, [&client]() { return client->MSAPI::Server::GetState() == MSAPI::Server::State::Stopped; });
@@ -890,7 +940,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	test.Assert(client->MSAPI::Server::GetState(), MSAPI::Server::State::Stopped,
 		"Client server's state is stopped state after delete request");
 
-	//* 44) Check actions and unhandled actions numbers for all applications
+	//* 48) Check actions and unhandled actions numbers for all applications
 
 	managerPtr.reset();
 	secondPseudoManagerPtr.reset();

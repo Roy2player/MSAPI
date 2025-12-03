@@ -400,6 +400,31 @@ void SendParametersRequest(const int connection)
 
 #undef __STANDARD_PROTOCOL_SEND
 
+void SendActionConnect(const int connection, const int32_t ip, const int16_t port, const bool needReconnection)
+{
+	Data data{ cipherActionConnect };
+	data.SetData(1, ip);
+	data.SetData(2, port);
+	data.SetData(3, needReconnection);
+
+	LOG_PROTOCOL("Send action connect to connection: " + _S(connection) + ", ip: " + _S(ip) + ", port: " + _S(port)
+		+ ", needReconnection: " + _S(needReconnection));
+
+	Send(connection, data);
+}
+
+void SendActionDisconnect(const int connection, const int32_t ip, const int16_t port)
+{
+	Data data{ cipherActionDisconnect };
+	data.SetData(1, ip);
+	data.SetData(2, port);
+
+	LOG_PROTOCOL(
+		"Send action disconnect to connection: " + _S(connection) + ", ip: " + _S(ip) + ", port: " + _S(port));
+
+	Send(connection, data);
+}
+
 }; //* namespace StandardProtocol
 
 }; //* namespace MSAPI

@@ -553,6 +553,31 @@ public:
 	virtual void HandleReconnect(int id);
 
 	/**************************
+	 * @brief Handle open connection request from Manager. Application should open a new connection to the specified
+	 * IP and port in a separate thread. Already defined in Application class, but can be overridden. Default behavior
+	 * is to log the action and skip.
+	 *
+	 * @param ip IPv4 address of target connection in network byte order.
+	 * @param port Port of target connection in host byte order.
+	 * @param needReconnection If true, server will try to reconnect if connection was closed.
+	 *
+	 * @test Has unit tests.
+	 */
+	virtual void HandleOpenConnectionRequest(int32_t ip, int16_t port, bool needReconnection);
+
+	/**************************
+	 * @brief Handle close connection request from Manager. Application should close the connection to the specified
+	 * IP and port in a separate thread. Already defined in Application class, but can be overridden. Default behavior
+	 * is to log the action and skip.
+	 *
+	 * @param ip IPv4 address of target connection in network byte order.
+	 * @param port Port of target connection in host byte order.
+	 *
+	 * @test Has unit tests.
+	 */
+	virtual void HandleCloseConnectionRequest(int32_t ip, int16_t port);
+
+	/**************************
 	 * @brief Set the Name object to application.
 	 *
 	 * @param name Name of application.

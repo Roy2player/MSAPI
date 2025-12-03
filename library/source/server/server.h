@@ -355,7 +355,7 @@ public:
 	}
 
 			if constexpr (Type == RecvProcessingType::Manager) {
-				TMP_MSAPI_SERVER_PROCESS_DATA(10);
+				TMP_MSAPI_SERVER_PROCESS_DATA(11);
 			}
 			else {
 				TMP_MSAPI_SERVER_PROCESS_DATA(3);

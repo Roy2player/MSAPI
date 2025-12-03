@@ -186,6 +186,26 @@ void Manager::SendParametersResponse()
 	MSAPI::StandardProtocol::Send(m_activeConnection, data);
 }
 
+void Manager::SendActionConnect(const int32_t ip, const int16_t port, const bool needReconnection)
+{
+	if (m_activeConnection == -1) {
+		LOG_ERROR("Active connection is not set");
+		return;
+	}
+
+	MSAPI::StandardProtocol::SendActionConnect(m_activeConnection, ip, port, needReconnection);
+}
+
+void Manager::SendActionDisconnect(const int32_t ip, const int16_t port)
+{
+	if (m_activeConnection == -1) {
+		LOG_ERROR("Active connection is not set");
+		return;
+	}
+
+	MSAPI::StandardProtocol::SendActionDisconnect(m_activeConnection, ip, port);
+}
+
 std::string Manager::GetParameters() const
 {
 	std::string parameters;

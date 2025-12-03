@@ -59,6 +59,8 @@ public:
 	void SendParametersRequest();
 	void SendMetadataResponse();
 	void SendParametersResponse();
+	void SendActionConnect(int32_t ip, int16_t port, bool needReconnection);
+	void SendActionDisconnect(int32_t ip, int16_t port);
 	std::string GetParameters() const;
 	const std::string& GetMetadata() const noexcept;
 	const std::map<size_t, std::variant<standardTypes>>& GetParametersResponse() const noexcept;
