@@ -39,7 +39,7 @@ For C++-specific guidance, focus on these MSAPI-aligned principles (grounded in 
 	- Be careful with logging level: ERROR is only about unrecoverable failures, WARNING is for problems that do not affect process stability, INFO is for high-level flow, DEBUG is for detailed tracing.
 
 - **Concurrency and Performance**:
-	- Do micro-optimize in clear way.
+	- Micro-optimize in a clear way.
 	- Use standard concurrency primitives when possible; when interacting with existing threading or I/O abstractions, follow the patterns already used in the server/protocol/help modules.
 	- Be conscious of allocations, copies, and cache behavior in tight loops and hot data structures (protocol handling, server connections, core data structures).
 
