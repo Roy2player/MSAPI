@@ -33,7 +33,7 @@ for i in "${unit_tests[@]}"; do
 done
 
 # Integration tests under tests/integration/
-declare -a tests=("applicationHandlers" "objectProtocol" "http" "server")
+declare -a tests=("applicationHandlers" "objectProtocol" "http" "server" "connectionCallbacks")
 
 for i in "${tests[@]}"; do
     RunCommand "cmake -DCMAKE_BUILD_TYPE=${BUILD_PROFILE} -B ${MSAPI_PATH}/tests/integration/${i}/build ${MSAPI_PATH}/tests/integration/${i}/build \
