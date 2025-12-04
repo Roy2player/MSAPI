@@ -27,3 +27,4 @@ tests/units/objectData/build/UnitTestObjectData
 tests/units/standardData/build/UnitTestStandardData
 tests/units/table/build/UnitTestTable
 tests/units/timer/build/UnitTestTimer
+tests/integration/connectionCallbacks/build/TestConnectionCallbacks
