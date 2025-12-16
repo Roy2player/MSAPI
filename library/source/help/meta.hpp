@@ -308,6 +308,93 @@ concept Enum = requires {
 	T::Max;
 };
 
+template <typename T>
+concept StringableView = std::is_same_v<std::remove_cv_t<T>, std::string_view>
+	|| (std::is_pointer_v<T> && std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, char>)
+	|| (std::is_rvalue_reference_v<T> && std::is_same_v<std::remove_reference_t<T>, std::string_view>);
+
+static_assert(StringableView<std::string_view>, "StringableView concept failed");
+static_assert(StringableView<const volatile std::string_view>, "StringableView concept failed");
+static_assert(!StringableView<std::string>, "StringableView concept failed");
+static_assert(!StringableView<const volatile std::string>, "StringableView concept failed");
+static_assert(!StringableView<std::string&>, "StringableView concept failed");
+static_assert(!StringableView<const volatile std::string&>, "StringableView concept failed");
+static_assert(StringableView<char*>, "StringableView concept failed");
+static_assert(!StringableView<char>, "StringableView concept failed");
+static_assert(!StringableView<char[]>, "StringableView concept failed");
+static_assert(StringableView<const volatile char* const volatile>, "StringableView concept failed");
+static_assert(!StringableView<std::string&&>, "StringableView concept failed");
+static_assert(StringableView<std::string_view&&>, "StringableView concept failed");
+
+template <typename T>
+concept Stringable = StringableView<T>
+	|| (std::is_reference_v<T> && std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, std::string>);
+
+static_assert(!Stringable<std::string>, "Stringable concept failed");
+static_assert(!Stringable<const volatile std::string>, "Stringable concept failed");
+static_assert(Stringable<std::string&>, "Stringable concept failed");
+static_assert(Stringable<const volatile std::string&>, "Stringable concept failed");
+static_assert(Stringable<std::string&&>, "Stringable concept failed");
+
+template <Stringable T> const char* CString(const T value)
+{
+	using S = std::remove_cvref_t<T>;
+
+	if constexpr (std::is_same_v<S, std::string_view>) {
+		return value.data();
+	}
+	else if constexpr (std::is_same_v<T, std::string>) {
+		return value.c_str();
+	}
+	else if constexpr (std::is_same_v<T, char*>) {
+		return value;
+	}
+	else {
+		static_assert(sizeof(T) + 1 == 0, "Unsupported type in CString");
+	}
+}
+
+template <typename T>
+concept Pointable = (std::is_pointer_v<T> || std::is_lvalue_reference_v<T>)
+	&& !std::is_const_v<std::remove_pointer_t<std::remove_reference_t<T>>>;
+
+static_assert(!Pointable<int>, "Pointable concept failed");
+static_assert(Pointable<int*>, "Pointable concept failed");
+static_assert(Pointable<volatile int*>, "Pointable concept failed");
+static_assert(!Pointable<const int*>, "Pointable concept failed");
+static_assert(Pointable<int* const>, "Pointable concept failed");
+static_assert(Pointable<int&>, "Pointable concept failed");
+static_assert(Pointable<volatile int&>, "Pointable concept failed");
+static_assert(!Pointable<const int&>, "Pointable concept failed");
+static_assert(!Pointable<int&&>, "Pointable concept failed");
+
+template <typename T>
+concept PointableView = (std::is_pointer_v<T> || std::is_lvalue_reference_v<T>)
+	&& std::is_const_v<std::remove_pointer_t<std::remove_reference_t<T>>>;
+
+static_assert(!PointableView<int>, "PointableView concept failed");
+static_assert(!PointableView<int*>, "PointableView concept failed");
+static_assert(!PointableView<volatile int*>, "PointableView concept failed");
+static_assert(PointableView<const int*>, "PointableView concept failed");
+static_assert(!PointableView<int* const>, "PointableView concept failed");
+static_assert(!PointableView<int&>, "PointableView concept failed");
+static_assert(!PointableView<volatile int&>, "PointableView concept failed");
+static_assert(PointableView<const int&>, "PointableView concept failed");
+static_assert(!PointableView<int&&>, "PointableView concept failed");
+
+template <typename T> auto Pointer(T object)
+{
+	if constexpr (std::is_pointer_v<std::remove_cvref_t<T>>) {
+		return object;
+	}
+	else if constexpr (std::is_lvalue_reference_v<T>) {
+		return &object;
+	}
+	else {
+		static_assert(sizeof(T) + 1 == 0, "Type must be pointer or lvalue reference");
+	}
+}
+
 }; //* namespace MSAPI
 
 #endif //* MSAPI_META_H

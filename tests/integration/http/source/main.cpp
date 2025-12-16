@@ -69,11 +69,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	path += "../";
 	MSAPI::logger.SetParentPath(path);
 	const std::string serverWebPath{ path + "web/" };
-
 	path += "logs/";
-	{
-		auto logs{ MSAPI::Bin::ListFiles<MSAPI::Bin::FileType::Regular, std::vector<std::string>>(path) };
-		for (const auto& file : logs) {
+
+	//* Clear old files
+	std::vector<std::string> files;
+	if (MSAPI::Bin::List<MSAPI::Bin::FileType::Regular>(files, path)) {
+		for (const auto& file : files) {
 			MSAPI::Bin::Remove(path + file);
 		}
 	}

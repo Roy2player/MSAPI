@@ -202,7 +202,8 @@ void Log::Start() noexcept
 	const auto sessionId{ Timer().GetMilliseconds() };
 
 	if (m_toFile) {
-		if (!m_path.empty() && !m_name.empty() && (Bin::HasDir(m_path + "logs/") || Bin::MakeDir(m_path + "logs/"))) {
+		if (!m_path.empty() && !m_name.empty()
+			&& (Bin::HasDir((m_path + "logs/").data()) || Bin::CreateDir((m_path + "logs/").data()))) {
 			std::string name{ "logs/" + m_name };
 			auto pos{ name.find(" ") };
 			while (true) {
