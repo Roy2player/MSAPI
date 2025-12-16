@@ -18,7 +18,7 @@
  */
 
 #include "log.h"
-#include "bin.h"
+#include "io.inl"
 #include <cstring>
 #include <mutex>
 
@@ -202,7 +202,8 @@ void Log::Start() noexcept
 	const auto sessionId{ Timer().GetMilliseconds() };
 
 	if (m_toFile) {
-		if (!m_path.empty() && !m_name.empty() && (Bin::HasDir(m_path + "logs/") || Bin::MakeDir(m_path + "logs/"))) {
+		if (!m_path.empty() && !m_name.empty()
+			&& (IO::HasPath((m_path + "logs/").c_str()) || IO::CreateDir((m_path + "logs/").c_str()))) {
 			std::string name{ "logs/" + m_name };
 			auto pos{ name.find(" ") };
 			while (true) {

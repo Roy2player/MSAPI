@@ -59,10 +59,8 @@ private:
 	std::vector<std::string> m_failedTests;
 	std::vector<std::string> m_passedTests;
 
-	static constexpr std::string_view m_patternPassed{ "\033[0;32mPASSED    : \033[0m{}. Elapsed wall time: {} ns" };
-	static constexpr std::string_view m_patternFailed{
-		"\033[0;31mFAILED    : \033[0m{}. Expected: {}. Actual: {}. Elapsed wall time: {}"
-	};
+	static constexpr std::string_view m_patternPassed{ "\033[0;32mPASSED: \033[0m{}. {} ns" };
+	static constexpr std::string_view m_patternFailed{ "\033[0;31mFAILED: \033[0m{}. Expected: {}. Actual: {}. {} ns" };
 
 public:
 	/**************************
@@ -105,7 +103,6 @@ public:
 	FORCE_INLINE bool Assert(T&& actual, S&& expected, const std::string_view name)
 	{
 		++m_counter;
-		LOG_INFO_NEW("REGISTERED: {}", name);
 
 		using N = std::decay_t<T>;
 		using Z = remove_optional_t<N>;
@@ -191,14 +188,17 @@ public:
 		else if constexpr (has_to_string<T> && has_to_string<S>) {
 			if (actual == expected) {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
-
-#undef TMP_MSAPI_TEST_ASSERT_SUCCESS
 			}
 			LOG_INFO_NEW(m_patternFailed, name, expected.ToString(), actual.ToString(),
 				Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else {
-			static_assert(sizeof(N) + 1 == 0, "Unsupported type");
+			if (actual == expected) {
+				TMP_MSAPI_TEST_ASSERT_SUCCESS;
+#undef TMP_MSAPI_TEST_ASSERT_SUCCESS
+			}
+			LOG_INFO_NEW(m_patternFailed, name, "<unprintable>", "<unprintable>",
+				Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 
 		m_timer.Reset();
