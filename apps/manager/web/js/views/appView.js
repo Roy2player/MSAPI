@@ -56,34 +56,19 @@ class AppView extends View {
 			}
 		});
 
-		let refreshIframe = (response, extraParameters) => {
-			if (response.status && "result" in response && response.result && "port" in extraParameters
+		const refreshIframe = (response, extraParameters) => {
+			if (response.status && response.result && "port" in extraParameters
 				&& extraParameters.port === this.m_port) {
 				this.m_view.classList.add("loading");
-				try {
-					if (iframe.contentWindow && iframe.contentWindow.location) {
-						console.log("Reloading iframe for port", this.m_port);
-						iframe.contentWindow.location.reload();
-					}
-					else {
-						console.log("Reloading iframe for port", this.m_port);
-						// Force reload even if there is no valid window yet
-						iframe.src = iframe.src;
-					}
-				}
-				catch (e) {
-					// Cross-origin or load error; fallback to resetting src
-					iframe.src = iframe.src;
-				}
+				iframe.src = url + (url.includes("?") ? "&" : "?") + "_ts=" + Date.now();
 			}
 			else {
 				console.log("Ignoring refresh request for port", extraParameters.port, "in view for port", this.m_port);
 			}
 		};
 
-		this.AddCallback("run", (response, extraParameters) => { refreshIframe(response, extraParameters); });
-
-		this.AddCallback("pause", (response, extraParameters) => { refreshIframe(response, extraParameters); });
+		this.AddCallback("run", refreshIframe);
+		this.AddCallback("pause", refreshIframe);
 
 		return true;
 	}

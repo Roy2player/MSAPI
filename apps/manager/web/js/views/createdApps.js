@@ -186,7 +186,7 @@ class CreatedApps extends View {
 		});
 
 		this.AddCallback("run", (response, extraParameters) => {
-			if (response.status && "result" in response && response.result) {
+			if (response.status && response.result) {
 				(async () => {
 					await View.SendRequest({
 						method : "GET",
@@ -209,7 +209,7 @@ class CreatedApps extends View {
 		});
 
 		this.AddCallback("pause", (response, extraParameters) => {
-			if (response.status && "result" in response && response.result) {
+			if (response.status && response.result) {
 				(async () => {
 					await View.SendRequest({
 						method : "GET",
