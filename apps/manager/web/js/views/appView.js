@@ -62,9 +62,6 @@ class AppView extends View {
 				this.m_view.classList.add("loading");
 				iframe.src = url + (url.includes("?") ? "&" : "?") + "_ts=" + Date.now();
 			}
-			else {
-				console.log("Ignoring refresh request for port", extraParameters.port, "in view for port", this.m_port);
-			}
 		};
 
 		this.AddCallback("run", refreshIframe);
