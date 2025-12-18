@@ -60,7 +60,7 @@ class AppView extends View {
 			if (response.status && response.result && "port" in extraParameters
 				&& extraParameters.port === this.m_port) {
 				this.m_view.classList.add("loading");
-				iframe.src = url + (url.includes("?") ? "&" : "?") + "_ts=" + Date.now();
+				iframe.src = url + (url.includes("?") ? "&" : "?") + "reloaded=" + Date.now();
 			}
 		};
 
