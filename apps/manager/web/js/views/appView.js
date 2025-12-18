@@ -22,15 +22,15 @@ class AppView extends View {
 
 	async Constructor(parameters)
 	{
-		this.m_title += ": " + parameters.appType + " (port: " + parameters.port + ")";
+		this.m_title += ": " + parameters.appType + " (port: " + this.m_port + ")";
 		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
 
-		const parametersToPort = View.GetParameters(parameters.port);
+		const parametersToPort = View.GetParameters(this.m_port);
 
 		// Create an iframe to display the app at the given URL and port
 		const listeningIp = parametersToPort && parametersToPort[1000008] ? parametersToPort[1000008] : null;
 		if (!listeningIp) {
-			console.error("Parameter 1000008 (Listening IP) is not available for app on port", parameters.port);
+			console.error("Parameter 1000008 (Listening IP) is not available for app on port", this.m_port);
 			return false;
 		}
 
@@ -55,6 +55,35 @@ class AppView extends View {
 				console.error("Failed to postMessage to iframe:", e);
 			}
 		});
+
+		let refreshIframe = (response, extraParameters) => {
+			if (response.status && "result" in response && response.result && "port" in extraParameters
+				&& extraParameters.port === this.m_port) {
+				this.m_view.classList.add("loading");
+				try {
+					if (iframe.contentWindow && iframe.contentWindow.location) {
+						console.log("Reloading iframe for port", this.m_port);
+						iframe.contentWindow.location.reload();
+					}
+					else {
+						console.log("Reloading iframe for port", this.m_port);
+						// Force reload even if there is no valid window yet
+						iframe.src = iframe.src;
+					}
+				}
+				catch (e) {
+					// Cross-origin or load error; fallback to resetting src
+					iframe.src = iframe.src;
+				}
+			}
+			else {
+				console.log("Ignoring refresh request for port", extraParameters.port, "in view for port", this.m_port);
+			}
+		};
+
+		this.AddCallback("run", (response, extraParameters) => { refreshIframe(response, extraParameters); });
+
+		this.AddCallback("pause", (response, extraParameters) => { refreshIframe(response, extraParameters); });
 
 		return true;
 	}
