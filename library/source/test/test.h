@@ -26,7 +26,7 @@
 #include <vector>
 
 #define RETURN_IF_FALSE(x)                                                                                             \
-	if (!x) {                                                                                                          \
+	if (!x) [[unlikely]] {                                                                                             \
 		return false;                                                                                                  \
 	}
 
@@ -59,10 +59,8 @@ private:
 	std::vector<std::string> m_failedTests;
 	std::vector<std::string> m_passedTests;
 
-	static constexpr std::string_view m_patternPassed{ "\033[0;32mPASSED    : \033[0m{}. Elapsed wall time: {} ns" };
-	static constexpr std::string_view m_patternFailed{
-		"\033[0;31mFAILED    : \033[0m{}. Expected: {}. Actual: {}. Elapsed wall time: {}"
-	};
+	static constexpr std::string_view m_patternPassed{ "\033[0;32mPASSED: \033[0m{}. {} ns" };
+	static constexpr std::string_view m_patternFailed{ "\033[0;31mFAILED: \033[0m{}. Expected: {}. Actual: {}. {} ns" };
 
 public:
 	/**************************
@@ -105,7 +103,6 @@ public:
 	FORCE_INLINE bool Assert(T&& actual, S&& expected, const std::string_view name)
 	{
 		++m_counter;
-		LOG_INFO_NEW("REGISTERED: {}", name);
 
 		using N = std::decay_t<T>;
 		using Z = remove_optional_t<N>;
@@ -114,7 +111,7 @@ public:
 			safe_underlying_type_t<remove_optional_t<std::decay_t<S>>>>;
 
 		if constexpr (is_integer_type<N> || std::is_same_v<N, bool> || std::is_enum_v<N> || std::is_enum_v<Z>) {
-			if (static_cast<G>(actual) == static_cast<G>(expected)) {
+			if (static_cast<G>(actual) == static_cast<G>(expected)) [[likely]] {
 
 #define TMP_MSAPI_TEST_ASSERT_SUCCESS                                                                                  \
 	LOG_INFO_NEW(m_patternPassed, name, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());                        \
@@ -129,7 +126,7 @@ public:
 		}
 		else if constexpr (is_integer_type_optional<N>) {
 			if (const bool valuesPresented{ actual.has_value() && expected.has_value() };
-				!valuesPresented || static_cast<G>(actual.value()) == static_cast<G>(expected.value())) {
+				!valuesPresented || static_cast<G>(actual.value()) == static_cast<G>(expected.value())) [[likely]] {
 
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
@@ -137,7 +134,7 @@ public:
 				m_patternFailed, name, _S(expected), _S(actual), Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (is_float_type<N>) {
-			if (MSAPI::Helper::FloatEqual(static_cast<G>(actual), static_cast<G>(expected))) {
+			if (MSAPI::Helper::FloatEqual(static_cast<G>(actual), static_cast<G>(expected))) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
 			LOG_INFO_NEW(
@@ -145,7 +142,8 @@ public:
 		}
 		else if constexpr (is_float_type_optional<N>) {
 			if (const bool valuesPresented{ actual.has_value() && expected.has_value() }; !valuesPresented
-				|| MSAPI::Helper::FloatEqual(static_cast<G>(actual.value()), static_cast<G>(expected.value()))) {
+				|| MSAPI::Helper::FloatEqual(static_cast<G>(actual.value()), static_cast<G>(expected.value())))
+				[[likely]] {
 
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
@@ -153,14 +151,14 @@ public:
 				m_patternFailed, name, _S(expected), _S(actual), Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (std::is_same_v<N, std::string> || std::is_same_v<N, std::string_view>) {
-			if (actual == expected) {
+			if (actual == expected) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
 			LOG_INFO_NEW(
 				m_patternFailed, name, expected, actual, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (std::is_same_v<N, std::wstring> || std::is_same_v<N, std::wstring_view>) {
-			if (actual == expected) {
+			if (actual == expected) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
 
@@ -182,23 +180,26 @@ public:
 				Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (std::is_same_v<N, MSAPI::Timer> || std::is_same_v<N, MSAPI::Timer::Duration>) {
-			if (actual == expected) {
+			if (actual == expected) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
 			LOG_INFO_NEW(m_patternFailed, name, expected.ToString(), actual.ToString(),
 				Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (has_to_string<T> && has_to_string<S>) {
-			if (actual == expected) {
+			if (actual == expected) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
-
-#undef TMP_MSAPI_TEST_ASSERT_SUCCESS
 			}
 			LOG_INFO_NEW(m_patternFailed, name, expected.ToString(), actual.ToString(),
 				Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else {
-			static_assert(sizeof(N) + 1 == 0, "Unsupported type");
+			if (actual == expected) [[likely]] {
+				TMP_MSAPI_TEST_ASSERT_SUCCESS;
+#undef TMP_MSAPI_TEST_ASSERT_SUCCESS
+			}
+			LOG_INFO_NEW(m_patternFailed, name, "<unprintable>", "<unprintable>",
+				Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 
 		m_timer.Reset();

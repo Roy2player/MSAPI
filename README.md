@@ -45,7 +45,7 @@ Server provides data to be handled by calling a callback in case if this data is
 - [**JSON:**](library/source/help/json.h) Parser and producer module.
 - [**Table:**](library/source/help/table.h) Data structure.
 - [**Pthread:**](library/source/help/pthread.hpp) Module to synchronize threads.
-- [**Bin:**](library/source/help/bin.h) Filesystem operations and helpers.
+- [**IO:**](library/source/help/io.inl) Filesystem I/O utilities.
 - [**Helper:**](library/source/help/helper.h) Miscellaneous utilities for common tasks.
 - [**Meta:**](library/source/help/meta.hpp) Static enum translation, type helpers, and compile-time utilities.
 

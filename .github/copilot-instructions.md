@@ -30,7 +30,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
   - `html.h` / `html.cpp`: Lightweight HTML parser.
   - `json.h` / `json.cpp`: Custom JSON DOM + serializer (no external libs). Keep allocations minimal.
   - `table.h` / `table.cpp`: Tabular data structures (`Table`, `TableData`).
-  - `bin.h` / `bin.cpp`: Filesystem and binary utilities.
+  - `io.inl`: Filesystem I/O utilities.
   - `helper.h` / `helper.cpp`: Generic helpers (string ops, path resolution, env utilities, FP comparison).
   - `pthread.hpp`: Threading primitives (mutex/atomic locks/RAII wrappers).
   - `meta.hpp`: Compile-time patterns.

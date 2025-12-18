@@ -526,18 +526,13 @@ std::string Data::ToString() const
 #define format std::left << std::setw(maxKeySize)
 
 	std::stringstream stream;
-	stream << "HTTP message:\n{" << std::fixed << std::setprecision(16) << "\n\t" << format << "is valid"
-		   << " : " << _S(m_isValid) << "\n\t" << format << "type"
-		   << " : " << (m_isRequest ? "Request" : "Response") << "\n\t" << format << "message type"
-		   << " : " << m_messageType << "\n\t" << format << "url"
-		   << " : " << m_url << "\n\t" << format << "HTTP type"
-		   << " : " << m_HTTPtype << "\n\t" << format << "version"
-		   << " : " << m_version << "\n\t" << format << "format"
-		   << " : " << m_format << "\n\t" << format << "code"
-		   << " : " << m_code << "\n\t" << format << "code text"
-		   << " : " << m_codeText << "\n\t" << format << "message size"
-		   << " : " << m_messageSize << "\n\t" << format << "Headers"
-		   << " :\n{";
+	stream << "HTTP message:\n{" << std::fixed << std::setprecision(16) << "\n\t" << format << "is valid" << " : "
+		   << _S(m_isValid) << "\n\t" << format << "type" << " : " << (m_isRequest ? "Request" : "Response") << "\n\t"
+		   << format << "message type" << " : " << m_messageType << "\n\t" << format << "url" << " : " << m_url
+		   << "\n\t" << format << "HTTP type" << " : " << m_HTTPtype << "\n\t" << format << "version" << " : "
+		   << m_version << "\n\t" << format << "format" << " : " << m_format << "\n\t" << format << "code" << " : "
+		   << m_code << "\n\t" << format << "code text" << " : " << m_codeText << "\n\t" << format << "message size"
+		   << " : " << m_messageSize << "\n\t" << format << "Headers" << " :\n{";
 	for (const auto& [key, value] : m_headersMap) {
 		stream << "\n\t" << format << key << " : " << value;
 	}
