@@ -439,15 +439,53 @@ bool Io()
 		RETURN_IF_FALSE(t.Assert(fd1.value, -1, "Open empty file descriptor for o1Fd"));
 		fd1 = IO::FileDescriptor::ExitGuard{ pathFd1V, O_RDWR | O_CREAT, 0644 };
 		RETURN_IF_FALSE(t.Assert(fd1.value != -1, true, "Open initialized file descriptor for o1Fd"));
-		IO::FileDescriptor::ExitGuard fd3{ pathFd3V, O_RDWR | O_CREAT, 0644 };
-		RETURN_IF_FALSE(t.Assert(fd3.value != -1, true, "Open file descriptor for o3Fd"));
-		IO::FileDescriptor::ExitGuard fdVec{ pathVecFdV, O_RDWR | O_CREAT, 0644 };
-		IO::FileDescriptor::ExitGuard fdVec2{ std::move(fdVec) };
-		RETURN_IF_FALSE(t.Assert(fdVec.value, -1, "Open file descriptor for vecFd"));
-		RETURN_IF_FALSE(t.Assert(fdVec2.value != -1, true, "Open file descriptor for fdVec2"));
 
-		RETURN_IF_FALSE(t.Assert(testBinary(fd1.value, pathFd1V, fd3.value, pathFd3V, fdVec2.value, pathVecFdV), true,
-			"Test binary with file descriptors"));
+		int32_t fd;
+		{
+			IO::FileDescriptor::ExitGuard fd3{ pathFd3V, O_RDWR | O_CREAT, 0644 };
+			fd = fd3.value;
+			RETURN_IF_FALSE(t.Assert(fd3.value != -1, true, "Open file descriptor for o3Fd"));
+			IO::FileDescriptor::ExitGuard fdVec{ pathVecFdV, O_RDWR | O_CREAT, 0644 };
+			IO::FileDescriptor::ExitGuard fdVec2{ std::move(fdVec) };
+			RETURN_IF_FALSE(t.Assert(fdVec.value, -1, "Open file descriptor for vecFd"));
+			RETURN_IF_FALSE(t.Assert(fdVec2.value != -1, true, "Open file descriptor for fdVec2"));
+
+			RETURN_IF_FALSE(t.Assert(testBinary(fd1.value, pathFd1V, fd3.value, pathFd3V, fdVec2.value, pathVecFdV),
+				true, "Test binary with file descriptors"));
+		}
+		RETURN_IF_FALSE(t.Assert(fcntl(fd, F_GETFD) == -1 && errno == EBADF, true,
+			"File descriptor should be closed in OS after ExitGuard destruction"));
+
+		fd = fd1.value;
+		fd1.Clear();
+		RETURN_IF_FALSE(t.Assert(fd1.value, -1, "File descriptor should be closed after Clear()"));
+		RETURN_IF_FALSE(t.Assert(
+			fcntl(fd, F_GETFD) == -1 && errno == EBADF, true, "File descriptor should be closed in OS after Clear()"));
+	}
+
+	{
+		IO::Directory::ExitGuard dir{ pathV };
+		auto* const dirPtr{ dir.value };
+		RETURN_IF_FALSE(t.Assert(dirPtr != nullptr, true, "Open directory"));
+
+		const int fd{ dirfd(dirPtr) };
+		RETURN_IF_FALSE(t.Assert(fd != -1, true, "Get directory fd"));
+
+		IO::Directory::ExitGuard dir1{ std::move(dir) };
+		RETURN_IF_FALSE(t.Assert(dir.value, nullptr, "Moved directory should be null"));
+		RETURN_IF_FALSE(t.Assert(dir1.value, dirPtr, "Moved directory should be valid"));
+
+		IO::Directory::ExitGuard dir2;
+		dir2 = std::move(dir1);
+
+		RETURN_IF_FALSE(t.Assert(dir1.value, nullptr, "Moved directory should be null"));
+		RETURN_IF_FALSE(t.Assert(dir2.value, dirPtr, "Moved directory should be valid"));
+
+		dir2.Clear();
+		RETURN_IF_FALSE(t.Assert(dir2.value, nullptr, "Directory should be closed after Clear()"));
+
+		RETURN_IF_FALSE(t.Assert(
+			fcntl(fd, F_GETFD) == -1 && errno == EBADF, true, "Directory fd should be closed in OS after Clear()"));
 	}
 
 	RETURN_IF_FALSE(t.Assert(IO::EnumToString(static_cast<IO::FileType>(U(IO::FileType::Sock) + 1)), "Unknown",

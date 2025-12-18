@@ -134,18 +134,43 @@ struct ExitGuard {
 	{
 	}
 
-	ExitGuard() noexcept = delete;
-	ExitGuard(const ExitGuard&) = delete;
-	ExitGuard(ExitGuard&& other) noexcept = delete;
+	/**************************
+	 * @brief Default constructor.
+	 *
+	 * @test Has unit tests.
+	 */
+	FORCE_INLINE ExitGuard() noexcept = default;
+
 	const ExitGuard& operator=(const ExitGuard&) = delete;
-	const ExitGuard& operator=(ExitGuard&& other) noexcept = delete;
+	ExitGuard(const ExitGuard&) = delete;
 
 	/**
-	 * @brief Close directory on destruction if it's opened and print error if occurs.
+	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
+	 *
+	 * @test Has unit tests.
+	 */
+	FORCE_INLINE const ExitGuard& operator=(ExitGuard&& other) noexcept;
+
+	/**
+	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
+	 *
+	 * @test Has unit tests.
+	 */
+	FORCE_INLINE ExitGuard(ExitGuard&& other) noexcept;
+
+	/**
+	 * @brief Call Clear on destruction.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE ~ExitGuard();
+
+	/**************************
+	 * @brief Close directory if it's opened and set value to nullptr.
+	 *
+	 * @test Has unit tests.
+	 */
+	FORCE_INLINE void Clear();
 };
 
 } // namespace Directory
@@ -733,7 +758,7 @@ template <template <typename> typename T, typename S, typename N>
 		const auto result{ read(fd.value, &item, sizeof(S)) };
 		if (result == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
-			return {};
+			return false;
 		}
 
 		if (result == 0) {
@@ -743,7 +768,7 @@ template <template <typename> typename T, typename S, typename N>
 		if (UINT64(result) != sizeof(S)) [[unlikely]] {
 			LOG_ERROR_NEW("Read size {} of object №{} is not equal to object size {} for file: {}.", result,
 				container.size(), sizeof(S), path);
-			return {};
+			return false;
 		}
 
 		container.emplace_back(std::move(item));
@@ -1124,8 +1149,6 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileTyp
  * @return True if read was successful, false otherwise.
  *
  * @test Has unit tests.
- *
- * @todo Add ability to provide not a container, but a callback to be called for each found item.
  */
 template <FileType FT, template <typename> typename T, typename S>
 	requires StringableView<S>
@@ -1185,12 +1208,23 @@ FORCE_INLINE void ExitGuard::Clear()
 
 namespace Directory {
 
-FORCE_INLINE ExitGuard::~ExitGuard()
+FORCE_INLINE const ExitGuard& ExitGuard::operator=(ExitGuard&& other) noexcept
+{
+	std::swap(value, other.value);
+	return *this;
+}
+
+FORCE_INLINE ExitGuard::ExitGuard(ExitGuard&& other) noexcept { std::swap(value, other.value); }
+
+FORCE_INLINE ExitGuard::~ExitGuard() { Clear(); }
+
+FORCE_INLINE void ExitGuard::Clear()
 {
 	if (value != nullptr) {
 		if (closedir(value) != 0) [[unlikely]] {
 			LOG_ERROR_NEW("Failed to close directory. Error №{}: {}", errno, std::strerror(errno));
 		}
+
 		value = nullptr;
 	}
 }
