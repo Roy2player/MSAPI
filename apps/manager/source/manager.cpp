@@ -18,7 +18,7 @@
  */
 
 #include "manager.h"
-#include "../../../library/source/help/bin.h"
+#include "../../../library/source/help/io.inl"
 #include <algorithm>
 #include <sys/wait.h>
 
@@ -674,14 +674,11 @@ void Manager::HandleRunRequest()
 	MSAPI::Helper::GetExecutableDir(path);
 	path += "apps.json";
 
-	if (!MSAPI::Bin::HasFile(path)) {
-		LOG_ERROR_NEW("\"{}\" file is not found", path);
+	std::string apps;
+	if (!MSAPI::IO::ReadStr(apps, path.c_str())) {
 		HandlePauseRequest();
 		return;
 	}
-
-	std::string apps;
-	MSAPI::Bin::ReadStr(apps, path);
 	MSAPI::Json appsJson{ apps };
 
 	const auto* appsArray{ appsJson.GetValue("Apps") };

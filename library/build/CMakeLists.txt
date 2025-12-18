@@ -15,7 +15,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 )
 
 set(SOURCE_CPP 
-        ../source/help/bin.cpp
         ../source/help/helper.cpp
         ../source/help/html.cpp
         ../source/help/identifier.cpp

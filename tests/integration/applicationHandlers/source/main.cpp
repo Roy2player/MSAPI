@@ -71,7 +71,7 @@
  * 44) Check actions and unhandled actions numbers for all applications.
  */
 
-#include "../../../../library/source/help/bin.h"
+#include "../../../../library/source/help/io.inl"
 #include "../../../../library/source/test/daemon.hpp"
 #include "../../../../library/source/test/test.h"
 #include "client.h"
@@ -92,13 +92,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	}
 	path += "../";
 	MSAPI::logger.SetParentPath(path);
-
 	path += "logs/";
-	{
 
-		auto logs{ MSAPI::Bin::ListFiles<MSAPI::Bin::FileType::Regular, std::vector<std::string>>(path) };
-		for (const auto& file : logs) {
-			MSAPI::Bin::Remove(path + file);
+	//* Clear old files
+	std::vector<std::string> files;
+	if (MSAPI::IO::List<MSAPI::IO::FileType::Regular>(files, path.c_str())) {
+		for (const auto& file : files) {
+			(void)MSAPI::IO::Remove((path + file).c_str());
 		}
 	}
 

@@ -18,7 +18,7 @@
  */
 
 #include "httpServer.h"
-#include "../../../../library/source/help/bin.h"
+#include "../../../../library/source/help/io.inl"
 
 HTTPServer::HTTPServer()
 	: MSAPI::HTTP::IHandler(this)
@@ -39,7 +39,7 @@ void HTTPServer::HandleModifyRequest(const std::map<size_t, std::variant<standar
 {
 	MSAPI::Application::MergeParameters(parametersUpdate);
 
-	if (!MSAPI::Bin::HasDir(m_webSourcesPath)) {
+	if (!MSAPI::IO::HasPath(m_webSourcesPath.c_str())) {
 		MSAPI::Application::SetCustomError(1001, "Web source path does not exist");
 	}
 
@@ -76,7 +76,7 @@ void HTTPServer::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 	if (format == "html") {
 		if (url == "/index.html" || url == "/index" || url == "/") {
 			std::string indexPage;
-			if (MSAPI::Bin::ReadStr(indexPage, m_webSourcesPath + "html/index.html")) {
+			if (MSAPI::IO::ReadStr<std::string_view>(indexPage, m_webSourcesPath + "html/index.html")) {
 				data.SendResponse(connection, indexPage, "text/html");
 				return;
 			}

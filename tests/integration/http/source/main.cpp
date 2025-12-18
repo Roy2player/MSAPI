@@ -47,7 +47,7 @@
  * 28) Reserved response with 200 and index page, symbol "#" and following data is ignored.
  */
 
-#include "../../../../library/source/help/bin.h"
+#include "../../../../library/source/help/io.inl"
 #include "../../../../library/source/test/daemon.hpp"
 #include "../../../../library/source/test/test.h"
 #include "httpClient.h"
@@ -69,12 +69,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	path += "../";
 	MSAPI::logger.SetParentPath(path);
 	const std::string serverWebPath{ path + "web/" };
-
 	path += "logs/";
-	{
-		auto logs{ MSAPI::Bin::ListFiles<MSAPI::Bin::FileType::Regular, std::vector<std::string>>(path) };
-		for (const auto& file : logs) {
-			MSAPI::Bin::Remove(path + file);
+
+	//* Clear old files
+	std::vector<std::string> files;
+	if (MSAPI::IO::List<MSAPI::IO::FileType::Regular>(files, path.c_str())) {
+		for (const auto& file : files) {
+			(void)MSAPI::IO::Remove((path + file).c_str());
 		}
 	}
 
@@ -109,19 +110,19 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	}
 
 	std::string indexPage;
-	if (!MSAPI::Bin::ReadStr(indexPage, serverWebPath + "html/index.html")) {
+	if (!MSAPI::IO::ReadStr<std::string_view>(indexPage, serverWebPath + "html/index.html")) {
 		return 1;
 	}
 	std::string favicon;
-	if (!MSAPI::Bin::ReadStr(favicon, serverWebPath + "images/favicon.ico")) {
+	if (!MSAPI::IO::ReadStr<std::string_view>(favicon, serverWebPath + "images/favicon.ico")) {
 		return 1;
 	}
 	std::string css;
-	if (!MSAPI::Bin::ReadStr(css, serverWebPath + "css/style.css")) {
+	if (!MSAPI::IO::ReadStr<std::string_view>(css, serverWebPath + "css/style.css")) {
 		return 1;
 	}
 	std::string js;
-	if (!MSAPI::Bin::ReadStr(js, serverWebPath + "js/index.js")) {
+	if (!MSAPI::IO::ReadStr<std::string_view>(js, serverWebPath + "js/index.js")) {
 		return 1;
 	}
 
