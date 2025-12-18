@@ -62,12 +62,12 @@ bool Io()
 	struct Cleaner {
 		const std::string_view path;
 
-		Cleaner(const std::string_view path)
+		FORCE_INLINE Cleaner(const std::string_view path) noexcept
 			: path{ path }
 		{
 		}
 
-		~Cleaner()
+		FORCE_INLINE ~Cleaner() noexcept
 		{
 			if (!path.empty() && IO::HasPath(path)) {
 				if (!IO::Remove(path)) {
@@ -274,7 +274,7 @@ bool Io()
 			}
 
 			std::vector<float> dataD;
-			dataD.emplace_back(-1.);
+			dataD.emplace_back(-1.f);
 			for (int32_t i{ 2 }; i <= 4096; ++i) {
 				dataD.emplace_back(static_cast<float>(i) * (static_cast<float>((-1 * i % 2) | 0x01) / 3.f));
 			}
@@ -290,7 +290,7 @@ bool Io()
 			}
 
 			std::vector<int64_t> dataD;
-			dataD.emplace_back(-1.);
+			dataD.emplace_back(-1);
 			for (int64_t i{ 2 }; i <= 4096; ++i) {
 				dataD.emplace_back(i * ((-1 * i % 2) | 0x01));
 			}
@@ -306,7 +306,7 @@ bool Io()
 			}
 
 			std::vector<int16_t> dataD;
-			dataD.emplace_back(-1.);
+			dataD.emplace_back(-1);
 			for (int16_t i{ 2 }; i <= 4096; ++i) {
 				dataD.emplace_back(i * ((-1 * i % 2) | 0x01));
 			}
@@ -323,7 +323,7 @@ bool Io()
 			}
 
 			std::vector<int8_t> dataD;
-			dataD.emplace_back(-1.);
+			dataD.emplace_back(-1);
 			for (int32_t i{ 2 }; i <= 4096; ++i) {
 				int8_t j{ static_cast<int8_t>(i % 256) };
 				dataD.emplace_back(j * ((-1 * j % 2) | 0x01));
@@ -340,7 +340,7 @@ bool Io()
 			}
 
 			std::vector<bool> dataD;
-			dataD.emplace_back(-1.);
+			dataD.emplace_back(false);
 			for (int32_t i{ 2 }; i <= 4096; ++i) {
 				dataD.emplace_back(i % 2 == 0);
 			}
@@ -435,14 +435,14 @@ bool Io()
 		const std::string_view pathFd3V{ pathFd3 };
 		const auto& pathVecFd{ path + "vecFd" };
 		const std::string_view pathVecFdV{ pathVecFd };
-		IO::ExitGuard fd1;
+		IO::FileDescriptor::ExitGuard fd1;
 		RETURN_IF_FALSE(t.Assert(fd1.value, -1, "Open empty file descriptor for o1Fd"));
-		fd1 = IO::ExitGuard{ pathFd1V, O_RDWR | O_CREAT, 0644 };
+		fd1 = IO::FileDescriptor::ExitGuard{ pathFd1V, O_RDWR | O_CREAT, 0644 };
 		RETURN_IF_FALSE(t.Assert(fd1.value != -1, true, "Open initialized file descriptor for o1Fd"));
-		IO::ExitGuard fd3{ pathFd3V, O_RDWR | O_CREAT, 0644 };
+		IO::FileDescriptor::ExitGuard fd3{ pathFd3V, O_RDWR | O_CREAT, 0644 };
 		RETURN_IF_FALSE(t.Assert(fd3.value != -1, true, "Open file descriptor for o3Fd"));
-		IO::ExitGuard fdVec{ pathVecFdV, O_RDWR | O_CREAT, 0644 };
-		IO::ExitGuard fdVec2{ std::move(fdVec) };
+		IO::FileDescriptor::ExitGuard fdVec{ pathVecFdV, O_RDWR | O_CREAT, 0644 };
+		IO::FileDescriptor::ExitGuard fdVec2{ std::move(fdVec) };
 		RETURN_IF_FALSE(t.Assert(fdVec.value, -1, "Open file descriptor for vecFd"));
 		RETURN_IF_FALSE(t.Assert(fdVec2.value != -1, true, "Open file descriptor for fdVec2"));
 

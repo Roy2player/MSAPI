@@ -338,16 +338,16 @@ static_assert(Stringable<std::string&>, "Stringable concept failed");
 static_assert(Stringable<const volatile std::string&>, "Stringable concept failed");
 static_assert(Stringable<std::string&&>, "Stringable concept failed");
 
-template <Stringable T> FORCE_INLINE [[nodiscard]] const char* CString(const T value) noexcept
+template <Stringable T> FORCE_INLINE [[nodiscard]] const char* CString(const T str) noexcept
 {
 	if constexpr (std::is_same_v<std::remove_cvref_t<T>, std::string_view>) {
-		return value.data();
+		return str.data();
 	}
 	else if constexpr (std::is_same_v<std::remove_cvref_t<T>, std::string>) {
-		return value.c_str();
+		return str.c_str();
 	}
 	else if constexpr (std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, char>) {
-		return value;
+		return str;
 	}
 	else {
 		static_assert(sizeof(T) + 1 == 0, "Unsupported type in CString");

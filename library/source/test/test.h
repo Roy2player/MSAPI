@@ -26,7 +26,7 @@
 #include <vector>
 
 #define RETURN_IF_FALSE(x)                                                                                             \
-	if (!x) {                                                                                                          \
+	if (!x) [[unlikely]] {                                                                                             \
 		return false;                                                                                                  \
 	}
 
@@ -111,7 +111,7 @@ public:
 			safe_underlying_type_t<remove_optional_t<std::decay_t<S>>>>;
 
 		if constexpr (is_integer_type<N> || std::is_same_v<N, bool> || std::is_enum_v<N> || std::is_enum_v<Z>) {
-			if (static_cast<G>(actual) == static_cast<G>(expected)) {
+			if (static_cast<G>(actual) == static_cast<G>(expected)) [[likely]] {
 
 #define TMP_MSAPI_TEST_ASSERT_SUCCESS                                                                                  \
 	LOG_INFO_NEW(m_patternPassed, name, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());                        \
@@ -126,7 +126,7 @@ public:
 		}
 		else if constexpr (is_integer_type_optional<N>) {
 			if (const bool valuesPresented{ actual.has_value() && expected.has_value() };
-				!valuesPresented || static_cast<G>(actual.value()) == static_cast<G>(expected.value())) {
+				!valuesPresented || static_cast<G>(actual.value()) == static_cast<G>(expected.value())) [[likely]] {
 
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
@@ -134,7 +134,7 @@ public:
 				m_patternFailed, name, _S(expected), _S(actual), Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (is_float_type<N>) {
-			if (MSAPI::Helper::FloatEqual(static_cast<G>(actual), static_cast<G>(expected))) {
+			if (MSAPI::Helper::FloatEqual(static_cast<G>(actual), static_cast<G>(expected))) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
 			LOG_INFO_NEW(
@@ -142,7 +142,8 @@ public:
 		}
 		else if constexpr (is_float_type_optional<N>) {
 			if (const bool valuesPresented{ actual.has_value() && expected.has_value() }; !valuesPresented
-				|| MSAPI::Helper::FloatEqual(static_cast<G>(actual.value()), static_cast<G>(expected.value()))) {
+				|| MSAPI::Helper::FloatEqual(static_cast<G>(actual.value()), static_cast<G>(expected.value())))
+				[[likely]] {
 
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
@@ -150,14 +151,14 @@ public:
 				m_patternFailed, name, _S(expected), _S(actual), Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (std::is_same_v<N, std::string> || std::is_same_v<N, std::string_view>) {
-			if (actual == expected) {
+			if (actual == expected) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
 			LOG_INFO_NEW(
 				m_patternFailed, name, expected, actual, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (std::is_same_v<N, std::wstring> || std::is_same_v<N, std::wstring_view>) {
-			if (actual == expected) {
+			if (actual == expected) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
 
@@ -179,21 +180,21 @@ public:
 				Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (std::is_same_v<N, MSAPI::Timer> || std::is_same_v<N, MSAPI::Timer::Duration>) {
-			if (actual == expected) {
+			if (actual == expected) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
 			LOG_INFO_NEW(m_patternFailed, name, expected.ToString(), actual.ToString(),
 				Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else if constexpr (has_to_string<T> && has_to_string<S>) {
-			if (actual == expected) {
+			if (actual == expected) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 			}
 			LOG_INFO_NEW(m_patternFailed, name, expected.ToString(), actual.ToString(),
 				Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 		}
 		else {
-			if (actual == expected) {
+			if (actual == expected) [[likely]] {
 				TMP_MSAPI_TEST_ASSERT_SUCCESS;
 #undef TMP_MSAPI_TEST_ASSERT_SUCCESS
 			}
