@@ -186,7 +186,7 @@ class CreatedApps extends View {
 		});
 
 		this.AddCallback("run", (response, extraParameters) => {
-			if (response.status && "result" in response && response.result) {
+			if (response.status && response.result) {
 				(async () => {
 					await View.SendRequest({
 						method : "GET",
@@ -209,7 +209,7 @@ class CreatedApps extends View {
 		});
 
 		this.AddCallback("pause", (response, extraParameters) => {
-			if (response.status && "result" in response && response.result) {
+			if (response.status && response.result) {
 				(async () => {
 					await View.SendRequest({
 						method : "GET",
@@ -234,6 +234,7 @@ class CreatedApps extends View {
 		this.AddCallback("delete", (response, extraParameters) => {
 			this.m_grid.RemoveRow({ indexValue : extraParameters.port });
 			let destructed = 0;
+			// Destruct all views related to the deleted application in terms of same port
 			for (let view of View.GetCreatedViews().values()) {
 				if (view.m_port == extraParameters.port) {
 					view.Destructor();

@@ -22,15 +22,15 @@ class AppView extends View {
 
 	async Constructor(parameters)
 	{
-		this.m_title += ": " + parameters.appType + " (port: " + parameters.port + ")";
+		this.m_title += ": " + parameters.appType + " (port: " + this.m_port + ")";
 		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
 
-		const parametersToPort = View.GetParameters(parameters.port);
+		const parametersToPort = View.GetParameters(this.m_port);
 
 		// Create an iframe to display the app at the given URL and port
 		const listeningIp = parametersToPort && parametersToPort[1000008] ? parametersToPort[1000008] : null;
 		if (!listeningIp) {
-			console.error("Parameter 1000008 (Listening IP) is not available for app on port", parameters.port);
+			console.error("Parameter 1000008 (Listening IP) is not available for app on port", this.m_port);
 			return false;
 		}
 
@@ -55,6 +55,17 @@ class AppView extends View {
 				console.error("Failed to postMessage to iframe:", e);
 			}
 		});
+
+		const refreshIframe = (response, extraParameters) => {
+			if (response.status && response.result && "port" in extraParameters
+				&& extraParameters.port === this.m_port) {
+				this.m_view.classList.add("loading");
+				iframe.src = url + (url.includes("?") ? "&" : "?") + "reloaded=" + Date.now();
+			}
+		};
+
+		this.AddCallback("run", refreshIframe);
+		this.AddCallback("pause", refreshIframe);
 
 		return true;
 	}
