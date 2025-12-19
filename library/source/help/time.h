@@ -31,7 +31,6 @@
 #include <ctime>
 #include <functional>
 #include <signal.h>
-#include <string>
 #include <sys/time.h>
 
 namespace MSAPI {
@@ -791,6 +790,26 @@ public:
 	static std::chrono::microseconds TimevalToDuration(timeval tv);
 };
 
-}; //* namespace MSAPI
+} //* namespace MSAPI
+
+namespace std {
+
+template <> struct hash<MSAPI::Timer::Date> {
+	constexpr size_t operator()(const MSAPI::Timer::Date date) const noexcept
+	{
+		return (static_cast<uint64_t>(date.year) << 8 | date.month) << 8 | date.day;
+	}
+};
+
+template <typename T, typename S>
+	requires std::is_same_v<S, MSAPI::Timer::Date> || std::is_same_v<T, MSAPI::Timer::Date>
+struct hash<std::pair<T, S>> {
+	constexpr size_t operator()(const std::pair<T, MSAPI::Timer::Date>& pair) const noexcept
+	{
+		return std::hash<T>{}(pair.first) ^ (std::hash<MSAPI::Timer::Date>{}(pair.second) << 1);
+	}
+};
+
+} //* namespace std
 
 #endif //* MSAPI_TIME_H

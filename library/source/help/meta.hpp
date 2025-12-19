@@ -23,8 +23,10 @@
 #define MSAPI_META_H
 
 #include "time.h"
+#include <list>
 #include <map>
 #include <optional>
+#include <set>
 #include <variant>
 
 namespace MSAPI {
@@ -301,6 +303,24 @@ concept Iterable = requires(T t) {
 	{ t.empty() } -> std::convertible_to<bool>;
 	{ t.size() } -> std::convertible_to<std::size_t>;
 };
+
+template <typename T, typename S>
+concept EmplaceableBack = requires(T t, S s) {
+	{ t.emplace_back(s) };
+};
+
+static_assert(EmplaceableBack<std::vector<int>, int>, "EmplaceableBack concept failed");
+static_assert(EmplaceableBack<std::list<int>, int>, "EmplaceableBack concept failed");
+static_assert(!EmplaceableBack<std::set<int>, int>, "EmplaceableBack concept failed");
+
+template <typename T, typename S>
+concept Emplaceable = requires(T t, S s) {
+	{ t.emplace(s) };
+};
+
+static_assert(Emplaceable<std::set<int>, int>, "Emplaceable concept failed");
+static_assert(!Emplaceable<std::list<int>, int>, "Emplaceable concept failed");
+static_assert(!Emplaceable<std::vector<int>, int>, "Emplaceable concept failed");
 
 template <typename T>
 concept Enum = requires {
