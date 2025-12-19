@@ -753,9 +753,10 @@ template <template <typename> typename T, typename S, typename N>
 		return false;
 	}
 
-	S item;
+	alignas(S) int8_t buffer[sizeof(S)];
+	S* objectPtr{ std::launder(reinterpret_cast<S*>(buffer)) };
 	while (true) {
-		const auto result{ read(fd.value, &item, sizeof(S)) };
+		const auto result{ read(fd.value, objectPtr, sizeof(S)) };
 		if (result == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
 			return false;
@@ -771,7 +772,15 @@ template <template <typename> typename T, typename S, typename N>
 			return false;
 		}
 
-		container.emplace_back(std::move(item));
+		if constexpr (EmplaceableBack<T<S>, S>) {
+			container.emplace_back(std::move(*objectPtr));
+		}
+		else if constexpr (Emplaceable<T<S>, S>) {
+			container.emplace(std::move(*objectPtr));
+		}
+		else {
+			static_assert(sizeof(T<S>) + 1 == 0, "Unsupported container type");
+		}
 	}
 
 	LOG_DEBUG_NEW("Read binary file: {} with {} items", path, container.size());
@@ -1140,7 +1149,7 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileTyp
  * @attention Content sorting is filesystem dependent.
  *
  * @tparam FT Type of file to search.
- * @tparam T with strings and emplace_back method.
+ * @tparam T Type of container with strings.
  * @tparam S Type of path.
  *
  * @param container Container to store results.
@@ -1172,7 +1181,15 @@ FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S path)
 			continue;
 		}
 
-		container.emplace_back(std::string{ ent->d_name });
+		if constexpr (EmplaceableBack<T<std::string>, std::string>) {
+			container.emplace_back(std::string{ ent->d_name });
+		}
+		else if constexpr (Emplaceable<T<std::string>, std::string>) {
+			container.emplace(std::string{ ent->d_name });
+		}
+		else {
+			static_assert(sizeof(T<std::string>) + 1 == 0, "Unsupported container type");
+		}
 	}
 
 	return true;

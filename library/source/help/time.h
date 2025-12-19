@@ -791,6 +791,39 @@ public:
 	static std::chrono::microseconds TimevalToDuration(timeval tv);
 };
 
-}; //* namespace MSAPI
+} //* namespace MSAPI
+
+namespace std {
+
+template <> struct hash<MSAPI::Timer::Date> {
+	constexpr size_t operator()(const MSAPI::Timer::Date d) const noexcept
+	{
+		uint64_t packed{ (static_cast<uint64_t>(d.year) << 8) | (static_cast<uint64_t>(d.month) << 8)
+			| static_cast<uint64_t>(d.day) };
+
+		packed ^= packed >> 30;
+		packed *= 0xbf58476d1ce4e5b9ULL;
+		packed ^= packed >> 27;
+		packed *= 0x94d049bb133111ebULL;
+		packed ^= packed >> 31;
+
+		return packed;
+	}
+};
+
+template <typename T, typename S>
+	requires(std::is_same_v<T, MSAPI::Timer::Date> && (std::is_integral_v<S> || std::is_floating_point_v<S>))
+	|| (std::is_same_v<S, MSAPI::Timer::Date> && (std::is_integral_v<T> || std::is_floating_point_v<T>))
+struct hash<std::pair<T, S>> {
+	constexpr size_t operator()(const std::pair<T, S> p) const noexcept
+	{
+		size_t seed{ std::hash<T>()(p.first) };
+		const size_t valueHash{ std::hash<S>()(p.second) };
+		seed ^= valueHash + 0x9e3779b9U + (seed << 6) + (seed >> 2);
+		return seed;
+	}
+};
+
+} //* namespace std
 
 #endif //* MSAPI_TIME_H

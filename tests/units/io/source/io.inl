@@ -140,13 +140,15 @@ bool Io()
 		RETURN_IF_FALSE(
 			t.Assert(readData, testData, "Read data from copied to nested dir file should be equal to saved data"));
 
-		std::vector<std::string> names;
-		RETURN_IF_FALSE(
-			t.Assert(IO::List<IO::FileType::Regular>(names, pathChild3V), true, "List files in nested dir"));
-		RETURN_IF_FALSE(t.Assert(names.size(), 1, "There should be one file in nested dir"));
-		RETURN_IF_FALSE(t.Assert(names[0], "someCopiedFile", "File name should be correct"));
+		{
+			std::set<std::string> names;
+			RETURN_IF_FALSE(
+				t.Assert(IO::List<IO::FileType::Regular>(names, pathChild3V), true, "List files in nested dir"));
+			RETURN_IF_FALSE(t.Assert(names.size(), 1, "There should be one file in nested dir"));
+			RETURN_IF_FALSE(t.Assert(*names.begin(), "someCopiedFile", "File name should be correct"));
+		}
 
-		names.clear();
+		std::vector<std::string> names;
 		RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Regular>(names, pathV), true, "List files in test dir"));
 		RETURN_IF_FALSE(t.Assert(names.size(), 2, "There should be two files in test dir"));
 		RETURN_IF_FALSE(t.Assert(names[0] == "someRenamedFile" || names[0] == "someNameForFileToTest1", true,
@@ -461,6 +463,71 @@ bool Io()
 		RETURN_IF_FALSE(t.Assert(fd1.value, -1, "File descriptor should be closed after Clear()"));
 		RETURN_IF_FALSE(t.Assert(
 			fcntl(fd, F_GETFD) == -1 && errno == EBADF, true, "File descriptor should be closed in OS after Clear()"));
+	}
+
+	{
+		struct TestStruct {
+			uint64_t x1;
+			double x2;
+			bool x3;
+			int64_t x4;
+
+			TestStruct() = delete;
+
+			explicit TestStruct(const uint64_t x1, const double x2, const bool x3, const int64_t x4) noexcept
+				: x1{ x1 }
+				, x2{ x2 }
+				, x3{ x3 }
+				, x4{ x4 }
+			{
+			}
+
+			bool operator==(const TestStruct& other) const noexcept
+			{
+				return x1 == other.x1 && Helper::FloatEqual(x2, other.x2) && x3 == other.x3 && x4 == other.x4;
+			}
+
+			bool operator<(const TestStruct& other) const noexcept
+			{
+				if (x1 != other.x1) {
+					return x1 < other.x1;
+				}
+
+				const int cmp{ Helper::CompareFloats(x2, other.x2) };
+				if (cmp != 0) {
+					return cmp < 0;
+				}
+
+				if (x3 != other.x3) {
+					return x3 < other.x3;
+				}
+
+				return x4 < other.x4;
+			}
+
+			std::string ToString() const noexcept
+			{
+				return std::format("TestStruct{{"
+								   "\n\tx1: {}"
+								   "\n\tx2: {:.17f}"
+								   "\n\tx3: {}"
+								   "\n\tx4: {}"
+								   "\n}}",
+					x1, x2, x3, x4);
+			}
+		};
+
+		std::set<TestStruct> set;
+		for (uint64_t i{ 1 }; i <= 4096; ++i) {
+			set.emplace(TestStruct{ i, static_cast<double>(i) / 7. + 0.12345678901234567, (i % 2) == 0,
+				-static_cast<int64_t>(i * 1234567890) });
+		}
+		const auto& pathSet{ path + "set" };
+		const std::string_view pathSetV{ pathSet };
+		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries(set, pathSetV), true, "Save binaries from set"));
+		std::set<TestStruct> setRead;
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(setRead, pathSetV), true, "Read binaries to set"));
+		RETURN_IF_FALSE(t.Assert(setRead, set, "Read set should be equal to saved set"));
 	}
 
 	{
