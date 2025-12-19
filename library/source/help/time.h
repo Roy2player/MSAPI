@@ -817,7 +817,10 @@ template <typename T, typename S>
 struct hash<std::pair<T, S>> {
 	constexpr size_t operator()(const std::pair<T, S> p) const noexcept
 	{
-		return std::hash<T>()(p.first) ^ (std::hash<S>()(p.second) << 1);
+		size_t seed{ std::hash<T>()(p.first) };
+		const size_t valueHash{ std::hash<S>()(p.second) };
+		seed ^= valueHash + 0x9e3779b9U + (seed << 6) + (seed >> 2);
+		return seed;
 	}
 };
 
