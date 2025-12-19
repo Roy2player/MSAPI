@@ -796,18 +796,28 @@ public:
 namespace std {
 
 template <> struct hash<MSAPI::Timer::Date> {
-	constexpr size_t operator()(const MSAPI::Timer::Date date) const noexcept
+	constexpr size_t operator()(const MSAPI::Timer::Date d) const noexcept
 	{
-		return (static_cast<uint64_t>(date.year) << 16 | date.month) << 8 | date.day;
+		uint64_t packed{ (static_cast<uint64_t>(d.year) << 8) | (static_cast<uint64_t>(d.month) << 8)
+			| static_cast<uint64_t>(d.day) };
+
+		packed ^= packed >> 30;
+		packed *= 0xbf58476d1ce4e5b9ULL;
+		packed ^= packed >> 27;
+		packed *= 0x94d049bb133111ebULL;
+		packed ^= packed >> 31;
+
+		return packed;
 	}
 };
 
 template <typename T, typename S>
-	requires std::is_same_v<T, MSAPI::Timer::Date> || std::is_same_v<S, MSAPI::Timer::Date>
+	requires(std::is_same_v<T, MSAPI::Timer::Date> && (std::is_integral_v<S> || std::is_floating_point_v<S>))
+	|| (std::is_same_v<S, MSAPI::Timer::Date> && (std::is_integral_v<T> || std::is_floating_point_v<T>))
 struct hash<std::pair<T, S>> {
-	constexpr size_t operator()(const std::pair<T, S>& pair) const noexcept
+	constexpr size_t operator()(const std::pair<T, S> p) const noexcept
 	{
-		return std::hash<T>{}(pair.first) ^ (std::hash<S>{}(pair.second) << 1);
+		return std::hash<T>()(p.first) ^ (std::hash<S>()(p.second) << 1);
 	}
 };
 
