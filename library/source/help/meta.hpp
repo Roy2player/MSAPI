@@ -306,6 +306,7 @@ concept Iterable = requires(T t) {
 
 template <typename T, typename S>
 concept EmplaceableBack = requires(T t, S s) {
+	std::is_same_v<typename T::value_type, S>;
 	{ t.emplace_back(s) };
 };
 
