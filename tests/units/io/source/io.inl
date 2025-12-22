@@ -191,7 +191,7 @@ bool Io()
 		RETURN_IF_FALSE(t.Assert(IO::Remove(pathChild1V), true, "Remove nested dir"));
 		RETURN_IF_FALSE(t.Assert(IO::HasPath(pathChild1V), false, "Nested dir should not exist now"));
 
-		const auto& renamedChildPath{ path + "renamedTChildDir" };
+		const auto& renamedChildPath{ path + "renamedChildDir" };
 		const std::string_view renamedChildPathV{ renamedChildPath };
 		RETURN_IF_FALSE(
 			t.Assert(IO::Rename(pathChild1V, renamedChildPathV), false, "Renaming non existing dir should fail"));
