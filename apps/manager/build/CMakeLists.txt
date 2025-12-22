@@ -5,7 +5,7 @@ project(MSAPIManager VERSION 1.0 LANGUAGES CXX)
 set(
     SOURCE 
         ../source/main.cpp 
-        ../source/manager.cpp 
+        ../source/manager.cpp         ../source/authorization.cpp 
 )
 
 include(../../../library/build/CMakeListsCommonOptions.txt)

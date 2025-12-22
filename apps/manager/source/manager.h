@@ -25,6 +25,7 @@
 #include "../../../library/source/protocol/http.h"
 #include "../../../library/source/protocol/object.h"
 #include "../../../library/source/server/server.h"
+#include "authorization.h"
 
 /**************************
  * @brief Manager app provides functionality to create, modify, delete, run, pause and monitor any another app based on
@@ -126,6 +127,7 @@ private:
 	MSAPI::Pthread::AtomicLock m_parametersRequestsLock;
 	MSAPI::Pthread::AtomicLock m_deleteRequestsLock;
 	MSAPI::Pthread::AtomicLock m_createdAppToPortLock;
+	Authorization m_authorization;
 
 	/**************************
 	 * @brief Allows postpone response to request when app response is required first.

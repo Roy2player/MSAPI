@@ -64,11 +64,6 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 		return;
 	}
 
-	if (url == "/") {
-		data.SendSource(connection, m_webSourcesPath + "html/index.html");
-		return;
-	}
-
 	if (data.GetFormat() == "css") {
 		data.SendSource(connection, m_webSourcesPath + "css" + url);
 		return;
@@ -91,6 +86,74 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 			return;
 		}
 		LOG_DEBUG("Type key: " + *type);
+
+		if (*type == "login") {
+			const auto* login{ data.GetValue("Login") };
+			const auto* password{ data.GetValue("Password") };
+			if (login == nullptr || password == nullptr) {
+				sendNegativeResponse("Key by Login or Password is not found"); // 404 with message
+				return;
+			}
+
+			std::string error;
+			if (m_authorization.Login(connection, *login, *password, error)) {
+				data.SendResponse(connection, "{\"status\":true,\"grade\":\""
+					+ std::string{ Authorization::GradeToString(m_authorization.GetConnectionGrade(connection)) }
+					+ "\"}\n\n");
+			}
+			else {
+				sendNegativeResponse(error); // 404 with message
+			}
+			return;
+		}
+
+		if (*type == "register") {
+			const auto* login{ data.GetValue("Login") };
+			const auto* password{ data.GetValue("Password") };
+			if (login == nullptr || password == nullptr) {
+				sendNegativeResponse("Key by Login or Password is not found"); // 404 with message
+				return;
+			}
+
+			std::string error;
+			if (m_authorization.Register(connection, *login, *password, error)) {
+				data.SendResponse(connection, "{\"status\":true,\"grade\":\""
+					+ std::string{ Authorization::GradeToString(m_authorization.GetConnectionGrade(connection)) }
+					+ "\"}\n\n");
+			}
+			else {
+				sendNegativeResponse(error); // 404 with message
+			}
+			return;
+		}
+
+		if (*type == "logout") {
+			m_authorization.Logout(connection);
+			data.SendResponse(connection, "{\"status\":true}\n\n");
+			return;
+		}
+
+		if (!m_authorization.IsConnectionAuthenticated(connection)) {
+			sendNegativeResponse("Access denied"); // 404 with message
+			return;
+		}
+
+		const auto requiredGrade{ [&type]() {
+			if (*type == "getInstalledApps" || *type == "getCreatedApps" || *type == "getMetadata") {
+				return Authorization::Grade::Guest;
+			}
+
+			if (*type == "getParameters") {
+				return Authorization::Grade::Observer;
+			}
+
+			return Authorization::Grade::User;
+		}() };
+
+		if (!m_authorization.HasAccess(connection, requiredGrade)) {
+			sendNegativeResponse("Access denied"); // 404 with message
+			return;
+		}
 
 		if (*type == "getInstalledApps") {
 			std::string body{ "{\"status\":true,\"apps\":[" };
@@ -659,6 +722,21 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 		}
 
 		sendNegativeResponse("Key by Type in header is unknown: " + *type); // 404 with message
+		return;
+	}
+
+	if (!m_authorization.IsConnectionAuthenticated(connection)) {
+		if (url == "/") {
+			data.SendSource(connection, m_webSourcesPath + "html/login.html");
+			return;
+		}
+
+		sendNegativeResponse("Access denied"); // 404 with message
+		return;
+	}
+
+	if (url == "/") {
+		data.SendSource(connection, m_webSourcesPath + "html/index.html");
 		return;
 	}
 

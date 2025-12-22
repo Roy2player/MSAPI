@@ -1,0 +1,50 @@
+<!--
+* This file is part of MSAPI.
+* License: see LICENSE.md
+* Contributor terms: see CONTRIBUTING.md
+*
+* This software is licensed under the Polyform Noncommercial License 1.0.0.
+* You may use, copy, modify, and distribute it for noncommercial purposes only.
+*
+* For commercial use, please contact: maks.angels@mail.ru
+*
+* Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MSAPI Manager - Login</title>
+<link rel="stylesheet" href="/general.css" />
+</head>
+<body>
+<main style="margin: 20px; font-family: sans-serif;">
+<h2>Login</h2>
+<div id="message"></div>
+<label>Login: <input id="login" type="text" autocomplete="username"></label><br/><br/>
+<label>Password: <input id="password" type="password" autocomplete="current-password"></label><br/><br/>
+<button id="loginButton">Login</button>
+<button id="registerButton">Register</button>
+</main>
+<script>
+async function send(type) {
+const login = document.getElementById('login').value;
+const password = document.getElementById('password').value;
+const headers = { "Accept" : "application/json", "Type" : type, "Login" : login, "Password" : password };
+const response = await fetch('/api', { method : 'GET', headers });
+const text = await response.text();
+document.getElementById('message').textContent = text;
+if (response.ok) {
+try {
+const json = JSON.parse(text);
+if (json.status) {
+window.location.href = '/';
+}
+} catch (e) { /* ignore */ }
+}
+}
+document.getElementById('loginButton').addEventListener('click', () => send('login'));
+document.getElementById('registerButton').addEventListener('click', () => send('register'));
+</script>
+</body>
+</html>
