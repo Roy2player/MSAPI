@@ -426,6 +426,17 @@ bool Io()
 			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(vecRead, vecPath), true, "Read binaries"));
 			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Read binaries should be equal to saved binaries"));
 
+			for (uint64_t i{ 0 }; i < vec.size(); i += 256) {
+				using S = typename decltype(vec)::value_type;
+				S v{};
+				vec[i] = v;
+				RETURN_IF_FALSE(t.Assert(IO::SaveBinaryOnOffset(&v, vecPathOrFd, INT64(i) * INT64(sizeof(S))), true,
+					"Save binary struct at specific offset"));
+			}
+			vecRead.clear();
+			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(vecRead, vecPath), true, "Read binaries after offset saves"));
+			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Read binaries after offset saves should be equal to expected"));
+
 			return true;
 		} };
 

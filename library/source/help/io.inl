@@ -417,6 +417,51 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const S pathOrFd)
 }
 
 /**************************
+ * @brief Save binary data in file at specific offset.
+ *
+ * @attention Directories in path must exist. If file descriptor is passed, it must be valid. Offset must be valid.
+ *
+ * @tparam T Type of object.
+ * @tparam S Type of path or file descriptor.
+ *
+ * @param object Object for saving.
+ * @param pathOrFd Full path to file or file descriptor.
+ * @param offset Offset in bytes from the beginning of the file.
+ *
+ * @return True if save was successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <typename T, typename S>
+	requires(std::is_same_v<S, int32_t> || StringableView<S>)
+FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd, const int64_t offset)
+{
+	FileDescriptor::ExitGuard fd{};
+	int32_t file;
+
+	if constexpr (StringableView<S>) {
+		fd = FileDescriptor::ExitGuard{ pathOrFd, O_RDWR, 0 };
+		if (fd.value == -1) [[unlikely]] {
+			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
+			return false;
+		}
+
+		file = fd.value;
+	}
+	else {
+		file = pathOrFd;
+	}
+
+	if (lseek(file, offset, SEEK_SET) == -1) [[unlikely]] {
+		LOG_ERROR_NEW(
+			"Failed to seek to offset {} of file: {}. Error №{}: {}", offset, pathOrFd, errno, std::strerror(errno));
+		return false;
+	}
+
+	return SaveBinary<overwrite, 0644, multiple>(std::forward<T>(object), file);
+}
+
+/**************************
  * @brief Suggest maximum size of primitive string representation for SavePrimitives function.
  *
  * @tparam T Type of primitive object.
