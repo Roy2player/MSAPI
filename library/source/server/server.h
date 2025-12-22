@@ -80,7 +80,7 @@ namespace MSAPI {
  *
  * @todo Application class should be based on the Server class, not vice versa.
  *
- * @todo Improve UID generation. Way with std::atomic counter is thread safe, but performance overhead is sensetive in
+ * @todo Improve UID generation. Way with std::atomic counter is thread safe, but performance overhead is sensitive in
  * some cases. Way with int generation + check in container event worse. Probably it should be UID generator with two
  * uint64_t values.
  */

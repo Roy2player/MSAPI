@@ -29,7 +29,7 @@ namespace MSAPI {
  * (except TableData). Expected to be run at least on 64-bit architecture, where float and double precision float are 4
  * bytes and 8 bytes accordingly.
  *
- * @attention 80-bit FPU is not supported, due to it's highly sensetive to aligiment during accessing. It is
+ * @attention 80-bit FPU is not supported, due to it's highly sensitive to aligiment during accessing. It is
  * scientific-purpose type and its supporting should be strongly verified.
  */
 class StandardType {
