@@ -44,6 +44,9 @@ Definitions
 
 bool Helper()
 {
+	static_assert(MSAPI::Helper::caseSensetive, "caseSensetive should be true");
+	static_assert(!MSAPI::Helper::caseInsensetive, "caseInsensetive should be false");
+
 	LOG_INFO_UNITTEST("MSAPI Helper");
 	MSAPI::Test t;
 

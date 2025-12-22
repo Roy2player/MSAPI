@@ -126,7 +126,7 @@ bool Io()
 
 		const auto& pathRenamed{ path + "someRenamedFile" };
 		const std::string_view pathRenamedV{ pathRenamed };
-		RETURN_IF_FALSE(t.Assert(IO::RenameFile(path2V, pathRenamedV), true, "Rename file"));
+		RETURN_IF_FALSE(t.Assert(IO::Rename(path2V, pathRenamedV), true, "Rename file"));
 		RETURN_IF_FALSE(t.Assert(IO::HasPath(path2V), false, "Old file should not exist now"));
 		RETURN_IF_FALSE(t.Assert(IO::HasPath(pathRenamedV), true, "Renamed file should exist now"));
 		RETURN_IF_FALSE(t.Assert(IO::ReadStr(readData, pathRenamedV), true, "Read str from renamed file"));
@@ -190,6 +190,13 @@ bool Io()
 		const std::string_view pathChild1V{ pathChild1 };
 		RETURN_IF_FALSE(t.Assert(IO::Remove(pathChild1V), true, "Remove nested dir"));
 		RETURN_IF_FALSE(t.Assert(IO::HasPath(pathChild1V), false, "Nested dir should not exist now"));
+
+		const auto& renamedChildPath{ path + "renamedTChildDir" };
+		const std::string_view renamedChildPathV{ renamedChildPath };
+		RETURN_IF_FALSE(
+			t.Assert(IO::Rename(pathChild1V, renamedChildPathV), false, "Renaming non existing dir should fail"));
+		RETURN_IF_FALSE(t.Assert(IO::HasPath(pathChild1V), false, "Non existing dir should still not exist"));
+		RETURN_IF_FALSE(t.Assert(IO::HasPath(renamedChildPathV), false, "Renamed non existing dir should not exist"));
 	}
 
 	{

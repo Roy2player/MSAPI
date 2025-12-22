@@ -113,6 +113,9 @@ void Separating(std::vector<std::string>& container, const std::string& str, cha
  */
 void Separating(std::set<std::string>& container, const std::string& str, char symbol);
 
+constexpr bool caseSensetive = true;
+constexpr bool caseInsensetive = false;
+
 /**************************
  * @brief Check if string contains substring.
  *
@@ -125,12 +128,12 @@ void Separating(std::set<std::string>& container, const std::string& str, char s
  *
  * @todo Add unit tests.
  */
-template <bool caseSensetive> FORCE_INLINE bool ContainsStr(const std::string& base, const std::string& sub)
+template <bool CaseSensetive> FORCE_INLINE bool ContainsStr(const std::string& base, const std::string& sub)
 {
 	size_t index{ 0 };
 	const auto size{ sub.size() };
 	for (const auto& symbol : base) {
-		if constexpr (caseSensetive) {
+		if constexpr (CaseSensetive) {
 			if (symbol == sub[index]) {
 				if (++index == size) {
 					return true;

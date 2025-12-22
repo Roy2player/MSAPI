@@ -176,7 +176,7 @@ struct ExitGuard {
 } // namespace Directory
 
 /**************************
- * @brief Rename file.
+ * @brief Rename file or directory.
  *
  * @attention Directories in path must exist.
  *
@@ -192,15 +192,14 @@ struct ExitGuard {
  */
 template <typename T, typename S>
 	requires StringableView<T> && StringableView<S>
-FORCE_INLINE [[nodiscard]] bool RenameFile(const T currentName, const S newName)
+FORCE_INLINE [[nodiscard]] bool Rename(const T currentName, const S newName)
 {
 	if (rename(CString(currentName), CString(newName)) == 0) [[likely]] {
-		LOG_DEBUG_NEW("File renaming from {} to {} is successful", currentName, newName);
+		LOG_DEBUG_NEW("Renaming from {} to {} is successful", currentName, newName);
 		return true;
 	}
 
-	LOG_ERROR_NEW(
-		"File renaming from {} to {} is failed. Error №{}: {}", currentName, newName, errno, std::strerror(errno));
+	LOG_ERROR_NEW("Renaming from {} to {} is failed. Error №{}: {}", currentName, newName, errno, std::strerror(errno));
 	return false;
 }
 
