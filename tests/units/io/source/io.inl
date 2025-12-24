@@ -22,7 +22,6 @@
 
 #include "../../../../library/source/help/io.inl"
 #include "../../../../library/source/test/test.h"
-#include <cmath>
 
 namespace MSAPI {
 
