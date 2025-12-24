@@ -61,6 +61,8 @@ public:
 	 * @brief Update the hash with new data.
 	 *
 	 * @param data The input data to be hashed.
+	 *
+	 * @test Has unit tests.
 	 */
 	FORCE_INLINE void Update(std::string_view data) noexcept;
 
@@ -93,13 +95,13 @@ private:
 		0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2 };
 
 private:
-	FORCE_INLINE static uint32_t Rotr(uint32_t x, uint32_t n);
-	FORCE_INLINE static uint32_t Ch(uint32_t x, uint32_t y, uint32_t z);
-	FORCE_INLINE static uint32_t Maj(uint32_t x, uint32_t y, uint32_t z);
-	FORCE_INLINE static uint32_t Bsig0(uint32_t x);
-	FORCE_INLINE static uint32_t Bsig1(uint32_t x);
-	FORCE_INLINE static uint32_t Ssig0(uint32_t x);
-	FORCE_INLINE static uint32_t Ssig1(uint32_t x);
+	FORCE_INLINE static [[nodiscard]] uint32_t Rotr(uint32_t x, uint32_t n) noexcept;
+	FORCE_INLINE static [[nodiscard]] uint32_t Ch(uint32_t x, uint32_t y, uint32_t z) noexcept;
+	FORCE_INLINE static [[nodiscard]] uint32_t Maj(uint32_t x, uint32_t y, uint32_t z) noexcept;
+	FORCE_INLINE static [[nodiscard]] uint32_t Bsig0(uint32_t x) noexcept;
+	FORCE_INLINE static [[nodiscard]] uint32_t Bsig1(uint32_t x) noexcept;
+	FORCE_INLINE static [[nodiscard]] uint32_t Ssig0(uint32_t x) noexcept;
+	FORCE_INLINE static [[nodiscard]] uint32_t Ssig1(uint32_t x) noexcept;
 
 	/**
 	 * @brief Perform the main SHA-256 transformation on the current buffer.
@@ -177,19 +179,19 @@ FORCE_INLINE std::array<char, 65> Sha256::GetHexDigits() noexcept
 	return out;
 }
 
-FORCE_INLINE uint32_t Sha256::Rotr(uint32_t x, uint32_t n) { return (x >> n) | (x << (32 - n)); }
+FORCE_INLINE uint32_t Sha256::Rotr(uint32_t x, uint32_t n) noexcept { return (x >> n) | (x << (32 - n)); }
 
-FORCE_INLINE uint32_t Sha256::Ch(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (~x & z); }
+FORCE_INLINE uint32_t Sha256::Ch(uint32_t x, uint32_t y, uint32_t z) noexcept { return (x & y) ^ (~x & z); }
 
-FORCE_INLINE uint32_t Sha256::Maj(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (x & z) ^ (y & z); }
+FORCE_INLINE uint32_t Sha256::Maj(uint32_t x, uint32_t y, uint32_t z) noexcept { return (x & y) ^ (x & z) ^ (y & z); }
 
-FORCE_INLINE uint32_t Sha256::Bsig0(uint32_t x) { return Rotr(x, 2) ^ Rotr(x, 13) ^ Rotr(x, 22); }
+FORCE_INLINE uint32_t Sha256::Bsig0(uint32_t x) noexcept { return Rotr(x, 2) ^ Rotr(x, 13) ^ Rotr(x, 22); }
 
-FORCE_INLINE uint32_t Sha256::Bsig1(uint32_t x) { return Rotr(x, 6) ^ Rotr(x, 11) ^ Rotr(x, 25); }
+FORCE_INLINE uint32_t Sha256::Bsig1(uint32_t x) noexcept { return Rotr(x, 6) ^ Rotr(x, 11) ^ Rotr(x, 25); }
 
-FORCE_INLINE uint32_t Sha256::Ssig0(uint32_t x) { return Rotr(x, 7) ^ Rotr(x, 18) ^ (x >> 3); }
+FORCE_INLINE uint32_t Sha256::Ssig0(uint32_t x) noexcept { return Rotr(x, 7) ^ Rotr(x, 18) ^ (x >> 3); }
 
-FORCE_INLINE uint32_t Sha256::Ssig1(uint32_t x) { return Rotr(x, 17) ^ Rotr(x, 19) ^ (x >> 10); }
+FORCE_INLINE uint32_t Sha256::Ssig1(uint32_t x) noexcept { return Rotr(x, 17) ^ Rotr(x, 19) ^ (x >> 10); }
 
 FORCE_INLINE void Sha256::Transform() noexcept
 {

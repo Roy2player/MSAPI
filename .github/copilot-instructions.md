@@ -37,6 +37,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
   - `diagnostic.h` / `diagnostic.cpp`: Diagnostic counters / event tracking.
   - `identifier.h` / `identifier.cpp`: ID generation / mapping utilities.
   - `standardType.hpp`: Shared standard protocol type enumerations.
+  - `sha256.inl`: SHA-256 hashing implementation.
 
 4. **Testing Framework** (`library/source/test/`)
   - `test.h` / `test.cpp`: Base test registration, output formatting.
