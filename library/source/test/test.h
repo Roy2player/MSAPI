@@ -56,6 +56,7 @@ class Test {
 private:
 	size_t m_counter{ 0 };
 	Timer m_timer;
+	Timer m_wholeTimer;
 	std::vector<std::string> m_failedTests;
 	std::vector<std::string> m_passedTests;
 
