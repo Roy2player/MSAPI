@@ -95,13 +95,13 @@ private:
 		0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2 };
 
 private:
-	FORCE_INLINE static [[nodiscard]] uint32_t Rotr(uint32_t x, uint32_t n) noexcept;
-	FORCE_INLINE static [[nodiscard]] uint32_t Ch(uint32_t x, uint32_t y, uint32_t z) noexcept;
-	FORCE_INLINE static [[nodiscard]] uint32_t Maj(uint32_t x, uint32_t y, uint32_t z) noexcept;
-	FORCE_INLINE static [[nodiscard]] uint32_t Bsig0(uint32_t x) noexcept;
-	FORCE_INLINE static [[nodiscard]] uint32_t Bsig1(uint32_t x) noexcept;
-	FORCE_INLINE static [[nodiscard]] uint32_t Ssig0(uint32_t x) noexcept;
-	FORCE_INLINE static [[nodiscard]] uint32_t Ssig1(uint32_t x) noexcept;
+	FORCE_INLINE [[nodiscard]] static uint32_t Rotr(uint32_t x, uint32_t n) noexcept;
+	FORCE_INLINE [[nodiscard]] static uint32_t Ch(uint32_t x, uint32_t y, uint32_t z) noexcept;
+	FORCE_INLINE [[nodiscard]] static uint32_t Maj(uint32_t x, uint32_t y, uint32_t z) noexcept;
+	FORCE_INLINE [[nodiscard]] static uint32_t Bsig0(uint32_t x) noexcept;
+	FORCE_INLINE [[nodiscard]] static uint32_t Bsig1(uint32_t x) noexcept;
+	FORCE_INLINE [[nodiscard]] static uint32_t Ssig0(uint32_t x) noexcept;
+	FORCE_INLINE [[nodiscard]] static uint32_t Ssig1(uint32_t x) noexcept;
 
 	/**
 	 * @brief Perform the main SHA-256 transformation on the current buffer.
@@ -171,8 +171,8 @@ FORCE_INLINE std::array<char, 65> Sha256::GetHexDigits() noexcept
 	std::array<char, 65> out{};
 	for (size_t i{}; i < d.size(); ++i) {
 		const uint8_t byte{ d[UINT64(i)] };
-		out[UINT64(2 * i)] = hexChars[(byte >> 4) & 0x0F];
-		out[UINT64(2 * i + 1)] = hexChars[byte & 0x0F];
+		out[2 * i] = hexChars[(byte >> 4) & 0x0F];
+		out[2 * i + 1] = hexChars[byte & 0x0F];
 	}
 
 	out[64] = '\0';
@@ -245,7 +245,7 @@ FORCE_INLINE void Sha256::Pad() noexcept
 		m_buffer[m_bufferLen++] = 0;
 	}
 
-	for (int i{ 7 }; i >= 0; --i) {
+	for (int8_t i{ 7 }; i >= 0; --i) {
 		m_buffer[m_bufferLen++] = (m_bitLen >> (i * 8)) & 0xff;
 	}
 
