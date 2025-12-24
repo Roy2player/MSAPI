@@ -158,6 +158,9 @@ FORCE_INLINE std::array<uint8_t, 32> Sha256::GetDigits() noexcept
 		out[i * 4 + 3] = (m_state[i]) & 0xff;
 	}
 
+	// In optimized builds, when the object is not reused after this call, the compiler can eliminate the Reset() stores
+	// as dead code. Reset() is kept here to make repeated use of the same Sha256 instance safe without requiring
+	// callers to remember to reinitialize it.
 	Reset();
 
 	return out;
