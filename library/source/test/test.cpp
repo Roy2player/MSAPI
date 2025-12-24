@@ -48,7 +48,7 @@ Test::~Test()
 			}
 			stream << "Failed, " << COLOR_END;
 		}
-		stream << "elapsed wall time: " << Timer::Duration{ Timer{} - m_timer }.GetNanoseconds() << " ns";
+		stream << "elapsed wall time: " << Timer::Duration{ Timer{} - m_wholeTimer }.GetNanoseconds() << " ns";
 		LOG_INFO(stream.str());
 
 		return;
