@@ -71,7 +71,7 @@ public:
 		public:
 			virtual ~IHandler() = default;
 
-			virtual void HandleEvent(Event const& event) = 0;
+			virtual void HandleEvent(const Event& event) = 0;
 		};
 
 	private:
@@ -87,7 +87,7 @@ public:
 		bool m_instantCall{};
 		sigevent m_sev{ 0, 0, 0, 0 };
 		itimerspec m_its;
-		int64_t m_uid{ m_eventsCounter.fetch_add(1) };
+		int64_t m_uid{ m_eventsCounter.fetch_add(1, std::memory_order_relaxed) };
 
 		static inline std::atomic<int64_t> m_eventsCounter{};
 

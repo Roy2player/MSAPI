@@ -19,12 +19,9 @@
 
 #include "identifier.h"
 #include <array>
+#include <random>
 
 namespace MSAPI {
-
-std::mt19937 Identifier::mersenne{ std::random_device{}() };
-std::uniform_int_distribution<int> Identifier::m_dist{ 0, 15 };
-std::uniform_int_distribution<int> Identifier::m_dist3{ 8, 11 };
 
 Identifier::Identifier(int id) noexcept
 	: m_id(id)
@@ -47,26 +44,31 @@ void Identifier::GenerateUuid(std::string& uuid)
 		}
 	};
 
+	std::mt19937 mersenne{ std::random_device{}() };
+
+	std::uniform_int_distribution<int> dist{ 0, 15 };
+	std::uniform_int_distribution<int> dist3{ 8, 11 };
+
 	for (int i = 0; i < 8; ++i) {
-		addHex(m_dist(mersenne), 1);
+		addHex(dist(mersenne), 1);
 	}
 	buffer[index++] = '-';
 	for (int i = 0; i < 4; ++i) {
-		addHex(m_dist(mersenne), 1);
+		addHex(dist(mersenne), 1);
 	}
 	buffer[index++] = '-';
 	buffer[index++] = '4'; //* UUID version 4
 	for (int i = 0; i < 3; ++i) {
-		addHex(m_dist(mersenne), 1);
+		addHex(dist(mersenne), 1);
 	}
 	buffer[index++] = '-';
-	addHex(m_dist3(mersenne), 1); //* UUID variant
+	addHex(dist3(mersenne), 1); //* UUID variant
 	for (int i = 0; i < 3; ++i) {
-		addHex(m_dist(mersenne), 1);
+		addHex(dist(mersenne), 1);
 	}
 	buffer[index++] = '-';
 	for (int i = 0; i < 12; ++i) {
-		addHex(m_dist(mersenne), 1);
+		addHex(dist(mersenne), 1);
 	}
 
 	uuid = std::string{ buffer.data(), buffer.size() };

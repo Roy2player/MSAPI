@@ -20,7 +20,6 @@
 #include "server.h"
 #include "../help/autoClearPtr.hpp"
 #include "../help/diagnostic.h"
-#include "../help/identifier.h"
 #include <climits>
 #include <fcntl.h>
 #include <iomanip>
@@ -156,7 +155,7 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 
 			int id;
 			do {
-				id = static_cast<int>(Identifier::mersenne());
+				id = m_connectionIdGenerator.fetch_add(1, std::memory_order_relaxed);
 			} while (m_connectionToId.find(id) != m_connectionToId.end()
 				|| m_infoToConnection.find(id) != m_infoToConnection.end());
 

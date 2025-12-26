@@ -623,7 +623,7 @@ bool Timer()
 		struct EventHandler : public MSAPI::Timer::Event::IHandler {
 			int64_t value{};
 
-			void HandleEvent([[maybe_unused]] MSAPI::Timer::Event const& event) override { ++value; }
+			void HandleEvent([[maybe_unused]] const MSAPI::Timer::Event& event) override { ++value; }
 		};
 
 		EventHandler one;

@@ -35,7 +35,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
   - `pthread.hpp`: Threading primitives (mutex/atomic locks/RAII wrappers).
   - `meta.hpp`: Compile-time patterns.
   - `diagnostic.h` / `diagnostic.cpp`: Diagnostic counters / event tracking.
-  - `identifier.h` / `identifier.cpp`: ID generation / mapping utilities.
+  - `identifier.h` / `identifier.cpp`: UID generation.
   - `standardType.hpp`: Shared standard protocol type enumerations.
   - `sha256.inl`: SHA-256 hashing implementation.
 
