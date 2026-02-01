@@ -20,22 +20,14 @@
 #ifndef MSAPI_IDENTIFIER_H
 #define MSAPI_IDENTIFIER_H
 
-#include <random>
+#include <string>
 
 namespace MSAPI {
 
 /**************************
- * @brief Common class to store identifier. Provide methods to generate UUID version 4 and public access to random
- * generator.
+ * @brief Common class to store identifier. Provide methods to generate UUID version 4 and get random integral values.
  */
 class Identifier {
-public:
-	static std::mt19937 mersenne;
-
-private:
-	static std::uniform_int_distribution<int> m_dist;
-	static std::uniform_int_distribution<int> m_dist3;
-
 protected:
 	int m_id;
 

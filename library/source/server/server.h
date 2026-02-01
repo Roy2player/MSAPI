@@ -20,7 +20,6 @@
 #ifndef MSAPI_SERVER_H
 #define MSAPI_SERVER_H
 
-#include "../help/identifier.h"
 #include "../help/pthread.hpp"
 #include "application.h"
 #include <cstring>
@@ -157,6 +156,7 @@ private:
 	size_t m_limitConnectAttempts{ 1000 };
 	size_t recvBufferSize{ 1024 };
 	size_t recvBufferSizeLimit{ 1024 * 1024 * 10 /* 10 megabytes */ };
+	std::atomic<int32_t> m_connectionIdGenerator{};
 
 	static constexpr int m_somaxconn{ SOMAXCONN };
 
@@ -549,7 +549,7 @@ private:
 		std::pair<Server*, int*> serverAndId = *static_cast<std::pair<Server*, int*>*>(data);
 		int id{ *serverAndId.second };
 		Server* server{ serverAndId.first };
-		Pthread::AtomicRWLock::ExitGuard<false> pthreadGuard{ server->m_alivePthreadsRWLock };
+		Pthread::AtomicRWLock::ExitGuard<Pthread::read> pthreadGuard{ server->m_alivePthreadsRWLock };
 		server->ConnectionRecvProcessing<Type>(id);
 		server->m_pthreadToId.erase(id);
 

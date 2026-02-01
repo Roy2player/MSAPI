@@ -421,6 +421,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const S pathOrFd)
  *
  * @attention Directories in path must exist. If file descriptor is passed, it must be valid. Offset must be valid.
  *
+ * @tparam Mode File access mode in octal format, default is 0644.
  * @tparam T Type of object.
  * @tparam S Type of path or file descriptor.
  *
@@ -432,7 +433,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const S pathOrFd)
  *
  * @test Has unit tests.
  */
-template <typename T, typename S>
+template <int32_t Mode = 0644, typename T, typename S>
 	requires(std::is_same_v<S, int32_t> || StringableView<S>)
 FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd, const int64_t offset)
 {
@@ -440,7 +441,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd,
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, O_RDWR, 0 };
+		fd = FileDescriptor::ExitGuard{ pathOrFd, O_RDWR | O_CREAT, Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -458,7 +459,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd,
 		return false;
 	}
 
-	return SaveBinary<overwrite, 0644, multiple>(std::forward<T>(object), file);
+	return SaveBinary<overwrite, Mode, multiple>(std::forward<T>(object), file);
 }
 
 /**************************
@@ -731,6 +732,9 @@ FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const T path
 /**************************
  * @brief Read binary data from file.
  *
+ * @tparam T Type of object.
+ * @tparam S Type of path.
+ *
  * @param ptr Pointer to buffer.
  * @param path Full path to file.
  *
@@ -739,8 +743,8 @@ FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const T path
  * @test Has unit tests.
  */
 template <typename T, typename S>
-	requires Pointable<T> && StringableView<S>
-[[nodiscard]] bool ReadBinary(T&& object, const S path)
+	requires StringableView<S>
+[[nodiscard]] bool ReadBinary(T* const object, const S path)
 {
 	if (!HasPath(path)) [[unlikely]] {
 		LOG_ERROR_NEW("Can't find file to read data: {}", path);
@@ -753,8 +757,8 @@ template <typename T, typename S>
 		return false;
 	}
 
-	constexpr auto size{ sizeof(std::remove_pointer_t<std::remove_reference_t<T>>) };
-	const auto result{ read(fd.value, Pointer(object), size) };
+	constexpr auto size{ sizeof(T) };
+	const auto result{ read(fd.value, object, size) };
 	if (result == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
 		return false;
@@ -1091,15 +1095,15 @@ template <typename T, typename S>
  *
  * @param path Full path to directory.
  *
- * @tparam T Type of path.
  * @tparam Mode Directory access mode in octal format, default is 0755.
+ * @tparam T Type of path.
  * @tparam Buffer Size of internal buffer, default is 512.
  *
  * @return True if directory was created, false otherwise.
  *
  * @test Has unit tests.
  */
-template <typename T, int32_t Mode = 0755, uint64_t Buffer = 512>
+template <int32_t Mode = 0755, typename T, uint64_t Buffer = 512>
 	requires StringableView<T>
 FORCE_INLINE [[nodiscard]] bool CreateDir(const T path)
 {
@@ -1190,31 +1194,42 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileTyp
  * @brief List directory content with specific type and append to provided container. "." and ".." are excluded from
  * results for tables.
  *
- * @attention Content sorting is filesystem dependent.
+ * @attention Content sorting is filesystem dependent. If opened directory is provided, it must be valid.
+ * @attention If opened directory is provided, its position will be rewound to the beginning after reading.
  *
  * @tparam FT Type of file to search.
  * @tparam T Type of container with strings.
- * @tparam S Type of path.
+ * @tparam S Type of path or opened directory.
  *
  * @param container Container to store results.
- * @param path Full path for parsing file names.
+ * @param pathOrDir Full path for parsing file names or opened directory.
  *
  * @return True if read was successful, false otherwise.
  *
  * @test Has unit tests.
  */
 template <FileType FT, template <typename> typename T, typename S>
-	requires StringableView<S>
-FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S path)
+	requires(StringableView<S> || std::is_same_v<S, DIR*>)
+FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S pathOrDir)
 {
-	Directory::ExitGuard guardDir{ path };
-	if (guardDir.value == nullptr) [[unlikely]] {
-		LOG_ERROR_NEW("Error opening directory: {}. Error №{}: {}", path, errno, std::strerror(errno));
-		return false;
+	Directory::ExitGuard guardDir;
+	DIR* dirPtr;
+
+	if constexpr (StringableView<S>) {
+		guardDir = Directory::ExitGuard{ pathOrDir };
+		dirPtr = guardDir.value;
+
+		if (guardDir.value == nullptr) [[unlikely]] {
+			LOG_ERROR_NEW("Error opening directory: {}. Error №{}: {}", pathOrDir, errno, std::strerror(errno));
+			return false;
+		}
+	}
+	else {
+		dirPtr = pathOrDir;
 	}
 
 	struct dirent* ent;
-	while ((ent = readdir(guardDir.value)) != nullptr) {
+	while ((ent = readdir(dirPtr)) != nullptr) {
 		if constexpr (U(FT) == DT_DIR) {
 			if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) [[unlikely]] {
 				continue;
@@ -1234,6 +1249,10 @@ FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S path)
 		else {
 			static_assert(sizeof(T<std::string>) + 1 == 0, "Unsupported container type");
 		}
+	}
+
+	if constexpr (std::is_same_v<S, DIR*>) {
+		rewinddir(dirPtr);
 	}
 
 	return true;

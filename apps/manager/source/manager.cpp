@@ -20,6 +20,7 @@
 #include "manager.h"
 #include "../../../library/source/help/io.inl"
 #include <algorithm>
+#include <random>
 #include <sys/wait.h>
 
 Manager::Manager()
@@ -1255,9 +1256,10 @@ uint16_t Manager::CreateApp(
 		}
 	}
 	else {
-		size_t counter{ 0 };
+		int32_t counter{ 0 };
+		std::mt19937 mersenne{ UINT64(MSAPI::Timer{}.GetNanoseconds()) };
 		do {
-			port = static_cast<uint16_t>(MSAPI::Identifier::mersenne() % (65535 - 3000) + 3000);
+			port = static_cast<uint16_t>(mersenne() % (65535 - 3000) + 3000);
 			if (m_createdAppToPort.find(port) == m_createdAppToPort.end()) {
 				break;
 			}

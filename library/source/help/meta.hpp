@@ -375,37 +375,6 @@ template <Stringable T> FORCE_INLINE [[nodiscard]] const char* CString(const T s
 	}
 }
 
-template <typename T>
-concept Pointable = (std::is_pointer_v<T> || std::is_lvalue_reference_v<T>)
-	&& !std::is_const_v<std::remove_pointer_t<std::remove_reference_t<T>>>;
-
-static_assert(!Pointable<int>, "Pointable concept failed");
-static_assert(Pointable<int*>, "Pointable concept failed");
-static_assert(Pointable<int*&>, "Pointable concept failed");
-static_assert(!Pointable<int*&&>, "Pointable concept failed");
-static_assert(Pointable<volatile int*>, "Pointable concept failed");
-static_assert(!Pointable<const int*>, "Pointable concept failed");
-static_assert(Pointable<int* const>, "Pointable concept failed");
-static_assert(Pointable<int&>, "Pointable concept failed");
-static_assert(Pointable<volatile int&>, "Pointable concept failed");
-static_assert(!Pointable<const int&>, "Pointable concept failed");
-static_assert(!Pointable<int&&>, "Pointable concept failed");
-
-template <typename T>
-	requires Pointable<T>
-FORCE_INLINE [[nodiscard]] auto Pointer(T object) noexcept
-{
-	if constexpr (std::is_pointer_v<std::remove_cvref_t<T>>) {
-		return object;
-	}
-	else if constexpr (std::is_lvalue_reference_v<T>) {
-		return &object;
-	}
-	else {
-		static_assert(sizeof(T) + 1 == 0, "Type must be pointer or lvalue reference");
-	}
-}
-
 }; //* namespace MSAPI
 
 #endif //* MSAPI_META_H
