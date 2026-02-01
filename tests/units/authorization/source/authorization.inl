@@ -116,12 +116,12 @@ Definitions
 ---------------------------------------------------------------------------------*/
 
 AccountTestData::AccountTestData(
-	std::string login, std::string password, std::string expectedError, bool shouldRegister) noexcept
+	std::string login, std::string password, std::string expectedError, const bool shouldRegister) noexcept
 	: login{ std::move(login) }
 	, password{ std::move(password) }
 	, expectedError{ std::move(expectedError) }
 	, connection{ connectionsCounter++ }
-	, shouldRegister{ std::move(shouldRegister) }
+	, shouldRegister{ shouldRegister }
 {
 }
 
