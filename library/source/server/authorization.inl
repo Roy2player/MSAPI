@@ -212,7 +212,7 @@ public:
 };
 
 template <typename T>
-concept Accountable = std::is_base_of_v<Account<Grade>, T>;
+concept Accountable = std::is_base_of_v<Account<>, T>;
 
 /**
  * @brief Generic authorization module class, provides thread-safe account management and authentication. Can be used as
@@ -872,7 +872,7 @@ template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G
 			return false;
 		}
 
-		m_dataPath += "../data/accounts/";
+		std::format_to(std::back_inserter(m_dataPath), "../data/accounts/");
 	}
 
 	if (IO::HasPath(m_dataPath.c_str())) {
@@ -935,17 +935,17 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::Stop()
 	Pthread::AtomicRWLock::ExitGuard<Pthread::write> guardConnections{ m_connectionsLock };
 	const Timer timestamp{};
 
-	for (auto& [hash, accountData] : m_loginHashToAccountData) {
-		accountData.reset();
-	}
-	m_loginHashToAccountData.clear();
-
 	for (auto& [connection, accountData] : m_logonConnectionToAccountData) {
 		OnAccountActivity(*accountData, timestamp,
 			std::format("Logout due to module stop at {}, connection {}", timestamp.ToString(), connection));
 		accountData.reset();
 	}
 	m_logonConnectionToAccountData.clear();
+
+	for (auto& [hash, accountData] : m_loginHashToAccountData) {
+		accountData.reset();
+	}
+	m_loginHashToAccountData.clear();
 
 	m_isStarted = false;
 	m_startTime = Timer{ 0 };
@@ -1551,7 +1551,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::CheckPasswordRequirements(
 
 	if (!hasUpper) {
 		if (!empty) {
-			error += ", at least one uppercase letter";
+			std::format_to(std::back_inserter(error), ", at least one uppercase letter");
 		}
 		else {
 			error = "Password must contain at least one uppercase letter";
@@ -1561,7 +1561,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::CheckPasswordRequirements(
 
 	if (!hasDigit) {
 		if (!empty) {
-			error += ", at least one digit";
+			std::format_to(std::back_inserter(error), ", at least one digit");
 		}
 		else {
 			error = "Password must contain at least one digit";
@@ -1571,7 +1571,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::CheckPasswordRequirements(
 
 	if (!hasSpecial) {
 		if (!empty) {
-			error += ", at least one special character";
+			std::format_to(std::back_inserter(error), ", at least one special character");
 		}
 		else {
 			error = "Password must contain at least one special character";
