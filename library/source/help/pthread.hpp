@@ -191,6 +191,18 @@ FORCE_INLINE bool PthreadMutexLock(NamedMutex<pthread_mutex_t>& namedMutex) noex
 	return true;
 }
 
+constexpr bool write{ true };
+constexpr bool read{ false };
+
+static_assert(write, "Pthread write must be true");
+static_assert(!read, "Pthread read must be false");
+
+constexpr bool tryLock{ true };
+constexpr bool doLock{ false };
+
+static_assert(tryLock, "Pthread tryLock must be true");
+static_assert(!doLock, "Pthread doLock must be false");
+
 /**************************
  * @brief Lock read write mutex and print error if any occurred.
  *
@@ -342,7 +354,7 @@ public:
 	FORCE_INLINE ExitGuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept
 		: m_namedMutex{ namedMutex }
 	{
-		PthreadMutexRWLock<Wr, false>(m_namedMutex);
+		PthreadMutexRWLock<Wr, doLock>(m_namedMutex);
 	}
 
 	/**************************

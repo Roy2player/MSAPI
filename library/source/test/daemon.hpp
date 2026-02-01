@@ -22,6 +22,7 @@
 
 #include "../server/server.h"
 #include <cstring>
+#include <random>
 #include <thread>
 
 namespace MSAPI {
@@ -104,11 +105,11 @@ template <typename T> class Daemon : public DaemonBase {
 private:
 	T m_application;
 	pthread_t m_pthread;
-	std::set<int> m_connections;
 	//* { port, domain }
 	std::map<int, std::pair<in_port_t, std::string>> m_connectionsDataToId;
 	//* { App, ... }
 	std::tuple<T*, pthread_t, in_addr_t, in_port_t> m_dataOfPthread;
+	std::atomic<int32_t> m_connectionIdGenerator{};
 	bool m_isRan{ false };
 
 	static inline std::set<unsigned short> m_ports;
@@ -150,13 +151,12 @@ public:
 	{
 		int id;
 		do {
-			id = static_cast<int>(Identifier::mersenne());
-		} while (m_connections.find(id) != m_connections.end());
+			id = m_connectionIdGenerator.fetch_add(1, std::memory_order_relaxed);
+		} while (m_connectionsDataToId.find(id) != m_connectionsDataToId.end());
 		LOG_INFO("Daemon is connecting to domain: " + domain + ", id: " + _S(id));
 		if (!m_application->ConnectOpen(id, inet_addr(Helper::DomainToIp(domain.c_str()).c_str()), port, false)) {
 			return {};
 		}
-		m_connections.insert(id);
 		m_connectionsDataToId.insert({ id, { port, domain } });
 		return id;
 	}
@@ -247,17 +247,17 @@ public:
 	template <typename... Args>
 	static FORCE_INLINE std::unique_ptr<DaemonBase> Create(std::string&& name, Args&&... args)
 	{
-		auto daemon{ std::make_unique<MSAPI::Daemon<T>>(std::forward(args)...) };
+		auto daemon{ std::make_unique<MSAPI::Daemon<T>>(std::forward<Args>(args)...) };
 		MSAPI::Server* server{ static_cast<MSAPI::Server*>(daemon->GetApp()) };
 		server->SetName(name);
-		unsigned short port{ static_cast<unsigned short>(Identifier::mersenne() % (65535 - 3000) + 3000) };
-
-		size_t counter{ 0 };
+		std::mt19937 mersenne{ UINT64(MSAPI::Timer{}.GetNanoseconds()) };
+		unsigned short port{ static_cast<unsigned short>(mersenne() % (65535 - 3000) + 3000) };
+		int32_t counter{ 0 };
 		do {
 			if (m_ports.insert(port).second) {
 				break;
 			}
-			port = static_cast<unsigned short>(Identifier::mersenne() % (65535 - 3000) + 3000);
+			port = static_cast<unsigned short>(mersenne() % (65535 - 3000) + 3000);
 
 			if (++counter >= 50000) {
 				LOG_ERROR("Cannot generate a unique port for app: " + name);

@@ -858,7 +858,7 @@ protected:
  * @param name (in-mutable) Default type of application [std::string].
  * @param parameters (out) Object with parsed from argv[1] parameters [MSAPI::Json].
  * @param ip (out) IP address of application [std::string]. INADDR_LOOPBACK by default.
- * @param port (out) Port of application [unsigned short]. Random from 3000 by default. Can't be equal to zero.
+ * @param port (out) Port of application [unsigned short]. Can't be equal to zero.
  * @param managerPort (out) Port of manager [unsigned short]. Can't be equal to zero.
  * @param logLevel (internal) Level of logging, WARNING by default.
  * @param logInConsole (internal) Enable logging in console, false by default.
@@ -907,7 +907,8 @@ protected:
 	if (const auto* portStr{ parameters.GetValue("port") }; portStr != nullptr) {                                      \
 		if (const auto* value{ std::get_if<std::string>(&portStr->GetValue()) }; value != nullptr) {                   \
 			if (value->empty()) {                                                                                      \
-				goto generatePort;                                                                                     \
+				std::cerr << "Port cannot be empty." << std::endl;                                                     \
+				return 1;                                                                                              \
 			}                                                                                                          \
                                                                                                                        \
 			const auto error{ std::from_chars(value->data(), value->data() + value->size(), port).ec };                \
@@ -920,7 +921,7 @@ protected:
 			else {                                                                                                     \
 				std::cerr << "Cannot parse port in parameters: " << *value                                             \
 						  << ". Error: " << std::make_error_code(error).message() << "." << std::endl;                 \
-				goto generatePort;                                                                                     \
+				return 1;                                                                                              \
 			}                                                                                                          \
 		}                                                                                                              \
 		else {                                                                                                         \
@@ -929,8 +930,8 @@ protected:
 		}                                                                                                              \
 	}                                                                                                                  \
 	else {                                                                                                             \
-	generatePort:                                                                                                      \
-		port = static_cast<unsigned short>(MSAPI::Identifier::mersenne() % (65535 - 3000) + 3000);                     \
+		std::cerr << "Port must be specified." << std::endl;                                                           \
+		return 1;                                                                                                      \
 	}                                                                                                                  \
                                                                                                                        \
 	const auto* managerPortStr{ parameters.GetValue("managerPort") };                                                  \

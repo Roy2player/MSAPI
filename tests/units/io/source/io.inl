@@ -139,49 +139,74 @@ bool Io()
 		RETURN_IF_FALSE(
 			t.Assert(readData, testData, "Read data from copied to nested dir file should be equal to saved data"));
 
-		{
-			std::set<std::string> names;
+		const auto testList{ [&t](const auto pathOrDirChild3, const auto pathOrDir, const auto pathOrDirChildDir2) {
+			{
+				std::set<std::string> names;
+				RETURN_IF_FALSE(t.Assert(
+					IO::List<IO::FileType::Regular>(names, pathOrDirChild3), true, "List files in nested dir"));
+				RETURN_IF_FALSE(t.Assert(names.size(), 1, "There should be one file in nested dir"));
+				RETURN_IF_FALSE(t.Assert(*names.begin(), "someCopiedFile", "File name should be correct"));
+			}
+
+			std::vector<std::string> names;
 			RETURN_IF_FALSE(
-				t.Assert(IO::List<IO::FileType::Regular>(names, pathChild3V), true, "List files in nested dir"));
-			RETURN_IF_FALSE(t.Assert(names.size(), 1, "There should be one file in nested dir"));
-			RETURN_IF_FALSE(t.Assert(*names.begin(), "someCopiedFile", "File name should be correct"));
+				t.Assert(IO::List<IO::FileType::Regular>(names, pathOrDir), true, "List files in test dir"));
+			RETURN_IF_FALSE(t.Assert(names.size(), 2, "There should be two files in test dir"));
+			RETURN_IF_FALSE(t.Assert(names[0] == "someRenamedFile" || names[0] == "someNameForFileToTest1", true,
+				"First file name should be correct"));
+			RETURN_IF_FALSE(t.Assert(names[1] == "someRenamedFile" || names[1] == "someNameForFileToTest1", true,
+				"Second file name should be correct"));
+			RETURN_IF_FALSE(t.Assert(names[0] != names[1], true, "File names should be different"));
+
+			names.clear();
+			RETURN_IF_FALSE(
+				t.Assert(IO::List<IO::FileType::Directory>(names, pathOrDir), true, "List dirs in test dir"));
+			RETURN_IF_FALSE(t.Assert(names.size(), 1, "There should be one dir in test dir"));
+			RETURN_IF_FALSE(t.Assert(names[0], "childDir", "Dir name should be correct"));
+
+			names.clear();
+			RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Regular>(names, pathOrDirChildDir2), true,
+				"Listing files in nested dir level 2 should succeed"));
+			RETURN_IF_FALSE(t.Assert(names.size(), 0, "There should be no files in nested dir level 2"));
+
+			names.clear();
+			RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Directory>(names, pathOrDirChild3), true,
+				"Listing dirs in nested dir level 3 should succeed"));
+			RETURN_IF_FALSE(t.Assert(names.size(), 0, "There should be no dirs in nested dir level 3"));
+
+			return true;
+		} };
+
+		{
+			const auto pathOrDirChildDir2{ path + "childDir/childDir2" };
+			RETURN_IF_FALSE(t.Assert(testList(pathChild3V, pathV, std::string_view{ pathOrDirChildDir2 }), true,
+				"Test listing files and dirs with paths"));
 		}
 
-		std::vector<std::string> names;
-		RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Regular>(names, pathV), true, "List files in test dir"));
-		RETURN_IF_FALSE(t.Assert(names.size(), 2, "There should be two files in test dir"));
-		RETURN_IF_FALSE(t.Assert(names[0] == "someRenamedFile" || names[0] == "someNameForFileToTest1", true,
-			"First file name should be correct"));
-		RETURN_IF_FALSE(t.Assert(names[1] == "someRenamedFile" || names[1] == "someNameForFileToTest1", true,
-			"Second file name should be correct"));
-		RETURN_IF_FALSE(t.Assert(names[0] != names[1], true, "File names should be different"));
+		{
+			MSAPI::IO::Directory::ExitGuard dirPathChild3{ pathChild3V };
+			RETURN_IF_FALSE(t.Assert(dirPathChild3.value != nullptr, true, "Open directory"));
+			MSAPI::IO::Directory::ExitGuard dirPath{ pathV };
+			RETURN_IF_FALSE(t.Assert(dirPath.value != nullptr, true, "Open directory"));
+			MSAPI::IO::Directory::ExitGuard dirPathChildDir2{ std::string_view{ path + "childDir/childDir2" } };
+			RETURN_IF_FALSE(t.Assert(dirPathChildDir2.value != nullptr, true, "Open directory"));
+			RETURN_IF_FALSE(t.Assert(testList(dirPathChild3.value, dirPath.value, dirPathChildDir2.value), true,
+				"Test listing files and dirs with dirs"));
+		}
 
-		names.clear();
-		RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Directory>(names, pathV), true, "List dirs in test dir"));
-		RETURN_IF_FALSE(t.Assert(names.size(), 1, "There should be one dir in test dir"));
-		RETURN_IF_FALSE(t.Assert(names[0], "childDir", "Dir name should be correct"));
+		{
+			std::vector<std::string> names;
+			const auto& pathNonExistingDir{ path + "nonExistingDir" };
+			const std::string_view pathNonExistingDirV{ pathNonExistingDir };
+			RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Regular>(names, pathNonExistingDirV), false,
+				"Listing files in non existing dir should fail"));
+			RETURN_IF_FALSE(t.Assert(names.size(), 0, "There should be no files in non existing dir"));
 
-		names.clear();
-		const auto& pathNonExistingDir{ path + "nonExistingDir" };
-		const std::string_view pathNonExistingDirV{ pathNonExistingDir };
-		RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Regular>(names, pathNonExistingDirV), false,
-			"Listing files in non existing dir should fail"));
-		RETURN_IF_FALSE(t.Assert(names.size(), 0, "There should be no files in non existing dir"));
-
-		names.clear();
-		RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Directory>(names, pathNonExistingDirV), false,
-			"Listing dirs in non existing dir should fail"));
-		RETURN_IF_FALSE(t.Assert(names.size(), 0, "There should be no dirs in non existing dir"));
-
-		names.clear();
-		RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Regular>(names, (path + "childDir/childDir2").c_str()), true,
-			"Listing files in nested dir level 2 should succeed"));
-		RETURN_IF_FALSE(t.Assert(names.size(), 0, "There should be no files in nested dir level 2"));
-
-		names.clear();
-		RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Directory>(names, pathChild3V), true,
-			"Listing dirs in nested dir level 3 should succeed"));
-		RETURN_IF_FALSE(t.Assert(names.size(), 0, "There should be no dirs in nested dir level 3"));
+			names.clear();
+			RETURN_IF_FALSE(t.Assert(IO::List<IO::FileType::Directory>(names, pathNonExistingDirV), false,
+				"Listing dirs in non existing dir should fail"));
+			RETURN_IF_FALSE(t.Assert(names.size(), 0, "There should be no dirs in non existing dir"));
+		}
 
 		RETURN_IF_FALSE(t.Assert(IO::Remove(path1V), true, "Remove file"));
 		RETURN_IF_FALSE(t.Assert(IO::HasPath(path1V), false, "File should not exist now"));

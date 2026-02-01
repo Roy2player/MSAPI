@@ -30,6 +30,7 @@ Number of bash scripts are available in the [bash/](bash/) folder to simplify bu
 ### [Server Framework](library/source/server/)
 - [**Server:**](library/source/server/server.h) Provides communication ability via TCP sockets and current-state model to manage server lifetime;
 - [**Application:**](library/source/server/application.h) Provides customization ability via parameters and current-state model to manage application behavior.
+- [**Authorization:**](library/source/server/authorization.inl) Generic thread-safe account management and authentication.
 
 Server provides data to be handled by calling a callback in case if this data is not a part of internal Application protocol.
 

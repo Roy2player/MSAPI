@@ -25,36 +25,23 @@ namespace MSAPI {
 Test::~Test()
 {
 	if (m_counter > 0) {
-		std::stringstream stream;
-		stream << "All tests counter " << m_counter << ".\n";
-
-		if (!m_passedTests.empty()) {
-			stream << GREEN_BEGIN << "Passed counter " << m_passedTests.size() << ":\n";
-			for (const auto& name : m_passedTests) {
-				stream << "\t" << name << "\n";
-			}
-			if (m_failedTests.empty()) {
-				stream << "Passed, " << COLOR_END;
-			}
-			else {
-				goto failed;
-			}
+		const auto nanoseconds{ Timer::Duration{ Timer{} - m_totalTimer }.GetNanoseconds() };
+		if (m_passedCounter == m_counter) {
+			LOG_INFO_NEW("All assertions counter: {}, passed: {}. {}Passed{}, elapsed wall time: {} ns", m_counter,
+				m_passedCounter, GREEN_BEGIN, COLOR_END, nanoseconds);
+			std::cout << std::format("{}Passed{}, elapsed wall time: {} ns", GREEN_BEGIN, COLOR_END, nanoseconds)
+					  << std::endl;
+			return;
 		}
-		if (!m_failedTests.empty()) {
-		failed:
-			stream << RED_BEGIN << "Failed counter " << m_failedTests.size() << ":\n";
-			for (const auto& name : m_failedTests) {
-				stream << "\t" << name << "\n";
-			}
-			stream << "Failed, " << COLOR_END;
-		}
-		stream << "elapsed wall time: " << Timer::Duration{ Timer{} - m_wholeTimer }.GetNanoseconds() << " ns";
-		LOG_INFO(stream.str());
 
+		LOG_INFO_NEW("All assertions counter: {}, passed: {}. {}Failed{}, elapsed wall time: {} ns", m_counter,
+			m_passedCounter, RED_BEGIN, COLOR_END, nanoseconds);
+		std::cout << std::format("{}Failed{}, elapsed wall time: {} ns", RED_BEGIN, COLOR_END, nanoseconds)
+				  << std::endl;
 		return;
 	}
 
-	LOG_INFO("\033[0;32mThere were no running tests\033[0m");
+	LOG_INFO("\033[0;32mThere were no assertions\033[0m");
 }
 
 void Test::Wait(size_t waitTime, const std::function<bool()>& predicate)

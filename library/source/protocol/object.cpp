@@ -167,21 +167,14 @@ std::string FilterBase::ToString() const
 StreamBase
 ---------------------------------------------------------------------------------*/
 
-std::set<int> StreamBase::m_streamIds;
-
 StreamBase::StreamBase()
+	: m_id{ m_streamCounter.fetch_add(1, std::memory_order_relaxed) }
 {
-	int id;
-	do {
-		id = static_cast<int>(Identifier::mersenne());
-	} while (m_streamIds.find(id) != m_streamIds.end());
-	Identifier::SetId(id);
-	m_streamIds.emplace(id);
 }
 
-StreamBase::~StreamBase() { m_streamIds.erase(GetId()); }
-
 State StreamBase::GetState() const { return m_state; }
+
+int32_t StreamBase::GetId() const noexcept { return m_id; }
 
 int StreamBase::GetConnection() const { return m_connection; }
 

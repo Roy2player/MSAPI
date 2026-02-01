@@ -43,7 +43,7 @@
  * @brief Extra filter object issue - when distributor got more filter objects than expected.
  *
  * @brief Identifier of stream is unique for single application which created that stream. Distributor uses key pair {
- * stream id, connection } for identify stream.
+ * stream id, connection } to identify stream.
  *
  * @todo Filters can be || and &&
  * @todo Stream can has different filters
@@ -54,7 +54,6 @@
 #define MSAPI_OBJECT_PROTOCOL_H
 
 #include "../help/diagnostic.h"
-#include "../help/identifier.h"
 #include "../help/log.h"
 #include "dataHeader.h"
 #include <cstring>
@@ -276,11 +275,12 @@ class IHandlerBase;
  * @brief Common virtual class for all specific streams, contains container with all stream' ids. Stream id is unique
  * for application which owned that stream.
  */
-class StreamBase : public Identifier {
+class StreamBase {
 private:
-	static std::set<int> m_streamIds;
+	static inline std::atomic<int32_t> m_streamCounter{};
 
 protected:
+	const int32_t m_id;
 	int m_connection{ 0 };
 	State m_state{ State::Undefined };
 	bool m_snapshotDone{ false };
@@ -292,9 +292,9 @@ public:
 	StreamBase();
 
 	/**************************
-	 * @brief Destroy the Stream Base object and remove stream id from container.
+	 * @brief Default virtual destructor.
 	 */
-	~StreamBase();
+	virtual ~StreamBase() = default;
 
 	/**************************
 	 * @return True if stream snapshot is done.
@@ -305,6 +305,11 @@ public:
 	 * @return State of stream.
 	 */
 	State GetState() const;
+
+	/**************************
+	 * @return Unique identifier of stream.
+	 */
+	int32_t GetId() const noexcept;
 
 	/**************************
 	 * @return Stream's source connection.
