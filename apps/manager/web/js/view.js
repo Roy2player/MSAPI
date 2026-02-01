@@ -8,7 +8,7 @@
  *
  * For commercial use, please contact: maks.angels@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief Abstraction for any view that can be created, represent interface unit or application.
  * It provides functionality for initializing views, handling metadata, managing parameters, and interacting with the

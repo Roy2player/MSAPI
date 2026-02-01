@@ -3,7 +3,7 @@
  * @version     6.0
  * @date        2024-10-08
  * @author      maks.angels@mail.ru
- * @copyright   © 2021–2025 Maksim Andreevich Leonov
+ * @copyright   © 2021–2026 Maksim Andreevich Leonov
  *
  * This file is part of MSAPI.
  * License: see LICENSE.md
@@ -14,7 +14,7 @@
  *
  * For commercial use, please contact: maks.angels@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief Duration static class is a namespace for duration related functions. Provides ability to cast input node to
  * duration input. Time duration units are: days (d), hours (h), minutes (m), seconds (s), milliseconds (l),
