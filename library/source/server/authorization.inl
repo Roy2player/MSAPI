@@ -666,6 +666,7 @@ FORCE_INLINE [[nodiscard]] bool Account<G>::IsLogonAllowed(
 	hash.Update(std::string_view{ reinterpret_cast<const char*>(m_salt), SALT_SIZE });
 	hash.Update(password);
 
+	// Password verification uses memcmp which is not timing-safe and could be vulnerable to timing attacks
 	if (memcmp(hash.GetDigits().data(), m_password, PASSWORD_HASH_SIZE) != 0) {
 		error = "Invalid login or password";
 		return false;
