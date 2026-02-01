@@ -581,10 +581,10 @@ bool Timer()
 	}
 
 	{
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create("1978/1/1"), MSAPI::Timer::Create(1978), "Create timer from strin 1978/1/1"));
+		RETURN_IF_FALSE(t.Assert(
+			MSAPI::Timer::Create("1978/1/1"), MSAPI::Timer::Create(1978), "Create timer from string 1978/1/1"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978 1/1//.klsdfjh"), MSAPI::Timer::Create(1978),
-			"Create timer from strin 1978 1/1//.klsdfjh"));
+			"Create timer from string 1978 1/1//.klsdfjh"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222 9 21 17"), MSAPI::Timer::Create(2222, 9, 21, 17),
 			"Create timer from string 2222 9 21 17"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222-9-21r17"), MSAPI::Timer::Create(2222, 9, 21, 17),

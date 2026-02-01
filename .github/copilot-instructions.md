@@ -17,6 +17,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
 1. **Server Framework** (`library/source/server/`)
   - `server.h` / `server.cpp`: Socket accept loop, connection read/write, buffer dispatch via `HandleBuffer`. Avoid blocking operations inside `HandleBuffer`.
   - `application.h` / `application.cpp`: Application lifecycle (`HandleRunRequest`, `HandlePauseRequest`, `HandleStopRequest`), parameter registration and retrieval. Parameters are currently non-owning references (see Data Models & Ownership).
+  - `authorization.inl`: Generic thread-safe account management and authentication. Supports login, logout, session management with extensible data models.
 
 2. **Protocol Modules** (`library/source/protocol/`)
   - `dataHeader.h` / `dataHeader.cpp`: Common framing header (size, type identifiers). Always validate length before decoding payload.
