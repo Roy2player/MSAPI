@@ -8,7 +8,7 @@
  *
  * For commercial use, please contact: msapi.info@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, msapi.info@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, msapi.info@mail.ru
  *
  * @brief Collects metadata from a server and provides access to it by id.
  *

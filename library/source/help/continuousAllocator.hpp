@@ -3,7 +3,7 @@
  * @version     6.0
  * @date        2025-05-30
  * @author      msapi.info@mail.ru
- * @copyright   © 2021–2025 Maksim Andreevich Leonov
+ * @copyright   © 2021–2026 Maksim Andreevich Leonov
  *
  * This file is part of MSAPI.
  * License: see LICENSE.md
@@ -14,7 +14,7 @@
  *
  * For commercial use, please contact: msapi.info@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, msapi.info@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, msapi.info@mail.ru
  */
 
 #ifndef MSAPI_CONTINUOUS_ALLOCATOR

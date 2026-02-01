@@ -8,7 +8,7 @@
  *
  * For commercial use, please contact: msapi.info@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, msapi.info@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, msapi.info@mail.ru
  *
  * @brief View to display installed MSAPI applications. On creation requests metadata for all installed apps if not yet
  * available.
