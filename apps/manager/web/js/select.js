@@ -8,7 +8,7 @@
  *
  * For commercial use, please contact: maks.angels@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief Select static class is a namespace for select related functions. Provides ability to cast input node to
  * select input. Select element has its own view with list of options and parametrized quick search by substring.

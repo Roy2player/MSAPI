@@ -3,7 +3,7 @@
  * @version     6.0
  * @date        2023-08-29
  * @author      maks.angels@mail.ru
- * @copyright   © 2021–2025 Maksim Andreevich Leonov
+ * @copyright   © 2021–2026 Maksim Andreevich Leonov
  *
  * This file is part of MSAPI.
  * License: see LICENSE.md
@@ -14,7 +14,7 @@
  *
  * For commercial use, please contact: maks.angels@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief Works in paradigm of streams and filters. Stream has one custom filter and distributor must know how to react
  * on this filter. Filter can has multiple custom objects to filtration. Stream can be opened with different types:

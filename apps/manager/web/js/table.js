@@ -1,6 +1,6 @@
 /**************************
  * @author      maks.angels@mail.ru
- * @copyright   © 2021–2025 Maksim Andreevich Leonov
+ * @copyright   © 2021–2026 Maksim Andreevich Leonov
  *
  * This file is part of MSAPI.
  * License: see LICENSE.md
@@ -11,7 +11,7 @@
  *
  * For commercial use, please contact: maks.angels@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief Class for creating a table inside node with class "tables" in given parent node for the given parameter. The
  * table can be mutable or immutable. Mutable table has buttons for adding, removing, reverting and saving rows. Columns

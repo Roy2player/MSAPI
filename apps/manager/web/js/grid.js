@@ -8,7 +8,7 @@
  *
  * For commercial use, please contact: maks.angels@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief Represents a grid object. Provides ability to create a grid with columns and rows. Rows can be added, updated,
  * removed and swapped. Columns can be added and swapped. Cell can be updated. Cell can represent any of MSAPI data

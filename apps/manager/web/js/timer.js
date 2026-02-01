@@ -8,7 +8,7 @@
  *
  * For commercial use, please contact: maks.angels@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief Timer static class is a namespace for timer related functions. Provides ability to cast input node to
  * timestamp input. Timestamp is a string in format "YYYY-MM-DD HH:MM:SS.NNNNNNNNN UTC+X", where X is web-client's
