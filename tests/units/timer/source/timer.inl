@@ -581,6 +581,39 @@ bool Timer()
 	}
 
 	{
+		RETURN_IF_FALSE(
+			t.Assert(MSAPI::Timer::Create("1978/1/1"), MSAPI::Timer::Create(1978), "Create timer from strin 1978/1/1"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978 1/1//.klsdfjh"), MSAPI::Timer::Create(1978),
+			"Create timer from strin 1978 1/1//.klsdfjh"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222 9 21 17"), MSAPI::Timer::Create(2222, 9, 21, 17),
+			"Create timer from string 2222 9 21 17"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222-9-21r17"), MSAPI::Timer::Create(2222, 9, 21, 17),
+			"Create timer from string 2222-9-21r17"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222-9-21 17:39:::"), MSAPI::Timer::Create(2222, 9, 21, 17, 39),
+			"Create timer from string 2222-9-21 17:39:::"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222r9g21o17w39o10dm  "),
+			MSAPI::Timer::Create(2222, 9, 21, 17, 39, 10), "Create timer from string 2222r9g21o17w39o10dm  "));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2224f9,21v17p39c10n123498765"),
+			MSAPI::Timer::Create(2224, 9, 21, 17, 39, 10, 123498765),
+			"Create timer from string 2224f9,21v17p39c10n123498765"));
+
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/1/0") == MSAPI::Timer{ 0 },
+			MSAPI::Timer::Create(1978, 1, 0) == MSAPI::Timer{ 0 }, "Create timer from string with invalid day"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/0/1") == MSAPI::Timer{ 0 },
+			MSAPI::Timer::Create(1978, 0, 1) == MSAPI::Timer{ 0 }, "Create timer from string with invalid month"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/0/"), MSAPI::Timer{ 0 },
+			"Create timer from string without month and invalid day"));
+		RETURN_IF_FALSE(t.Assert(
+			MSAPI::Timer::Create("1978/"), MSAPI::Timer{ 0 }, "Create timer from string without month and day"));
+		RETURN_IF_FALSE(t.Assert(
+			MSAPI::Timer::Create("1969/"), MSAPI::Timer{ 0 }, "Create timer from string with year before 1970"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222  9-21r17"), MSAPI::Timer{ 0 },
+			"Create timer from string with invalid format \"2222  9-21r17\""));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("22229-21r17"), MSAPI::Timer{ 0 },
+			"Create timer from string with invalid format \"22229-21r17\""));
+	}
+
+	{
 		size_t one{ 0 };
 		size_t two{ 0 };
 		size_t three{ 0 };

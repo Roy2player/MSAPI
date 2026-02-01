@@ -441,7 +441,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd,
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, O_RDWR, 0 };
+		fd = FileDescriptor::ExitGuard{ pathOrFd, O_RDWR | O_CREAT, Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -1195,6 +1195,7 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileTyp
  * results for tables.
  *
  * @attention Content sorting is filesystem dependent. If opened directory is provided, it must be valid.
+ * @attention If opened directory is provided, its position will be rewound to the beginning after reading.
  *
  * @tparam FT Type of file to search.
  * @tparam T Type of container with strings.
@@ -1248,6 +1249,10 @@ FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S pathOrDi
 		else {
 			static_assert(sizeof(T<std::string>) + 1 == 0, "Unsupported container type");
 		}
+	}
+
+	if constexpr (std::is_same_v<S, DIR*>) {
+		rewinddir(dirPtr);
 	}
 
 	return true;

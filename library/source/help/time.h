@@ -692,50 +692,63 @@ public:
 	 * @param second Second, if more than 60, return empty timer.
 	 * @param nanosecond Nanosecond, if more than 999999999, return empty timer.
 	 *
+	 * @return Timer object or empty timer if parameters are invalid.
+	 *
 	 * @test Has unit test.
 	 */
 	static Timer Create(uint16_t year = 1970, uint8_t month = 1, uint8_t day = 1, uint8_t hour = 0, uint8_t minute = 0,
 		uint8_t second = 0, uint32_t nanosecond = 0);
 
 	/**************************
-	 * @brief Create a Timer from a string in "YYYY.MM.DD" format, where dot can be any non-digit separator.
+	 * @brief Create a Timer from a string in "XXXX.XX.XX.XX.XX.XX.XXXXXXXXX" format, where dot can be any non-digit
+	 * separator. XXXX.XX.XX is required part.
 	 *
 	 * @param dateStr String to parse.
 	 *
 	 * @return Timer object or empty timer if parsing fails.
 	 *
-	 * @todo Tests.
+	 * @test Has unit test.
 	 */
 	static FORCE_INLINE Timer Create(std::string_view dateStr)
 	{
-		int32_t year{ 0 };
-		int32_t month{ 0 };
-		int32_t day{ 0 };
-		size_t index{ 0 };
+		size_t index{};
 		size_t size{ dateStr.size() };
+		uint32_t nanosecond{};
+		uint16_t year{};
+		uint8_t month{};
+		uint8_t day{};
+		uint8_t hour{};
+		uint8_t minute{};
+		uint8_t second{};
 
-		// Parse year
-		while (index < size && std::isdigit(dateStr[index])) {
-			year = year * 10 + dateStr[index++] - '0';
-		}
-		// Skip separator
-		while (index < size && !std::isdigit(dateStr[index]))
-			++index;
+#define TMP_MSAPI_TIMER_CREATE_FROM_STRING_PARSE_DIGIT_TO(value)                                                       \
+	while (index < size && std::isdigit(dateStr[index])) {                                                             \
+		value = static_cast<decltype(value)>(value * 10) + static_cast<decltype(value)>(dateStr[index++] - '0');       \
+	}
 
-		// Parse month
-		while (index < size && std::isdigit(dateStr[index])) {
-			month = month * 10 + dateStr[index++] - '0';
-		}
-		// Skip separator
-		while (index < size && !std::isdigit(dateStr[index]))
-			++index;
+#define TMP_MSAPI_TIMER_CREATE_FROM_STRING_SKIP_NON_DIGIT                                                              \
+	if (index < size && !std::isdigit(dateStr[index])) {                                                               \
+		++index;                                                                                                       \
+	}
 
-		// Parse day
-		while (index < size && std::isdigit(dateStr[index])) {
-			day = day * 10 + dateStr[index++] - '0';
-		}
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_PARSE_DIGIT_TO(year);
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_SKIP_NON_DIGIT;
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_PARSE_DIGIT_TO(month);
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_SKIP_NON_DIGIT;
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_PARSE_DIGIT_TO(day);
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_SKIP_NON_DIGIT;
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_PARSE_DIGIT_TO(hour);
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_SKIP_NON_DIGIT;
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_PARSE_DIGIT_TO(minute);
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_SKIP_NON_DIGIT;
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_PARSE_DIGIT_TO(second);
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_SKIP_NON_DIGIT;
+		TMP_MSAPI_TIMER_CREATE_FROM_STRING_PARSE_DIGIT_TO(nanosecond);
 
-		return Create(static_cast<uint16_t>(year), static_cast<uint8_t>(month), static_cast<uint8_t>(day));
+#undef TMP_MSAPI_TIMER_CREATE_FROM_STRING_SKIP_NON_DIGIT
+#undef TMP_MSAPI_TIMER_CREATE_FROM_STRING_PARSE_DIGIT_TO
+
+		return Create(year, month, day, hour, minute, second, nanosecond);
 	}
 
 	/**************************

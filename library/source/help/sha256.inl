@@ -202,7 +202,8 @@ FORCE_INLINE void Sha256::Transform() noexcept
 
 	uint32_t w[64];
 	for (int8_t i{}; i < 16; ++i) {
-		w[i] = (block[i * 4] << 24) | (block[i * 4 + 1] << 16) | (block[i * 4 + 2] << 8) | (block[i * 4 + 3]);
+		w[i] = static_cast<uint32_t>(
+			(block[i * 4] << 24) | (block[i * 4 + 1] << 16) | (block[i * 4 + 2] << 8) | (block[i * 4 + 3]));
 	}
 	for (int8_t i{ 16 }; i < 64; ++i) {
 		w[i] = Ssig1(w[i - 2]) + w[i - 7] + Ssig0(w[i - 15]) + w[i - 16];
