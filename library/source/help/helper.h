@@ -27,6 +27,7 @@
 #include <arpa/inet.h>
 #include <codecvt>
 #include <concepts>
+#include <cstring>
 #include <locale>
 #include <set>
 #include <string>
@@ -366,7 +367,7 @@ int WhereIsPoint(double x1, double y1, double x2, double y2, double x3, double y
 /**************************
  * @brief Check on nullptr and if first character is null terminator.
  *
- * @return Wstring constructed from string.
+ * @return Wstring constructed from UTF-8 string.
  *
  * @test Has unit tests.
  */
@@ -376,26 +377,57 @@ FORCE_INLINE std::wstring StringToWstring(const char* cstr)
 		return {};
 	}
 
-	size_t size_needed{ mbstowcs(nullptr, cstr, 0) };
-	if (size_needed == static_cast<size_t>(-1)) {
-		LOG_WARNING_NEW("Invalid multibyte sequence in input: {}", cstr);
-		return {};
+	std::wstring result;
+	result.reserve(std::strlen(cstr));
+
+	const auto* ptr{ reinterpret_cast<const unsigned char*>(cstr) };
+	while (*ptr != 0) {
+		uint32_t codePoint{};
+		unsigned char ch{ *ptr };
+		uint32_t extraBytes{};
+
+		if (ch < 0x80) {
+			codePoint = ch;
+			extraBytes = 0;
+		}
+		else if ((ch & 0xE0) == 0xC0) {
+			codePoint = static_cast<uint32_t>(ch & 0x1F);
+			extraBytes = 1;
+		}
+		else if ((ch & 0xF0) == 0xE0) {
+			codePoint = static_cast<uint32_t>(ch & 0x0F);
+			extraBytes = 2;
+		}
+		else if ((ch & 0xF8) == 0xF0) {
+			codePoint = static_cast<uint32_t>(ch & 0x07);
+			extraBytes = 3;
+		}
+		else {
+			LOG_WARNING_NEW("Invalid UTF-8 lead byte in input: {}", cstr);
+			return {};
+		}
+
+		++ptr;
+		for (uint32_t index{}; index < extraBytes; ++index) {
+			unsigned char next{ *ptr };
+			if ((next & 0xC0) != 0x80) {
+				LOG_WARNING_NEW("Invalid UTF-8 continuation byte in input: {}", cstr);
+				return {};
+			}
+			codePoint = codePoint << 6 | static_cast<uint32_t>(next & 0x3F);
+			++ptr;
+		}
+
+		result.push_back(static_cast<wchar_t>(codePoint));
 	}
 
-	std::wstring wstr(size_needed, L'\0');
-	size_t converted{ mbstowcs(&wstr[0], cstr, size_needed) };
-	if (converted == static_cast<size_t>(-1)) {
-		LOG_WARNING_NEW("Conversion error during mbstowcs for input: {}", cstr);
-		return {};
-	}
-
-	return wstr;
+	return result;
 }
 
 /**************************
  * @brief Check on nullptr and if first character is null terminator.
  *
- * @return String which is constructed from wstring.
+ * @return String which is constructed from wstring encoded as UTF-8.
  *
  * @test Has unit tests.
  */
@@ -405,20 +437,37 @@ FORCE_INLINE std::string WstringToString(const wchar_t* wcstr)
 		return {};
 	}
 
-	size_t size_needed{ wcstombs(nullptr, wcstr, 0) };
-	if (size_needed == static_cast<size_t>(-1)) {
-		LOG_WARNING("Invalid wide char sequence in input");
-		return {};
+	std::string result;
+	const wchar_t* ptr{ wcstr };
+
+	while (*ptr != L'\0') {
+		uint32_t codePoint{ static_cast<uint32_t>(*ptr++) };
+
+		if (codePoint <= 0x7F) {
+			result.push_back(static_cast<char>(codePoint));
+		}
+		else if (codePoint <= 0x7FF) {
+			result.push_back(static_cast<char>((codePoint >> 6) | 0xC0));
+			result.push_back(static_cast<char>((codePoint & 0x3F) | 0x80));
+		}
+		else if (codePoint <= 0xFFFF) {
+			result.push_back(static_cast<char>((codePoint >> 12) | 0xE0));
+			result.push_back(static_cast<char>(((codePoint >> 6) & 0x3F) | 0x80));
+			result.push_back(static_cast<char>((codePoint & 0x3F) | 0x80));
+		}
+		else if (codePoint <= 0x10FFFF) {
+			result.push_back(static_cast<char>((codePoint >> 18) | 0xF0));
+			result.push_back(static_cast<char>(((codePoint >> 12) & 0x3F) | 0x80));
+			result.push_back(static_cast<char>(((codePoint >> 6) & 0x3F) | 0x80));
+			result.push_back(static_cast<char>((codePoint & 0x3F) | 0x80));
+		}
+		else {
+			LOG_WARNING("Invalid Unicode code point in WstringToString");
+			return {};
+		}
 	}
 
-	std::string str(size_needed, '\0');
-	size_t converted{ wcstombs(&str[0], wcstr, size_needed) };
-	if (converted == static_cast<size_t>(-1)) {
-		LOG_WARNING("Conversion error during wcstombs");
-		return {};
-	}
-
-	return str;
+	return result;
 }
 
 /**************************
@@ -471,6 +520,138 @@ FORCE_INLINE T Exponent10Of(T value)
  * @return String IP by sockaddr structure, empty if IP is unknown.
  */
 std::string GetStringIp(sockaddr_in addr);
+
+/**
+ * @brief Encode data to Base64 format.
+ *
+ * @tparam T Type of the data elements.
+ *
+ * @param data Span of data to encode.
+ * @param buffer Span for storing the encoded string. Must have a size of at least (data.size() + 2) / 3 * 4.
+ *
+ * @return Sring view on the encoded data inside buffer.
+ *
+ * @test Has unit tests.
+ */
+template <typename T>
+	requires(sizeof(T) == 1 && std::is_integral_v<T>)
+FORCE_INLINE [[nodiscard]] std::string_view Base64Encode(const std::span<T> data, const std::span<char> buffer)
+{
+	static const char B64_ALPHABET[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+	if (const auto required{ (data.size() + 2) / 3 * 4 }; buffer.size() < required) [[unlikely]] {
+		LOG_WARNING_NEW(
+			"Buffer size is insufficient for Base64 encoding. Required: {}, Provided: {}", required, buffer.size());
+		return {};
+	}
+
+	size_t bufferIndex{};
+	for (size_t index{}; index < data.size(); index += 3) {
+		int32_t triple{};
+		const auto rem{ data.size() - index };
+
+		triple |= int32_t(data[index]) << 16;
+		if (rem > 1) {
+			triple |= int32_t(data[index + 1]) << 8;
+		}
+		if (rem > 2) {
+			triple |= int32_t(data[index + 2]);
+		}
+
+		buffer[bufferIndex++] = B64_ALPHABET[(triple >> 18) & 0x3F];
+		buffer[bufferIndex++] = B64_ALPHABET[(triple >> 12) & 0x3F];
+
+		if (rem > 1) {
+			buffer[bufferIndex++] = B64_ALPHABET[(triple >> 6) & 0x3F];
+		}
+		else {
+			buffer[bufferIndex++] = '=';
+		}
+
+		if (rem > 2) {
+			buffer[bufferIndex++] = B64_ALPHABET[triple & 0x3F];
+		}
+		else {
+			buffer[bufferIndex++] = '=';
+		}
+	}
+
+	return std::string_view{ buffer.data(), bufferIndex };
+}
+
+/**
+ * @brief Decode Base64 encoded string.
+ *
+ * @attention String to decode must be multiply of 4 in size and buffer must have a size of at least data.size() / 4 * 3
+ * - padding, where padding is the number of '=' characters at the end of the string.
+ *
+ * @tparam T Type of the data elements.
+ *
+ * @param data Base64 encoded string.
+ * @param buffer Span for storing the decoded data.
+ *
+ * @return Span of decoded data inside buffer.
+ *
+ * @test Has unit tests.
+ */
+template <typename T>
+	requires(sizeof(T) == 1 && std::is_integral_v<T>)
+FORCE_INLINE [[nodiscard]] std::span<T> Base64Decode(const std::string_view data, const std::span<T> buffer)
+{
+	static const int8_t B64_LUT[256] = { /* initialize all to -1 */
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59,
+		60, 61, -1, -1, -1, -2, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+		21, 22, 23, 24, 25, -1, -1, -1, -1, -1, -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+		43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
+		/* rest are -1 */
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+	};
+
+	if (data.size() % 4 != 0) [[unlikely]] {
+		LOG_WARNING_NEW("Invalid Base64 size {}: {}", data.size(), data);
+		return {};
+	}
+
+	if (const auto required{ data.size() / 4 * 3 - (data.size() >= 2 && data[data.size() - 2] == '=' ? 1 : 0)
+			- (data.size() >= 1 && data[data.size() - 1] == '=' ? 1 : 0) };
+		buffer.size() < required) [[unlikely]] {
+		LOG_WARNING_NEW(
+			"Buffer size is insufficient for Base64 decoding. Required: {}, Provided: {}", required, buffer.size());
+		return {};
+	}
+
+	size_t bufferIndex{};
+	for (size_t index{}; index < data.size(); index += 4) {
+		const auto v1{ B64_LUT[static_cast<uint8_t>(data[index])] };
+		const auto v2{ B64_LUT[static_cast<uint8_t>(data[index + 1])] };
+		const auto v3{ B64_LUT[static_cast<uint8_t>(data[index + 2])] };
+		const auto v4{ B64_LUT[static_cast<uint8_t>(data[index + 3])] };
+		if (v1 < 0 || v2 < 0 || (v3 < 0 && v3 != -2) || (v4 < 0 && v4 != -2)) [[unlikely]] {
+			LOG_WARNING_NEW("Invalid Base64 character in input: {}", data);
+			return {};
+		}
+
+		uint32_t triple{ (static_cast<uint32_t>(v1) << 18) | (static_cast<uint32_t>(v2) << 12)
+			| ((v3 == -2 ? 0 : static_cast<uint32_t>(v3)) << 6) | (v4 == -2 ? 0 : static_cast<uint32_t>(v4)) };
+
+		buffer[bufferIndex++] = static_cast<T>((triple >> 16) & 0xFF);
+
+		if (v3 != -2) {
+			buffer[bufferIndex++] = static_cast<T>((triple >> 8) & 0xFF);
+
+			if (v4 != -2) {
+				buffer[bufferIndex++] = static_cast<T>(triple & 0xFF);
+			}
+		}
+	}
+
+	return std::span<T>{ buffer.data(), bufferIndex };
+}
 
 }; //* namespace Helper
 

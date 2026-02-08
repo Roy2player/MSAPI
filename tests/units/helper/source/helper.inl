@@ -55,15 +55,14 @@ bool Helper()
 			RETURN_IF_FALSE(t.Assert(
 				MSAPI::Helper::CompareFloats(a, b), expected, std::format("Compare floats, {} and {}", _S(a), _S(b))));
 
-			if (expected == 0) {
-				return t.Assert(
-					MSAPI::Helper::FloatEqual(a, b), true, std::format("Float equal, {} and {}", _S(a), _S(b)));
-			}
-			if (expected == 1) {
-				return t.Assert(
-					MSAPI::Helper::FloatGreater(a, b), true, std::format("Float greater, {} and {}", _S(a), _S(b)));
-			}
-			return t.Assert(MSAPI::Helper::FloatLess(a, b), true, std::format("Float less, {} and {}", _S(a), _S(b)));
+			RETURN_IF_FALSE(t.Assert(
+				MSAPI::Helper::FloatEqual(a, b), expected == 0, std::format("Float equal, {} and {}", _S(a), _S(b))));
+			RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatGreater(a, b), expected == 1,
+				std::format("Float greater, {} and {}", _S(a), _S(b))));
+			RETURN_IF_FALSE(t.Assert(
+				MSAPI::Helper::FloatLess(a, b), expected == -1, std::format("Float less, {} and {}", _S(a), _S(b))));
+
+			return true;
 		} };
 
 		RETURN_IF_FALSE(compareFloats(1.0f, 1.0f, 0));
@@ -94,16 +93,12 @@ bool Helper()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::CompareFloats<decltype(a), e>(a, b), expected,                         \
 			std::format("Compare floats, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon))));                        \
                                                                                                                        \
-		if (expected == 0) {                                                                                           \
-			return t.Assert(MSAPI::Helper::FloatEqual<decltype(a), e>(a, b), true,                                     \
-				std::format("Float equal, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon)));                        \
-		}                                                                                                              \
-		if (expected == 1) {                                                                                           \
-			return t.Assert(MSAPI::Helper::FloatGreater<decltype(a), e>(a, b), true,                                   \
-				std::format("Float greater, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon)));                      \
-		}                                                                                                              \
-		return t.Assert(MSAPI::Helper::FloatLess<decltype(a), e>(a, b), true,                                          \
-			std::format("Float less, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon)));                             \
+		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatEqual<decltype(a), e>(a, b), expected == 0,                       \
+			std::format("Float equal, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon))));                           \
+		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatGreater<decltype(a), e>(a, b), expected == 1,                     \
+			std::format("Float greater, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon))));                         \
+		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatLess<decltype(a), e>(a, b), expected == -1,                       \
+			std::format("Float less, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon))));                            \
 	}
 
 		TMP_MSAPI_HELPER_COMPARE_FLOATS_WITH_CUSTOM_EPSILON(1.0f + 1.0E-5f, 1.0f, 0, 1.0E-4f);
@@ -339,6 +334,89 @@ bool Helper()
 			RETURN_IF_FALSE(t.Assert(MSAPI::Helper::Exponent10Of(data.value), data.result,
 				std::format("Exponent10Of for {}", _S(data.value))));
 		}
+	}
+
+	{
+		char buffer[1024];
+		std::span<char> bufferSpan{ buffer, sizeof(buffer) };
+
+		const auto checkBase64{ [&t, &bufferSpan]<typename T>(const std::span<const T> data,
+									const std::string_view expected, const char* const message) {
+			RETURN_IF_FALSE(
+				t.Assert(Helper::Base64Encode(data, bufferSpan), expected, std::format("Base64Encode {}", message)));
+
+			const std::span<T> bufferForDecode{ reinterpret_cast<T*>(bufferSpan.data()), bufferSpan.size() };
+			RETURN_IF_FALSE(t.Assert(
+				Helper::Base64Decode(expected, bufferForDecode), data, std::format("Base64Decode {}", message)));
+
+			return true;
+		} };
+
+		RETURN_IF_FALSE(checkBase64(std::span<const char>{}, std::string_view{ "" }, "empty char"));
+		RETURN_IF_FALSE(checkBase64(std::span<const int8_t>{}, std::string_view{ "" }, "empty int8_t"));
+		RETURN_IF_FALSE(checkBase64(std::span<const uint8_t>{}, std::string_view{ "" }, "empty uint8_t"));
+		RETURN_IF_FALSE(checkBase64(std::span<const char>{ "M", 1 }, std::string_view{ "TQ==" }, "M(char)"));
+		RETURN_IF_FALSE(checkBase64(std::span<const char>{ "Ma", 2 }, std::string_view{ "TWE=" }, "Ma(char)"));
+		RETURN_IF_FALSE(checkBase64(std::span<const char>{ "Man", 3 }, std::string_view{ "TWFu" }, "Man(char)"));
+
+		{
+			const int8_t manInt8[]{ 'M', 'a', 'n' };
+			const uint8_t manUint8[]{ static_cast<uint8_t>('M'), static_cast<uint8_t>('a'), static_cast<uint8_t>('n') };
+
+			RETURN_IF_FALSE(checkBase64(std::span<const int8_t>{ manInt8 }, std::string_view{ "TWFu" }, "Man(int8_t)"));
+			RETURN_IF_FALSE(
+				checkBase64(std::span<const uint8_t>{ manUint8 }, std::string_view{ "TWFu" }, "Man(uint8_t)"));
+		}
+
+		RETURN_IF_FALSE(checkBase64(
+			std::span<const char>{ "Hello, world!", 13 }, std::string_view{ "SGVsbG8sIHdvcmxkIQ==" }, "Hello, world!"));
+
+		RETURN_IF_FALSE(checkBase64(std::span<const char>{ "\"           \0", 13 },
+			std::string_view{ "IiAgICAgICAgICAgAA==" }, "quote and spaces"));
+
+		{
+			const auto checkBufferSizes{ [&t, &buffer](std::span<const char> str, const size_t enoughSize,
+											 const std::string_view expectedEnough) {
+				RETURN_IF_FALSE(t.Assert(Helper::Base64Encode(str, std::span<char>{ buffer, enoughSize }),
+					expectedEnough, std::format("Base64Encode enough buffer ({} for {})", enoughSize, str.size())));
+
+				const auto smallSize{ enoughSize - 1 };
+				RETURN_IF_FALSE(
+					t.Assert(Helper::Base64Encode(str, std::span<char>{ buffer, smallSize }), std::string_view{ "" },
+						std::format("Base64Encode insufficient buffer ({} for {})", smallSize, str.size())));
+
+				return true;
+			} };
+
+			RETURN_IF_FALSE(checkBufferSizes(std::string_view{ "M" }, 4, std::string_view{ "TQ==" }));
+			RETURN_IF_FALSE(checkBufferSizes(std::string_view{ "Man" }, 4, std::string_view{ "TWFu" }));
+			RETURN_IF_FALSE(checkBufferSizes(std::string_view{ "Man " }, 8, std::string_view{ "TWFuIA==" }));
+			RETURN_IF_FALSE(checkBufferSizes(std::string_view{ "Man   " }, 8, std::string_view{ "TWFuICAg" }));
+		}
+
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "1" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input size (0) is not multiple of 4"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "12345" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input size (5) is not multiple of 4"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "1234567891" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input size (10) is not multiple of 4"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "123456789123456" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input size (15) is not multiple of 4"));
+
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TQ==" }, std::span<char>{ buffer, 0 }),
+			std::span<char>{ buffer, 0 }, "Base64Decode output size (0) is not enough for TQ=="));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TQ==" }, std::span<char>{ buffer, 1 }),
+			std::span<const char>{ "M", 1 }, "Base64Decode output size (1) is enough for TQ=="));
+
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TWE=" }, std::span<char>{ buffer, 1 }),
+			std::span<char>{ buffer, 0 }, "Base64Decode output size (1) is not enough for TWE="));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TWE=" }, std::span<char>{ buffer, 2 }),
+			std::span<const char>{ "Ma", 2 }, "Base64Decode output size (2) is enough for TWE="));
+
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TWFu" }, std::span<char>{ buffer, 2 }),
+			std::span<char>{ buffer, 0 }, "Base64Decode output size (2) is not enough for TWFu"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TWFu" }, std::span<char>{ buffer, 3 }),
+			std::span<const char>{ "Man", 3 }, "Base64Decode output size (3) is enough for TWFu"));
 	}
 
 	return true;
