@@ -367,6 +367,9 @@ int WhereIsPoint(double x1, double y1, double x2, double y2, double x3, double y
 /**************************
  * @brief Check on nullptr and if first character is null terminator.
  *
+ * @attention Does not validate several invalid UTF-8 forms (overlong encodings, surrogate code points U+D800–U+DFFF,
+ * and 4-byte lead bytes 0xF5–0xF7 producing code points > U+10FFFF).
+ *
  * @return Wstring constructed from UTF-8 string.
  *
  * @test Has unit tests.
@@ -529,7 +532,7 @@ std::string GetStringIp(sockaddr_in addr);
  * @param data Span of data to encode.
  * @param buffer Span for storing the encoded string. Must have a size of at least (data.size() + 2) / 3 * 4.
  *
- * @return Sring view on the encoded data inside buffer.
+ * @return String view on the encoded data inside buffer.
  *
  * @test Has unit tests.
  */
@@ -547,15 +550,15 @@ FORCE_INLINE [[nodiscard]] std::string_view Base64Encode(const std::span<T> data
 
 	size_t bufferIndex{};
 	for (size_t index{}; index < data.size(); index += 3) {
-		int32_t triple{};
+		uint32_t triple{};
 		const auto rem{ data.size() - index };
 
-		triple |= int32_t(data[index]) << 16;
+		triple |= static_cast<uint32_t>(data[index]) << 16;
 		if (rem > 1) {
-			triple |= int32_t(data[index + 1]) << 8;
+			triple |= static_cast<uint32_t>(data[index + 1]) << 8;
 		}
 		if (rem > 2) {
-			triple |= int32_t(data[index + 2]);
+			triple |= static_cast<uint32_t>(data[index + 2]);
 		}
 
 		buffer[bufferIndex++] = B64_ALPHABET[(triple >> 18) & 0x3F];
@@ -580,10 +583,10 @@ FORCE_INLINE [[nodiscard]] std::string_view Base64Encode(const std::span<T> data
 }
 
 /**
- * @brief Decode Base64 encoded string.
+ * @brief Decode Base64 fully properly encoded string.
  *
  * @attention String to decode must be multiply of 4 in size and buffer must have a size of at least data.size() / 4 * 3
- * - padding, where padding is the number of '=' characters at the end of the string.
+ * - padding, where padding is the number of '=' characters at the end of the string. Padding positions must be correct.
  *
  * @tparam T Type of the data elements.
  *
@@ -596,12 +599,12 @@ FORCE_INLINE [[nodiscard]] std::string_view Base64Encode(const std::span<T> data
  */
 template <typename T>
 	requires(sizeof(T) == 1 && std::is_integral_v<T>)
-FORCE_INLINE [[nodiscard]] std::span<T> Base64Decode(const std::string_view data, const std::span<T> buffer)
+FORCE_INLINE [[nodiscard]] std::span<const T> Base64Decode(const std::string_view data, const std::span<char> buffer)
 {
 	static const int8_t B64_LUT[256] = { /* initialize all to -1 */
 		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59,
-		60, 61, -1, -1, -1, -2, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+		60, 61, -1, -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 		21, 22, 23, 24, 25, -1, -1, -1, -1, -1, -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
 		43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
 		/* rest are -1 */
@@ -612,13 +615,20 @@ FORCE_INLINE [[nodiscard]] std::span<T> Base64Decode(const std::string_view data
 		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 	};
 
-	if (data.size() % 4 != 0) [[unlikely]] {
-		LOG_WARNING_NEW("Invalid Base64 size {}: {}", data.size(), data);
+	const auto size{ data.size() };
+	if (size % 4 != 0 || size == 0) [[unlikely]] {
+		LOG_WARNING_NEW("Invalid Base64 size {}: {}", size, data);
 		return {};
 	}
 
-	if (const auto required{ data.size() / 4 * 3 - (data.size() >= 2 && data[data.size() - 2] == '=' ? 1 : 0)
-			- (data.size() >= 1 && data[data.size() - 1] == '=' ? 1 : 0) };
+	const auto firstPadding{ (data[size - 2] == '=' ? 1 : 0) };
+	const auto secondPadding{ (data[size - 1] == '=' ? 1 : 0) };
+	if (firstPadding && !secondPadding) [[unlikely]] {
+		LOG_WARNING_NEW("Invalid Base64 padding pattern in input: {}", data);
+		return {};
+	}
+
+	if (const auto required{ size / 4 * 3 - static_cast<size_t>(firstPadding) - static_cast<size_t>(secondPadding) };
 		buffer.size() < required) [[unlikely]] {
 		LOG_WARNING_NEW(
 			"Buffer size is insufficient for Base64 decoding. Required: {}, Provided: {}", required, buffer.size());
@@ -626,31 +636,47 @@ FORCE_INLINE [[nodiscard]] std::span<T> Base64Decode(const std::string_view data
 	}
 
 	size_t bufferIndex{};
-	for (size_t index{}; index < data.size(); index += 4) {
+	const size_t lastIndex{ size - 4 };
+
+	for (size_t index{}; index < lastIndex; index += 4) {
 		const auto v1{ B64_LUT[static_cast<uint8_t>(data[index])] };
 		const auto v2{ B64_LUT[static_cast<uint8_t>(data[index + 1])] };
 		const auto v3{ B64_LUT[static_cast<uint8_t>(data[index + 2])] };
 		const auto v4{ B64_LUT[static_cast<uint8_t>(data[index + 3])] };
-		if (v1 < 0 || v2 < 0 || (v3 < 0 && v3 != -2) || (v4 < 0 && v4 != -2)) [[unlikely]] {
+		if (v1 < 0 || v2 < 0 || v3 < 0 || v4 < 0) [[unlikely]] {
 			LOG_WARNING_NEW("Invalid Base64 character in input: {}", data);
 			return {};
 		}
 
-		uint32_t triple{ (static_cast<uint32_t>(v1) << 18) | (static_cast<uint32_t>(v2) << 12)
-			| ((v3 == -2 ? 0 : static_cast<uint32_t>(v3)) << 6) | (v4 == -2 ? 0 : static_cast<uint32_t>(v4)) };
+		const uint32_t triple{ (static_cast<uint32_t>(v1) << 18) | (static_cast<uint32_t>(v2) << 12)
+			| (static_cast<uint32_t>(v3) << 6) | static_cast<uint32_t>(v4) };
 
-		buffer[bufferIndex++] = static_cast<T>((triple >> 16) & 0xFF);
+		buffer[bufferIndex++] = static_cast<char>((triple >> 16) & 0xFF);
+		buffer[bufferIndex++] = static_cast<char>((triple >> 8) & 0xFF);
+		buffer[bufferIndex++] = static_cast<char>(triple & 0xFF);
+	}
 
-		if (v3 != -2) {
-			buffer[bufferIndex++] = static_cast<T>((triple >> 8) & 0xFF);
+	const auto v1{ B64_LUT[static_cast<uint8_t>(data[lastIndex])] };
+	const auto v2{ B64_LUT[static_cast<uint8_t>(data[lastIndex + 1])] };
+	const auto v3{ B64_LUT[static_cast<uint8_t>(data[lastIndex + 2])] };
+	const auto v4{ B64_LUT[static_cast<uint8_t>(data[lastIndex + 3])] };
+	if (v1 < 0 || v2 < 0) [[unlikely]] {
+		LOG_WARNING_NEW("Invalid Base64 character in input: {}", data);
+		return {};
+	}
 
-			if (v4 != -2) {
-				buffer[bufferIndex++] = static_cast<T>(triple & 0xFF);
-			}
+	const uint32_t triple{ (static_cast<uint32_t>(v1) << 18) | (static_cast<uint32_t>(v2) << 12)
+		| ((firstPadding ? 0 : static_cast<uint32_t>(v3)) << 6) | (secondPadding ? 0 : static_cast<uint32_t>(v4)) };
+
+	buffer[bufferIndex++] = static_cast<char>((triple >> 16) & 0xFF);
+	if (!firstPadding) {
+		buffer[bufferIndex++] = static_cast<char>((triple >> 8) & 0xFF);
+		if (!secondPadding) {
+			buffer[bufferIndex++] = static_cast<char>(triple & 0xFF);
 		}
 	}
 
-	return std::span<T>{ buffer.data(), bufferIndex };
+	return { reinterpret_cast<const T*>(buffer.data()), bufferIndex };
 }
 
 }; //* namespace Helper

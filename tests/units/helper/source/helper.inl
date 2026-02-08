@@ -345,9 +345,8 @@ bool Helper()
 			RETURN_IF_FALSE(
 				t.Assert(Helper::Base64Encode(data, bufferSpan), expected, std::format("Base64Encode {}", message)));
 
-			const std::span<T> bufferForDecode{ reinterpret_cast<T*>(bufferSpan.data()), bufferSpan.size() };
-			RETURN_IF_FALSE(t.Assert(
-				Helper::Base64Decode(expected, bufferForDecode), data, std::format("Base64Decode {}", message)));
+			RETURN_IF_FALSE(
+				t.Assert(Helper::Base64Decode<T>(expected, bufferSpan), data, std::format("Base64Decode {}", message)));
 
 			return true;
 		} };
@@ -394,29 +393,44 @@ bool Helper()
 			RETURN_IF_FALSE(checkBufferSizes(std::string_view{ "Man   " }, 8, std::string_view{ "TWFuICAg" }));
 		}
 
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "1" }, bufferSpan),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "1" }, bufferSpan),
 			std::span<char>{ buffer, 0 }, "Base64Decode input size (0) is not multiple of 4"));
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "12345" }, bufferSpan),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "12345" }, bufferSpan),
 			std::span<char>{ buffer, 0 }, "Base64Decode input size (5) is not multiple of 4"));
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "1234567891" }, bufferSpan),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "1234567891" }, bufferSpan),
 			std::span<char>{ buffer, 0 }, "Base64Decode input size (10) is not multiple of 4"));
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "123456789123456" }, bufferSpan),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "123456789123456" }, bufferSpan),
 			std::span<char>{ buffer, 0 }, "Base64Decode input size (15) is not multiple of 4"));
 
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TQ==" }, std::span<char>{ buffer, 0 }),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "TQ==" }, std::span<char>{ buffer, 0 }),
 			std::span<char>{ buffer, 0 }, "Base64Decode output size (0) is not enough for TQ=="));
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TQ==" }, std::span<char>{ buffer, 1 }),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "TQ==" }, std::span<char>{ buffer, 1 }),
 			std::span<const char>{ "M", 1 }, "Base64Decode output size (1) is enough for TQ=="));
 
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TWE=" }, std::span<char>{ buffer, 1 }),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "TWE=" }, std::span<char>{ buffer, 1 }),
 			std::span<char>{ buffer, 0 }, "Base64Decode output size (1) is not enough for TWE="));
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TWE=" }, std::span<char>{ buffer, 2 }),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "TWE=" }, std::span<char>{ buffer, 2 }),
 			std::span<const char>{ "Ma", 2 }, "Base64Decode output size (2) is enough for TWE="));
 
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TWFu" }, std::span<char>{ buffer, 2 }),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "TWFu" }, std::span<char>{ buffer, 2 }),
 			std::span<char>{ buffer, 0 }, "Base64Decode output size (2) is not enough for TWFu"));
-		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode(std::string_view{ "TWFu" }, std::span<char>{ buffer, 3 }),
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "TWFu" }, std::span<char>{ buffer, 3 }),
 			std::span<const char>{ "Man", 3 }, "Base64Decode output size (3) is enough for TWFu"));
+
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "IiAgICAgICAgICAgAA=a" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input invalid padding character (= at position -1)"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "IiAgICAgICAgICAgA=aa" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input invalid padding character (= at position -2)"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "IiAgICAgICAgICAg=aaa" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input invalid padding character (= at position -3)"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "IiAgICAgICAgICA=AAaa" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input invalid padding character (= at position -4)"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "IiAgICAgICAgIC=aAAaa" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input invalid padding character (= at position -5)"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "IiAgICAgICAgI=AaAAaa" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input invalid padding character (= at position -6)"));
+		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "IiAgICAgICAg=CAaAAaa" }, bufferSpan),
+			std::span<char>{ buffer, 0 }, "Base64Decode input invalid padding character (= at position -7)"));
 	}
 
 	return true;
