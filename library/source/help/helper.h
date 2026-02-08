@@ -586,8 +586,9 @@ FORCE_INLINE [[nodiscard]] std::string_view Base64Encode(const std::span<T> data
 /**
  * @brief Decode Base64 fully properly encoded string.
  *
- * @attention String to decode must be multiply of 4 in size and buffer must have a size of at least data.size() / 4 * 3
- * - padding, where padding is the number of '=' characters at the end of the string. Padding positions must be correct.
+ * @attention String to decode must be a multiple of 4 in size and buffer must have a size of at least data.size() / 4 *
+ * 3 - padding, where padding is the number of '=' characters at the end of the string. Padding positions must be
+ * correct.
  *
  * @tparam T Type of the data elements.
  *
