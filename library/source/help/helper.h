@@ -553,12 +553,13 @@ FORCE_INLINE [[nodiscard]] std::string_view Base64Encode(const std::span<T> data
 		uint32_t triple{};
 		const auto rem{ data.size() - index };
 
-		triple |= static_cast<uint32_t>(data[index]) << 16;
+		// Prevent potential sign extension by casting to uint8_t before shifting
+		triple |= static_cast<uint32_t>(static_cast<uint8_t>(data[index])) << 16;
 		if (rem > 1) {
-			triple |= static_cast<uint32_t>(data[index + 1]) << 8;
+			triple |= static_cast<uint32_t>(static_cast<uint8_t>(data[index + 1])) << 8;
 		}
 		if (rem > 2) {
-			triple |= static_cast<uint32_t>(data[index + 2]);
+			triple |= static_cast<uint32_t>(static_cast<uint8_t>(data[index + 2]));
 		}
 
 		buffer[bufferIndex++] = B64_ALPHABET[(triple >> 18) & 0x3F];
