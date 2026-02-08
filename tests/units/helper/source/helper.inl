@@ -394,7 +394,7 @@ bool Helper()
 		}
 
 		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "1" }, bufferSpan),
-			std::span<char>{ buffer, 0 }, "Base64Decode input size (0) is not multiple of 4"));
+			std::span<char>{ buffer, 0 }, "Base64Decode input size (1) is not multiple of 4"));
 		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "12345" }, bufferSpan),
 			std::span<char>{ buffer, 0 }, "Base64Decode input size (5) is not multiple of 4"));
 		RETURN_IF_FALSE(t.Assert(Helper::Base64Decode<char>(std::string_view{ "1234567891" }, bufferSpan),

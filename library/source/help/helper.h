@@ -616,8 +616,12 @@ FORCE_INLINE [[nodiscard]] std::span<const T> Base64Decode(const std::string_vie
 		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 	};
 
+	if (data.empty()) [[unlikely]] {
+		return {};
+	}
+
 	const auto size{ data.size() };
-	if (size % 4 != 0 || size == 0) [[unlikely]] {
+	if (size % 4 != 0) [[unlikely]] {
 		LOG_WARNING_NEW("Invalid Base64 size {}: {}", size, data);
 		return {};
 	}
