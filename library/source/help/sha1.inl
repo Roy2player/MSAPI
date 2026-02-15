@@ -44,15 +44,15 @@ Declarations
  */
 class Sha1 {
 private:
-	uint64_t m_bitLen{};
-	std::array<uint8_t, 64> m_buffer{};
-	std::array<uint32_t, 80> m_processBuffer{};
 	uint32_t m_h0{ 0x67452301 };
 	uint32_t m_h1{ 0xEFCDAB89 };
 	uint32_t m_h2{ 0x98BADCFE };
 	uint32_t m_h3{ 0x10325476 };
 	uint32_t m_h4{ 0xC3D2E1F0 };
 	size_t m_bufferSize{};
+	uint64_t m_bitLen{};
+	std::array<uint8_t, 64> m_buffer{};
+	std::array<uint32_t, 80> m_processBuffer{};
 
 public:
 	/**
@@ -174,7 +174,7 @@ template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Sha1::
 		m_buffer[m_bufferSize++] = 0x00;
 	}
 
-	for (int index{ 7 }; index >= 0; --index) {
+	for (int8_t index{ 7 }; index >= 0; --index) {
 		m_buffer[m_bufferSize++] = static_cast<uint8_t>((m_bitLen >> (index * 8)) & 0xFF);
 	}
 
@@ -225,10 +225,10 @@ FORCE_INLINE [[nodiscard]] uint32_t Sha1::ReadBe32(const uint8_t* const p) noexc
 FORCE_INLINE void Sha1::ProcessBlock(const uint8_t* const block) noexcept
 {
 	uint32_t* const w{ m_processBuffer.data() };
-	for (uint32_t index{}; index < 16; ++index) {
+	for (int8_t index{}; index < 16; ++index) {
 		w[index] = ReadBe32(block + index * 4);
 	}
-	for (uint32_t index{ 16 }; index < 80; ++index) {
+	for (int8_t index{ 16 }; index < 80; ++index) {
 		w[index] = Rol(w[index - 3] ^ w[index - 8] ^ w[index - 14] ^ w[index - 16], 1);
 	}
 
@@ -238,7 +238,7 @@ FORCE_INLINE void Sha1::ProcessBlock(const uint8_t* const block) noexcept
 	uint32_t d{ m_h3 };
 	uint32_t e{ m_h4 };
 
-	for (uint32_t index{}; index < 80; ++index) {
+	for (int8_t index{}; index < 80; ++index) {
 		uint32_t f;
 		uint32_t k;
 		if (index < 20) {

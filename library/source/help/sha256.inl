@@ -44,45 +44,37 @@ Declarations
  */
 class Sha256 {
 private:
-	std::array<uint32_t, 8> m_state;
-	std::array<uint8_t, 64> m_buffer;
-	size_t m_bufferLen;
-	uint64_t m_bitLen;
+	size_t m_bufferSize{};
+	uint64_t m_bitSize{};
+	std::array<uint32_t, 8> m_state{ 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
+		0x5be0cd19 };
+	std::array<uint8_t, 64> m_buffer{};
 
 public:
 	/**
-	 * @brief Construct a new Sha256 object, call Reset inside.
-	 *
-	 * @test Has unit tests.
-	 */
-	FORCE_INLINE Sha256() noexcept;
-
-	/**
 	 * @brief Update the hash with new data.
+	 *
+	 * @tparam Reset If true, the Sha256 instance will be reset after finalizing. False by default.
 	 *
 	 * @param data The input data to be hashed.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void Update(std::string_view data) noexcept;
+	FORCE_INLINE void Update(std::span<const uint8_t> data) noexcept;
 
 	/**
-	 * @brief Compute and retrieve the final digits and reset the state.
+	 * @brief Finalize the hash and return the 32-byte digest.
 	 *
-	 * @return The computed digits as a byte array.
+	 * @attention The returned span points to internal buffer data that will be overwritten by subsequent calls to
+	 * Update or Final.
+	 *
+	 * @tparam Reset If true, the Sha256 instance will be reset after finalizing. False by default.
+	 *
+	 * @return The view on 32-byte SHA-256 digest of the input data.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE std::array<uint8_t, 32> GetDigits() noexcept;
-
-	/**
-	 * @brief Compute and retrieve the final digits as a hexadecimal string and reset the state.
-	 *
-	 * @return The computed digits as a hexadecimal string.
-	 *
-	 * @test Has unit tests.
-	 */
-	FORCE_INLINE std::array<char, 65> GetHexDigits() noexcept;
+	template <bool Reset = false> FORCE_INLINE std::span<const uint8_t> Final() noexcept;
 
 private:
 	static constexpr std::array<uint32_t, 64> K{ 0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
@@ -116,70 +108,45 @@ private:
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE void Pad() noexcept;
-
-	/**
-	 * @brief Reset the SHA-256 state to initial values.
-	 *
-	 * @test Has unit tests.
-	 */
-	FORCE_INLINE void Reset() noexcept;
 };
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-FORCE_INLINE Sha256::Sha256() noexcept { Reset(); }
-
-FORCE_INLINE void Sha256::Update(const std::string_view data) noexcept
+FORCE_INLINE void Sha256::Update(const std::span<const uint8_t> data) noexcept
 {
-	const auto* dataPtr{ reinterpret_cast<const uint8_t*>(data.data()) };
-	const size_t len{ data.size() };
+	const auto* dataPtr{ data.data() };
+	const size_t size{ data.size() };
 
-	for (size_t i{}; i < len; ++i) {
-		m_buffer[m_bufferLen++] = dataPtr[i];
-		m_bitLen += 8;
+	for (size_t index{}; index < size; ++index) {
+		m_buffer[m_bufferSize++] = dataPtr[index];
+		m_bitSize += 8;
 
-		if (m_bufferLen == 64) {
+		if (m_bufferSize == 64) {
 			Transform();
-			m_bufferLen = 0;
+			m_bufferSize = 0;
 		}
 	}
 }
 
-FORCE_INLINE std::array<uint8_t, 32> Sha256::GetDigits() noexcept
+template <bool Reset> FORCE_INLINE std::span<const uint8_t> Sha256::Final() noexcept
 {
 	Pad();
-	std::array<uint8_t, 32> out{};
-	for (size_t i{}; i < 8; ++i) {
-		out[i * 4 + 0] = (m_state[i] >> 24) & 0xff;
-		out[i * 4 + 1] = (m_state[i] >> 16) & 0xff;
-		out[i * 4 + 2] = (m_state[i] >> 8) & 0xff;
-		out[i * 4 + 3] = (m_state[i]) & 0xff;
+	for (size_t index{}; index < 8; ++index) {
+		m_buffer[index * 4 + 0] = (m_state[index] >> 24) & 0xff;
+		m_buffer[index * 4 + 1] = (m_state[index] >> 16) & 0xff;
+		m_buffer[index * 4 + 2] = (m_state[index] >> 8) & 0xff;
+		m_buffer[index * 4 + 3] = (m_state[index]) & 0xff;
 	}
 
-	// In optimized builds, when the object is not reused after this call, the compiler can eliminate the Reset() stores
-	// as dead code. Reset() is kept here to make repeated use of the same Sha256 instance safe without requiring
-	// callers to remember to reinitialize it.
-	Reset();
-
-	return out;
-}
-
-FORCE_INLINE std::array<char, 65> Sha256::GetHexDigits() noexcept
-{
-	static constexpr char hexChars[] = "0123456789abcdef";
-
-	const auto d{ GetDigits() };
-	std::array<char, 65> out{};
-	for (size_t i{}; i < d.size(); ++i) {
-		const uint8_t byte{ d[UINT64(i)] };
-		out[2 * i] = hexChars[(byte >> 4) & 0x0F];
-		out[2 * i + 1] = hexChars[byte & 0x0F];
+	if constexpr (Reset) {
+		m_state = { 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 };
+		m_bufferSize = 0;
+		m_bitSize = 0;
 	}
 
-	out[64] = '\0';
-	return out;
+	return std::span<const uint8_t>{ m_buffer.data(), 32 };
 }
 
 FORCE_INLINE uint32_t Sha256::Rotr(uint32_t x, uint32_t n) noexcept { return (x >> n) | (x << (32 - n)); }
@@ -201,19 +168,19 @@ FORCE_INLINE void Sha256::Transform() noexcept
 	uint8_t* const block{ m_buffer.data() };
 
 	uint32_t w[64];
-	for (int8_t i{}; i < 16; ++i) {
-		w[i] = (static_cast<uint32_t>(block[i * 4]) << 24) | (static_cast<uint32_t>(block[i * 4 + 1]) << 16)
-			| (static_cast<uint32_t>(block[i * 4 + 2]) << 8) | static_cast<uint32_t>(block[i * 4 + 3]);
+	for (int8_t index{}; index < 16; ++index) {
+		w[index] = (static_cast<uint32_t>(block[index * 4]) << 24) | (static_cast<uint32_t>(block[index * 4 + 1]) << 16)
+			| (static_cast<uint32_t>(block[index * 4 + 2]) << 8) | static_cast<uint32_t>(block[index * 4 + 3]);
 	}
-	for (int8_t i{ 16 }; i < 64; ++i) {
-		w[i] = Ssig1(w[i - 2]) + w[i - 7] + Ssig0(w[i - 15]) + w[i - 16];
+	for (int8_t index{ 16 }; index < 64; ++index) {
+		w[index] = Ssig1(w[index - 2]) + w[index - 7] + Ssig0(w[index - 15]) + w[index - 16];
 	}
 
 	uint32_t a = m_state[0], b = m_state[1], c = m_state[2], d = m_state[3];
 	uint32_t e = m_state[4], f = m_state[5], g = m_state[6], h = m_state[7];
 
-	for (int8_t i{}; i < 64; ++i) {
-		uint32_t t1{ h + Bsig1(e) + Ch(e, f, g) + K[UINT64(i)] + w[UINT64(i)] };
+	for (int8_t index{}; index < 64; ++index) {
+		uint32_t t1{ h + Bsig1(e) + Ch(e, f, g) + K[UINT64(index)] + w[UINT64(index)] };
 		uint32_t t2{ Bsig0(a) + Maj(a, b, c) };
 		h = g;
 		g = f;
@@ -237,30 +204,23 @@ FORCE_INLINE void Sha256::Transform() noexcept
 
 FORCE_INLINE void Sha256::Pad() noexcept
 {
-	m_buffer[m_bufferLen++] = 0x80;
-	if (m_bufferLen > 56) {
-		while (m_bufferLen < 64) {
-			m_buffer[m_bufferLen++] = 0;
+	m_buffer[m_bufferSize++] = 0x80;
+	if (m_bufferSize > 56) {
+		while (m_bufferSize < 64) {
+			m_buffer[m_bufferSize++] = 0;
 		}
 		Transform();
-		m_bufferLen = 0;
+		m_bufferSize = 0;
 	}
-	while (m_bufferLen < 56) {
-		m_buffer[m_bufferLen++] = 0;
+	while (m_bufferSize < 56) {
+		m_buffer[m_bufferSize++] = 0;
 	}
 
-	for (int8_t i{ 7 }; i >= 0; --i) {
-		m_buffer[m_bufferLen++] = (m_bitLen >> (i * 8)) & 0xff;
+	for (int8_t index{ 7 }; index >= 0; --index) {
+		m_buffer[m_bufferSize++] = (m_bitSize >> (index * 8)) & 0xff;
 	}
 
 	Transform();
-}
-
-FORCE_INLINE void Sha256::Reset() noexcept
-{
-	m_state = { 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 };
-	m_bufferLen = 0;
-	m_bitLen = 0;
 }
 
 } // namespace MSAPI
