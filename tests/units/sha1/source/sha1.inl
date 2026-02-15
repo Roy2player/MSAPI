@@ -53,7 +53,7 @@ bool Sha1()
 
 		const auto getSha1{ [&sha1](const std::string_view text) noexcept -> std::span<const uint8_t> {
 			sha1.Update(std::span<const uint8_t>{ reinterpret_cast<const uint8_t*>(text.data()), text.size() });
-			return sha1.Final();
+			return sha1.Final<true>();
 		} };
 
 		{

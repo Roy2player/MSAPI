@@ -70,13 +70,13 @@ public:
 	 * @attention The returned span points to internal buffer data that will be overwritten by subsequent calls to
 	 * Update or Final.
 	 *
-	 * @tparam Reset If true, the Sha1 instance will be reset after finalizing. True by default.
+	 * @tparam Reset If true, the Sha1 instance will be reset after finalizing. False by default.
 	 *
 	 * @return The view on 20-byte SHA-1 digest of the input data.
 	 *
 	 * @test Has unit tests.
 	 */
-	template <bool Reset = true> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Final() noexcept;
+	template <bool Reset = false> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Final() noexcept;
 
 private:
 	/**
