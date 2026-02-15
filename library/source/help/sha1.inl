@@ -77,7 +77,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	template <bool Reset = true> FORCE_INLINE [[nodiscard]] std::span<uint8_t> Final() noexcept;
+	template <bool Reset = true> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Final() noexcept;
 
 private:
 	/**
@@ -159,7 +159,7 @@ FORCE_INLINE void SHA1::Update(const std::span<const uint8_t> data) noexcept
 	}
 }
 
-template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<uint8_t> SHA1::Final() noexcept
+template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> SHA1::Final() noexcept
 {
 	m_buffer[m_bufferSize++] = 0x80;
 	if (m_bufferSize > 56) {
