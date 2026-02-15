@@ -179,6 +179,7 @@ template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Sha1::
 	}
 
 	ProcessBlock(m_buffer.data());
+	m_bufferSize = 0;
 
 	auto* dataPtr{ m_buffer.data() };
 	WriteBe32(dataPtr, m_h0);
@@ -197,7 +198,6 @@ template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Sha1::
 		m_h2 = 0x98BADCFE;
 		m_h3 = 0x10325476;
 		m_h4 = 0xC3D2E1F0;
-		m_bufferSize = 0;
 		m_bitSize = 0;
 	}
 

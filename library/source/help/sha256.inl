@@ -158,6 +158,7 @@ template <bool Reset> FORCE_INLINE std::span<const uint8_t> Sha256::Final() noex
 	}
 
 	ProcessBlock(m_buffer.data());
+	m_bufferSize = 0;
 
 	for (size_t index{}; index < 8; ++index) {
 		m_buffer[index * 4 + 0] = (m_state[index] >> 24) & 0xff;
@@ -167,7 +168,6 @@ template <bool Reset> FORCE_INLINE std::span<const uint8_t> Sha256::Final() noex
 	}
 
 	if constexpr (Reset) {
-		m_bufferSize = 0;
 		m_bitSize = 0;
 		m_state = { 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 };
 	}
