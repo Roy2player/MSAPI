@@ -94,18 +94,11 @@ private:
 	FORCE_INLINE [[nodiscard]] static uint32_t Ssig1(uint32_t x) noexcept;
 
 	/**
-	 * @brief Perform the main SHA-256 transformation on the current buffer.
+	 * @brief Process a single 512-bit block of input data and update the hash state.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void Transform() noexcept;
-
-	/**
-	 * @brief Pad the current buffer according to SHA-256 specifications.
-	 *
-	 * @test Has unit tests.
-	 */
-	FORCE_INLINE void Pad() noexcept;
+	FORCE_INLINE void ProcessBlock(const uint8_t* block) noexcept;
 };
 
 /*---------------------------------------------------------------------------------
@@ -114,23 +107,59 @@ Definitions
 
 FORCE_INLINE void Sha256::Update(const std::span<const uint8_t> data) noexcept
 {
-	const auto* dataPtr{ data.data() };
-	const size_t size{ data.size() };
+	const auto size{ data.size() };
+	m_bitSize += static_cast<uint64_t>(size) * 8;
 
-	for (size_t index{}; index < size; ++index) {
-		m_buffer[m_bufferSize++] = dataPtr[index];
-		m_bitSize += 8;
+	size_t index{};
+	if (m_bufferSize != 0) {
+		while (true) {
+			if (index >= size) {
+				return;
+			}
 
-		if (m_bufferSize == 64) {
-			Transform();
-			m_bufferSize = 0;
+			m_buffer[m_bufferSize++] = data[index++];
+
+			if (m_bufferSize == 64) {
+				ProcessBlock(m_buffer.data());
+				m_bufferSize = 0;
+				break;
+			}
 		}
+	}
+
+	while (index + 63 < size) {
+		ProcessBlock(data.data() + index);
+		index += 64;
+	}
+
+	while (index < size) {
+		m_buffer[m_bufferSize++] = data[index++];
 	}
 }
 
 template <bool Reset> FORCE_INLINE std::span<const uint8_t> Sha256::Final() noexcept
 {
-	Pad();
+	m_buffer[m_bufferSize++] = 0x80;
+	if (m_bufferSize > 56) {
+		while (m_bufferSize < 64) {
+			m_buffer[m_bufferSize++] = 0;
+		}
+
+		ProcessBlock(m_buffer.data());
+		m_bufferSize = 0;
+	}
+
+	while (m_bufferSize < 56) {
+		m_buffer[m_bufferSize++] = 0;
+	}
+
+	for (int8_t index{ 7 }; index >= 0; --index) {
+		m_buffer[m_bufferSize++] = (m_bitSize >> (index * 8)) & 0xff;
+	}
+
+	ProcessBlock(m_buffer.data());
+	m_bufferSize = 0;
+
 	for (size_t index{}; index < 8; ++index) {
 		m_buffer[index * 4 + 0] = (m_state[index] >> 24) & 0xff;
 		m_buffer[index * 4 + 1] = (m_state[index] >> 16) & 0xff;
@@ -139,9 +168,9 @@ template <bool Reset> FORCE_INLINE std::span<const uint8_t> Sha256::Final() noex
 	}
 
 	if constexpr (Reset) {
-		m_state = { 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 };
 		m_bufferSize = 0;
 		m_bitSize = 0;
+		m_state = { 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 };
 	}
 
 	return std::span<const uint8_t>{ m_buffer.data(), 32 };
@@ -161,10 +190,8 @@ FORCE_INLINE uint32_t Sha256::Ssig0(uint32_t x) noexcept { return Rotr(x, 7) ^ R
 
 FORCE_INLINE uint32_t Sha256::Ssig1(uint32_t x) noexcept { return Rotr(x, 17) ^ Rotr(x, 19) ^ (x >> 10); }
 
-FORCE_INLINE void Sha256::Transform() noexcept
+FORCE_INLINE void Sha256::ProcessBlock(const uint8_t* const block) noexcept
 {
-	uint8_t* const block{ m_buffer.data() };
-
 	uint32_t w[64];
 	for (int8_t index{}; index < 16; ++index) {
 		w[index] = (static_cast<uint32_t>(block[index * 4]) << 24) | (static_cast<uint32_t>(block[index * 4 + 1]) << 16)
@@ -198,27 +225,6 @@ FORCE_INLINE void Sha256::Transform() noexcept
 	m_state[5] += f;
 	m_state[6] += g;
 	m_state[7] += h;
-}
-
-FORCE_INLINE void Sha256::Pad() noexcept
-{
-	m_buffer[m_bufferSize++] = 0x80;
-	if (m_bufferSize > 56) {
-		while (m_bufferSize < 64) {
-			m_buffer[m_bufferSize++] = 0;
-		}
-		Transform();
-		m_bufferSize = 0;
-	}
-	while (m_bufferSize < 56) {
-		m_buffer[m_bufferSize++] = 0;
-	}
-
-	for (int8_t index{ 7 }; index >= 0; --index) {
-		m_buffer[m_bufferSize++] = (m_bitSize >> (index * 8)) & 0xff;
-	}
-
-	Transform();
 }
 
 } // namespace MSAPI
