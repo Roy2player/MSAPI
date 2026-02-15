@@ -175,8 +175,8 @@ bool Sha256()
 			"Sha256('NaCl' + 'password') should be correct"));
 
 		MSAPI::Sha256 sha2;
-		std::array<uint8_t, 32> secondData{ 2, 132, 128, 151, 17, 4, 179, 118, 145, 244, 28, 67, 14, 89, 224, 127, 212,
-			197, 174, 15, 83, 49, 123, 42, 162, 224, 108, 248, 221, 187, 254, 16 };
+		const std::array<uint8_t, 32> secondData{ 2, 132, 128, 151, 17, 4, 179, 118, 145, 244, 28, 67, 14, 89, 224, 127,
+			212, 197, 174, 15, 83, 49, 123, 42, 162, 224, 108, 248, 221, 187, 254, 16 };
 
 		sha2.Update(std::span<const uint8_t>{ passPtr, pass.size() });
 		sha2.Update(std::span<const uint8_t>{ saltPtr, salt.size() });

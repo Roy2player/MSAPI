@@ -57,17 +57,17 @@ bool Sha1()
 		} };
 
 		{
-			const std::array<uint8_t, 20> data{ 218, 57, 163, 238, 94, 107, 75, 13, 50, 85, 191, 239, 149, 96, 24, 144,
-				175, 216, 7, 9 };
-			RETURN_IF_FALSE(
-				t.Assert(getSha1(""), std::span<const uint8_t>(data.data(), 20), "Sha1('') should be correct"));
-		}
-
-		{
 			const std::array<uint8_t, 20> data{ 169, 153, 62, 54, 71, 6, 129, 106, 186, 62, 37, 113, 120, 80, 194, 108,
 				156, 208, 216, 157 };
 			RETURN_IF_FALSE(
 				t.Assert(getSha1("abc"), std::span<const uint8_t>(data.data(), 20), "Sha1('abc') should be correct"));
+		}
+
+		{
+			const std::array<uint8_t, 20> data{ 218, 57, 163, 238, 94, 107, 75, 13, 50, 85, 191, 239, 149, 96, 24, 144,
+				175, 216, 7, 9 };
+			RETURN_IF_FALSE(
+				t.Assert(sha1.Final<true>(), std::span<const uint8_t>(data.data(), 20), "Sha1('') should be correct"));
 		}
 
 		{
