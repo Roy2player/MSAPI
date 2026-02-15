@@ -49,7 +49,7 @@ bool Sha1()
 
 	{
 		// NIST and common SHA-1 test vectors.
-		MSAPI::SHA1 sha1;
+		MSAPI::Sha1 sha1;
 
 		const auto getSha1{ [&sha1](const std::string_view text) noexcept -> std::span<const uint8_t> {
 			sha1.Update(std::span<const uint8_t>{ reinterpret_cast<const uint8_t*>(text.data()), text.size() });
@@ -147,11 +147,11 @@ bool Sha1()
 		const std::string text{ "The quick brown fox jumps over the lazy dog" };
 		const auto* base{ reinterpret_cast<const uint8_t*>(text.data()) };
 
-		MSAPI::SHA1 shaSingle;
+		MSAPI::Sha1 shaSingle;
 		shaSingle.Update(std::span<const uint8_t>{ base, text.size() });
 		const auto single{ shaSingle.Final() };
 
-		MSAPI::SHA1 shaChunked;
+		MSAPI::Sha1 shaChunked;
 		shaChunked.Update(std::span<const uint8_t>{ base, 10 });
 		shaChunked.Update(std::span<const uint8_t>{ base + 10, 15 });
 		shaChunked.Update(std::span<const uint8_t>{ base + 25, text.size() - 25 });
@@ -166,11 +166,11 @@ bool Sha1()
 			std::string data(len, 'x');
 			const auto* base{ reinterpret_cast<const uint8_t*>(data.data()) };
 
-			MSAPI::SHA1 shaSingle;
+			MSAPI::Sha1 shaSingle;
 			shaSingle.Update(std::span<const uint8_t>{ base, len });
 			const auto single{ shaSingle.Final() };
 
-			MSAPI::SHA1 shaChunked;
+			MSAPI::Sha1 shaChunked;
 			const size_t mid{ len / 2 };
 			shaChunked.Update(std::span<const uint8_t>{ base, mid });
 			shaChunked.Update(std::span<const uint8_t>{ base + mid, len - mid });

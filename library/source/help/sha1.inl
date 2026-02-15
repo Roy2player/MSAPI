@@ -42,7 +42,7 @@ Declarations
 /**
  * @brief SHA-1 hashing class.
  */
-class SHA1 {
+class Sha1 {
 private:
 	uint64_t m_bitLen{};
 	std::array<uint8_t, 64> m_buffer{};
@@ -66,12 +66,11 @@ public:
 
 	/**
 	 * @brief Finalize the hash and return the resulting 20-byte digest.
-	 * After calling this method, the SHA1 instance should not be used for further updates.
 	 *
 	 * @attention The returned span points to internal buffer data that will be overwritten by subsequent calls to
 	 * Update or Final.
 	 *
-	 * @tparam Reset If true, the SHA1 instance will be reset after finalizing. True by default.
+	 * @tparam Reset If true, the Sha1 instance will be reset after finalizing. True by default.
 	 *
 	 * @return The view on 20-byte SHA-1 digest of the input data.
 	 *
@@ -127,7 +126,7 @@ private:
 Definitions
 ---------------------------------------------------------------------------------*/
 
-FORCE_INLINE void SHA1::Update(const std::span<const uint8_t> data) noexcept
+FORCE_INLINE void Sha1::Update(const std::span<const uint8_t> data) noexcept
 {
 	const auto size{ data.size() };
 	m_bitLen += static_cast<uint64_t>(size) * 8;
@@ -135,16 +134,16 @@ FORCE_INLINE void SHA1::Update(const std::span<const uint8_t> data) noexcept
 	size_t index{};
 	if (m_bufferSize != 0) {
 		while (true) {
+			if (index >= size) {
+				return;
+			}
+
 			m_buffer[m_bufferSize++] = data[index++];
 
 			if (m_bufferSize == 64) {
 				ProcessBlock(m_buffer.data());
 				m_bufferSize = 0;
 				break;
-			}
-
-			if (index >= size) {
-				return;
 			}
 		}
 	}
@@ -159,7 +158,7 @@ FORCE_INLINE void SHA1::Update(const std::span<const uint8_t> data) noexcept
 	}
 }
 
-template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> SHA1::Final() noexcept
+template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Sha1::Final() noexcept
 {
 	m_buffer[m_bufferSize++] = 0x80;
 	if (m_bufferSize > 56) {
@@ -205,12 +204,12 @@ template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> SHA1::
 	return std::span<uint8_t>{ m_buffer.data(), 20 };
 }
 
-FORCE_INLINE [[nodiscard]] uint32_t SHA1::Rol(const uint32_t x, const uint32_t n) noexcept
+FORCE_INLINE [[nodiscard]] uint32_t Sha1::Rol(const uint32_t x, const uint32_t n) noexcept
 {
 	return (x << n) | (x >> (32 - n));
 }
 
-FORCE_INLINE void SHA1::WriteBe32(uint8_t* const dst, const uint32_t x) noexcept
+FORCE_INLINE void Sha1::WriteBe32(uint8_t* const dst, const uint32_t x) noexcept
 {
 	dst[0] = static_cast<uint8_t>((x >> 24) & 0xFF);
 	dst[1] = static_cast<uint8_t>((x >> 16) & 0xFF);
@@ -218,12 +217,12 @@ FORCE_INLINE void SHA1::WriteBe32(uint8_t* const dst, const uint32_t x) noexcept
 	dst[3] = static_cast<uint8_t>(x & 0xFF);
 }
 
-FORCE_INLINE [[nodiscard]] uint32_t SHA1::ReadBe32(const uint8_t* const p) noexcept
+FORCE_INLINE [[nodiscard]] uint32_t Sha1::ReadBe32(const uint8_t* const p) noexcept
 {
 	return (uint32_t(p[0]) << 24) | (uint32_t(p[1]) << 16) | (uint32_t(p[2]) << 8) | uint32_t(p[3]);
 }
 
-FORCE_INLINE void SHA1::ProcessBlock(const uint8_t* const block) noexcept
+FORCE_INLINE void Sha1::ProcessBlock(const uint8_t* const block) noexcept
 {
 	uint32_t* const w{ m_processBuffer.data() };
 	for (uint32_t index{}; index < 16; ++index) {
