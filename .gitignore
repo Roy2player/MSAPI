@@ -30,3 +30,4 @@ tests/units/timer/build/UnitTestTimer
 tests/units/io/build/UnitTestIo
 tests/units/sha256/build/UnitTestSha256
 tests/units/authorization/build/UnitTestAuthorization
+tests/units/sha1/build/UnitTestSha1
