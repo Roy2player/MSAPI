@@ -54,8 +54,6 @@ public:
 	/**
 	 * @brief Update the hash with new data.
 	 *
-	 * @tparam Reset If true, the Sha256 instance will be reset after finalizing. False by default.
-	 *
 	 * @param data The input data to be hashed.
 	 *
 	 * @test Has unit tests.

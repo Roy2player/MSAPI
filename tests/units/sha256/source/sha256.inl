@@ -155,8 +155,7 @@ bool Sha256()
 		shaChunked.Update(std::span<const uint8_t>{ base + 10, 15 });
 		shaChunked.Update(std::span<const uint8_t>{ base + 25, text.size() - 25 });
 
-		RETURN_IF_FALSE(t.Assert(shaChunked.Final(), shaSingle.Final(),
-			"Double chunked update digits should match double single update digits"));
+		RETURN_IF_FALSE(t.Assert(shaChunked.Final(), shaSingle.Final(), "Chunked update should match single update"));
 	}
 
 	{
@@ -198,8 +197,8 @@ bool Sha256()
 		shaChunked.Update(std::span<const uint8_t>{ base, mid });
 		shaChunked.Update(std::span<const uint8_t>{ base + mid, len - mid });
 
-		RETURN_IF_FALSE(t.Assert(
-			shaChunked.Final(), shaSingle.Final(), "Boundary length double chunked vs single digits should match"));
+		RETURN_IF_FALSE(
+			t.Assert(shaChunked.Final(), shaSingle.Final(), "Boundary length chunked vs single should match"));
 	}
 
 	return true;

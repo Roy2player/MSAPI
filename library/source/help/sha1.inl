@@ -50,7 +50,7 @@ private:
 	uint32_t m_h3{ 0x10325476 };
 	uint32_t m_h4{ 0xC3D2E1F0 };
 	size_t m_bufferSize{};
-	uint64_t m_bitLen{};
+	uint64_t m_bitSize{};
 	std::array<uint8_t, 64> m_buffer{};
 	std::array<uint32_t, 80> m_processBuffer{};
 
@@ -129,7 +129,7 @@ Definitions
 FORCE_INLINE void Sha1::Update(const std::span<const uint8_t> data) noexcept
 {
 	const auto size{ data.size() };
-	m_bitLen += static_cast<uint64_t>(size) * 8;
+	m_bitSize += static_cast<uint64_t>(size) * 8;
 
 	size_t index{};
 	if (m_bufferSize != 0) {
@@ -175,7 +175,7 @@ template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Sha1::
 	}
 
 	for (int8_t index{ 7 }; index >= 0; --index) {
-		m_buffer[m_bufferSize++] = static_cast<uint8_t>((m_bitLen >> (index * 8)) & 0xFF);
+		m_buffer[m_bufferSize++] = static_cast<uint8_t>((m_bitSize >> (index * 8)) & 0xFF);
 	}
 
 	ProcessBlock(m_buffer.data());
@@ -193,7 +193,7 @@ template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Sha1::
 	WriteBe32(dataPtr, m_h4);
 
 	if constexpr (Reset) {
-		m_bitLen = 0;
+		m_bitSize = 0;
 		m_h0 = 0x67452301;
 		m_h1 = 0xEFCDAB89;
 		m_h2 = 0x98BADCFE;
@@ -201,7 +201,7 @@ template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Sha1::
 		m_h4 = 0xC3D2E1F0;
 	}
 
-	return std::span<uint8_t>{ m_buffer.data(), 20 };
+	return std::span<const uint8_t>{ m_buffer.data(), 20 };
 }
 
 FORCE_INLINE [[nodiscard]] uint32_t Sha1::Rol(const uint32_t x, const uint32_t n) noexcept
