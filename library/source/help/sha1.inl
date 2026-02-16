@@ -64,19 +64,22 @@ public:
 	 */
 	FORCE_INLINE void Update(std::span<const uint8_t> data) noexcept;
 
+	static constexpr inline bool reset{ true };
+	static constexpr inline bool doNotReset{ false };
+
 	/**
 	 * @brief Finalize the hash and return the resulting 20-byte digest.
 	 *
 	 * @attention The returned span points to internal buffer data that will be overwritten by subsequent calls to
 	 * Update or Final.
 	 *
-	 * @tparam Reset If true, the Sha1 instance will be reset after finalizing. False by default.
+	 * @tparam Reset If true, the Sha1 instance will be reset after finalizing.
 	 *
 	 * @return The view on 20-byte SHA-1 digest of the input data.
 	 *
 	 * @test Has unit tests.
 	 */
-	template <bool Reset = false> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Final() noexcept;
+	template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Final() noexcept;
 
 private:
 	/**

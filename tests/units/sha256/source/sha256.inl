@@ -47,13 +47,16 @@ bool Sha256()
 	LOG_INFO_UNITTEST("MSAPI Sha256");
 	MSAPI::Test t;
 
+	static_assert(Sha256::reset, "Sha256::reset should be true");
+	static_assert(!Sha256::doNotReset, "Sha256::doNotReset should be false");
+
 	{
 		// NIST and common SHA-256 test vectors
 		MSAPI::Sha256 sha256;
 
 		const auto getSha256{ [&sha256](const std::string_view text) noexcept -> std::span<const uint8_t> {
 			sha256.Update(std::span<const uint8_t>{ reinterpret_cast<const uint8_t*>(text.data()), text.size() });
-			return sha256.Final<true>();
+			return sha256.Final<Sha256::reset>();
 		} };
 
 		{
@@ -66,8 +69,8 @@ bool Sha256()
 		{
 			const std::array<uint8_t, 32> data{ 227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185,
 				36, 39, 174, 65, 228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85 };
-			RETURN_IF_FALSE(t.Assert(
-				sha256.Final<true>(), std::span<const uint8_t>(data.data(), 32), "Sha256('') should be correct"));
+			RETURN_IF_FALSE(t.Assert(sha256.Final<Sha256::reset>(), std::span<const uint8_t>(data.data(), 32),
+				"Sha256('') should be correct"));
 		}
 
 		{
@@ -155,7 +158,8 @@ bool Sha256()
 		shaChunked.Update(std::span<const uint8_t>{ base + 10, 15 });
 		shaChunked.Update(std::span<const uint8_t>{ base + 25, text.size() - 25 });
 
-		RETURN_IF_FALSE(t.Assert(shaChunked.Final(), shaSingle.Final(), "Chunked update should match single update"));
+		RETURN_IF_FALSE(t.Assert(shaChunked.Final<MSAPI::Sha256::doNotReset>(),
+			shaSingle.Final<MSAPI::Sha256::doNotReset>(), "Chunked update should match single update"));
 	}
 
 	{
@@ -171,7 +175,8 @@ bool Sha256()
 		MSAPI::Sha256 sha1;
 		sha1.Update(std::span<const uint8_t>{ saltPtr, salt.size() });
 		sha1.Update(std::span<const uint8_t>{ passPtr, pass.size() });
-		RETURN_IF_FALSE(t.Assert(sha1.Final<true>(), std::span<const uint8_t>(firstData.data(), firstData.size()),
+		RETURN_IF_FALSE(t.Assert(sha1.Final<MSAPI::Sha256::doNotReset>(),
+			std::span<const uint8_t>(firstData.data(), firstData.size()),
 			"Sha256('NaCl' + 'password') should be correct"));
 
 		MSAPI::Sha256 sha2;
@@ -180,7 +185,8 @@ bool Sha256()
 
 		sha2.Update(std::span<const uint8_t>{ passPtr, pass.size() });
 		sha2.Update(std::span<const uint8_t>{ saltPtr, salt.size() });
-		RETURN_IF_FALSE(t.Assert(sha2.Final(), std::span<const uint8_t>(secondData.data(), secondData.size()),
+		RETURN_IF_FALSE(t.Assert(sha2.Final<MSAPI::Sha256::doNotReset>(),
+			std::span<const uint8_t>(secondData.data(), secondData.size()),
 			"Sha256('password' + 'NaCl') should be correct"));
 	}
 
@@ -197,8 +203,8 @@ bool Sha256()
 		shaChunked.Update(std::span<const uint8_t>{ base, mid });
 		shaChunked.Update(std::span<const uint8_t>{ base + mid, len - mid });
 
-		RETURN_IF_FALSE(
-			t.Assert(shaChunked.Final(), shaSingle.Final(), "Boundary length chunked vs single should match"));
+		RETURN_IF_FALSE(t.Assert(shaChunked.Final<MSAPI::Sha256::doNotReset>(),
+			shaSingle.Final<MSAPI::Sha256::doNotReset>(), "Boundary length chunked vs single should match"));
 	}
 
 	return true;
