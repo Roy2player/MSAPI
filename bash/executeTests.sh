@@ -17,7 +17,8 @@ bash $(dirname ${BASH_SOURCE})/buildLib.sh
 ExitIfError $?
 
 # Unit tests under tests/units/
-declare -a unit_tests=("dataHeader" "application" "objectData" "standardData" "html" "json" "table" "helper" "timer" "io" "sha256" "authorization")
+declare -a unit_tests=("dataHeader" "application" "objectData" "standardData" "html" "json" "table" "helper" "timer" "io" "sha256" 
+	"authorization" "sha1")
 
 for i in "${unit_tests[@]}"; do
     RunCommand "cmake -DCMAKE_BUILD_TYPE=${BUILD_PROFILE} -B ${MSAPI_PATH}/tests/units/${i}/build ${MSAPI_PATH}/tests/units/${i}/build \

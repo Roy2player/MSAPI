@@ -663,11 +663,11 @@ FORCE_INLINE [[nodiscard]] bool Account<G>::IsLogonAllowed(
 	const std::string_view password, std::string& error) const noexcept
 {
 	Sha256 hash;
-	hash.Update(std::string_view{ reinterpret_cast<const char*>(m_salt), SALT_SIZE });
-	hash.Update(password);
+	hash.Update(std::span<const uint8_t>{ m_salt, SALT_SIZE });
+	hash.Update(std::span<const uint8_t>{ reinterpret_cast<const uint8_t*>(password.data()), password.size() });
 
 	// Password verification uses memcmp which is not timing-safe and could be vulnerable to timing attacks
-	if (memcmp(hash.GetDigits().data(), m_password, PASSWORD_HASH_SIZE) != 0) {
+	if (memcmp(hash.Final<Sha256::doNotReset>().data(), m_password, PASSWORD_HASH_SIZE) != 0) {
 		error = "Invalid login or password";
 		return false;
 	}
@@ -721,9 +721,9 @@ template <Gradable G>
 	}
 
 	Sha256 hash;
-	hash.Update(std::string_view{ reinterpret_cast<const char*>(m_salt), SALT_SIZE });
-	hash.Update(newPassword);
-	const auto digits{ hash.GetDigits() };
+	hash.Update(std::span<const uint8_t>{ m_salt, SALT_SIZE });
+	hash.Update(std::span<const uint8_t>{ reinterpret_cast<const uint8_t*>(newPassword.data()), newPassword.size() });
+	const auto digits{ hash.Final<Sha256::doNotReset>() };
 
 	if (memcmp(m_password, digits.data(), PASSWORD_HASH_SIZE) == 0) {
 		return false;
