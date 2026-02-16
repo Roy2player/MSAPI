@@ -50,6 +50,7 @@ Server provides data to be handled by calling a callback in case if this data is
 - [**Helper:**](library/source/help/helper.h) Miscellaneous utilities for common tasks.
 - [**Meta:**](library/source/help/meta.hpp) Static enum translation, type helpers, and compile-time utilities.
 - [**SHA256:**](library/source/help/sha256.inl) SHA-256 hashing implementation.
+- [**SHA1:**](library/source/help/sha1.inl) SHA-1 hashing implementation.
 
 ### [Testing Framework](library/source/test/)
 
