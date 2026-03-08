@@ -6,38 +6,59 @@ license: Repository content under Polyform Noncommercial License 1.0.0
 
 # MSAPI manager frontend guide
 
-## Current frontend shape
+## Frontend Workflow (Manager App)
 
-- The manager UI is a static frontend under `apps/manager/web/`.
-- There is no application-level package manifest; keep changes lightweight and self-contained.
+### Current State
 
-## Core JS modules
+- The manager frontend is a static application under `apps/manager/web/`.
+- There is no application-level `package.json`; keep JavaScript modular without introducing a framework by default.
+- Avoid global pollution by using IIFEs or ES modules where the current code permits it.
+- Optimize images before commit when an asset change is part of the task.
 
-- `view.js`: window/view creation, movement, resizing, maximize/hide/close flows
-- `table.js`: dynamic table creation and validation
-- `grid.js`: tabular display, sorting, filtering, and row/column operations
-- `timer.js` / `duration.js`: normalization and validation for time inputs
-- `select.js`: searchable select inputs with metadata
-- `helper.js`: shared validation, formatting, and utility helpers
+### JS Core
 
-## Default views
+- **View** (`apps/manager/web/js/view.js`): view creation, movement, resizing, snapping, maximize/hide/close flows, and error handling
+- **Table** (`apps/manager/web/js/table.js`): dynamic table creation and management for mutable and immutable tables
+- **Grid** (`apps/manager/web/js/grid.js`): sorting, filtering, and row/column management for tabular data
+- **Timer** (`apps/manager/web/js/timer.js`): timestamp normalization and validation with timezone support
+- **Duration** (`apps/manager/web/js/duration.js`): duration parsing, normalization, and validation
+- **Select** (`apps/manager/web/js/select.js`): searchable select input behavior with metadata integration
+- **Helper** (`apps/manager/web/js/helper.js`): type limits, validation, formatting, equality, and general utilities
 
-- Installed apps, created apps, new app, modify app, app iframe view, table view, select view, and grid settings all live under `apps/manager/web/js/views/`.
+### Default views
 
-## Frontend conventions
+- **InstalledApps** (`apps/manager/web/js/views/installedApps.js`): grid of installed MSAPI applications
+- **CreatedApps** (`apps/manager/web/js/views/createdApps.js`): grid of created or running apps with parameters and action buttons
+- **NewApp** (`apps/manager/web/js/views/newApp.js`): form for creating applications
+- **ModifyApp** (`apps/manager/web/js/views/modifyApp.js`): parameter editing view
+- **AppView** (`apps/manager/web/js/views/appView.js`): iframe-hosted application UI view
+- **TableView** (`apps/manager/web/js/views/tableView.js`): read-only MSAPI table display for a parameter
+- **SelectView** (`apps/manager/web/js/views/selectView.js`): searchable, case-sensitive select dialog
+- **GridSettingsView** (`apps/manager/web/js/views/gridSettingsView.js`): column alignment, sorting, and filtering settings view
 
-- Keep JavaScript modular and avoid implicit globals.
-- Follow existing naming: PascalCase for constructors/classes, camelCase for functions and variables.
-- Reuse the current helpers and view abstractions before adding new patterns.
+### JS Style & Conventions
 
-## Frontend testing
+- Use the same Polyform license block as the existing JS files.
+- Use PascalCase for classes and constructors.
+- Use camelCase for functions and variables.
+- Use UPPER_SNAKE or PascalCase for constants, matching existing usage.
+- Avoid implicit globals and prefer pure helpers in `helper.js` when possible.
 
-- Tests live in `apps/manager/web/js/tests/`.
-- Use the existing `TestRunner`, `TableChecker`, and `test.Assert(...)` helpers.
-- Prefer focused tests for the specific module or view being changed.
+### Frontend Testing (Node-Based)
 
-## Frontend security
+Location: `apps/manager/web/js/tests/`
 
-- Avoid injecting untrusted content through `innerHTML`.
-- Validate postMessage payloads and restrict iframe interactions to expected actions.
-- Validate response shapes before mutating the DOM.
+```bash
+cd apps/manager/web/js/tests
+bash runJsTests.sh
+```
+
+- `testRunner.js` provides `TestRunner` and `TableChecker`.
+- Use `test.Assert(actual, expected, message)` for assertions.
+- Use `await TestRunner.WaitFor(() => condition, 'description', timeoutMs)` for async checks.
+
+### Security Considerations
+
+- Avoid `innerHTML` with untrusted input.
+- Restrict iframe bridge messages to expected actions and validate payload shapes.
+- Validate response structures before injecting or mutating DOM content.

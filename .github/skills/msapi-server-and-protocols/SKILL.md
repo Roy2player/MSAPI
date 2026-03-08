@@ -1,6 +1,6 @@
 ---
 name: msapi-server-and-protocols
-description: Server loop, application lifecycle, and protocol-handling guidance for MSAPI. Use when changing networking, request dispatch, framing, or parameter flow.
+description: Server loop, application lifecycle, protocol-handling, and server-side common-pattern guidance for MSAPI. Use when changing networking, request dispatch, framing, or parameter flow.
 license: Repository content under Polyform Noncommercial License 1.0.0
 ---
 
@@ -29,6 +29,18 @@ license: Repository content under Polyform Noncommercial License 1.0.0
 - `standard.*` is the flexible protocol for dynamic key-value messages.
 - `object.*` is for trivially copyable object payloads only.
 - `http.*` is intentionally minimal; do not assume full RFC coverage.
+
+## Common Patterns
+
+### Server Implementation
+
+- Servers inherit from `MSAPI::Server` and override `HandleBuffer` for custom data handling.
+- Keep server customizations consistent with the current dispatch and lifecycle flow.
+
+### Application State Management
+
+- Applications use state-based lifecycle management through `HandleRunRequest`, `HandlePauseRequest`, and related hooks.
+- Fit new application states and transitions into the current model instead of building parallel lifecycle abstractions.
 
 ## Practical guidance
 

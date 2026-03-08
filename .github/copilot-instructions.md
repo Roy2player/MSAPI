@@ -5,6 +5,8 @@ These instructions apply to almost every task in `Roy2player/MSAPI`.
 ## Project baseline
 
 - MSAPI is a dependency-free C++ library for Linux microservices plus a static manager frontend in `apps/manager/web/`.
+- The project is thoroughly documented with Doxygen-style comments and is covered by unit, integration, and frontend tests.
+- The repository is licensed under the Polyform Noncommercial License 1.0.0.
 - Prefer the smallest safe change that fits the current architecture. Do not rewrite subsystems or introduce new frameworks unless the user explicitly asks for that.
 - Preserve current public behavior and ABI expectations unless the task clearly requires a breaking change.
 
@@ -26,9 +28,9 @@ These instructions apply to almost every task in `Roy2player/MSAPI`.
 
 Load the relevant skill when the task needs deeper repository context:
 
-- `msapi-architecture` for repository structure, module boundaries, and ownership expectations
-- `msapi-server-and-protocols` for server flow, application lifecycle, and protocol handling
-- `msapi-cpp-conventions` for C++ style, headers, enum patterns, and API design rules
-- `msapi-build-and-testing` for build scripts, test layout, and CI expectations
-- `msapi-manager-frontend` for manager web UI modules, JS conventions, and frontend security/testing
+- `msapi-architecture` for repository structure, module boundaries, detailed component references, important directories, and data ownership expectations
+- `msapi-server-and-protocols` for server flow, application lifecycle, protocol handling, and server-side common patterns
+- `msapi-cpp-conventions` for C++ style, file headers, enum patterns, logging conventions, and public API design rules
+- `msapi-build-and-testing` for build scripts, test layout, CI expectations, and contributor checklist items tied to validation
+- `msapi-manager-frontend` for manager web UI modules, JS conventions, frontend tests, and frontend security guidance
 - `msapi-performance-and-reliability` for hot-path, allocation, logging, and exception-free performance guidance

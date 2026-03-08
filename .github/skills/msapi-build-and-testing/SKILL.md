@@ -1,19 +1,23 @@
 ---
 name: msapi-build-and-testing
-description: Build, test, and CI guidance for MSAPI. Use when validating changes, updating tests, or investigating repository workflows.
+description: Build, test, CI, and contributor-checklist guidance for MSAPI. Use when validating changes, updating tests, or investigating repository workflows.
 license: Repository content under Polyform Noncommercial License 1.0.0
 ---
 
 # MSAPI build and testing guide
 
-## Environment
+## Building & Testing
+
+### Environment Setup
 
 ```bash
 export MSAPI_PATH=/path/to/MSAPI
-export BUILD_PROFILE=Debug   # Release is the common CI profile
+export BUILD_PROFILE=Debug   # or Release (default CI)
 ```
 
-## Preferred scripts
+### Helper Scripts (Preferred)
+
+Located in `bash/`:
 
 ```bash
 bash ${MSAPI_PATH}/bash/buildLib.sh
@@ -22,7 +26,7 @@ bash ${MSAPI_PATH}/bash/executeTests.sh
 bash ${MSAPI_PATH}/bash/test.sh
 ```
 
-## Direct CMake fallback
+### Direct CMake
 
 ```bash
 cd ${MSAPI_PATH}/library/build
@@ -30,29 +34,35 @@ cmake .
 cmake --build . -j "$(nproc)"
 ```
 
-## Test layout
+### Testing Structure
 
-- Unit tests live under `tests/units/`
-- Integration tests live under `tests/integration/`
-- Test executables are built into `tests/*/build/`
-- MSAPI uses its own framework in `library/source/test/`
+- Test executables are built in `tests/*/build/`.
+- Unit tests live under `tests/units/`.
+- Integration tests live under `tests/integration/`.
+- MSAPI uses its own test framework from `library/source/test/test.h`.
+- Functions covered by tests should document that coverage with a Doxygen `@test` tag.
 
-## Frontend tests
+### CI Workflows
 
-```bash
-bash ${MSAPI_PATH}/apps/manager/web/js/tests/runJsTests.sh ${MSAPI_PATH}/apps/manager/web/js/tests
-```
+- `.github/workflows/build_and_test.yml` covers the C++ library and application build/test path.
+- `.github/workflows/test_frontend.yml` covers frontend JavaScript tests.
+- `.github/workflows/clang_format_check.yml` covers formatting checks for C++, headers, `.inl`, and JS files.
 
-- The frontend tests use the custom JS harness in `apps/manager/web/js/tests/`.
+## Common Patterns
 
-## CI expectations
+### Testing (C++)
 
-- `.github/workflows/build_and_test.yml` covers the C++ build/test path.
-- `.github/workflows/test_frontend.yml` covers frontend JS tests.
-- `.github/workflows/clang_format_check.yml` covers formatting checks for C++ and JS sources.
+- Use `MSAPI::Test` and `Assert()` to compare expected and actual values.
+- Prefer `RETURN_IF_FALSE` for early exits after failed assertions.
+- Keep tests fast, deterministic, and focused on observable behavior.
 
-## Testing guidance
+## Contributor Checklist
 
-- Prefer fast, deterministic tests focused on observable behavior.
-- Add or update tests when public behavior changes.
-- Keep new validation aligned with the existing scripts and harnesses instead of introducing new tooling.
+0. Look at documentation near definitions to understand the existing implementation ideas and capabilities.
+1. Add the license header to new source files.
+2. Follow `.clang-format` and formatting checks before commit.
+3. Add or update tests for new public APIs.
+4. Document enums and new protocol fields, including related `meta.hpp` mappings.
+5. Run `buildLib.sh` and `executeTests.sh` locally and ensure no failures.
+6. Avoid new third-party runtime dependencies.
+7. Contributions follow the terms in `CONTRIBUTING.md`.

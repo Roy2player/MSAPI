@@ -6,26 +6,27 @@ license: Repository content under Polyform Noncommercial License 1.0.0
 
 # MSAPI performance and reliability guide
 
-## Core principles
+## Performance Recommendations
 
-- MSAPI targets low-latency, high-reliability Linux services.
-- Prefer deterministic behavior, localized memory ownership, and minimal allocations in hot code.
-- Keep library code exception-free.
+- Prefer continuous or contiguous-memory allocators for frequently accessed objects where the current design already uses them.
+- MSAPI library code must never throw exceptions.
+- Keep `.inl` files in the project pattern where declarations come before inline implementations.
+- Use `FORCE_INLINE` in the same cases as the rest of the repository.
 
-## Allocation and layout
+### Server Loop
 
-- Reuse buffers and contiguous storage where the current implementation already does so.
-- Avoid unnecessary `std::string` copies and repeated resizing in protocol-heavy paths.
-- Be careful not to mix allocator domains across the same object graph.
+- Minimize per-connection dynamic allocations and reuse buffers.
+- Batch reads when possible and avoid per-byte processing.
+- Keep the hot path predictable and non-blocking.
 
-## Hot-path guidance
+### Protocol Encode/Decode
 
-- Server loops should minimize per-connection allocations and avoid blocking work in dispatch handlers.
-- Protocol encode/decode paths should validate early and precompute sizes when possible.
-- Logging in hot loops should be guarded and formatting work should stay outside critical paths when practical.
+- Prefer contiguous layouts and validate `DataHeader` as early as possible.
+- Precompute total encoded sizes before writing to avoid repeated resizes.
+- Be conscious of copies and cache behavior in protocol-heavy code.
 
-## Existing project patterns
+### Logging
 
-- Prefer stack allocation or reuse over transient heap churn in tight loops.
-- Use `.inl` and `FORCE_INLINE` the same way the rest of the project does.
-- Favor small, safe optimizations that keep the code readable and aligned with current module boundaries.
+- Avoid logging in hot loops unless a runtime guard makes it safe.
+- Move expensive formatting outside critical paths when practical.
+- Keep performance optimizations clear and maintainable.
