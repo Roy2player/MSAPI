@@ -20,6 +20,7 @@
 #include "http.h"
 #include "../help/helper.h"
 #include "../help/log.h"
+#include "../help/sha1.inl"
 #include "../server/server.h"
 #include <charconv>
 #include <cstring>
@@ -52,7 +53,6 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 		return;
 	}
 	const void* buffer{ *recvBufferInfo->buffer };
-	readSize += sizeof(size_t) * 2;
 
 	const auto fillHeaderIdentifier = [buffer](size_t& index, bool& currentType, std::string& currentValue,
 										  bool& nextType, const char separator = '/', const bool includeSpace = false) {
@@ -547,7 +547,7 @@ void Data::SendSource(const int connection, const std::string& path, const std::
 {
 	std::fstream file(path, std::ios::binary | std::ios::in);
 	if (!file.is_open()) {
-		LOG_WARNING("File do not open, path: " + path);
+		LOG_WARNING("File is not opened, path: " + path);
 		Send404(connection);
 		return;
 	}
@@ -576,7 +576,7 @@ void Data::SendSource(const int connection, const std::string& path, const std::
 			file.close();
 			return;
 		}
-		LOG_ERROR("Fail to send message, patch: " + path + ". Error №" + _S(errno) + ": " + std::strerror(errno));
+		LOG_ERROR("Fail to send message, path: " + path + ". Error №" + _S(errno) + ": " + std::strerror(errno));
 		file.close();
 		return;
 	}
@@ -590,6 +590,77 @@ void Data::Send404(const int connection, const std::string& body, const std::str
 		+ " 404 Not Found\r\nContent-Type: " + (contentType.empty() ? "text/html" : contentType)
 		+ "; charset=utf-8\r\nConnection: keep-alive\r\nKeep-Alive: timeout=0,max=0\r\n"
 		+ (body.empty() ? "\r\n" : "Content-Length: " + _S(body.length()) + "\r\n\r\n" + body) };
+
+	const auto result{ send(connection, response.c_str(), response.length(), MSG_CONFIRM) };
+	if (result == -1) {
+		if (errno == 104) {
+			LOG_DEBUG("Send returned error №104: Connection reset by peer");
+			return;
+		}
+		LOG_ERROR("Fail to send message. Error №" + _S(errno) + ": " + std::strerror(errno));
+		return;
+	}
+	LOG_PROTOCOL("Size of message: " + _S(result) + ", connection: " + _S(connection));
+}
+
+[[nodiscard]] bool Data::IsWebSocketUpgradeRequest() const noexcept
+{
+	if (const auto* connection{ GetValue("Connection") }; connection != nullptr && *connection == "Upgrade") {
+		if (const auto* upgrade{ GetValue("Upgrade") }; upgrade != nullptr && *upgrade == "websocket") {
+			if (const auto* webSocketKey{ GetValue("Sec-WebSocket-Key") }; webSocketKey != nullptr) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+[[nodiscard]] bool Data::IsWebSocketUpgradeResponse() const noexcept
+{
+	if (const auto* connection{ GetValue("Connection") }; connection != nullptr && *connection == "Upgrade") {
+		if (const auto* upgrade{ GetValue("Upgrade") }; upgrade != nullptr && *upgrade == "websocket") {
+			if (const auto* webSocketAccept{ GetValue("Sec-WebSocket-Accept") }; webSocketAccept != nullptr) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+void Data::SendWebSocketUpgradeResponse(const int connection) const
+{
+	const auto* webSocketKey{ GetValue("Sec-WebSocket-Key") };
+	if (webSocketKey == nullptr) [[unlikely]] {
+		LOG_WARNING_NEW("Sec-WebSocket-Key header is missing in WebSocket upgrade request, connection: {}", connection);
+		Send404(connection);
+		return;
+	}
+
+	const auto webSocketKeySize{ webSocketKey->size() };
+	const auto acceptKeySize{ webSocketKeySize + m_webSocketGUID.size() };
+	if (acceptKeySize > 128) [[unlikely]] {
+		LOG_WARNING_NEW("Sec-WebSocket-Key header value is too long, connection: {}", connection);
+		Send404(connection);
+		return;
+	}
+
+	std::array<char, 128> bufferEncode{};
+
+	std::array<char, 128> acceptKey{};
+	std::copy(webSocketKey->begin(), webSocketKey->end(), acceptKey.begin());
+	std::copy(m_webSocketGUID.begin(), m_webSocketGUID.end(), acceptKey.begin() + webSocketKeySize);
+
+	MSAPI::Sha1 sha1;
+	sha1.Update(std::span<const uint8_t>{ reinterpret_cast<const uint8_t*>(acceptKey.data()), acceptKeySize });
+	const auto hash{ sha1.Final<MSAPI::Sha1::doNotReset>() };
+	const auto acceptKeyHash{ MSAPI::Helper::Base64Encode(
+		std::span<const int8_t>{ reinterpret_cast<const int8_t*>(hash.data()), hash.size() }, bufferEncode) };
+
+	const std::string response{ std::format("{}/{} 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: "
+											"Upgrade\r\nSec-WebSocket-Accept: {}\r\nSec-WebSocket-Version: 13\r\n\r\n",
+		m_HTTPtype, m_version, acceptKeyHash) };
 
 	const auto result{ send(connection, response.c_str(), response.length(), MSG_CONFIRM) };
 	if (result == -1) {
