@@ -28,6 +28,7 @@
 #ifndef MSAPI_HTTP_H
 #define MSAPI_HTTP_H
 
+#include "webSocket.inl"
 #include <iostream>
 #include <map>
 #include <optional>
@@ -46,6 +47,7 @@ namespace HTTP {
  */
 class Data {
 private:
+	static inline constexpr std::string_view m_webSocketGUID{ "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" };
 	std::map<std::string, std::string, std::less<>> m_headersMap;
 	std::string m_messageType{ "" };
 	std::string m_url{ "" };
@@ -55,9 +57,9 @@ private:
 	std::string m_code{ "" };
 	std::string m_codeText{ "" };
 	std::string m_body{ "" };
+	size_t m_messageSize{ 0 };
 	bool m_isRequest{ false };
 	bool m_isValid{ false };
-	size_t m_messageSize{ 0 };
 
 public:
 	/**************************
@@ -173,6 +175,18 @@ public:
 	void Send404(int connection, const std::string& body = "", const std::string& contentType = "") const;
 
 	/**************************
+	 * @return True if HTTP message is WebSocket upgrade request, false otherwise.
+	 */
+	[[nodiscard]] bool IsWebSocketUpgradeRequest() const noexcept;
+
+	/**************************
+	 * @return True if HTTP message is WebSocket upgrade response, false otherwise.
+	 */
+	[[nodiscard]] bool IsWebSocketUpgradeResponse() const noexcept;
+
+	void SendWebSocketUpgradeResponse(int connection) const;
+
+	/**************************
 	 * @example HTTP message:
 	 * {
 	 * 		is valid        : true
@@ -277,7 +291,38 @@ void SendRequest(int connection, const std::string& HTTP);
 
 #define MSAPI_HANDLER_HTTP_PRESET                                                                                      \
 	if (MSAPI::HTTP::Data http(recvBufferInfo); http.IsValid()) {                                                      \
+		if constexpr (std::is_base_of_v<MSAPI::WebSocketProtocol::IHandler, std::remove_cvref_t<decltype(*this)>>) {   \
+			if (http.IsWebSocketUpgradeRequest()) {                                                                    \
+				if (MSAPI::Application::IsRunning()) {                                                                 \
+					LOG_PROTOCOL(http.ToString());                                                                     \
+					recvBufferInfo->SetReadDataSize(2);                                                                \
+					http.SendWebSocketUpgradeResponse(recvBufferInfo->connection);                                     \
+					return;                                                                                            \
+				}                                                                                                      \
+				LOG_PROTOCOL_NEW("Application is not running. {}", http.ToString());                                   \
+				return;                                                                                                \
+			}                                                                                                          \
+                                                                                                                       \
+			if (http.IsWebSocketUpgradeResponse()) {                                                                   \
+				if (MSAPI::Application::IsRunning()) {                                                                 \
+					LOG_PROTOCOL(http.ToString());                                                                     \
+					recvBufferInfo->SetReadDataSize(2);                                                                \
+					return;                                                                                            \
+				}                                                                                                      \
+				LOG_PROTOCOL_NEW("Application is not running. {}", http.ToString());                                   \
+				return;                                                                                                \
+			}                                                                                                          \
+		}                                                                                                              \
+                                                                                                                       \
 		MSAPI::HTTP::IHandler::Collect(recvBufferInfo->connection, http);                                              \
+		return;                                                                                                        \
+	}
+
+// TODO: recvBufferInfo can contain additional enum to check the type of protocol
+#define MSAPI_HANDLE_WEBSOCKET_PRESET                                                                                  \
+	if (recvBufferInfo->GetReadDataSize() == 2) {                                                                      \
+		MSAPI::WebSocketProtocol::IHandler::Collect(                                                                   \
+			recvBufferInfo->connection, MSAPI::WebSocketProtocol::Data{ recvBufferInfo });                             \
 		return;                                                                                                        \
 	}
 

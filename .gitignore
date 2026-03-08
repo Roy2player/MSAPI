@@ -18,6 +18,7 @@ tests/integration/applicationHandlers/build/TestApplicationHandlers
 tests/integration/objectProtocol/build/TestObjectProtocol
 tests/integration/http/build/TestHttp
 tests/integration/server/build/TestServer
+tests/integration/webSocketProtocol/build/TestWebSocketProtocol
 tests/units/application/build/UnitTestApplication
 tests/units/dataHeader/build/UnitTestDataHeader
 tests/units/helper/build/UnitTestHelper
