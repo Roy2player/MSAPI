@@ -49,7 +49,7 @@ For C++-specific guidance, focus on these MSAPI-aligned principles (grounded in 
 	- When suggesting new abstractions, keep them small, testable, and consistent with current naming and layering.
 
 - **Testing**:
-	- Design changes so they can be covered by the existing test layout under `tests/` (with `units/` and `integration/` subdirectories).
+	- Design changes so they can be covered by the existing test layout under `tests/` (with `unit/` and `integration/` subdirectories).
 	- Prefer fast, deterministic tests that validate observable behavior of public APIs and critical internal seams.
 	- For legacy behavior, recommend characterization tests before refactoring.
 

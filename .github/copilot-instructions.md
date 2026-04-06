@@ -24,6 +24,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
   - `standard.h` / `standard.cpp`: Key–value dynamic message container (`Standard::Data`). Encoding focuses on minimal copies; keep buffer reuse strategies.
   - `object.h` / `object.cpp`: Lightweight object protocol for POD-like copyable structs; serialization assumes trivially copyable layout.
   - `http.h` / `http.cpp`: Minimal HTTP parsing (request line, headers). Not a full RFC implementation—avoid relying on unsupported features.
+  - `webSocket.inl`: Implementation of data and parallel execution safe functional abstractions for 13 version (RFC 6455) WebSocket protocol.
 
 3. **Utility Modules** (`library/source/help/`)
   - `log.h` / `log.cpp`: Logger with logging levels and console/file output support.
@@ -183,7 +184,7 @@ cmake --build . -j "$(nproc)"
 
 ### Testing Structure
 - Test executables: `tests/*/build/`
-- Unit tests: `tests/units/`
+- Unit tests: `tests/unit/`
 - Integration tests: `tests/integration/server/`
 - MSAPI test framework (`library/source/test/test.h`)
 - Each function covered by tests must have a Doxygen `@test` tag in its documentation. For example: `@test Has unit tests`.
@@ -218,7 +219,7 @@ Prefer RETURN_IF_FALSE for early exits on failed assertions.
 - **Table:** (apps/manager/web/js/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types
 - **Grid:** (apps/manager/web/js/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations
 - **Timer:** (apps/manager/web/js/timer.js) Timestamp input handling, normalization, and validation with timezone support
-- **Duration:** (apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time units
+- **Duration:** (apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time unit
 - **Select:** (apps/manager/web/js/select.js) Custom select input with searchable options, validation, and dynamic metadata integration
 - **Helper:** (apps/manager/web/js/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more
 
