@@ -31,7 +31,7 @@ jobs:
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         sudo apt-get update
 
-        # Install GCC 16 and G++ 16 (You can change this to 14 or 15 if 16 is unavailable)
+        # Install GCC 16 and G++ 16
         sudo apt-get install -y gcc-16 g++-16
 
         # Set them as the default compilers for the system
