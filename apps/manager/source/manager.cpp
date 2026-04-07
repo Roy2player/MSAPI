@@ -1226,8 +1226,8 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 	}
 }
 
-uint16_t Manager::CreateApp(
-	const std::map<size_t, InstalledAppData>::iterator& appDataIt, const MSAPI::Protocol::HTTP::Data& data, std::string& error)
+uint16_t Manager::CreateApp(const std::map<size_t, InstalledAppData>::iterator& appDataIt,
+	const MSAPI::Protocol::HTTP::Data& data, std::string& error)
 {
 	LOG_DEBUG(
 		"Creating app: " + appDataIt->second.type + ", id: " + _S(appDataIt->first) + " from " + appDataIt->second.bin);

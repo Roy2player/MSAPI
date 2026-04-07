@@ -176,8 +176,8 @@ private:
 		 *
 		 * @todo Add event for timeout.
 		 */
-		FORCE_INLINE RequestInfo(
-			const Type type, const size_t identifier, const int connection, const MSAPI::Protocol::HTTP::Data& data) noexcept
+		FORCE_INLINE RequestInfo(const Type type, const size_t identifier, const int connection,
+			const MSAPI::Protocol::HTTP::Data& data) noexcept
 			: m_type{ type }
 			, m_identifier{ identifier }
 			, m_data{ Data{ connection, data } }
@@ -277,8 +277,8 @@ private:
 	 *
 	 * @return Application port or 0 if failed.
 	 */
-	uint16_t CreateApp(const std::map<size_t, InstalledAppData>::iterator& appDataIt, const MSAPI::Protocol::HTTP::Data& data,
-		std::string& error);
+	uint16_t CreateApp(const std::map<size_t, InstalledAppData>::iterator& appDataIt,
+		const MSAPI::Protocol::HTTP::Data& data, std::string& error);
 
 	/**************************
 	 * @brief Send parameters request if application already connected and save data for future response.
