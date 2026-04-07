@@ -129,10 +129,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::Test test;
 
 	const auto checkAll
-		= [&test](const std::optional<MSAPI::HTTP::Data>& httpData, const size_t counter, const size_t expectedCounter,
-			  const bool isRequest, const std::string& typeMessage, const std::string& url, const std::string& httpType,
-			  const std::string& version, const size_t messageSize, const std::string& format, const std::string& body,
-			  const std::string& code, const std::string& codeText,
+		= [&test](const std::optional<MSAPI::Protocol::HTTP::Data>& httpData, const size_t counter,
+			  const size_t expectedCounter, const bool isRequest, const std::string& typeMessage,
+			  const std::string& url, const std::string& httpType, const std::string& version, const size_t messageSize,
+			  const std::string& format, const std::string& body, const std::string& code, const std::string& codeText,
 			  const std::map<std::string, std::string>& headersMap, const std::string& toString) {
 			  test.Assert(counter, expectedCounter, "Actions number is correct");
 			  test.Assert(httpData.has_value(), true, "Has HTTP data");

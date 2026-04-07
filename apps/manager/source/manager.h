@@ -60,7 +60,7 @@
  * they both are used in FE, one of them overwrites another one. In case, when parameter contains scalar value which
  * represents a string, like hash of instrument name for example, then custom string interpretations are used.
  */
-class Manager : public MSAPI::Server, MSAPI::HTTP::IHandler {
+class Manager : public MSAPI::Server, MSAPI::Protocol::HTTP::IHandler {
 private:
 	/**************************
 	 * @brief Contains information about installed app.
@@ -143,7 +143,7 @@ private:
 		 */
 		struct Data {
 			const int connection;
-			const MSAPI::HTTP::Data data;
+			const MSAPI::Protocol::HTTP::Data data;
 
 			/**************************
 			 * @brief Construct a new Data object, start timer inside.
@@ -151,7 +151,7 @@ private:
 			 * @param connection Connection id.
 			 * @param data Data of HTTP request.
 			 */
-			FORCE_INLINE Data(const int connection, const MSAPI::HTTP::Data& data) noexcept
+			FORCE_INLINE Data(const int connection, const MSAPI::Protocol::HTTP::Data& data) noexcept
 				: connection{ connection }
 				, data{ data }
 			{
@@ -177,7 +177,7 @@ private:
 		 * @todo Add event for timeout.
 		 */
 		FORCE_INLINE RequestInfo(
-			const Type type, const size_t identifier, const int connection, const MSAPI::HTTP::Data& data) noexcept
+			const Type type, const size_t identifier, const int connection, const MSAPI::Protocol::HTTP::Data& data) noexcept
 			: m_type{ type }
 			, m_identifier{ identifier }
 			, m_data{ Data{ connection, data } }
@@ -249,8 +249,8 @@ public:
 	void HandleParameters(int connection, const std::map<size_t, std::variant<standardTypes>>& parameters) final;
 	void HandleHello(int connection) final;
 	void HandleMetadata(int connection, std::string_view metadata) final;
-	//* MSAPI::HTTP::IHandler
-	void HandleHttp(int connection, const MSAPI::HTTP::Data& data) final;
+	//* MSAPI::Protocol::HTTP::IHandler
+	void HandleHttp(int connection, const MSAPI::Protocol::HTTP::Data& data) final;
 
 	/**************************
 	 * @brief Read the execution status of vforked apps to prevent zombie processes and answer related requests in
@@ -277,7 +277,7 @@ private:
 	 *
 	 * @return Application port or 0 if failed.
 	 */
-	uint16_t CreateApp(const std::map<size_t, InstalledAppData>::iterator& appDataIt, const MSAPI::HTTP::Data& data,
+	uint16_t CreateApp(const std::map<size_t, InstalledAppData>::iterator& appDataIt, const MSAPI::Protocol::HTTP::Data& data,
 		std::string& error);
 
 	/**************************
@@ -309,7 +309,7 @@ private:
 		}
 
 		if (appConnection != 0) {
-			MSAPI::StandardProtocol::SendParametersRequest(appConnection);
+			MSAPI::Protocol::Standard::SendParametersRequest(appConnection);
 		}
 #undef SAVE_REQUEST_INFO_TO_PORT
 	}

@@ -58,8 +58,8 @@ void Manager::HandleHello(const int connection)
 		m_clientConnection = connection;
 	}
 
-	MSAPI::StandardProtocol::Data data{ helloForHelloCipher };
-	MSAPI::StandardProtocol::Send(connection, data);
+	MSAPI::Protocol::Standard::Data data{ helloForHelloCipher };
+	MSAPI::Protocol::Standard::Send(connection, data);
 
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
@@ -90,14 +90,14 @@ void Manager::HandleParameters(const int connection, const std::map<size_t, std:
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Manager::SendData(const MSAPI::StandardProtocol::Data& data)
+void Manager::SendData(const MSAPI::Protocol::Standard::Data& data)
 {
 	if (m_activeConnection == -1) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
 
-	MSAPI::StandardProtocol::Send(m_activeConnection, data);
+	MSAPI::Protocol::Standard::Send(m_activeConnection, data);
 }
 
 void Manager::SendActionRun()
@@ -107,7 +107,7 @@ void Manager::SendActionRun()
 		return;
 	}
 
-	MSAPI::StandardProtocol::SendActionRun(m_activeConnection);
+	MSAPI::Protocol::Standard::SendActionRun(m_activeConnection);
 }
 
 void Manager::SendActionPause()
@@ -117,7 +117,7 @@ void Manager::SendActionPause()
 		return;
 	}
 
-	MSAPI::StandardProtocol::SendActionPause(m_activeConnection);
+	MSAPI::Protocol::Standard::SendActionPause(m_activeConnection);
 }
 
 void Manager::SendActionDelete()
@@ -127,7 +127,7 @@ void Manager::SendActionDelete()
 		return;
 	}
 
-	MSAPI::StandardProtocol::SendActionDelete(m_activeConnection);
+	MSAPI::Protocol::Standard::SendActionDelete(m_activeConnection);
 }
 
 void Manager::SendActionHello()
@@ -137,7 +137,7 @@ void Manager::SendActionHello()
 		return;
 	}
 
-	MSAPI::StandardProtocol::SendActionHello(m_activeConnection);
+	MSAPI::Protocol::Standard::SendActionHello(m_activeConnection);
 }
 
 void Manager::SendMetadataRequest()
@@ -147,7 +147,7 @@ void Manager::SendMetadataRequest()
 		return;
 	}
 
-	MSAPI::StandardProtocol::SendMetadataRequest(m_activeConnection);
+	MSAPI::Protocol::Standard::SendMetadataRequest(m_activeConnection);
 }
 
 void Manager::SendParametersRequest()
@@ -157,7 +157,7 @@ void Manager::SendParametersRequest()
 		return;
 	}
 
-	MSAPI::StandardProtocol::SendParametersRequest(m_activeConnection);
+	MSAPI::Protocol::Standard::SendParametersRequest(m_activeConnection);
 }
 
 void Manager::SendMetadataResponse()
@@ -169,9 +169,9 @@ void Manager::SendMetadataResponse()
 
 	const std::string metadata{ "{\"metadata\":true}" };
 
-	MSAPI::StandardProtocol::Data metadataData{ MSAPI::StandardProtocol::cipherMetadataResponse };
+	MSAPI::Protocol::Standard::Data metadataData{ MSAPI::Protocol::Standard::cipherMetadataResponse };
 	metadataData.SetData(0, metadata);
-	MSAPI::StandardProtocol::Send(m_activeConnection, metadataData);
+	MSAPI::Protocol::Standard::Send(m_activeConnection, metadataData);
 }
 
 void Manager::SendParametersResponse()
@@ -181,9 +181,9 @@ void Manager::SendParametersResponse()
 		return;
 	}
 
-	MSAPI::StandardProtocol::Data data{ MSAPI::StandardProtocol::cipherParametersResponse };
+	MSAPI::Protocol::Standard::Data data{ MSAPI::Protocol::Standard::cipherParametersResponse };
 	data.SetData(505050, 960.960964);
-	MSAPI::StandardProtocol::Send(m_activeConnection, data);
+	MSAPI::Protocol::Standard::Send(m_activeConnection, data);
 }
 
 std::string Manager::GetParameters() const

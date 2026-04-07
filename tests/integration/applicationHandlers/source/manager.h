@@ -50,7 +50,7 @@ public:
 
 	void UseOutcomeConnection();
 	void UseClientConnection();
-	void SendData(const MSAPI::StandardProtocol::Data& data);
+	void SendData(const MSAPI::Protocol::Standard::Data& data);
 	void SendActionRun();
 	void SendActionPause();
 	void SendActionDelete();

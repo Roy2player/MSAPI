@@ -24,7 +24,7 @@
 #include <sys/wait.h>
 
 Manager::Manager()
-	: MSAPI::HTTP::IHandler(this)
+	: MSAPI::Protocol::HTTP::IHandler(this)
 {
 	if (access("/bin/bash", X_OK) != 0) {
 		LOG_ERROR("Can't access to /bin/bash, terminate application");
@@ -51,7 +51,7 @@ void Manager::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
 	LOG_ERROR("Unknown protocol: " + header.ToString());
 }
 
-void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
+void Manager::HandleHttp(const int connection, const MSAPI::Protocol::HTTP::Data& data)
 {
 	const auto sendNegativeResponse = [this, &data, connection](const std::string& error) {
 		LOG_DEBUG("Send negative response: " + error);
@@ -260,7 +260,7 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 			else {
 				MSAPI::Pthread::AtomicLock::ExitGuard guard{ m_parametersRequestsLock };
 				if (const auto actionIt{ m_pauseRequestToPort.find(port) }; actionIt == m_pauseRequestToPort.end()) {
-					MSAPI::StandardProtocol::SendActionPause(it->second.connection);
+					MSAPI::Protocol::Standard::SendActionPause(it->second.connection);
 					SendParametersRequest<false>(port, it->second.connection,
 						RequestInfo{ RequestInfo::Type::Pause, static_cast<size_t>(port) });
 				}
@@ -306,7 +306,7 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 			else {
 				MSAPI::Pthread::AtomicLock::ExitGuard guard{ m_parametersRequestsLock };
 				if (const auto actionIt{ m_runRequestToPort.find(port) }; actionIt == m_runRequestToPort.end()) {
-					MSAPI::StandardProtocol::SendActionRun(it->second.connection);
+					MSAPI::Protocol::Standard::SendActionRun(it->second.connection);
 					SendParametersRequest<false>(
 						port, it->second.connection, RequestInfo{ RequestInfo::Type::Run, static_cast<size_t>(port) });
 				}
@@ -347,7 +347,7 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 			else {
 				MSAPI::Pthread::AtomicLock::ExitGuard guard{ m_deleteRequestsLock };
 				if (const auto actionIt{ m_deleteRequestToPort.find(port) }; actionIt == m_deleteRequestToPort.end()) {
-					MSAPI::StandardProtocol::SendActionDelete(it->second.connection);
+					MSAPI::Protocol::Standard::SendActionDelete(it->second.connection);
 				}
 				m_deleteRequestToPort.emplace(
 					port, RequestInfo{ RequestInfo::Type::Delete, static_cast<size_t>(port), connection, data });
@@ -422,7 +422,7 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 				return;
 			}
 
-			MSAPI::StandardProtocol::Data parametersUpdate{ MSAPI::StandardProtocol::cipherActionModify };
+			MSAPI::Protocol::Standard::Data parametersUpdate{ MSAPI::Protocol::Standard::cipherActionModify };
 			for (const auto& [keyStr, node] : parametersJson.GetKeysAndValues()) {
 				size_t key{};
 				const auto error{ std::from_chars(keyStr.data(), keyStr.data() + keyStr.size(), key).ec };
@@ -649,7 +649,7 @@ void Manager::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 #undef TMP_MANAGER_TRY_SET_DATA_PARAMETER
 
 			if (parametersUpdate.GetBufferSize() > sizeof(size_t) * 2) {
-				MSAPI::StandardProtocol::Send(it->second.connection, parametersUpdate);
+				MSAPI::Protocol::Standard::Send(it->second.connection, parametersUpdate);
 				data.SendResponse(connection, "{\"status\":true}\n\n");
 			}
 			else {
@@ -867,7 +867,7 @@ void Manager::HandleParameters(const int connection, const std::map<size_t, std:
 			createdAppDataIt->second.connection = connection;
 
 			if (createdAppDataIt->second.appData->metadata.empty()) {
-				MSAPI::StandardProtocol::SendMetadataRequest(connection);
+				MSAPI::Protocol::Standard::SendMetadataRequest(connection);
 			}
 		}
 		else {
@@ -1006,7 +1006,7 @@ void Manager::HandleParameters(const int connection, const std::map<size_t, std:
 	LOG_WARNING("Parameters update without port, connection: " + _S(connection));
 }
 
-void Manager::HandleHello(const int connection) { MSAPI::StandardProtocol::SendParametersRequest(connection); }
+void Manager::HandleHello(const int connection) { MSAPI::Protocol::Standard::SendParametersRequest(connection); }
 
 void Manager::HandleMetadata(const int connection, const std::string_view metadata)
 {
@@ -1227,7 +1227,7 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 }
 
 uint16_t Manager::CreateApp(
-	const std::map<size_t, InstalledAppData>::iterator& appDataIt, const MSAPI::HTTP::Data& data, std::string& error)
+	const std::map<size_t, InstalledAppData>::iterator& appDataIt, const MSAPI::Protocol::HTTP::Data& data, std::string& error)
 {
 	LOG_DEBUG(
 		"Creating app: " + appDataIt->second.type + ", id: " + _S(appDataIt->first) + " from " + appDataIt->second.bin);

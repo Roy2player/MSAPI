@@ -30,11 +30,11 @@
  */
 class ObjectClient : public MSAPI::Server,
 					 public MSAPI::ActionsCounter,
-					 MSAPI::ObjectProtocol::IHandler<InstrumentStructure>,
-					 MSAPI::ObjectProtocol::IHandler<OrderStructure> {
+					 MSAPI::Protocol::Object::IHandler<InstrumentStructure>,
+					 MSAPI::Protocol::Object::IHandler<OrderStructure> {
 private:
-	MSAPI::ObjectProtocol::Stream<InstrumentStructure, FilterStructure> m_instrumentStream{ this };
-	MSAPI::ObjectProtocol::Stream<OrderStructure, FilterStructure> m_orderStream{ this };
+	MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure> m_instrumentStream{ this };
+	MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure> m_orderStream{ this };
 
 	std::set<InstrumentStructure> m_instruments;
 	std::set<OrderStructure> m_orders;
@@ -44,7 +44,7 @@ public:
 
 	//* MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo) final;
-	//* MSAPI::ObjectProtocol::IHandler
+	//* MSAPI::Protocol::Object::IHandler
 	void HandleStreamOpened(int streamId) final;
 	void HandleStreamSnapshotDone(int streamId) final;
 	void HandleStreamFailed(int streamId) final;
@@ -59,8 +59,8 @@ public:
 	bool HasInstrument(const InstrumentStructure& instrument) const;
 	bool HasOrder(const OrderStructure& order) const;
 
-	MSAPI::ObjectProtocol::Stream<InstrumentStructure, FilterStructure>& GetInstrumentStream();
-	MSAPI::ObjectProtocol::Stream<OrderStructure, FilterStructure>& GetOrderStream();
+	MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure>& GetInstrumentStream();
+	MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure>& GetOrderStream();
 
 	void SetConnectionForStreams(int id);
 };

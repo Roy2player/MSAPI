@@ -27,19 +27,19 @@
 /**************************
  * @brief HTTP client for MSAPI tests of HTTP protocol.
  */
-class HTTPClient : public MSAPI::Server, public MSAPI::ActionsCounter, MSAPI::HTTP::IHandler {
+class HTTPClient : public MSAPI::Server, public MSAPI::ActionsCounter, MSAPI::Protocol::HTTP::IHandler {
 private:
-	std::optional<MSAPI::HTTP::Data> m_HTTPData;
+	std::optional<MSAPI::Protocol::HTTP::Data> m_HTTPData;
 
 public:
 	HTTPClient();
 
 	//* MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo) final;
-	//* MSAPI::HTTP::IHandler
-	void HandleHttp(int connection, const MSAPI::HTTP::Data& data) final;
+	//* MSAPI::Protocol::HTTP::IHandler
+	void HandleHttp(int connection, const MSAPI::Protocol::HTTP::Data& data) final;
 
-	const std::optional<MSAPI::HTTP::Data>& GetHTTPData() const noexcept;
+	const std::optional<MSAPI::Protocol::HTTP::Data>& GetHTTPData() const noexcept;
 	void SendRequest(int id, const std::string& HTTP);
 };
 

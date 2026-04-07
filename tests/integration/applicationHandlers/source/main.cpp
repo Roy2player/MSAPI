@@ -455,7 +455,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* 14) Manager sends modify request for some of invalid parameters to the client, parameters are changed, state is
 	//* not changed
-	MSAPI::StandardProtocol::Data parametersData{ MSAPI::StandardProtocol::cipherActionModify };
+	MSAPI::Protocol::Standard::Data parametersData{ MSAPI::Protocol::Standard::cipherActionModify };
 	parametersData.SetData(3, int32_t{ -78234 });
 	parametersData.SetData(27, std::optional<uint64_t>{ 6790004 });
 	parametersData.SetData(29, std::optional<float>{ -400.00002 });
