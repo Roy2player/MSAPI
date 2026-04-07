@@ -125,13 +125,18 @@ public:
 	FORCE_INLINE [[nodiscard]] size_t GetReadDataSize() const noexcept { return m_readDataSize; }
 
 	/**************************
-	 * @brief Check and set the read data size of recv buffer.
+	 * @brief Check and set the read data size of recv buffer. Cannot be less than 1.
 	 *
 	 * @param size New read data size of recv buffer.
 	 */
 	FORCE_INLINE void SetReadDataSize(size_t size)
 	{
-		if (ManageBuffer(size) != Action::Read) {
+		if (size < 1) [[unlikely]] {
+			LOG_WARNING("Read data size cannot be less than 1");
+			return;
+		}
+
+		if (ManageBuffer(size) != Action::Read) [[unlikely]] {
 			return;
 		}
 
