@@ -16,7 +16,7 @@ cmake --build . -j $(nproc)
 ```
 
 - ***Build system:*** CMake 3.2+
-- ***Compiler:*** C++20 compatible (GCC/Clang)
+- ***Compiler:*** GCC 16+
 - ***Runtime:*** Linux (POSIX threads, Linux sockets)
 - Pure C++ standard library
 

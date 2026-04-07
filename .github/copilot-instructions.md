@@ -288,7 +288,7 @@ bash runJsTests.sh
 
 ## Requirements
 - **Build system**: CMake 3.2+
-- **Compiler**: C++20 compatible (GCC/Clang)
+- **Compiler**: GCC 16+
 - **Runtime**: Linux (POSIX threads, Linux sockets)
 - **No third-party libraries**: Pure C++ standard library
 
