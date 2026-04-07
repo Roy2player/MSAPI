@@ -1634,13 +1634,11 @@ template <bool T> FORCE_INLINE [[nodiscard]] bool IHandler::PurgeStoredData()
 		LOG_WARNING_NEW(
 			"WebSocket fragmented data purged for connection {} due to limit exceed", it->second->connection);
 		m_fragmentedDataToConnection.erase(it->second->connection);
-		m_fragmentedDataTimerToConnection.erase(it);
+		it = m_fragmentedDataTimerToConnection.erase(it);
 
 		if (!Helper::FloatGreater(m_storedFragmentedDataSizeMb, m_storedFragmentedDataLimitMb)) {
 			return true;
 		}
-
-		++it;
 	}
 
 	return false;

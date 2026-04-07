@@ -316,8 +316,9 @@ public:
 
 	/**************************
 	 * @brief Waiting for income data from connection by id, blocking function. Called inside separate pthread of
-	 * accepted connection. Read size is defined by read data size of recv buffer. Default value and the minimum size of
-	 * recv buffer is sizeof(size_t) * 2 bytes for MSAPI::DataHeader.
+	 * accepted connection. Read size is defined by read data size of recv buffer. Default value of recv buffer reading
+	 * is sizeof(size_t) * 2 bytes for MSAPI::DataHeader, it can be changed if required to allow handle another
+	 * protocols.
 	 *
 	 * @tparam Type Type of connection processing.
 	 *

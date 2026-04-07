@@ -623,16 +623,15 @@ void Server::CloseConnect(ConnectionInfo& info)
 		LOG_ERROR("Failed to open /dev/null");                                                                         \
 		return false;                                                                                                  \
 	}                                                                                                                  \
-	const auto dataReadSize{ recvBufferInfo->GetReadDataSize() };                                                      \
 	const auto bytesSpliced{ splice(                                                                                   \
-		recvBufferInfo->connection, nullptr, devNull, nullptr, bufferSize - dataReadSize, SPLICE_F_MOVE) };            \
+		recvBufferInfo->connection, nullptr, devNull, nullptr, bufferSize - offset, SPLICE_F_MOVE) };                  \
 	if (bytesSpliced == -1) [[unlikely]] {                                                                             \
 		LOG_ERROR("Failed to splice data to /dev/null, id: " + _S(recvBufferInfo->id) + ". Error №" + _S(errno) + ": " \
 			+ std::strerror(errno));                                                                                   \
 		close(devNull);                                                                                                \
 		return false;                                                                                                  \
 	}                                                                                                                  \
-	LOG_PROTOCOL("Spliced " + _S(bytesSpliced) + " out of " + _S(bufferSize - dataReadSize)                            \
+	LOG_PROTOCOL("Spliced " + _S(bytesSpliced) + " out of " + _S(bufferSize - offset)                                  \
 		+ " bytes to /dev/null, id: " + _S(recvBufferInfo->id));                                                       \
 	close(devNull);
 
@@ -699,7 +698,7 @@ bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& buffe
 		}
 		ioctl(recvBufferInfo->connection, FIONREAD, &bytesAvailable);
 		if (bytesAvailable > 0) [[likely]] {
-			const auto readData{ bufferSize - recvBufferInfo->GetReadDataSize() };
+			const auto readData{ bufferSize - offset };
 			if (UINT64(bytesAvailable) < readData) {
 				LOG_PROTOCOL("Available number of bytes is less than need to be read, id: " + _S(recvBufferInfo->id)
 					+ ", available: " + _S(bytesAvailable));
