@@ -128,7 +128,7 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 	MSAPI::Pthread::AtomicLock::ExitGuard exitGuard{ m_serverAcceptingLoop };
 
 	for (const auto& [id, info] : m_infoToConnection) {
-		StandardProtocol::SendActionHello(info.connection);
+		Protocol::Standard::SendActionHello(info.connection);
 	}
 
 	sockaddr_in clientAddr{ 0, 0, 0, 0 };
@@ -561,7 +561,7 @@ pthreadCreate:
 	LOG_DEBUG("Pthread is created successfully, id: " + _S(*saveId));
 
 	if (m_state == State::Running) {
-		StandardProtocol::SendActionHello(newConnection);
+		Protocol::Standard::SendActionHello(newConnection);
 	}
 
 	return true;

@@ -20,7 +20,7 @@
 #include "httpClient.h"
 
 HTTPClient::HTTPClient()
-	: MSAPI::HTTP::IHandler(this)
+	: MSAPI::Protocol::HTTP::IHandler(this)
 {
 	MSAPI::Application::SetState(MSAPI::Application::State::Running);
 }
@@ -34,18 +34,18 @@ void HTTPClient::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
 	LOG_ERROR("Unknown protocol: " + header.ToString());
 }
 
-void HTTPClient::HandleHttp([[maybe_unused]] const int connection, const MSAPI::HTTP::Data& data)
+void HTTPClient::HandleHttp([[maybe_unused]] const int connection, const MSAPI::Protocol::HTTP::Data& data)
 {
 	m_HTTPData = data;
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-const std::optional<MSAPI::HTTP::Data>& HTTPClient::GetHTTPData() const noexcept { return m_HTTPData; }
+const std::optional<MSAPI::Protocol::HTTP::Data>& HTTPClient::GetHTTPData() const noexcept { return m_HTTPData; }
 
 void HTTPClient::SendRequest(const int id, const std::string& HTTP)
 {
 	if (const auto connect{ GetConnect(id) }; connect.has_value()) {
-		MSAPI::HTTP::SendRequest(connect.value(), HTTP);
+		MSAPI::Protocol::HTTP::SendRequest(connect.value(), HTTP);
 		return;
 	}
 

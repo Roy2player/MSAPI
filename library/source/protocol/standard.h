@@ -24,8 +24,8 @@
  * @note Ciphers from 934875930 to 934875939 are reserved for standard protocol.
  */
 
-#ifndef MSAPI_STANDARD_PROTOCOL_H
-#define MSAPI_STANDARD_PROTOCOL_H
+#ifndef MSAPI_PROTOCOL_STANDARD_H
+#define MSAPI_PROTOCOL_STANDARD_H
 
 #include "../help/log.h"
 #include "../help/standardType.hpp"
@@ -34,7 +34,9 @@
 
 namespace MSAPI {
 
-namespace StandardProtocol {
+namespace Protocol {
+
+namespace Standard {
 
 constexpr size_t cipherActionHello{ 934875930 };
 constexpr size_t cipherMetadataResponse{ 934875931 };
@@ -357,8 +359,10 @@ void SendMetadataRequest(int connection);
  */
 void SendParametersRequest(int connection);
 
-}; //* namespace StandardProtocol
+}; // namespace Standard
 
-}; //* namespace MSAPI
+}; // namespace Protocol
 
-#endif //* MSAPI_STANDARD_PROTOCOL_H
+}; // namespace MSAPI
+
+#endif // MSAPI_PROTOCOL_STANDARD_H

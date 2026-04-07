@@ -642,7 +642,7 @@ protected:
 	 *
 	 * @test Has unit tests.
 	 */
-	void Collect(int connection, const StandardProtocol::Data& data);
+	void Collect(int connection, const Protocol::Standard::Data& data);
 
 	/**************************
 	 * @brief Register parameter to application if it is not registered yet and value is consistent with

@@ -18,12 +18,32 @@ jobs:
     env:
       MSAPI_PATH: ${{ github.workspace }}
       BUILD_PROFILE: Release
+      # Force CMake/Make to use the new compiler versions
+      CC: gcc-16
+      CXX: g++-16
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install Latest GCC
+      run: |
+        # Add the toolchain PPA to get the newest GCC versions
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        sudo apt-get update
+
+        # Install GCC 16 and G++ 16
+        sudo apt-get install -y gcc-16 g++-16
+
+        # Set them as the default compilers for the system
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-16 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-16 100
+        sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-16 100
+
     - name: build library
       run: bash ${MSAPI_PATH}/bash/buildLib.sh
+
     - name: build apps
       run: bash ${MSAPI_PATH}/bash/buildApps.sh
+
     - name: execute tests
       run: bash ${MSAPI_PATH}/bash/executeTests.sh

@@ -27,9 +27,9 @@
 /**************************
  * @brief HTTP server for MSAPI tests of HTTP protocol.
  */
-class HTTPServer : public MSAPI::Server, public MSAPI::ActionsCounter, MSAPI::HTTP::IHandler {
+class HTTPServer : public MSAPI::Server, public MSAPI::ActionsCounter, MSAPI::Protocol::HTTP::IHandler {
 private:
-	std::optional<MSAPI::HTTP::Data> m_HTTPData;
+	std::optional<MSAPI::Protocol::HTTP::Data> m_HTTPData;
 	std::string m_webSourcesPath;
 
 public:
@@ -39,10 +39,10 @@ public:
 	void HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo) final;
 	//* MSAPI::Application
 	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
-	//* MSAPI::HTTP::IHandler
-	void HandleHttp(int connection, const MSAPI::HTTP::Data& data) final;
+	//* MSAPI::Protocol::HTTP::IHandler
+	void HandleHttp(int connection, const MSAPI::Protocol::HTTP::Data& data) final;
 
-	const std::optional<MSAPI::HTTP::Data>& GetHTTPData() const noexcept;
+	const std::optional<MSAPI::Protocol::HTTP::Data>& GetHTTPData() const noexcept;
 };
 
 #endif //* HTTP_SERVER_H

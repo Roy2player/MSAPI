@@ -613,33 +613,33 @@ Application::Application()
 
 Application::~Application() { HandlePauseRequest(); }
 
-void Application::Collect(const int connection, const StandardProtocol::Data& data)
+void Application::Collect(const int connection, const Protocol::Standard::Data& data)
 {
 	LOG_PROTOCOL("Collect data from connection: " + _S(connection) + ", " + data.ToString());
 	switch (data.GetCipher()) {
-	case StandardProtocol::cipherActionPause:
+	case Protocol::Standard::cipherActionPause:
 		HandlePauseRequest();
 		return;
-	case StandardProtocol::cipherActionRun:
+	case Protocol::Standard::cipherActionRun:
 		HandleRunRequest();
 		return;
-	case StandardProtocol::cipherActionDelete:
+	case Protocol::Standard::cipherActionDelete:
 		if (Application::IsRunning()) {
 			HandlePauseRequest();
 		}
 		HandleDeleteRequest();
 		return;
-	case StandardProtocol::cipherActionModify:
+	case Protocol::Standard::cipherActionModify:
 		HandleModifyRequest(data.GetData());
 		return;
-	case StandardProtocol::cipherActionHello:
+	case Protocol::Standard::cipherActionHello:
 		HandleHello(connection);
 		return;
-	case StandardProtocol::cipherMetadataRequest: {
+	case Protocol::Standard::cipherMetadataRequest: {
 		if (!m_metadata.empty()) {
-			StandardProtocol::Data metadataData{ StandardProtocol::cipherMetadataResponse };
+			Protocol::Standard::Data metadataData{ Protocol::Standard::cipherMetadataResponse };
 			metadataData.SetData(0, m_metadata);
-			StandardProtocol::Send(connection, metadataData);
+			Protocol::Standard::Send(connection, metadataData);
 			return;
 		}
 
@@ -948,18 +948,18 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 		}
 		std::format_to(std::back_inserter(m_metadata), "}}");
 
-		StandardProtocol::Data metadataData{ StandardProtocol::cipherMetadataResponse };
+		Protocol::Standard::Data metadataData{ Protocol::Standard::cipherMetadataResponse };
 		metadataData.SetData(0, m_metadata);
-		StandardProtocol::Send(connection, metadataData);
+		Protocol::Standard::Send(connection, metadataData);
 	}
 #undef TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART
 #undef TMP_MSAPI_APPLICATION_NAME_PART
 		return;
-	case StandardProtocol::cipherParametersResponse:
+	case Protocol::Standard::cipherParametersResponse:
 		HandleParameters(connection, data.GetData());
 		return;
-	case StandardProtocol::cipherParametersRequest: {
-		StandardProtocol::Data data{ StandardProtocol::cipherParametersResponse };
+	case Protocol::Standard::cipherParametersRequest: {
+		Protocol::Standard::Data data{ Protocol::Standard::cipherParametersResponse };
 		for (const auto& [id, parameter] : m_parameters) {
 			std::visit(
 				[&data, &id](const auto& arg) {
@@ -993,10 +993,10 @@ void Application::Collect(const int connection, const StandardProtocol::Data& da
 				},
 				parameter.m_value);
 		}
-		StandardProtocol::Send(connection, data);
+		Protocol::Standard::Send(connection, data);
 	}
 		return;
-	case StandardProtocol::cipherMetadataResponse: {
+	case Protocol::Standard::cipherMetadataResponse: {
 		const auto it{ data.GetData().find(0) };
 		if (it == data.GetData().end()) {
 			LOG_ERROR("Metadata is empty, connection: " + _S(connection));

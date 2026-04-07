@@ -79,10 +79,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	InstrumentStructure instrument1{ InstrumentStructure::InstrumentStructureType::First, figi1, 7432435, 998274902,
 		34387675464, 1000, 133, InstrumentStructure::Nominal{ 133, 1 }, true, true, true, 133, 0.25, 555666333 };
 	distributor->SetInstrument(instrument1);
-	MSAPI::ObjectProtocol::Filter<FilterStructure> filter{ MSAPI::ObjectProtocol::Type::Snapshot };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter{ MSAPI::Protocol::Object::Type::Snapshot };
 	client->GetInstrumentStream().SetFilter(filter);
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Undefined), "Stream state is undefined");
+		static_cast<short>(MSAPI::Protocol::Object::State::Undefined), "Stream state is undefined");
 	client->GetInstrumentStream().Open();
 
 	//* Waiting for HandleStreamSnapshotDone
@@ -99,7 +99,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	//* Waiting stream Closed state
 	client->WaitActionsNumber(test, 5000);
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Closed), "Stream state is closed");
+		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Stream state is closed");
 
 	//* Close is uncountable action
 	test.Assert(actions, size_t{ 3 }, "Client's actions number is still 3");
@@ -129,14 +129,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	//* Waiting stream Closed state
 	client->WaitActionsNumber(test, 5000);
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Closed), "Stream state is closed");
+		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Stream state is closed");
 
 	//* Close is uncountable action
 	test.Assert(actions, size_t{ 4 }, "Client's actions number is still 4");
 
 	//* Setup for next steps
 	client->Clear();
-	MSAPI::ObjectProtocol::Filter<FilterStructure> filter2{ MSAPI::ObjectProtocol::Type::SnapshotAndLive };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter2{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
 	client->GetInstrumentStream().SetFilter(filter2);
 	client->GetInstrumentStream().Open();
 
@@ -156,7 +156,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* Stream still opened
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Stream state still is opened");
 
 	//* Waiting one more instrument
 	const size_t figi3{ 123456789014 };
@@ -176,7 +176,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* Stream still opened
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Stream state still is opened");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 5 }, "Client's actions number is still 5");
@@ -185,14 +185,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	client->GetInstrumentStream().Close();
 	client->WaitActionsNumber(test, 5000);
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Closed), "Stream state is closed");
+		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Stream state is closed");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 5 }, "Client's actions number is still 5");
 
 	//* Setup for next steps
 	client->Clear();
-	MSAPI::ObjectProtocol::Filter<FilterStructure> filter3{ MSAPI::ObjectProtocol::Type::Snapshot };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter3{ MSAPI::Protocol::Object::Type::Snapshot };
 	FilterStructure figiFilter3{ figi3 };
 	filter3.SetObject(figiFilter3);
 	client->GetInstrumentStream().SetFilter(filter3);
@@ -211,14 +211,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	//* Waiting stream Closed state
 	client->WaitActionsNumber(test, 5000);
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Closed), "Stream state is closed");
+		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Stream state is closed");
 
 	//* Close is uncountable action
 	test.Assert(actions, size_t{ 3 }, "Client's actions number is still 3");
 
 	//* Setup for next steps
 	client->Clear();
-	MSAPI::ObjectProtocol::Filter<FilterStructure> filter4{ MSAPI::ObjectProtocol::Type::Snapshot };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter4{ MSAPI::Protocol::Object::Type::Snapshot };
 	FilterStructure figiFilter2{ figi2 };
 	filter4.SetObject(figiFilter2);
 	filter4.SetObject(figiFilter3);
@@ -242,7 +242,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	//* Waiting stream Closed state
 	client->WaitActionsNumber(test, 5000);
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Closed), "Stream state is closed");
+		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Stream state is closed");
 
 	//* Close is uncountable action
 	test.Assert(actions, size_t{ 4 }, "Client's actions number is still 4");
@@ -251,7 +251,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	client->Clear();
 	const size_t figi4{ 123456789015 };
 	const size_t figi5{ 123456789016 };
-	MSAPI::ObjectProtocol::Filter<FilterStructure> filter5{ MSAPI::ObjectProtocol::Type::SnapshotAndLive };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter5{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
 	InstrumentStructure instrument4{ InstrumentStructure::InstrumentStructureType::Fourth, figi4, 7432435, 998274902,
 		34387675464, 1000, 133, InstrumentStructure::Nominal{ 133, 4 }, true, true, true, 133, 0.25, 555666333 };
 	InstrumentStructure instrument5{ InstrumentStructure::InstrumentStructureType::First, figi5, 7432435, 998274902,
@@ -281,7 +281,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* Stream still opened
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Stream state still is opened");
 
 	//* Waiting one more instrument
 	distributor->SetInstrument(instrument4);
@@ -298,7 +298,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* Stream still opened
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Stream state still is opened");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 5 }, "Client's actions number is still 5");
@@ -318,7 +318,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* Stream still opened
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Stream state still is opened");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 6 }, "Client's actions number is still 6");
@@ -327,7 +327,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	client->GetInstrumentStream().Close();
 	client->WaitActionsNumber(test, 5000);
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Closed), "Stream state is closed");
+		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Stream state is closed");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 6 }, "Client's actions number is still 6");
@@ -335,15 +335,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	//* Setup for next steps
 	client->Clear();
 	distributor->Clear();
-	MSAPI::ObjectProtocol::Filter<FilterStructure> filter6{ MSAPI::ObjectProtocol::Type::SnapshotAndLive };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter6{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
 	filter6.SetObject(figiFilter2);
 	filter6.SetObject(figiFilter3);
 	filter6.SetObject(figiFilter4);
 	client->GetInstrumentStream().SetFilter(filter6);
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Closed), "Instrument stream state is closed");
+		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Instrument stream state is closed");
 	test.Assert(static_cast<short>(client->GetOrderStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Undefined), "Order stream state is undefined");
+		static_cast<short>(MSAPI::Protocol::Object::State::Undefined), "Order stream state is undefined");
 	OrderStructure order1{ figi1, 100.0, 20 };
 	OrderStructure order2{ figi2, 100.0, 20 };
 	OrderStructure order3{ figi3, 100.0, 20 };
@@ -377,9 +377,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* Streams still opened
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Instrument stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Instrument stream state still is opened");
 	test.Assert(static_cast<short>(client->GetOrderStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Order stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Order stream state still is opened");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 6 }, "Client's actions number is still 6");
@@ -406,9 +406,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* Streams still opened
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Instrument stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Instrument stream state still is opened");
 	test.Assert(static_cast<short>(client->GetOrderStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Order stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Order stream state still is opened");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 8 }, "Client's actions number is still 8");
@@ -434,9 +434,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* Streams still opened
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Instrument stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Instrument stream state still is opened");
 	test.Assert(static_cast<short>(client->GetOrderStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Order stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Order stream state still is opened");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 10 }, "Client's actions number is 10");
@@ -454,9 +454,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* Streams still opened
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Instrument stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Instrument stream state still is opened");
 	test.Assert(static_cast<short>(client->GetOrderStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Opened), "Order stream state still is opened");
+		static_cast<short>(MSAPI::Protocol::Object::State::Opened), "Order stream state still is opened");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 10 }, "Client's actions number is still 10");
@@ -466,9 +466,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	client->GetOrderStream().Close();
 	client->WaitActionsNumber(test, 5000);
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Closed), "Instrument stream state is closed");
+		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Instrument stream state is closed");
 	test.Assert(static_cast<short>(client->GetOrderStream().GetState()),
-		static_cast<short>(MSAPI::ObjectProtocol::State::Closed), "Order stream state is closed");
+		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Order stream state is closed");
 
 	//* Check actions number
 	test.Assert(actions, size_t{ 10 }, "Client's actions number is still 10");

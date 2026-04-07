@@ -49,7 +49,7 @@ bool StandardData()
 	LOG_INFO_UNITTEST("MSAPI Standard Data");
 	MSAPI::Test t;
 
-	const auto checkEmpty{ [&t] [[nodiscard]] (const MSAPI::StandardProtocol::Data& data) {
+	const auto checkEmpty{ [&t] [[nodiscard]] (const MSAPI::Protocol::Standard::Data& data) {
 		RETURN_IF_FALSE(t.Assert(data.ToString(), "Standard data:\n{\n\tCipher : 934875933\n\tBuffer size : 16\n}",
 			"Standard Data ToString empty"));
 		RETURN_IF_FALSE(t.Assert(data.GetData().empty(), true, "Standard Data GetData empty"));
@@ -58,7 +58,7 @@ bool StandardData()
 		return true;
 	} };
 
-	MSAPI::StandardProtocol::Data data(934875933);
+	MSAPI::Protocol::Standard::Data data(934875933);
 
 	RETURN_IF_FALSE(checkEmpty(data));
 
@@ -206,7 +206,7 @@ bool StandardData()
 
 	MSAPI::AutoClearPtr<void> buffer{ data.Encode() };
 	MSAPI::DataHeader header{ buffer.ptr };
-	MSAPI::StandardProtocol::Data copyData{ header, buffer.ptr };
+	MSAPI::Protocol::Standard::Data copyData{ header, buffer.ptr };
 
 	RETURN_IF_FALSE(
 		t.Assert(data.ToString(), copyData.ToString(), "For standard data from buffer ToString is as on source data"));

@@ -20,7 +20,7 @@
 #include "objectClient.h"
 
 ObjectClient::ObjectClient()
-	: MSAPI::ObjectProtocol::ApplicationStateChecker(this)
+	: MSAPI::Protocol::Object::ApplicationStateChecker(this)
 {
 	MSAPI::Application::SetState(MSAPI::Application::State::Running);
 }
@@ -34,14 +34,14 @@ void ObjectClient::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
 			return;
 		}
 
-		MSAPI::ObjectProtocol::Data data{ std::move(header), *recvBufferInfo->buffer };
+		MSAPI::Protocol::Object::Data data{ std::move(header), *recvBufferInfo->buffer };
 
 		void* object;
-		MSAPI::ObjectProtocol::Data::UnpackData(&object, *recvBufferInfo->buffer);
+		MSAPI::Protocol::Object::Data::UnpackData(&object, *recvBufferInfo->buffer);
 
-		if (data.GetHash() == typeid(MSAPI::ObjectProtocol::StreamStateResponse).hash_code()) {
+		if (data.GetHash() == typeid(MSAPI::Protocol::Object::StreamStateResponse).hash_code()) {
 			CollectStreamState(
-				data.GetStreamId(), reinterpret_cast<MSAPI::ObjectProtocol::StreamStateResponse*>(object));
+				data.GetStreamId(), reinterpret_cast<MSAPI::Protocol::Object::StreamStateResponse*>(object));
 			return;
 		}
 
@@ -78,12 +78,15 @@ bool ObjectClient::HasInstrument(const InstrumentStructure& instrument) const
 
 bool ObjectClient::HasOrder(const OrderStructure& order) const { return m_orders.find(order) != m_orders.end(); }
 
-MSAPI::ObjectProtocol::Stream<InstrumentStructure, FilterStructure>& ObjectClient::GetInstrumentStream()
+MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure>& ObjectClient::GetInstrumentStream()
 {
 	return m_instrumentStream;
 }
 
-MSAPI::ObjectProtocol::Stream<OrderStructure, FilterStructure>& ObjectClient::GetOrderStream() { return m_orderStream; }
+MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure>& ObjectClient::GetOrderStream()
+{
+	return m_orderStream;
+}
 
 void ObjectClient::HandleObject([[maybe_unused]] const int streamId, const InstrumentStructure& object)
 {

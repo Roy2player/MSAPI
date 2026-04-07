@@ -20,7 +20,7 @@
 #include "objectDistributor.h"
 
 ObjectDistributor::ObjectDistributor()
-	: MSAPI::ObjectProtocol::ApplicationStateChecker(this)
+	: MSAPI::Protocol::Object::ApplicationStateChecker(this)
 {
 	MSAPI::Application::SetState(MSAPI::Application::State::Running);
 }
@@ -34,18 +34,18 @@ void ObjectDistributor::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
 			return;
 		}
 
-		MSAPI::ObjectProtocol::Data data{ std::move(header), *recvBufferInfo->buffer };
+		MSAPI::Protocol::Object::Data data{ std::move(header), *recvBufferInfo->buffer };
 
 		void* object;
-		MSAPI::ObjectProtocol::Data::UnpackData(&object, *recvBufferInfo->buffer);
+		MSAPI::Protocol::Object::Data::UnpackData(&object, *recvBufferInfo->buffer);
 
-		if (data.GetHash() == typeid(MSAPI::ObjectProtocol::StreamStateResponse).hash_code()) {
+		if (data.GetHash() == typeid(MSAPI::Protocol::Object::StreamStateResponse).hash_code()) {
 			Distributor::StreamExternalAction({ data.GetStreamId(), recvBufferInfo->connection },
-				reinterpret_cast<MSAPI::ObjectProtocol::StreamStateResponse*>(object));
+				reinterpret_cast<MSAPI::Protocol::Object::StreamStateResponse*>(object));
 			return;
 		}
 
-		if (data.GetHash() == typeid(MSAPI::ObjectProtocol::Filter<FilterStructure>).hash_code()
+		if (data.GetHash() == typeid(MSAPI::Protocol::Object::Filter<FilterStructure>).hash_code()
 			|| data.GetHash() == typeid(FilterStructure).hash_code()) {
 
 			Distributor::Collect<FilterStructure>(recvBufferInfo->connection, data, object);
@@ -70,7 +70,7 @@ void ObjectDistributor::SetOrder(const OrderStructure& order)
 	m_orders.emplace(order);
 }
 
-void ObjectDistributor::HandleNewStreamOpened(const int streamId, const MSAPI::ObjectProtocol::StreamData& streamData)
+void ObjectDistributor::HandleNewStreamOpened(const int streamId, const MSAPI::Protocol::Object::StreamData& streamData)
 {
 	if (typeid(InstrumentStructure).hash_code() == streamData.objectHash) {
 		LOG_DEBUG("Stream id: " + _S(streamId) + ", connection: " + _S(streamData.connection)

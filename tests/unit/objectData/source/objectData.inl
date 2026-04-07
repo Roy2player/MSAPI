@@ -79,26 +79,26 @@ bool ObjectData()
 	const auto hashCode{ typeid(CustomObject).hash_code() };
 	const auto objectSize{ sizeof(first) };
 
-	MSAPI::ObjectProtocol::Data data{ 1, hashCode, objectSize };
+	MSAPI::Protocol::Object::Data data{ 1, hashCode, objectSize };
 	AutoClearPtr<void> packData{ data.PackData(&first) };
 
 	RETURN_IF_FALSE(t.Assert(data.GetHash(), hashCode, "CustomObject hash code"));
 	RETURN_IF_FALSE(t.Assert(data.IsValid(), true, "CustomObject data is valid"));
 	RETURN_IF_FALSE(t.Assert(data.GetStreamId(), 1, "CustomObject data stream id"));
 
-	RETURN_IF_FALSE(t.Assert(data == MSAPI::ObjectProtocol::Data{ 2, hashCode, objectSize }, false,
+	RETURN_IF_FALSE(t.Assert(data == MSAPI::Protocol::Object::Data{ 2, hashCode, objectSize }, false,
 		"Data is not equal to another one, different stream id, operator=="));
-	RETURN_IF_FALSE(t.Assert(data != MSAPI::ObjectProtocol::Data{ 2, hashCode, objectSize }, true,
+	RETURN_IF_FALSE(t.Assert(data != MSAPI::Protocol::Object::Data{ 2, hashCode, objectSize }, true,
 		"Data is not equal to another one, different stream id, operator!="));
 
-	RETURN_IF_FALSE(t.Assert(data == MSAPI::ObjectProtocol::Data{ 1, hashCode + 1, objectSize }, false,
+	RETURN_IF_FALSE(t.Assert(data == MSAPI::Protocol::Object::Data{ 1, hashCode + 1, objectSize }, false,
 		"Data is not equal to another one, different hash code, operator=="));
-	RETURN_IF_FALSE(t.Assert(data != MSAPI::ObjectProtocol::Data{ 1, hashCode + 1, objectSize }, true,
+	RETURN_IF_FALSE(t.Assert(data != MSAPI::Protocol::Object::Data{ 1, hashCode + 1, objectSize }, true,
 		"Data is not equal to another one, different hash code, operator!="));
 
-	RETURN_IF_FALSE(t.Assert(data == MSAPI::ObjectProtocol::Data{ 1, hashCode, objectSize + 1 }, false,
+	RETURN_IF_FALSE(t.Assert(data == MSAPI::Protocol::Object::Data{ 1, hashCode, objectSize + 1 }, false,
 		"Data is not equal to another one, different object size, operator=="));
-	RETURN_IF_FALSE(t.Assert(data != MSAPI::ObjectProtocol::Data{ 1, hashCode, objectSize + 1 }, true,
+	RETURN_IF_FALSE(t.Assert(data != MSAPI::Protocol::Object::Data{ 1, hashCode, objectSize + 1 }, true,
 		"Data is not equal to another one, different object size, operator!="));
 
 	RETURN_IF_FALSE(t.Assert(data.ToString(),
@@ -111,13 +111,13 @@ bool ObjectData()
 		"Data to string is correct"));
 
 	MSAPI::DataHeader header(packData.ptr);
-	MSAPI::ObjectProtocol::Data dataUnpacked{ header, packData.ptr };
+	MSAPI::Protocol::Object::Data dataUnpacked{ header, packData.ptr };
 
 	RETURN_IF_FALSE(t.Assert(dataUnpacked, data, "Unpacked data is equal to packed one, operator=="));
 	RETURN_IF_FALSE(t.Assert(dataUnpacked != data, false, "Unpacked is data equal to packed one, operator!="));
 
 	void* unpackObject;
-	MSAPI::ObjectProtocol::Data::UnpackData(&unpackObject, packData.ptr);
+	MSAPI::Protocol::Object::Data::UnpackData(&unpackObject, packData.ptr);
 
 	RETURN_IF_FALSE(CustomObject::AreEqual(*reinterpret_cast<const CustomObject*>(unpackObject), first, t));
 

@@ -24,7 +24,9 @@
 
 namespace MSAPI {
 
-namespace StandardProtocol {
+namespace Protocol {
+
+namespace Standard {
 
 /*---------------------------------------------------------------------------------
 Data
@@ -400,6 +402,8 @@ void SendParametersRequest(const int connection)
 
 #undef __STANDARD_PROTOCOL_SEND
 
-}; //* namespace StandardProtocol
+} // namespace Standard
 
-}; //* namespace MSAPI
+} // namespace Protocol
+
+} // namespace MSAPI

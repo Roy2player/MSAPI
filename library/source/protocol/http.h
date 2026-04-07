@@ -25,8 +25,8 @@
  * MSAPI_HANDLER_HTTP_PRESET macro is used to reserve and collect HTTP message.
  */
 
-#ifndef MSAPI_HTTP_H
-#define MSAPI_HTTP_H
+#ifndef MSAPI_PROTOCOL_HTTP_H
+#define MSAPI_PROTOCOL_HTTP_H
 
 #include "webSocket.inl"
 #include <iostream>
@@ -39,6 +39,8 @@ namespace MSAPI {
 
 class Application;
 class RecvBufferInfo;
+
+namespace Protocol {
 
 namespace HTTP {
 
@@ -294,12 +296,14 @@ public:
  */
 void SendRequest(int connection, const std::string& HTTP);
 
-}; //* namespace HTTP
+} // namespace HTTP
 
-}; //* namespace MSAPI
+} // namespace Protocol
+
+} // namespace MSAPI
 
 #define MSAPI_HANDLER_HTTP_PRESET                                                                                      \
-	if (MSAPI::HTTP::Data http(recvBufferInfo); http.IsValid()) {                                                      \
+	if (MSAPI::Protocol::HTTP::Data http(recvBufferInfo); http.IsValid()) {                                            \
 		MSAPI_HANDLER_HTTP_PRESET_INTERNAL_PART                                                                        \
 	}
 
@@ -337,7 +341,7 @@ void SendRequest(int connection, const std::string& HTTP);
 		}                                                                                                              \
 	}                                                                                                                  \
                                                                                                                        \
-	MSAPI::HTTP::IHandler::Collect(recvBufferInfo->connection, http);                                                  \
+	MSAPI::Protocol::HTTP::IHandler::Collect(recvBufferInfo->connection, http);                                        \
 	return;
 
-#endif //* MSAPI_HTTP_H
+#endif // MSAPI_PROTOCOL_HTTP_H

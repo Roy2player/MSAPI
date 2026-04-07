@@ -50,8 +50,8 @@
  * @todo typeid.hash_code() should be replaced with custom hash function
  */
 
-#ifndef MSAPI_OBJECT_PROTOCOL_H
-#define MSAPI_OBJECT_PROTOCOL_H
+#ifndef MSAPI_PROTOCOL_OBJECT_H
+#define MSAPI_PROTOCOL_OBJECT_H
 
 #include "../help/diagnostic.h"
 #include "../help/log.h"
@@ -69,7 +69,9 @@ namespace MSAPI {
 
 class Application;
 
-namespace ObjectProtocol {
+namespace Protocol {
+
+namespace Object {
 
 enum class Type : int16_t { Undefined, Snapshot, SnapshotAndLive, Max };
 enum class State : int16_t { Undefined, Pending, Opened, Done, Failed, Closed, Removed, Max };
@@ -90,14 +92,14 @@ enum class Issue : int16_t {
  *
  * @example Undefined, Snapshot, Snapshot and live, Max.
  */
-std::string_view EnumToString(ObjectProtocol::Type value);
+std::string_view EnumToString(Protocol::Object::Type value);
 
 /**************************
  * @return Description of object protocol stream state enum.
  *
  * @example Undefined, Pending, Opened, Done, Staled, Failed, Closed, Removed, Max.
  */
-std::string_view EnumToString(ObjectProtocol::State value);
+std::string_view EnumToString(Protocol::Object::State value);
 
 /**************************
  * @return Description of object protocol stream issue enum.
@@ -105,7 +107,7 @@ std::string_view EnumToString(ObjectProtocol::State value);
  * @example Undefined, Empty, Not unique filter, Reserved filter object without filter, Unknown filter object hash,
  * Unknown hash, Max.
  */
-std::string_view EnumToString(ObjectProtocol::Issue value);
+std::string_view EnumToString(Protocol::Object::Issue value);
 
 /**************************
  * @brief Structure for provide stream state.
@@ -739,10 +741,10 @@ public:
 			if (streamData.open) {
 				//* Will removed anyway
 				//* streamData.open = false;
-				ObjectProtocol::Send(streamData.connection,
+				Protocol::Object::Send(streamData.connection,
 					{ idAndConnection.first, typeid(StreamStateResponse).hash_code(), sizeof(StreamStateResponse) },
 					&state);
-				// Diagnostic::PrintBinaryDescriptor(data, sizeof(ObjectProtocol::Data), "Right after send");
+				// Diagnostic::PrintBinaryDescriptor(data, sizeof(Protocol::Object::Data), "Right after send");
 				RemoveInformationAboutStream(idAndConnection);
 			}
 		}
@@ -999,7 +1001,7 @@ public:
 				if (const auto it = m_streamDataToIdAndConnection.find(currentActiveStreamIt->second);
 					it != m_streamDataToIdAndConnection.end()) {
 
-					ObjectProtocol::Send(it->second.connection,
+					Protocol::Object::Send(it->second.connection,
 						{ currentActiveStreamIt->second.first, it->second.objectHash, sizeof(T) }, &object);
 				}
 				else {
@@ -1049,13 +1051,13 @@ private:
 
 		StreamStateResponse state{ State::Opened };
 		const Data data{ idAndConnection.first, typeid(StreamStateResponse).hash_code(), sizeof(StreamStateResponse) };
-		ObjectProtocol::Send(it->second.connection, data, &state);
+		Protocol::Object::Send(it->second.connection, data, &state);
 		HandleNewStreamOpened(idAndConnection.first, it->second);
 		state.state = State::Done;
-		ObjectProtocol::Send(it->second.connection, data, &state);
+		Protocol::Object::Send(it->second.connection, data, &state);
 		if (onlySnapshot) {
 			state.state = State::Closed;
-			ObjectProtocol::Send(it->second.connection, data, &state);
+			Protocol::Object::Send(it->second.connection, data, &state);
 			RemoveInformationAboutStream(idAndConnection);
 		}
 	}
@@ -1070,7 +1072,7 @@ private:
 		}
 
 		StreamStateResponse state{ State::Failed, issue };
-		ObjectProtocol::Send(it->second.connection,
+		Protocol::Object::Send(it->second.connection,
 			{ idAndConnection.first, typeid(StreamStateResponse).hash_code(), sizeof(StreamStateResponse) }, &state);
 		RemoveInformationAboutStream(idAndConnection);
 	}
@@ -1116,7 +1118,7 @@ private:
 		}
 
 		if (send) {
-			ObjectProtocol::Send(streamData.connection, { id, streamData.objectHash, sizeof(T) }, &object);
+			Protocol::Object::Send(streamData.connection, { id, streamData.objectHash, sizeof(T) }, &object);
 		}
 	}
 
@@ -1259,8 +1261,10 @@ public:
 	}
 };
 
-}; //* namespace ObjectProtocol
+} // namespace Object
 
-}; //* namespace MSAPI
+} // namespace Protocol
 
-#endif //* MSAPI_OBJECT_PROTOCOL_H
+} // namespace MSAPI
+
+#endif // MSAPI_PROTOCOL_OBJECT_H

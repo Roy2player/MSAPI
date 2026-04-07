@@ -21,7 +21,7 @@
 #include "../../../../library/source/help/io.inl"
 
 HTTPServer::HTTPServer()
-	: MSAPI::HTTP::IHandler(this)
+	: MSAPI::Protocol::HTTP::IHandler(this)
 {
 	RegisterParameter(1001, { "Web source path", &m_webSourcesPath });
 	MSAPI::Application::SetState(MSAPI::Application::State::Paused);
@@ -48,7 +48,7 @@ void HTTPServer::HandleModifyRequest(const std::map<size_t, std::variant<standar
 	}
 }
 
-void HTTPServer::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
+void HTTPServer::HandleHttp(const int connection, const MSAPI::Protocol::HTTP::Data& data)
 {
 	if (MSAPI::Application::GetState() != MSAPI::Application::State::Running) {
 		LOG_DEBUG("State is not Running, do nothing");
@@ -136,4 +136,4 @@ void HTTPServer::HandleHttp(const int connection, const MSAPI::HTTP::Data& data)
 	data.Send404(connection, "{\"Error\":\"Source \"" + url + "\" not found\"}", "application/json");
 }
 
-const std::optional<MSAPI::HTTP::Data>& HTTPServer::GetHTTPData() const noexcept { return m_HTTPData; }
+const std::optional<MSAPI::Protocol::HTTP::Data>& HTTPServer::GetHTTPData() const noexcept { return m_HTTPData; }

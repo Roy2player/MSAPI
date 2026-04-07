@@ -20,6 +20,7 @@ add_compile_options(
     -pedantic
     #-Werror
 
+    -std=c++2c
     -O3 # TODO: Find a way to build with -Ofast
     -march=native
     -flto=auto

@@ -724,7 +724,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 			std::format("Client {} detected connection for WebSocket handshake response", clientPortStr)));
 		const auto serverConnect{ serverConnectOpt.value() };
 		clientDeamon.serverConnect = serverConnect;
-		const std::vector<MSAPI::HTTP::Data>* clientHttpData{};
+		const std::vector<MSAPI::Protocol::HTTP::Data>* clientHttpData{};
 		size_t expectedClientHttpDataSize{};
 
 		RETURN_IF_FALSE(test.Wait(

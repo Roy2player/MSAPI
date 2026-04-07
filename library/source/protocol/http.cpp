@@ -29,6 +29,8 @@
 
 namespace MSAPI {
 
+namespace Protocol {
+
 namespace HTTP {
 
 /*---------------------------------------------------------------------------------
@@ -723,6 +725,8 @@ void SendRequest(const int connection, const std::string& HTTP)
 	LOG_PROTOCOL("Size of message: " + _S(result) + ", connection: " + _S(connection));
 }
 
-}; //* namespace HTTP
+} // namespace HTTP
 
-}; //* namespace MSAPI
+} // namespace Protocol
+
+} // namespace MSAPI
