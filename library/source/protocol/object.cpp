@@ -24,7 +24,9 @@
 
 namespace MSAPI {
 
-namespace ObjectProtocol {
+namespace Protocol {
+
+namespace Object {
 
 /*---------------------------------------------------------------------------------
 StreamData
@@ -299,6 +301,8 @@ std::string_view EnumToString(const Issue value)
 	}
 }
 
-}; //* namespace ObjectProtocol
+} // namespace Object
 
-}; //* namespace MSAPI
+} // namespace Protocol
+
+} // namespace MSAPI

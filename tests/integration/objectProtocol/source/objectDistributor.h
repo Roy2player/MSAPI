@@ -29,7 +29,7 @@
  *
  * @brief Can send objects of type: InstrumentStructure, OrderStructure.
  */
-class ObjectDistributor : public MSAPI::Server, MSAPI::ObjectProtocol::Distributor<FilterStructure> {
+class ObjectDistributor : public MSAPI::Server, MSAPI::Protocol::Object::Distributor<FilterStructure> {
 private:
 	std::set<InstrumentStructure> m_instruments;
 	std::set<OrderStructure> m_orders;
@@ -39,20 +39,20 @@ public:
 
 	//* MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo) final;
-	//* MSAPI::ObjectProtocol::Distributor
-	void HandleNewStreamOpened(int streamId, const MSAPI::ObjectProtocol::StreamData& streamData) final;
+	//* MSAPI::Protocol::Object::Distributor
+	void HandleNewStreamOpened(int streamId, const MSAPI::Protocol::Object::StreamData& streamData) final;
 
 	void SetInstrument(const InstrumentStructure& instrument);
 	void SetOrder(const OrderStructure& order);
 	void Clear();
 
 private:
-	std::function<bool(const MSAPI::ObjectProtocol::FilterBase* filter, const InstrumentStructure& instrument)>
+	std::function<bool(const MSAPI::Protocol::Object::FilterBase* filter, const InstrumentStructure& instrument)>
 		m_predicateForInstrument
-		= [](const MSAPI::ObjectProtocol::FilterBase* filter, const InstrumentStructure& instrument) {
+		= [](const MSAPI::Protocol::Object::FilterBase* filter, const InstrumentStructure& instrument) {
 			  if (filter->GetFilterObjectHash() == typeid(FilterStructure).hash_code()) {
 				  for (const auto& filter :
-					  reinterpret_cast<const MSAPI::ObjectProtocol::Filter<FilterStructure>*>(filter)->GetObjects()) {
+					  reinterpret_cast<const MSAPI::Protocol::Object::Filter<FilterStructure>*>(filter)->GetObjects()) {
 
 					  if (instrument.figi == filter.figi) {
 						  LOG_PROTOCOL(
@@ -67,11 +67,11 @@ private:
 			  return false;
 		  };
 
-	std::function<bool(const MSAPI::ObjectProtocol::FilterBase* filter, const OrderStructure& order)>
-		m_predicateForOrder = [](const MSAPI::ObjectProtocol::FilterBase* filter, const OrderStructure& order) {
+	std::function<bool(const MSAPI::Protocol::Object::FilterBase* filter, const OrderStructure& order)>
+		m_predicateForOrder = [](const MSAPI::Protocol::Object::FilterBase* filter, const OrderStructure& order) {
 			if (filter->GetFilterObjectHash() == typeid(FilterStructure).hash_code()) {
 				for (const auto& filter :
-					reinterpret_cast<const MSAPI::ObjectProtocol::Filter<FilterStructure>*>(filter)->GetObjects()) {
+					reinterpret_cast<const MSAPI::Protocol::Object::Filter<FilterStructure>*>(filter)->GetObjects()) {
 
 					if (order.figi == filter.figi) {
 						LOG_PROTOCOL("Object figi: " + _S(order.figi) + " match with filter figi: " + _S(filter.figi));

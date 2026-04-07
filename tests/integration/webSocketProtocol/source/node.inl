@@ -27,16 +27,16 @@
 
 namespace Test {
 
-class Node : public MSAPI::Server, MSAPI::HTTP::IHandler, public MSAPI::Protocol::WebSocket::IHandler {
+class Node : public MSAPI::Server, MSAPI::Protocol::HTTP::IHandler, public MSAPI::Protocol::WebSocket::IHandler {
 private:
 	std::unordered_map<int, std::vector<MSAPI::Protocol::WebSocket::Data>> m_webSocketDataToConnection;
 	MSAPI::Pthread::AtomicLock m_webSocketDataLock;
-	std::unordered_map<int, std::vector<MSAPI::HTTP::Data>> m_httpDataToConnection;
+	std::unordered_map<int, std::vector<MSAPI::Protocol::HTTP::Data>> m_httpDataToConnection;
 	MSAPI::Pthread::AtomicLock m_httpDataLock;
 
 public:
 	FORCE_INLINE Node() noexcept
-		: MSAPI::HTTP::IHandler{ this }
+		: MSAPI::Protocol::HTTP::IHandler{ this }
 		, MSAPI::Protocol::WebSocket::IHandler{ this }
 	{
 	}
@@ -48,7 +48,7 @@ public:
 
 		MSAPI::DataHeader header{ *recvBufferInfo->buffer };
 
-		if (MSAPI::HTTP::Data http(recvBufferInfo); http.IsValid()) {
+		if (MSAPI::Protocol::HTTP::Data http(recvBufferInfo); http.IsValid()) {
 			{
 				MSAPI::Pthread::AtomicLock::ExitGuard lock{ m_httpDataLock };
 				m_httpDataToConnection[recvBufferInfo->connection].emplace_back(http);
@@ -62,8 +62,11 @@ public:
 		LOG_ERROR_NEW("Unknown protocol: {}", header.ToString());
 	}
 
-	// MSAPI::HTTP::IHandler
-	void HandleHttp([[maybe_unused]] const int connection, [[maybe_unused]] const MSAPI::HTTP::Data& data) final { }
+	// MSAPI::Protocol::HTTP::IHandler
+	void HandleHttp(
+		[[maybe_unused]] const int connection, [[maybe_unused]] const MSAPI::Protocol::HTTP::Data& data) final
+	{
+	}
 
 	// MSAPI::Protocol::WebSocket::IHandler
 	void HandleWebSocket(const int connection, MSAPI::Protocol::WebSocket::Data&& data) final
@@ -99,7 +102,7 @@ public:
 		return nullptr;
 	}
 
-	FORCE_INLINE [[nodiscard]] const std::vector<MSAPI::HTTP::Data>* GetHttpData(const int connection)
+	FORCE_INLINE [[nodiscard]] const std::vector<MSAPI::Protocol::HTTP::Data>* GetHttpData(const int connection)
 	{
 		MSAPI::Pthread::AtomicLock::ExitGuard lock{ m_httpDataLock };
 		if (const auto it{ m_httpDataToConnection.find(connection) }; it != m_httpDataToConnection.end()) {
@@ -112,7 +115,7 @@ public:
 	FORCE_INLINE void SendHttp(const int id, const std::string& message)
 	{
 		if (const auto connect{ GetConnect(id) }; connect.has_value()) {
-			MSAPI::HTTP::SendRequest(connect.value(), message);
+			MSAPI::Protocol::HTTP::SendRequest(connect.value(), message);
 			return;
 		}
 
