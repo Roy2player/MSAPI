@@ -52,9 +52,9 @@ Server::Server()
 Server::~Server()
 {
 	Stop();
+	m_serverAcceptingLoop.Lock();
 	m_closingConnectionLocks.Lock();
 	m_alivePthreadsRWLock.WriteLock();
-	m_serverDestroyLock.Lock();
 }
 
 void Server::HandleRunRequest() { MSAPI_HANDLE_RUN_REQUEST_PRESET; }
@@ -125,7 +125,7 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 	pthread_attr_setschedpolicy(&attr, SCHED_RR);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	MSAPI::Pthread::AtomicLock::ExitGuard exitGuard{ m_serverDestroyLock };
+	MSAPI::Pthread::AtomicLock::ExitGuard exitGuard{ m_serverAcceptingLoop };
 
 	for (const auto& [id, info] : m_infoToConnection) {
 		StandardProtocol::SendActionHello(info.connection);
@@ -137,6 +137,9 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 		while (m_connectionsCounter < m_somaxconn && m_state != State::Stopped) {
 			newConnection = Accept(socketListen.socket, &clientAddr);
 			if (m_state == State::Stopped) [[unlikely]] {
+				LOG_DEBUG("Server state is Stopped, wait for pthreads to be finished");
+				MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> pthreadsGuard{ m_alivePthreadsRWLock };
+				LOG_DEBUG("Server state is Stopped, all pthreads are finished, return");
 				pthread_attr_destroy(&attr);
 				return;
 			}
@@ -204,7 +207,9 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 
 		if (m_state == State::Stopped) {
 			pthread_attr_destroy(&attr);
-			LOG_DEBUG("Server state is Stopped. Return from the main accepting loop");
+			LOG_DEBUG("Server state is Stopped, wait for pthreads to be finished");
+			MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> pthreadsGuard{ m_alivePthreadsRWLock };
+			LOG_DEBUG("Server state is Stopped, all pthreads are finished, return");
 			return;
 		}
 
@@ -227,7 +232,7 @@ void Server::Stop()
 	LOG_INFO("Server is stopping");
 	m_state = State::Stopped;
 
-	MSAPI::Pthread::AtomicLock::ExitGuard exitGuard{ m_closingConnectionLocks };
+	MSAPI::Pthread::AtomicLock::ExitGuard _{ m_closingConnectionLocks };
 
 	if (m_socketListen != nullptr && m_socketListen->socketCheck != nullptr && *m_socketListen->socketCheck) {
 		m_socketListen->socketCheck = nullptr;
@@ -258,10 +263,6 @@ void Server::Stop()
 			CloseConnect(copyIt->second);
 		}
 	}
-
-	// This function is assumed as the last point before Server childs chain destruction and must ensure no access to
-	// childs via virtual methods can take place
-	MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> pthreadsGuard{ m_alivePthreadsRWLock };
 
 	LOG_INFO("Server stopped");
 }
@@ -635,7 +636,7 @@ void Server::CloseConnect(ConnectionInfo& info)
 		+ " bytes to /dev/null, id: " + _S(recvBufferInfo->id));                                                       \
 	close(devNull);
 
-bool Server::ReadAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t bufferSize)
+bool Server::ReadAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t bufferSize, size_t offset)
 {
 	const auto action{ recvBufferInfo->ManageBuffer(bufferSize) };
 	switch (action) {
@@ -643,7 +644,9 @@ bool Server::ReadAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t buf
 		return false;
 	case RecvBufferInfo::Action::Read: {
 		int bytesAvailable{ 0 };
-		size_t offset{ recvBufferInfo->GetReadDataSize() };
+		if (offset == 0) {
+			offset = recvBufferInfo->GetReadDataSize();
+		}
 		ioctl(recvBufferInfo->connection, FIONREAD, &bytesAvailable);
 		if (bytesAvailable > 0) [[likely]] {
 			size_t readData{ bufferSize - offset };
@@ -683,7 +686,7 @@ bool Server::ReadAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t buf
 	}
 }
 
-bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t bufferSize)
+bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& bufferSize, size_t offset)
 {
 	const auto action{ recvBufferInfo->ManageBuffer(bufferSize) };
 	switch (action) {
@@ -691,7 +694,9 @@ bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t 
 		return false;
 	case RecvBufferInfo::Action::Read: {
 		int bytesAvailable{ 0 };
-		size_t offset{ recvBufferInfo->GetReadDataSize() };
+		if (offset == 0) {
+			offset = recvBufferInfo->GetReadDataSize();
+		}
 		ioctl(recvBufferInfo->connection, FIONREAD, &bytesAvailable);
 		if (bytesAvailable > 0) [[likely]] {
 			const auto readData{ bufferSize - recvBufferInfo->GetReadDataSize() };
@@ -701,6 +706,7 @@ bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t 
 			}
 
 			TMP_MSAPI_SERVER_DO_RECV(MSG_PEEK);
+			bufferSize = UINT64(result) + offset;
 			return true;
 		}
 

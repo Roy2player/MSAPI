@@ -44,9 +44,9 @@ public:
 	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBufferInfo* const recvBufferInfo) final
 	{
-		MSAPI::DataHeader header{ *recvBufferInfo->buffer };
-
 		MSAPI_HANDLER_WEBSOCKET_PRESET;
+
+		MSAPI::DataHeader header{ *recvBufferInfo->buffer };
 
 		if (MSAPI::HTTP::Data http(recvBufferInfo); http.IsValid()) {
 			{

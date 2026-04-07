@@ -149,6 +149,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	const auto payloadSpan{ std::span<const uint8_t>{
 		reinterpret_cast<const uint8_t*>(payload.data()), payload.size() } };
 	const auto nonConstPayloadSpan{ std::span<uint8_t>{ reinterpret_cast<uint8_t*>(payload.data()), payload.size() } };
+	// BE order of bytes because they are will be BE sorted back in close message construction
+	const auto closeCodeInBuffer{ static_cast<int16_t>(
+		htobe16(reinterpret_cast<const uint16_t*>(payloadSpan.data())[0])) };
 
 	MSAPI::Test test;
 
@@ -525,7 +528,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 #define TMP_MSAPI_PROTOCOL_WEBSOCKET_DATA_SPLIT_GENERATOR_CONSTRUCT_WITH_PAYLOAD_TYPE(type)                            \
 	{                                                                                                                  \
 		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text };                   \
-		std::span<type> specificPayload{ reinterpret_cast<type*>(nonConstPayloadSpan.data()), 5 };                     \
+		std::span<type> specificPayload(reinterpret_cast<type*>(nonConstPayloadSpan.data()), 5);                       \
 		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, specificPayload, 4 };                        \
 		RETURN_IF_FALSE(test.Assert(generator.Get(), true, "Successfully get from split generator"));                  \
 		RETURN_IF_FALSE(checkMessage(data, false, false, false, false, MSAPI::Protocol::WebSocket::Data::Opcode::Text, \
@@ -564,7 +567,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 			 { 65535, false }, { 65536, true }, { 65537, false }, { 131070, true } } }) {
 		LOG_INFO_NEW("Testing creation of close message with payload size {}", testData.payloadSize);
 		auto message{ MSAPI::Protocol::WebSocket::Data::CreateClose(
-			int16_t{ 8480 } /* value in the buffer */, payloadSpan.subspan(0, testData.payloadSize), testData.mask) };
+			static_cast<MSAPI::Protocol::WebSocket::Data::CloseStatusCode>(closeCodeInBuffer),
+			payloadSpan.subspan(0, testData.payloadSize), testData.mask) };
 		RETURN_IF_FALSE(checkMessage(message, true, false, false, false,
 			MSAPI::Protocol::WebSocket::Data::Opcode::Close, testData.isMasked, payloadSpan.subspan(0, 2), ""));
 	}
@@ -573,9 +577,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	{
 #define TMP_MSAPI_PROTOCOL_WEBSOCKET_DATA_CLOSE_CONSTRUCT_WITH_PAYLOAD_TYPE(type)                                      \
 	{                                                                                                                  \
-		std::span<type> specificPayload{ reinterpret_cast<type*>(nonConstPayloadSpan.data() + 2), 5 };                 \
-		auto message{ MSAPI::Protocol::WebSocket::Data::CreateClose(                                                   \
-			int16_t{ 8480 } /* value in the buffer */, specificPayload) };                                             \
+		std::span<type> specificPayload(reinterpret_cast<type*>(nonConstPayloadSpan.data() + 2), 5);                   \
+		auto message{ MSAPI::Protocol::WebSocket::Data::CreateClose(closeCodeInBuffer, specificPayload) };             \
 		RETURN_IF_FALSE(checkMessage(message, true, false, false, false,                                               \
 			MSAPI::Protocol::WebSocket::Data::Opcode::Close, false, payloadSpan.subspan(0, 7), ""));                   \
 	}
@@ -644,7 +647,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	std::vector<ClientDeamon> clientDaemons;
 
 	const auto doTest{ [serverId, &serverPtr, server, &test, payloadSpan, &checkMessage, &serverObserver,
-						   &clientDaemons](const bool isMasked) -> bool {
+						   &clientDaemons, closeCodeInBuffer](const bool isMasked) -> bool {
 		auto& clientDeamon{ clientDaemons.emplace_back(ClientDeamon{ MSAPI::Daemon<Test::Node>::Create("Client") }) };
 		if (clientDeamon.ptr == nullptr) {
 			return false;
@@ -946,10 +949,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 			doSendAndCheckWithoutPayload.template operator()<MSAPI::Protocol::WebSocket::Data::Opcode::Pong>(
 				true, true, true, false, isMasked));
 
-		const auto getMessageWithPayload{ [&test,
-											  &clientPortStr]<MSAPI::Protocol::WebSocket::Data::Opcode O, typename T>(
-											  const std::span<const T> payload, const bool isFinal, const bool isMasked,
-											  const bool rsv1, const bool rsv2, const bool rsv3) {
+		const auto getMessageWithPayload{ [&test, &clientPortStr,
+											  closeCodeInBuffer]<MSAPI::Protocol::WebSocket::Data::Opcode O,
+											  typename T>(const std::span<const T> payload, const bool isFinal,
+											  const bool isMasked, const bool rsv1, const bool rsv2, const bool rsv3) {
 			if constexpr (O == MSAPI::Protocol::WebSocket::Data::Opcode::Close) {
 				if (payload.size() < 2) {
 					if (!payload.empty()) {
@@ -963,14 +966,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 						return MSAPI::Protocol::WebSocket::Data::CreateClose(
 							int16_t{ -1 }, {}, MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey());
 					}
-					return MSAPI::Protocol::WebSocket::Data::CreateClose();
+					return MSAPI::Protocol::WebSocket::Data::CreateClose<
+						MSAPI::Protocol::WebSocket::Data::CloseStatusCode>();
 				}
-				const int16_t statusCode{ reinterpret_cast<const int16_t*>(payload.data())[0] };
 				if (isMasked) {
-					return MSAPI::Protocol::WebSocket::Data::CreateClose(statusCode, payload.subspan(sizeof(int16_t)),
-						MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey());
+					return MSAPI::Protocol::WebSocket::Data::CreateClose(closeCodeInBuffer,
+						payload.subspan(sizeof(int16_t)), MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey());
 				}
-				return MSAPI::Protocol::WebSocket::Data::CreateClose(statusCode, payload.subspan(sizeof(int16_t)));
+				return MSAPI::Protocol::WebSocket::Data::CreateClose(
+					closeCodeInBuffer, payload.subspan(sizeof(int16_t)));
 			}
 			else {
 				if (isMasked) {

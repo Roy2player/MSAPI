@@ -219,7 +219,7 @@ Prefer RETURN_IF_FALSE for early exits on failed assertions.
 - **Table:** (apps/manager/web/js/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types
 - **Grid:** (apps/manager/web/js/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations
 - **Timer:** (apps/manager/web/js/timer.js) Timestamp input handling, normalization, and validation with timezone support
-- **Duration:** (apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time unit
+- **Duration:** (apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time units
 - **Select:** (apps/manager/web/js/select.js) Custom select input with searchable options, validation, and dynamic metadata integration
 - **Helper:** (apps/manager/web/js/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more
 

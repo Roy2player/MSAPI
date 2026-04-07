@@ -38,7 +38,7 @@ Server provides data to be handled by calling a callback in case if this data is
 - [**Object protocol:**](library/source/protocol/object.h) Transfers simple copyable objects using stream and filter models.
 - [**Standard protocol:**](library/source/protocol/standard.h) Handles dynamic-size messages as arrays of key-value pairs.
 - [**HTTP protocol:**](library/source/protocol/http.h) Basic HTTP message parsing and handling.
-- [**WebSocket protocol:**](library/source/protocol/webSocket.h) Implementation of data and parallel execution safe functional abstractions for 13 version (RFC 6455) WebSocket protocol.
+- [**WebSocket protocol:**](library/source/protocol/webSocket.inl) Implementation of data and parallel execution safe functional abstractions for 13 version (RFC 6455) WebSocket protocol.
 
 ### [Utility Modules](library/source/help/)
 - [**Log:**](library/source/help/log.h) Multiple log levels and console/file outputs.

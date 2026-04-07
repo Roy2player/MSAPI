@@ -1,5 +1,5 @@
 /**************************
- * @file        helper.inl
+ * @file        webSocket.inl
  * @version     6.0
  * @date        2026-02-16
  * @author      maks.angels@mail.ru
@@ -334,7 +334,8 @@ public:
 	 */
 	template <typename T = int16_t, typename S = uint8_t>
 		requires((std::is_same_v<T, int16_t> || std::is_same_v<T, CloseStatusCode>) && sizeof(S) == 1)
-	FORCE_INLINE [[nodiscard]] static Data CreateClose(T statusCode = -1, std::span<S> reason = {}, uint32_t mask = 0);
+	FORCE_INLINE [[nodiscard]] static Data CreateClose(
+		T statusCode = static_cast<T>(-1), std::span<S> reason = {}, uint32_t mask = 0);
 
 	/**
 	 * @param payloadSize Payload size.
@@ -668,14 +669,16 @@ FORCE_INLINE Data::Data(const std::span<const uint8_t> payload, const Opcode opc
 		if (mask == 0) {
 			m_headerSize += int8_t{ sizeof(uint16_t) };
 			m_buffer.resize(static_cast<size_t>(m_headerSize) + payloadSize);
-			*reinterpret_cast<uint16_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = static_cast<uint16_t>(payloadSize);
+			*reinterpret_cast<uint16_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE)
+				= htobe16(static_cast<uint16_t>(payloadSize));
 			memcpy(m_buffer.data() + m_headerSize, payload.data(), payloadSize);
 		}
 		else {
 			m_buffer[1] |= 0b10000000;
 			m_headerSize += int8_t{ sizeof(uint16_t) + sizeof(int32_t) };
 			m_buffer.resize(static_cast<size_t>(m_headerSize) + payloadSize);
-			*reinterpret_cast<uint16_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = static_cast<uint16_t>(payloadSize);
+			*reinterpret_cast<uint16_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE)
+				= htobe16(static_cast<uint16_t>(payloadSize));
 			*reinterpret_cast<uint32_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE + sizeof(uint16_t)) = mask;
 			memcpy(m_buffer.data() + m_headerSize, payload.data(), payloadSize);
 			ApplyMask(m_buffer.data() + m_headerSize, payloadSize, mask);
@@ -687,14 +690,14 @@ FORCE_INLINE Data::Data(const std::span<const uint8_t> payload, const Opcode opc
 	if (mask == 0) {
 		m_headerSize += int8_t{ sizeof(uint64_t) };
 		m_buffer.resize(static_cast<size_t>(m_headerSize) + payloadSize);
-		*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = static_cast<uint64_t>(payloadSize);
+		*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = htobe64(payloadSize);
 		memcpy(m_buffer.data() + m_headerSize, payload.data(), payloadSize);
 	}
 	else {
 		m_buffer[1] |= 0b10000000;
 		m_headerSize += int8_t{ sizeof(uint64_t) + sizeof(int32_t) };
 		m_buffer.resize(static_cast<size_t>(m_headerSize) + payloadSize);
-		*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = static_cast<uint64_t>(payloadSize);
+		*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = htobe64(payloadSize);
 		*reinterpret_cast<uint32_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE + sizeof(uint64_t)) = mask;
 		memcpy(m_buffer.data() + m_headerSize, payload.data(), payloadSize);
 		ApplyMask(m_buffer.data() + m_headerSize, payloadSize, mask);
@@ -707,7 +710,6 @@ FORCE_INLINE Data::Data(RecvBufferInfo* const recvBufferInfo)
 	memcpy(m_buffer.data(), *recvBufferInfo->buffer, REQUIRED_HEADER_SIZE);
 	auto payloadHeaderSize{ static_cast<uint64_t>(m_buffer[1] & 0x7F) };
 	if (static_cast<int64_t>(payloadHeaderSize) <= 0) {
-
 		if (IsMasked()) {
 			m_headerSize += int8_t{ sizeof(uint32_t) };
 			if (!Server::ReadAdditionalData(recvBufferInfo, static_cast<size_t>(m_headerSize))) {
@@ -749,13 +751,13 @@ FORCE_INLINE Data::Data(RecvBufferInfo* const recvBufferInfo)
 
 	if (payloadHeaderSize == 126) {
 		m_headerSize += int8_t{ sizeof(uint16_t) };
-		if (!Server::LookForAdditionalData(recvBufferInfo, static_cast<size_t>(m_headerSize))) {
+		if (!Server::ReadAdditionalData(recvBufferInfo, static_cast<size_t>(m_headerSize))) {
 			return;
 		}
-		payloadHeaderSize = *reinterpret_cast<const uint16_t*>(
-			static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE);
+		payloadHeaderSize = be16toh(*reinterpret_cast<const uint16_t*>(
+			static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE));
 		const auto totalSize{ static_cast<size_t>(m_headerSize) + payloadHeaderSize };
-		if (!Server::ReadAdditionalData(recvBufferInfo, totalSize)) {
+		if (!Server::ReadAdditionalData(recvBufferInfo, totalSize, static_cast<size_t>(m_headerSize))) {
 			return;
 		}
 		m_buffer.resize(totalSize);
@@ -776,13 +778,13 @@ FORCE_INLINE Data::Data(RecvBufferInfo* const recvBufferInfo)
 	}
 
 	m_headerSize += static_cast<int8_t>(sizeof(uint64_t));
-	if (!Server::LookForAdditionalData(recvBufferInfo, static_cast<size_t>(m_headerSize))) {
+	if (!Server::ReadAdditionalData(recvBufferInfo, static_cast<size_t>(m_headerSize))) {
 		return;
 	}
-	payloadHeaderSize
-		= *reinterpret_cast<const uint64_t*>(static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE);
+	payloadHeaderSize = be64toh(
+		*reinterpret_cast<const uint64_t*>(static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE));
 	const auto totalSize{ static_cast<size_t>(m_headerSize) + payloadHeaderSize };
-	if (!Server::ReadAdditionalData(recvBufferInfo, totalSize)) {
+	if (!Server::ReadAdditionalData(recvBufferInfo, totalSize, static_cast<size_t>(m_headerSize))) {
 		return;
 	}
 	m_buffer.resize(totalSize);
@@ -889,13 +891,13 @@ FORCE_INLINE void Data::MergePayload(const Data& other) noexcept
 		return;
 	}
 
+	const auto totalPayloadSize{ currentPayloadSize + other.GetPayloadSize() };
 	if (currentPayloadSize >= 65536) {
-		*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) += static_cast<uint64_t>(otherPayloadSize);
+		*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = htobe64(totalPayloadSize);
 		m_buffer.insert(m_buffer.end(), other.GetPayload().begin(), other.GetPayload().end());
 		return;
 	}
 
-	const auto totalPayloadSize{ currentPayloadSize + other.GetPayloadSize() };
 	if (currentPayloadSize <= 125) {
 		if (totalPayloadSize <= 125) {
 			const bool isMasked{ IsMasked() };
@@ -918,7 +920,7 @@ FORCE_INLINE void Data::MergePayload(const Data& other) noexcept
 				m_buffer[1] |= 0b10000000;
 			}
 			*reinterpret_cast<uint16_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE)
-				= static_cast<uint16_t>(totalPayloadSize);
+				= htobe16(static_cast<uint16_t>(totalPayloadSize));
 			memcpy(m_buffer.data() + static_cast<size_t>(m_headerSize) + currentPayloadSize, other.GetPayload().data(),
 				otherPayloadSize);
 			return;
@@ -933,14 +935,15 @@ FORCE_INLINE void Data::MergePayload(const Data& other) noexcept
 		if (isMasked) {
 			m_buffer[1] |= 0b10000000;
 		}
-		*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = static_cast<uint64_t>(totalPayloadSize);
+		*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = htobe64(totalPayloadSize);
 		memcpy(m_buffer.data() + static_cast<size_t>(m_headerSize) + currentPayloadSize, other.GetPayload().data(),
 			otherPayloadSize);
 		return;
 	}
 
 	if (totalPayloadSize <= 65535) {
-		*reinterpret_cast<uint16_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = static_cast<uint16_t>(totalPayloadSize);
+		*reinterpret_cast<uint16_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE)
+			= htobe16(static_cast<uint16_t>(totalPayloadSize));
 		m_buffer.insert(m_buffer.end(), other.GetPayload().begin(), other.GetPayload().end());
 		return;
 	}
@@ -954,7 +957,7 @@ FORCE_INLINE void Data::MergePayload(const Data& other) noexcept
 	if (isMasked) {
 		m_buffer[1] |= 0b10000000;
 	}
-	*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = static_cast<uint64_t>(totalPayloadSize);
+	*reinterpret_cast<uint64_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = htobe64(totalPayloadSize);
 	memcpy(m_buffer.data() + static_cast<size_t>(m_headerSize) + currentPayloadSize, other.GetPayload().data(),
 		otherPayloadSize);
 }
@@ -1060,7 +1063,7 @@ FORCE_INLINE void Data::ApplyMask(uint8_t* const payload, const size_t size, con
 {
 	size_t index{};
 	while (index < size && (reinterpret_cast<uintptr_t>(payload + index) & 3)) {
-		payload[index] ^= static_cast<uint8_t>(mask >> (8 * index & 3));
+		payload[index] ^= static_cast<uint8_t>(mask >> (8 * (index & 3)));
 		index++;
 	}
 
@@ -1072,7 +1075,7 @@ FORCE_INLINE void Data::ApplyMask(uint8_t* const payload, const size_t size, con
 	index += blocks * 4;
 
 	while (index < size) {
-		payload[index] ^= static_cast<uint8_t>(mask >> (8 * index & 3));
+		payload[index] ^= static_cast<uint8_t>(mask >> (8 * (index & 3)));
 		index++;
 	}
 }
@@ -1083,7 +1086,7 @@ FORCE_INLINE [[nodiscard]] Data Data::CreateClose(const T statusCode, const std:
 {
 	Data data;
 	data.m_buffer[0] |= 0b10001000;
-	if (statusCode != -1) {
+	if (statusCode != static_cast<T>(-1)) {
 		if (!reason.empty()) {
 			const auto reasonSize{ reason.size() };
 			if (reasonSize > 123) [[unlikely]] {
@@ -1095,7 +1098,8 @@ FORCE_INLINE [[nodiscard]] Data Data::CreateClose(const T statusCode, const std:
 	if (mask == 0) {                                                                                                   \
 		data.m_buffer.resize(static_cast<size_t>(REQUIRED_HEADER_SIZE) + sizeof(int16_t));                             \
 		data.m_buffer[1] = uint8_t{ sizeof(int16_t) };                                                                 \
-		*reinterpret_cast<uint16_t*>(data.m_buffer.data() + REQUIRED_HEADER_SIZE) = static_cast<uint16_t>(statusCode); \
+		*reinterpret_cast<uint16_t*>(data.m_buffer.data() + REQUIRED_HEADER_SIZE)                                      \
+			= htobe16(static_cast<uint16_t>(statusCode));                                                              \
 	}                                                                                                                  \
 	else {                                                                                                             \
 		data.m_headerSize += int8_t{ sizeof(uint32_t) };                                                               \
@@ -1104,7 +1108,7 @@ FORCE_INLINE [[nodiscard]] Data Data::CreateClose(const T statusCode, const std:
 		data.m_buffer[1] |= 0b10000000;                                                                                \
 		*reinterpret_cast<uint32_t*>(data.m_buffer.data() + REQUIRED_HEADER_SIZE) = mask;                              \
 		*reinterpret_cast<uint16_t*>(data.m_buffer.data() + static_cast<size_t>(data.m_headerSize))                    \
-			= static_cast<uint16_t>(statusCode);                                                                       \
+			= htobe16(static_cast<uint16_t>(statusCode));                                                              \
 		ApplyMask(data.m_buffer.data() + static_cast<size_t>(data.m_headerSize), sizeof(int16_t), mask);               \
 	}
 
@@ -1118,7 +1122,7 @@ FORCE_INLINE [[nodiscard]] Data Data::CreateClose(const T statusCode, const std:
 				data.m_buffer.resize(static_cast<size_t>(REQUIRED_HEADER_SIZE) + totalSize);
 				data.m_buffer[1] = static_cast<uint8_t>(totalSize);
 				*reinterpret_cast<uint16_t*>(data.m_buffer.data() + REQUIRED_HEADER_SIZE)
-					= static_cast<uint16_t>(statusCode);
+					= htobe16(static_cast<uint16_t>(statusCode));
 				memcpy(data.m_buffer.data() + static_cast<size_t>(REQUIRED_HEADER_SIZE) + sizeof(int16_t),
 					reason.data(), reasonSize);
 			}
@@ -1130,7 +1134,7 @@ FORCE_INLINE [[nodiscard]] Data Data::CreateClose(const T statusCode, const std:
 				data.m_buffer[1] |= 0b10000000;
 				*reinterpret_cast<uint32_t*>(data.m_buffer.data() + REQUIRED_HEADER_SIZE) = mask;
 				*reinterpret_cast<uint16_t*>(data.m_buffer.data() + static_cast<size_t>(data.m_headerSize))
-					= static_cast<uint16_t>(statusCode);
+					= htobe16(static_cast<uint16_t>(statusCode));
 				memcpy(data.m_buffer.data() + static_cast<size_t>(data.m_headerSize) + sizeof(int16_t), reason.data(),
 					reasonSize);
 				ApplyMask(
@@ -1265,97 +1269,96 @@ FORCE_INLINE [[nodiscard]] bool Data::SplitGenerator<T>::Get()
 		return true;
 	}
 
-	const auto currentStep{ std::min(m_step, remainingSize) };
 	if (m_step <= 125) {
-		memcpy(
-			m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset, currentStep);
-		m_data.m_buffer[1] = static_cast<uint8_t>(currentStep);
+		memcpy(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset,
+			remainingSize);
+		m_data.m_buffer[1] = static_cast<uint8_t>(remainingSize);
 		if (m_masking) {
 			m_data.m_buffer[1] |= 0b10000000;
 			const auto mask{ Data::GenerateMaskingKey() };
 			*reinterpret_cast<uint32_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE) = mask;
-			Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), currentStep, mask);
+			Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), remainingSize, mask);
 		}
-		m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + currentStep);
-		m_offset += currentStep;
+		m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + remainingSize);
+		m_offset += remainingSize;
 		return true;
 	}
 
 	if (m_step <= 65535) {
 		if (remainingSize > 125) {
 			memcpy(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset,
-				currentStep);
+				remainingSize);
 			if (m_masking) {
 				const auto mask{ Data::GenerateMaskingKey() };
 				*reinterpret_cast<uint32_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE + sizeof(uint16_t)) = mask;
-				Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), currentStep, mask);
+				Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), remainingSize, mask);
 			}
 			*reinterpret_cast<uint16_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE)
-				= static_cast<uint16_t>(currentStep);
-			m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + currentStep);
-			m_offset += currentStep;
+				= htobe16(static_cast<uint16_t>(remainingSize));
+			m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + remainingSize);
+			m_offset += remainingSize;
 			return true;
 		}
 
 		m_data.m_headerSize -= int8_t{ sizeof(uint16_t) };
-		memcpy(
-			m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset, currentStep);
-		m_data.m_buffer[1] = static_cast<uint8_t>(currentStep);
+		memcpy(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset,
+			remainingSize);
+		m_data.m_buffer[1] = static_cast<uint8_t>(remainingSize);
 		if (m_masking) {
 			m_data.m_buffer[1] |= 0b10000000;
 			const auto mask{ Data::GenerateMaskingKey() };
 			*reinterpret_cast<uint32_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE) = mask;
-			Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), currentStep, mask);
+			Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), remainingSize, mask);
 		}
-		m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + currentStep);
-		m_offset += currentStep;
+		m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + remainingSize);
+		m_offset += remainingSize;
 		return true;
 	}
 
 	if (remainingSize > 65535) {
-		memcpy(
-			m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset, currentStep);
+		memcpy(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset,
+			remainingSize);
 		if (m_masking) {
 			const auto mask{ Data::GenerateMaskingKey() };
 			*reinterpret_cast<uint32_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE + sizeof(uint64_t)) = mask;
-			Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), currentStep, mask);
+			Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), remainingSize, mask);
 		}
-		*reinterpret_cast<uint64_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE)
-			= static_cast<uint64_t>(currentStep);
-		m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + currentStep);
-		m_offset += currentStep;
+		*reinterpret_cast<uint64_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE) = htobe64(remainingSize);
+		m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + remainingSize);
+		m_offset += remainingSize;
 		return true;
 	}
 
 	if (remainingSize > 125) {
 		m_data.m_headerSize -= int8_t{ sizeof(uint64_t) - sizeof(uint16_t) };
-		memcpy(
-			m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset, currentStep);
+		memcpy(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset,
+			remainingSize);
 		m_data.m_buffer[1] = uint8_t{ 126 };
 		if (m_masking) {
 			m_data.m_buffer[1] |= 0b10000000;
 			const auto mask{ Data::GenerateMaskingKey() };
 			*reinterpret_cast<uint32_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE + sizeof(uint16_t)) = mask;
-			Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), currentStep, mask);
+			Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), remainingSize, mask);
 		}
 		*reinterpret_cast<uint16_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE)
-			= static_cast<uint16_t>(currentStep);
-		m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + currentStep);
-		m_offset += currentStep;
+			= htobe16(static_cast<uint16_t>(remainingSize));
+		m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + remainingSize);
+		m_offset += remainingSize;
 		return true;
 	}
 
 	m_data.m_headerSize -= int8_t{ sizeof(uint64_t) };
-	memcpy(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset, currentStep);
-	m_data.m_buffer[1] = static_cast<uint8_t>(currentStep);
+	memcpy(
+		m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), m_buffer.data() + m_offset, remainingSize);
+	m_data.m_buffer[1] = static_cast<uint8_t>(remainingSize);
 	if (m_masking) {
 		m_data.m_buffer[1] |= 0b10000000;
 		const auto mask{ Data::GenerateMaskingKey() };
 		*reinterpret_cast<uint32_t*>(m_data.m_buffer.data() + REQUIRED_HEADER_SIZE) = mask;
-		Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), currentStep, mask);
+		Data::ApplyMask(m_data.m_buffer.data() + static_cast<size_t>(m_data.m_headerSize), remainingSize, mask);
 	}
-	m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + currentStep);
-	m_offset += currentStep;
+	m_data.m_buffer.resize(static_cast<size_t>(m_data.m_headerSize) + remainingSize);
+	m_offset += remainingSize;
 	return true;
 }
 
@@ -1424,7 +1427,7 @@ FORCE_INLINE IHandler::IHandler(const MSAPI::Application* const application) noe
 {
 }
 
-void IHandler::HandleWebSocketPong([[maybe_unused]] const int connection, [[maybe_unused]] Data&& data) {};
+FORCE_INLINE void IHandler::HandleWebSocketPong([[maybe_unused]] const int connection, [[maybe_unused]] Data&& data) { }
 
 FORCE_INLINE void IHandler::Collect(const int connection, Data&& data)
 {
@@ -1520,7 +1523,8 @@ FORCE_INLINE void IHandler::Collect(const int connection, Data&& data)
 			const auto payloadSize{ data.GetPayloadSize() };
 			if (payloadSize >= 2) {
 				const auto* payloadPtr{ data.GetPayload().data() };
-				const auto statusCode{ *reinterpret_cast<const Data::CloseStatusCode*>(payloadPtr) };
+				const auto statusCode{ static_cast<Data::CloseStatusCode>(
+					be16toh(*reinterpret_cast<const uint16_t*>(payloadPtr))) };
 				if (payloadSize > 2) {
 					const auto reason{ std::string_view(
 						reinterpret_cast<const char*>(payloadPtr + 2), payloadSize - 2) };
@@ -1569,7 +1573,7 @@ FORCE_INLINE double IHandler::GetFragmentedDataLimit() const noexcept { return m
 FORCE_INLINE [[nodiscard]] bool IHandler::SetFragmentedDataLimit(const double limitMb)
 {
 	if (Helper::FloatLess(limitMb, 0.)) [[unlikely]] {
-		LOG_WARNING_NEW("WebSocket fragmented data limit must be greater than 0, provided: {}", limitMb);
+		LOG_WARNING_NEW("WebSocket fragmented data limit must be greater than or equal to 0, provided: {}", limitMb);
 		return false;
 	}
 

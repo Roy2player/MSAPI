@@ -102,6 +102,8 @@ public:
 	const int connection;
 	const int id;
 
+	static constexpr inline size_t DEFAULT_READ_DATA_SIZE{ sizeof(size_t) * 2 };
+
 private:
 	size_t m_currentRecvBufferSize;
 	const size_t* m_recvBufferSizeLimit;
@@ -115,7 +117,7 @@ public:
 	 * @note Is not inside Server class for ability to use it in MSAPI::HTTP protocol.
 	 */
 	RecvBufferInfo(void** buffer, int connection, int id, size_t currentRecvBufferSize,
-		const size_t* m_recvBufferSizeLimit, size_t readDataSize, Server* server);
+		const size_t* recvBufferSizeLimit, size_t readDataSize, Server* server);
 
 	/**************************
 	 * @return Read data size of recv buffer.
@@ -197,7 +199,7 @@ private:
 
 private:
 	Pthread::AtomicLock m_closingConnectionLocks;
-	Pthread::AtomicLock m_serverDestroyLock;
+	Pthread::AtomicLock m_serverAcceptingLoop;
 	Pthread::AtomicRWLock m_alivePthreadsRWLock;
 	State m_state{ State::Initialization };
 	sockaddr_in m_addr{ 0, 0, 0, 0 };
@@ -229,7 +231,7 @@ public:
 	Server();
 
 	/**************************
-	 * @brief Destroy the Server object, call Stop() inside and insure main accepting loop is finished.
+	 * @brief Destroy the Server object, call Stop() inside and ensure main accepting loop is finished.
 	 */
 	virtual ~Server();
 
@@ -240,9 +242,10 @@ public:
 	void HandleDeleteRequest() override;
 
 	/**************************
-	 * @brief Run main process to listen incoming connections, blocking function.
+	 * @brief Blocking start the main accepting loop to listen incoming connections. Wait for all pthreads to be
+	 * finished on interruption.
 	 *
-	 * @note Interrupted if call Stop(), if socket initialization failed or limit of listen connections reached.
+	 * @note Interrupted if Stop() is called, if socket initialization failed or limit of listen connections reached.
 	 *
 	 * @param ip IP address to listen.
 	 * @param port Port to listen.
@@ -250,9 +253,9 @@ public:
 	void Start(in_addr_t ip, in_port_t port);
 
 	/**************************
-	 * @brief Close all accepted and outcome connections, cancel all pthreads and waiting for their finishing, clear all
-	 * containers and set state as Stopped which is an interrupt condition for main process and close main listen
-	 * socket. This function is assumed as the last point before Server childs chain destruction.
+	 * @brief Close all accepted and outcome connections, cancel all pthreads, clear all containers, set state to
+	 * Stopped and close main listening socket which is an interrupt condition for main accepting loop. This function
+	 * does not wait for pthreads to be finished as it can be called inside one.
 	 */
 	void Stop();
 
@@ -351,7 +354,8 @@ public:
 		ssize_t requestSize{ 0 };
 		AutoClearPtr<void> buffer{ m_recvBufferSize };
 		RecvBufferInfo recvBufferInfo{ &buffer.ptr, connection, id, m_recvBufferSize, &m_recvBufferSizeLimit,
-			sizeof(size_t) * 2, this };
+			RecvBufferInfo::DEFAULT_READ_DATA_SIZE, this };
+		LOG_DEBUG_NEW("Recv loop is started for connection {} id {}", connection, id);
 		while (true) {
 			size_t offset{ 0 };
 		doRecv:
@@ -410,8 +414,8 @@ public:
 
 #define TMP_MSAPI_SERVER_PROCESS_DATA(limit)                                                                           \
 	if (static_cast<size_t*>(buffer.ptr)[0] % 934875930 < limit) {                                                     \
-		if (static_cast<size_t*>(buffer.ptr)[1] > sizeof(size_t) * 2                                                   \
-			&& !Server::ReadAdditionalData(&recvBufferInfo, static_cast<size_t*>(buffer.ptr)[1])) [[unlikely]] {       \
+		if (static_cast<size_t*>(buffer.ptr)[1] > RecvBufferInfo::DEFAULT_READ_DATA_SIZE                               \
+			&& !ReadAdditionalData(&recvBufferInfo, static_cast<size_t*>(buffer.ptr)[1])) [[unlikely]] {               \
                                                                                                                        \
 			continue;                                                                                                  \
 		}                                                                                                              \
@@ -420,7 +424,7 @@ public:
 		continue;                                                                                                      \
 	}
 			// TODO: Need to think how to handle standard application callbacks in more flexible way
-			if (recvBufferInfo.GetReadDataSize() >= sizeof(size_t) * 2) {
+			if (recvBufferInfo.GetReadDataSize() >= RecvBufferInfo::DEFAULT_READ_DATA_SIZE) {
 				if constexpr (Type == RecvProcessingType::Manager) {
 					TMP_MSAPI_SERVER_PROCESS_DATA(10);
 				}
@@ -450,25 +454,27 @@ public:
 	static std::string_view EnumToString(State state);
 
 	/**************************
-	 * @brief Read additional data from socket with 0 flags by id with read data size of recv buffer offset.
+	 * @brief Blocking reading additional data from socket with 0 flags by id with read data size minus offset.
 	 *
 	 * @param recvBufferInfo Pointer to recv buffer info object with allocated memory.
 	 * @param bufferSize Expected size of buffer to be.
+	 * @param offset Number of bytes already presented in buffer. Default is 0 - recv buffer data size.
 	 *
 	 * @return True if data was read, false otherwise.
 	 */
-	static bool ReadAdditionalData(RecvBufferInfo* recvBufferInfo, size_t bufferSize);
+	static bool ReadAdditionalData(RecvBufferInfo* recvBufferInfo, size_t bufferSize, size_t offset = 0);
 
 	/**************************
-	 * @brief Try to read additional data from socket with MSG_PEEK flag by id with read data size of recv buffer
-	 * offset.
+	 * @brief Non blocking lookup reading up to requested amount of data from socket with MSG_PEEK flag by id with read
+	 * data size minus offset.
 	 *
 	 * @param recvBufferInfo Pointer to recv buffer info object with allocated memory.
-	 * @param bufferSize Expected size of buffer to be.
+	 * @param bufferSize Expected size of buffer to be. Will be set to buffer size after reading.
+	 * @param offset Number of bytes already presented in buffer. Default is 0 - recv buffer data size.
 	 *
 	 * @return True if data was read, false otherwise.
 	 */
-	static bool LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t bufferSize);
+	static bool LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& bufferSize, size_t offset = 0);
 
 protected:
 	/**************************
@@ -615,12 +621,12 @@ private:
 			FORCE_INLINE ~PthreadLockGuard() noexcept { rwLock.ReadUnlock(); }
 		};
 
-		LOG_DEBUG("Pthread function for " + RecvProcessingTypeToString_v<Type>
-			+ " connection is called, PID: " + _S(gettid()));
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
 		pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, nullptr);
 		std::pair<Server*, int*> serverAndId = *static_cast<std::pair<Server*, int*>*>(data);
 		int id{ *serverAndId.second };
+		LOG_DEBUG("Pthread function for " + RecvProcessingTypeToString_v<Type>
+			+ " connection " + _S(id) + " is called, PID: " + _S(gettid()));
 		Server* server{ serverAndId.first };
 		PthreadLockGuard pthreadGuard{ server->m_alivePthreadsRWLock };
 		server->ConnectionRecvProcessing<Type>(id);

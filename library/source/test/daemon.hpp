@@ -45,6 +45,7 @@ template <typename T> void* StartingRequest(void* dataOfPthreads)
 		= *static_cast<std::tuple<T*, pthread_t, in_addr_t, in_port_t>*>(dataOfPthreads);
 	T* server{ std::get<0>(serverParameters) };
 	server->Start(std::get<2>(serverParameters), std::get<3>(serverParameters));
+	LOG_DEBUG("Pthread function is finished, PID: " + _S(gettid()));
 	return nullptr;
 }
 
