@@ -84,7 +84,80 @@ namespace MSAPI {
  * uint64_t values.
  */
 
-class RecvBufferInfo;
+class Server;
+
+/**************************
+ * @brief Structure for managing size of recv buffer.
+ *
+ * @todo Probably this structure can be merged into ConnectionInfo structure. But that structure works only with
+ * outcome connections, but not with income. Maybe when secure protocol will be implemented this situation will be
+ * changed.
+ */
+class RecvBufferInfo {
+public:
+	enum class Action : short { Undefined, Return, Read, Drop, Max };
+
+public:
+	void** buffer;
+	const int connection;
+	const int id;
+
+	static constexpr inline size_t DEFAULT_READ_DATA_SIZE{ sizeof(size_t) * 2 };
+
+private:
+	size_t m_currentRecvBufferSize;
+	const size_t* m_recvBufferSizeLimit;
+	size_t m_readDataSize;
+	Server* m_server;
+
+public:
+	/**************************
+	 * @brief Construct a new Recv Buffer Info object, empty constructor.
+	 *
+	 * @note Is not inside Server class for ability to use it in MSAPI::HTTP protocol.
+	 */
+	RecvBufferInfo(void** buffer, int connection, int id, size_t currentRecvBufferSize,
+		const size_t* recvBufferSizeLimit, size_t readDataSize, Server* server);
+
+	/**************************
+	 * @return Read data size of recv buffer.
+	 */
+	FORCE_INLINE [[nodiscard]] size_t GetReadDataSize() const noexcept { return m_readDataSize; }
+
+	/**************************
+	 * @brief Check and set the read data size of recv buffer. Cannot be less than 1.
+	 *
+	 * @param size New read data size of recv buffer.
+	 */
+	FORCE_INLINE void SetReadDataSize(size_t size)
+	{
+		if (size < 1) [[unlikely]] {
+			LOG_WARNING("Read data size cannot be less than 1");
+			return;
+		}
+
+		if (ManageBuffer(size) != Action::Read) [[unlikely]] {
+			return;
+		}
+
+		LOG_PROTOCOL_NEW("Change read data size from {} to {} bytes, connection id: {}", m_readDataSize, size, id);
+		m_readDataSize = size;
+	}
+
+private:
+	/**************************
+	 * @brief Check if buffer size is enough or reallocate memory if required size is greater than current size and
+	 * less than limit. If reallocation fails, then state is not changed.
+	 *
+	 * @param bufferSize Required size of buffer.
+	 *
+	 * @return Action for next step.
+	 */
+	Action ManageBuffer(size_t bufferSize);
+
+	//* For managing recv buffer size
+	friend class Server;
+};
 
 class Server : public Application {
 public:
@@ -135,7 +208,7 @@ private:
 
 private:
 	Pthread::AtomicLock m_closingConnectionLocks;
-	Pthread::AtomicLock m_serverDestroyLock;
+	Pthread::AtomicLock m_serverAcceptingLoop;
 	Pthread::AtomicRWLock m_alivePthreadsRWLock;
 	State m_state{ State::Initialization };
 	sockaddr_in m_addr{ 0, 0, 0, 0 };
@@ -154,8 +227,8 @@ private:
 	AutoFreeSocket* m_socketListen{ nullptr };
 	unsigned int m_secondsBetweenTryToConnect{ 1 };
 	size_t m_limitConnectAttempts{ 1000 };
-	size_t recvBufferSize{ 1024 };
-	size_t recvBufferSizeLimit{ 1024 * 1024 * 10 /* 10 megabytes */ };
+	size_t m_recvBufferSize{ 1024 };
+	size_t m_recvBufferSizeLimit{ 1024 * 1024 * 10 /* 10 megabytes */ };
 	std::atomic<int32_t> m_connectionIdGenerator{};
 
 	static constexpr int m_somaxconn{ SOMAXCONN };
@@ -167,7 +240,7 @@ public:
 	Server();
 
 	/**************************
-	 * @brief Destroy the Server object, call Stop() inside and wait for all pthreads to finish.
+	 * @brief Destroy the Server object, call Stop() inside and ensure main accepting loop is finished.
 	 */
 	virtual ~Server();
 
@@ -178,9 +251,10 @@ public:
 	void HandleDeleteRequest() override;
 
 	/**************************
-	 * @brief Run main process to listen incoming connections, blocking function.
+	 * @brief Blocking start the main accepting loop to listen incoming connections. Wait for all pthreads to be
+	 * finished on interruption.
 	 *
-	 * @note Interrupted if call Stop(), if socket initialization failed or limit of listen connections reached.
+	 * @note Interrupted if Stop() is called, if socket initialization failed or limit of listen connections reached.
 	 *
 	 * @param ip IP address to listen.
 	 * @param port Port to listen.
@@ -188,8 +262,9 @@ public:
 	void Start(in_addr_t ip, in_port_t port);
 
 	/**************************
-	 * @brief Close all accepted connections and connections to applications, cancel all pthreads, clear all containers
-	 * and set state as Stopped which interrupts main process and close main listen socket.
+	 * @brief Close all accepted and outcome connections, cancel all pthreads, clear all containers, set state to
+	 * Stopped and close main listening socket which is an interrupt condition for main accepting loop. This function
+	 * does not wait for pthreads to be finished as it can be called inside one.
 	 */
 	void Stop();
 
@@ -250,7 +325,9 @@ public:
 
 	/**************************
 	 * @brief Waiting for income data from connection by id, blocking function. Called inside separate pthread of
-	 * accepted connection. The minimum size of recv buffer is sizeof(size_t) * 2 bytes for MSAPI::DataHeader.
+	 * accepted connection. Read size is defined by read data size of recv buffer. Default value of recv buffer reading
+	 * is sizeof(size_t) * 2 bytes for MSAPI::DataHeader, it can be changed if required to allow handle another
+	 * protocols.
 	 *
 	 * @tparam Type Type of connection processing.
 	 *
@@ -285,13 +362,15 @@ public:
 		}
 
 		ssize_t requestSize{ 0 };
-		AutoClearPtr<void> buffer{ recvBufferSize };
-		RecvBufferInfo recvBufferInfo{ &buffer.ptr, connection, id, recvBufferSize, &recvBufferSizeLimit, this };
-		size_t readData{ sizeof(size_t) * 2 };
+		AutoClearPtr<void> buffer{ m_recvBufferSize };
+		RecvBufferInfo recvBufferInfo{ &buffer.ptr, connection, id, m_recvBufferSize, &m_recvBufferSizeLimit,
+			RecvBufferInfo::DEFAULT_READ_DATA_SIZE, this };
+		LOG_DEBUG_NEW("Recv loop is started for connection {} id {}", connection, id);
 		while (true) {
 			size_t offset{ 0 };
 		doRecv:
-			requestSize = recv(connection, &static_cast<char*>(buffer.ptr)[offset], readData - offset, 0);
+			requestSize = recv(
+				connection, &static_cast<char*>(buffer.ptr)[offset], recvBufferInfo.GetReadDataSize() - offset, 0);
 
 			//* Socket closed from other side
 			if (requestSize == 0) [[unlikely]] {
@@ -333,19 +412,20 @@ public:
 				break;
 			}
 
-			if (offset += UINT64(requestSize); offset != readData) [[unlikely]] {
+			if (offset += UINT64(requestSize); offset != recvBufferInfo.GetReadDataSize()) [[unlikely]] {
 				goto doRecv;
 			}
 
-			// Diagnostic::PrintBinaryDescriptor(buffer.ptr, sizeof(size_t) * 2, "Recv first income data");
+			// Diagnostic::PrintBinaryDescriptor(buffer.ptr, recvBufferInfo.GetReadDataSize(), "Recv first income
+			// data");
 
 			LOG_PROTOCOL("Get data from " + RecvProcessingTypeToString_v<Type>
 				+ " connection: " + _S(connection) + ", id: " + _S(id));
 
 #define TMP_MSAPI_SERVER_PROCESS_DATA(limit)                                                                           \
 	if (static_cast<size_t*>(buffer.ptr)[0] % 934875930 < limit) {                                                     \
-		if (static_cast<size_t*>(buffer.ptr)[1] > sizeof(size_t) * 2                                                   \
-			&& !Server::ReadAdditionalData(&recvBufferInfo, static_cast<size_t*>(buffer.ptr)[1])) [[unlikely]] {       \
+		if (static_cast<size_t*>(buffer.ptr)[1] > RecvBufferInfo::DEFAULT_READ_DATA_SIZE                               \
+			&& !ReadAdditionalData(&recvBufferInfo, static_cast<size_t*>(buffer.ptr)[1])) [[unlikely]] {               \
                                                                                                                        \
 			continue;                                                                                                  \
 		}                                                                                                              \
@@ -353,12 +433,14 @@ public:
 		Application::Collect(connection, { { buffer.ptr }, buffer.ptr });                                              \
 		continue;                                                                                                      \
 	}
-
-			if constexpr (Type == RecvProcessingType::Manager) {
-				TMP_MSAPI_SERVER_PROCESS_DATA(10);
-			}
-			else {
-				TMP_MSAPI_SERVER_PROCESS_DATA(3);
+			// TODO: Need to think how to handle standard application callbacks in more flexible way
+			if (recvBufferInfo.GetReadDataSize() >= RecvBufferInfo::DEFAULT_READ_DATA_SIZE) {
+				if constexpr (Type == RecvProcessingType::Manager) {
+					TMP_MSAPI_SERVER_PROCESS_DATA(10);
+				}
+				else {
+					TMP_MSAPI_SERVER_PROCESS_DATA(3);
+				}
 			}
 
 #undef TMP_MSAPI_SERVER_PROCESS_DATA
@@ -382,31 +464,27 @@ public:
 	static std::string_view EnumToString(State state);
 
 	/**************************
-	 * @brief Read additional data from socket with 0 flags by id.
-	 *
-	 * @attention bufferSize will be reduced on sizeof(size_t) * 2 bytes, because of that is the size of
-	 * MSAPI::DataHeader and data read with same offset.
+	 * @brief Blocking reading additional data from socket with 0 flags by id with read data size minus offset.
 	 *
 	 * @param recvBufferInfo Pointer to recv buffer info object with allocated memory.
 	 * @param bufferSize Expected size of buffer to be.
+	 * @param offset Number of bytes already presented in buffer. Default is 0 - recv buffer data size.
 	 *
 	 * @return True if data was read, false otherwise.
 	 */
-	static bool ReadAdditionalData(RecvBufferInfo* recvBufferInfo, size_t bufferSize);
+	static bool ReadAdditionalData(RecvBufferInfo* recvBufferInfo, size_t bufferSize, size_t offset = 0);
 
 	/**************************
-	 * @brief Try to read additional data from socket with MSG_PEEK flag by id.
-	 *
-	 * @attention bufferSize will be reduced on sizeof(size_t) * 2 bytes, because of that is the size of
-	 * MSAPI::DataHeader and data read with same offset.
+	 * @brief Non blocking lookup reading up to requested amount of data from socket with MSG_PEEK flag by id with read
+	 * data size minus offset.
 	 *
 	 * @param recvBufferInfo Pointer to recv buffer info object with allocated memory.
-	 * @param bufferSize Expected size of buffer to be. If read was successful, bufferSize will be set to read
-	 * size.
+	 * @param bufferSize Expected size of buffer to be. Will be set to buffer size after reading.
+	 * @param offset Number of bytes already presented in buffer. Default is 0 - recv buffer data size.
 	 *
 	 * @return True if data was read, false otherwise.
 	 */
-	static bool LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& bufferSize);
+	static bool LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& bufferSize, size_t offset = 0);
 
 protected:
 	/**************************
@@ -542,14 +620,25 @@ private:
 				|| Type == RecvProcessingType::Income,
 			"Unknown recv processing type");
 
-		LOG_DEBUG("Pthread function for " + RecvProcessingTypeToString_v<Type>
-			+ " connection is called, PID: " + _S(gettid()));
+		struct PthreadLockGuard {
+			Pthread::AtomicRWLock& rwLock;
+
+			FORCE_INLINE PthreadLockGuard(Pthread::AtomicRWLock& rwLock) noexcept
+				: rwLock{ rwLock }
+			{
+			}
+
+			FORCE_INLINE ~PthreadLockGuard() noexcept { rwLock.ReadUnlock(); }
+		};
+
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
 		pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, nullptr);
 		std::pair<Server*, int*> serverAndId = *static_cast<std::pair<Server*, int*>*>(data);
 		int id{ *serverAndId.second };
+		LOG_DEBUG("Pthread function for " + RecvProcessingTypeToString_v<Type>
+			+ " connection " + _S(id) + " is called, PID: " + _S(gettid()));
 		Server* server{ serverAndId.first };
-		Pthread::AtomicRWLock::ExitGuard<Pthread::read> pthreadGuard{ server->m_alivePthreadsRWLock };
+		PthreadLockGuard pthreadGuard{ server->m_alivePthreadsRWLock };
 		server->ConnectionRecvProcessing<Type>(id);
 		server->m_pthreadToId.erase(id);
 
@@ -560,51 +649,6 @@ private:
 
 	//* For SetInitializationState, in testing purposes
 	friend class DaemonBase;
-};
-
-/**************************
- * @brief Structure for managing size of recv buffer.
- *
- * @todo Probably this structure can be merged into ConnectionInfo structure. But that structure works only with
- * outcome connections, but not with income. Maybe when secure protocol will be implemented this situation will be
- * changed.
- */
-class RecvBufferInfo {
-public:
-	enum class Action : short { Undefined, Return, Read, Drop, Max };
-
-public:
-	void** buffer;
-	const int connection;
-	const int id;
-
-private:
-	size_t m_currentRecvBufferSize;
-	const size_t* m_recvBufferSizeLimit;
-	Server* m_server;
-
-public:
-	/**************************
-	 * @brief Construct a new Recv Buffer Info object, empty constructor.
-	 *
-	 * @note Is not inside Server class for ability to use it in MSAPI::HTTP protocol.
-	 */
-	RecvBufferInfo(void** buffer, int connection, int id, size_t currentRecvBufferSize,
-		const size_t* recvBufferSizeLimit, Server* server);
-
-private:
-	/**************************
-	 * @brief Check if buffer size is enough or reallocate memory if required size is greater than current size and
-	 * less than limit. If reallocation fails, then state is not changed.
-	 *
-	 * @param bufferSize Required size of buffer.
-	 *
-	 * @return Action for next step.
-	 */
-	Action ManageBuffer(size_t bufferSize);
-
-	//* For managing recv buffer size
-	friend class Server;
 };
 
 }; //* namespace MSAPI

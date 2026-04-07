@@ -41,8 +41,8 @@ Server::Server()
 	RegisterParameter(1000001, { "Seconds between try to connect", &m_secondsBetweenTryToConnect, 1 });
 	RegisterParameter(1000002, { "Limit of attempts to connection", &m_limitConnectAttempts, 1 });
 	RegisterParameter(1000003, { "Limit of connections from one IP", &m_maxConnectionsOneIp, 1 });
-	RegisterParameter(1000004, { "Recv buffer size", &recvBufferSize, 3 });
-	RegisterParameter(1000005, { "Recv buffer size limit", &recvBufferSizeLimit, 1024 });
+	RegisterParameter(1000004, { "Recv buffer size", &m_recvBufferSize, 3 });
+	RegisterParameter(1000005, { "Recv buffer size limit", &m_recvBufferSizeLimit, 1024 });
 	RegisterConstParameter(1000006, { "Server state", &m_state, &EnumToString });
 	RegisterConstParameter(1000007, { "Max connections", &m_somaxconn });
 	RegisterConstParameter(1000008, { "Listening IP", &m_listeningIp });
@@ -52,9 +52,9 @@ Server::Server()
 Server::~Server()
 {
 	Stop();
-	m_alivePthreadsRWLock.WriteLock();
+	m_serverAcceptingLoop.Lock();
 	m_closingConnectionLocks.Lock();
-	m_serverDestroyLock.Lock();
+	m_alivePthreadsRWLock.WriteLock();
 }
 
 void Server::HandleRunRequest() { MSAPI_HANDLE_RUN_REQUEST_PRESET; }
@@ -125,7 +125,7 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 	pthread_attr_setschedpolicy(&attr, SCHED_RR);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	MSAPI::Pthread::AtomicLock::ExitGuard exitGuard{ m_serverDestroyLock };
+	MSAPI::Pthread::AtomicLock::ExitGuard exitGuard{ m_serverAcceptingLoop };
 
 	for (const auto& [id, info] : m_infoToConnection) {
 		StandardProtocol::SendActionHello(info.connection);
@@ -137,6 +137,9 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 		while (m_connectionsCounter < m_somaxconn && m_state != State::Stopped) {
 			newConnection = Accept(socketListen.socket, &clientAddr);
 			if (m_state == State::Stopped) [[unlikely]] {
+				LOG_DEBUG("Server state is Stopped, wait for pthreads to be finished");
+				MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> pthreadsGuard{ m_alivePthreadsRWLock };
+				LOG_DEBUG("Server state is Stopped, all pthreads are finished, return");
 				pthread_attr_destroy(&attr);
 				return;
 			}
@@ -181,9 +184,11 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 
 			auto it = m_dataToPthreads.insert({ id, { this, &m_connectionToId.find(id)->first } });
 		pthreadCreate:
+			m_alivePthreadsRWLock.ReadLock();
 			if (const auto result{ pthread_create(&pair->second, &attr, PthreadRunner<RecvProcessingType::Income>,
 					static_cast<void*>(&(it.first->second))) };
 				result != 0) [[unlikely]] {
+				m_alivePthreadsRWLock.ReadUnlock();
 
 				LOG_ERROR(
 					"Pthread is not created, id: " + _S(id) + ". Error №" + _S(result) + ": " + std::strerror(result));
@@ -202,7 +207,9 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 
 		if (m_state == State::Stopped) {
 			pthread_attr_destroy(&attr);
-			LOG_DEBUG("Server state is Stopped. Return from the main accepting loop");
+			LOG_DEBUG("Server state is Stopped, wait for pthreads to be finished");
+			MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> pthreadsGuard{ m_alivePthreadsRWLock };
+			LOG_DEBUG("Server state is Stopped, all pthreads are finished, return");
 			return;
 		}
 
@@ -225,7 +232,7 @@ void Server::Stop()
 	LOG_INFO("Server is stopping");
 	m_state = State::Stopped;
 
-	MSAPI::Pthread::AtomicLock::ExitGuard exitGuard{ m_closingConnectionLocks };
+	MSAPI::Pthread::AtomicLock::ExitGuard _{ m_closingConnectionLocks };
 
 	if (m_socketListen != nullptr && m_socketListen->socketCheck != nullptr && *m_socketListen->socketCheck) {
 		m_socketListen->socketCheck = nullptr;
@@ -529,10 +536,12 @@ bool Server::OpenConnect(const int id, const in_addr_t ip, const in_port_t port,
 	++m_connectionsCounter;
 	auto it = m_dataToPthreads.insert({ *saveId, { this, saveId } });
 pthreadCreate:
+	m_alivePthreadsRWLock.ReadLock();
 	if (const auto result{ pthread_create(&idAndThread->second, &attr,
 			*saveId == 0 ? PthreadRunner<RecvProcessingType::Manager> : PthreadRunner<RecvProcessingType::Outcome>,
 			static_cast<void*>(&(it.first->second))) };
 		result != 0) [[unlikely]] {
+		m_alivePthreadsRWLock.ReadUnlock();
 
 		LOG_ERROR(
 			"Pthread is not created, id: " + _S(*saveId) + ". Error №" + _S(result) + ": " + std::strerror(result));
@@ -615,18 +624,18 @@ void Server::CloseConnect(ConnectionInfo& info)
 		return false;                                                                                                  \
 	}                                                                                                                  \
 	const auto bytesSpliced{ splice(                                                                                   \
-		recvBufferInfo->connection, nullptr, devNull, nullptr, bufferSize - sizeof(size_t) * 2, SPLICE_F_MOVE) };      \
+		recvBufferInfo->connection, nullptr, devNull, nullptr, bufferSize - offset, SPLICE_F_MOVE) };                  \
 	if (bytesSpliced == -1) [[unlikely]] {                                                                             \
 		LOG_ERROR("Failed to splice data to /dev/null, id: " + _S(recvBufferInfo->id) + ". Error №" + _S(errno) + ": " \
 			+ std::strerror(errno));                                                                                   \
 		close(devNull);                                                                                                \
 		return false;                                                                                                  \
 	}                                                                                                                  \
-	LOG_PROTOCOL("Spliced " + _S(bytesSpliced) + " out of " + _S(bufferSize - sizeof(size_t) * 2)                      \
+	LOG_PROTOCOL("Spliced " + _S(bytesSpliced) + " out of " + _S(bufferSize - offset)                                  \
 		+ " bytes to /dev/null, id: " + _S(recvBufferInfo->id));                                                       \
 	close(devNull);
 
-bool Server::ReadAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t bufferSize)
+bool Server::ReadAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t bufferSize, size_t offset)
 {
 	const auto action{ recvBufferInfo->ManageBuffer(bufferSize) };
 	switch (action) {
@@ -634,7 +643,9 @@ bool Server::ReadAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t buf
 		return false;
 	case RecvBufferInfo::Action::Read: {
 		int bytesAvailable{ 0 };
-		size_t offset{ sizeof(size_t) * 2 };
+		if (offset == 0) {
+			offset = recvBufferInfo->GetReadDataSize();
+		}
 		ioctl(recvBufferInfo->connection, FIONREAD, &bytesAvailable);
 		if (bytesAvailable > 0) [[likely]] {
 			size_t readData{ bufferSize - offset };
@@ -674,7 +685,7 @@ bool Server::ReadAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t buf
 	}
 }
 
-bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& bufferSize)
+bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& bufferSize, size_t offset)
 {
 	const auto action{ recvBufferInfo->ManageBuffer(bufferSize) };
 	switch (action) {
@@ -682,7 +693,9 @@ bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& buffe
 		return false;
 	case RecvBufferInfo::Action::Read: {
 		int bytesAvailable{ 0 };
-		size_t offset{ sizeof(size_t) * 2 };
+		if (offset == 0) {
+			offset = recvBufferInfo->GetReadDataSize();
+		}
 		ioctl(recvBufferInfo->connection, FIONREAD, &bytesAvailable);
 		if (bytesAvailable > 0) [[likely]] {
 			const auto readData{ bufferSize - offset };
@@ -692,7 +705,7 @@ bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& buffe
 			}
 
 			TMP_MSAPI_SERVER_DO_RECV(MSG_PEEK);
-			bufferSize = UINT64(result);
+			bufferSize = UINT64(result) + offset;
 			return true;
 		}
 
@@ -804,12 +817,13 @@ RecvBufferInfo
 ---------------------------------------------------------------------------------*/
 
 RecvBufferInfo::RecvBufferInfo(void** buffer, const int connection, const int id, const size_t currentRecvBufferSize,
-	const size_t* recvBufferSizeLimit, Server* server)
+	const size_t* m_recvBufferSizeLimit, const size_t readDataSize, Server* server)
 	: buffer{ buffer }
 	, connection{ connection }
 	, id{ id }
 	, m_currentRecvBufferSize{ currentRecvBufferSize }
-	, m_recvBufferSizeLimit{ recvBufferSizeLimit }
+	, m_recvBufferSizeLimit{ m_recvBufferSizeLimit }
+	, m_readDataSize{ readDataSize }
 	, m_server{ server }
 {
 }
