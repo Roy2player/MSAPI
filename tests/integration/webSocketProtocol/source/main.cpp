@@ -142,7 +142,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	MSAPI::Tests::Protocol::WebSocket::Observer serverObserver{ *server };
 
-	std::array<char, static_cast<size_t>(MSAPI::Protocol::WebSocket::Data::MB) * 5> payload{};
+	std::vector<char> payload(static_cast<size_t>(MSAPI::Protocol::WebSocket::Data::MB) * 5);
 	for (size_t i{}; i < payload.size(); i++) {
 		payload[i] = static_cast<char>(i % (128 - 32) + 32); // Printable ASCII characters
 	}

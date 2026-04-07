@@ -125,12 +125,16 @@ public:
 	FORCE_INLINE [[nodiscard]] size_t GetReadDataSize() const noexcept { return m_readDataSize; }
 
 	/**************************
-	 * @brief Set the read data size of recv buffer.
+	 * @brief Check and set the read data size of recv buffer.
 	 *
 	 * @param size New read data size of recv buffer.
 	 */
-	FORCE_INLINE void SetReadDataSize(size_t size) noexcept
+	FORCE_INLINE void SetReadDataSize(size_t size)
 	{
+		if (ManageBuffer(size) != Action::Read) {
+			return;
+		}
+
 		LOG_PROTOCOL_NEW("Change read data size from {} to {} bytes, connection id: {}", m_readDataSize, size, id);
 		m_readDataSize = size;
 	}
