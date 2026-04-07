@@ -18,7 +18,6 @@
  */
 
 #include "test.h"
-#include <thread>
 
 namespace MSAPI {
 

@@ -24,6 +24,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
   - `standard.h` / `standard.cpp`: Key–value dynamic message container (`Standard::Data`). Encoding focuses on minimal copies; keep buffer reuse strategies.
   - `object.h` / `object.cpp`: Lightweight object protocol for POD-like copyable structs; serialization assumes trivially copyable layout.
   - `http.h` / `http.cpp`: Minimal HTTP parsing (request line, headers). Not a full RFC implementation—avoid relying on unsupported features.
+  - `webSocket.inl`: Implementation of data and parallel execution safe functional abstractions for 13 version (RFC 6455) WebSocket protocol.
 
 3. **Utility Modules** (`library/source/help/`)
   - `log.h` / `log.cpp`: Logger with logging levels and console/file output support.
@@ -183,7 +184,7 @@ cmake --build . -j "$(nproc)"
 
 ### Testing Structure
 - Test executables: `tests/*/build/`
-- Unit tests: `tests/units/`
+- Unit tests: `tests/unit/`
 - Integration tests: `tests/integration/server/`
 - MSAPI test framework (`library/source/test/test.h`)
 - Each function covered by tests must have a Doxygen `@test` tag in its documentation. For example: `@test Has unit tests`.

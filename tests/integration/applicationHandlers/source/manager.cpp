@@ -22,7 +22,7 @@
 void Manager::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
 {
 	MSAPI::DataHeader header{ *recvBufferInfo->buffer };
-	if (header.GetCipher() == helloFotHelloCipher) {
+	if (header.GetCipher() == helloForHelloCipher) {
 		if (m_outcomeConnection != -1) {
 			LOG_ERROR("Outcome connection is already set");
 			m_unhandledActions.IncrementActionsNumber();
@@ -58,7 +58,7 @@ void Manager::HandleHello(const int connection)
 		m_clientConnection = connection;
 	}
 
-	MSAPI::StandardProtocol::Data data{ helloFotHelloCipher };
+	MSAPI::StandardProtocol::Data data{ helloForHelloCipher };
 	MSAPI::StandardProtocol::Send(connection, data);
 
 	MSAPI::ActionsCounter::IncrementActionsNumber();

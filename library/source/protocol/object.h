@@ -336,8 +336,8 @@ protected:
 	 */
 	void SetState(State state);
 
-	//* For encapsulate protected function
-	friend IHandlerBase;
+	//* To encapsulate protected function
+	friend class IHandlerBase;
 };
 
 /**************************

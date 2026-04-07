@@ -27,7 +27,9 @@
 
 namespace MSAPI {
 
-namespace UnitTest {
+namespace Tests {
+
+namespace Unit {
 
 /**************************
  * @brief Unit test for Application class.
@@ -36,7 +38,9 @@ namespace UnitTest {
  */
 [[nodiscard]] bool Application();
 
-} // namespace UnitTest
+} // namespace Unit
+
+} // namespace Tests
 
 /**************************
  * @brief Basic class with separate state for creating an application, contains core logic to handle specific callbacks
@@ -330,7 +334,7 @@ public:
 		 */
 		bool Merge(size_t id, const std::variant<standardTypes>& value);
 
-		friend bool UnitTest::Application();
+		friend bool Tests::Unit::Application();
 		//* For access in RegisterValidation and Merge methods and direct access to fields.
 		friend class Application;
 	};
@@ -724,7 +728,7 @@ protected:
 	 */
 	void SetCustomError(size_t id, const std::string& error);
 
-	friend bool UnitTest::Application();
+	friend bool Tests::Unit::Application();
 };
 
 }; //* namespace MSAPI

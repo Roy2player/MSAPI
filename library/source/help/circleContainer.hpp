@@ -101,7 +101,7 @@ public:
 	}
 
 	//* For ability to access m_nodes and m_ready in constructor
-	friend Accessor;
+	friend class Accessor;
 };
 
 struct Buffers {

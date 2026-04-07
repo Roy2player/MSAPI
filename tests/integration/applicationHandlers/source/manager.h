@@ -35,7 +35,7 @@ private:
 	std::map<size_t, std::variant<standardTypes>> m_parametersResponse;
 	MSAPI::ActionsCounter m_unhandledActions;
 
-	static constexpr const size_t helloFotHelloCipher{ 59837493028 };
+	static constexpr size_t helloForHelloCipher{ 59837493028 };
 
 public:
 	//* MSAPI::Server

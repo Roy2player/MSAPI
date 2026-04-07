@@ -23,6 +23,7 @@
 #include "../help/helper.h"
 #include "../help/log.h"
 #include "../help/table.h"
+#include <thread>
 #include <vector>
 
 #define RETURN_IF_FALSE(x)                                                                                             \
@@ -105,6 +106,8 @@ public:
 	 * @param name Assertion name.
 	 *
 	 * @return True if assertion passed successfully, false in another way.
+	 *
+	 * @todo Iterate under array like data and additionally print index of first different element.
 	 */
 	template <typename T, typename S>
 		requires comparable<T, S>
@@ -221,6 +224,43 @@ public:
 	 * @param predicate Condition to wait.
 	 */
 	static void Wait(size_t waitTime, const std::function<bool()>& predicate);
+
+	/**************************
+	 * @brief Wait for particular condition and register result, repeating each 100 microseconds.
+	 *
+	 * @tparam F Any invocable type with bool return type.
+	 * @tparam Args Any types of arguments for F.
+	 *
+	 * @param waitTime Maximum amount of time to wait predicate in microseconds.
+	 * @param predicate Condition to wait.
+	 * @param name Condition name for logs.
+	 * @param args Arguments for predicate.
+	 *
+	 * @return True if predicate returned true before time is out, false in another way.
+	 */
+	template <typename F, typename... Args>
+		requires std::invocable<F, Args...> && std::same_as<std::invoke_result_t<F, Args...>, bool>
+	FORCE_INLINE bool Wait(size_t waitTime, F&& predicate, const std::string_view name, Args&&... args)
+	{
+		if (predicate(std::forward<Args>(args)...)) {
+			Assert(true, true, name);
+			return true;
+		}
+		waitTime /= 100;
+		while (true) {
+			if (waitTime == 0) {
+				Assert(false, true, name);
+				return false;
+			}
+			if (predicate(std::forward<Args>(args)...)) {
+				Assert(true, true, name);
+				return true;
+			}
+
+			--waitTime;
+			std::this_thread::sleep_for(std::chrono::microseconds(100));
+		}
+	}
 };
 
 }; //* namespace MSAPI
