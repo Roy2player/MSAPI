@@ -94,6 +94,7 @@ public:
 	void HandleHello(int connection) final;
 	void HandleMetadata(int connection, std::string_view metadata) final;
 	void HandleParameters(int connection, const std::map<size_t, std::variant<standardTypes>>& parameters) final;
+	void HandleIncomeDisconnect(int32_t id, int32_t connection) final;
 
 	int8_t GetParameter1() const noexcept;
 	int16_t GetParameter2() const noexcept;

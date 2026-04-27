@@ -16,7 +16,7 @@
  * Uint8, Uint16, Uint32, Uint64, Double, Float, OptionalInt8, OptionalInt16, OptionalInt32, OptionalInt64,
  * OptionalUint8, OptionalUint16, OptionalUint32, OptionalUint64, OptionalDouble, OptionalFloat, String, Timer,
  * Duration, TableData. And one additional type: system, which is used for show system properties
- * on grids and tables views.
+ * on grids and tables views. Only one instance can be created.
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
@@ -41,9 +41,15 @@ class MetadataCollector extends View {
 		return { m_metadataToId, m_stringInterpretationsToId, m_metadataToAppType, m_viewPortParameterToAppType };
 	})();
 
-	constructor(parameters) { super("MetadataCollector", parameters); }
+	constructor(parameters) { super("Metadata collector", parameters); }
 
-	async Constructor(parameters) { return true; }
+	Constructor(parameters)
+	{
+		if (View.ShowExistedView(this)) {
+			return false;
+		}
+		return true;
+	}
 
 	static AddMetadata(id, metadata, isConst)
 	{
@@ -68,7 +74,7 @@ class MetadataCollector extends View {
 		else if (metadata.type == "TableData") {
 			for (let column of Object.entries(metadata.columns)) {
 				if (column.length > 1 && "stringInterpretations" in column[1]) {
-					const tableColumnHash = Helper.StringHash(id.toString() + "-" + column[0].toString());
+					const tableColumnHash = Helper.StringHashDjb2(id.toString() + "-" + column[0].toString());
 					MetadataCollector.#privateFields.m_stringInterpretationsToId.set(
 						tableColumnHash, column[1].stringInterpretations);
 
@@ -310,8 +316,8 @@ class MetadataCollector extends View {
 	}
 };
 
-View.AddViewTemplate("MetadataCollector", `<div class="customView"></div>`);
-Dispatcher.RegisterPanel("MetadataCollector", () => new MetadataCollector());
+View.AddViewTemplate("Metadata collector", `<div class="customView"></div>`);
+Dispatcher.RegisterPanel("Metadata collector", () => new MetadataCollector());
 
 //* Metadata items which are used by MSAPI Frontend views
 MetadataCollector.AddMetadata(1, { name : "Create", type : "system" }, true);

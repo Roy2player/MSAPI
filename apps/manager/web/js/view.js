@@ -12,13 +12,14 @@
  *
  * @brief Abstraction for any view that can be created, represent interface unit or application.
  * It provides functionality for initializing views, handling metadata, managing parameters, and interacting with the
- * backend through HTTP requests. To use it:
+ * backend through HTTP requests or WebSocket streams. To use it:
  * - Extend the Class: Create a new class that inherits from View, provide a unique view type name as a first
  * argument to super.
  * - Override the Constructor: Implement the Constructor method to define custom initialization logic for your view.
  * - Register a Template: Use View.AddViewTemplate to define the HTML structure for the view.
  * - Add Callbacks: Use AddCallback to handle specific HTTP responses.
- * - Send Requests: Use View.SendRequest to communicate with the backend.
+ * - Send Requests: Use SendRequest to communicate with the backend via HTTP.
+ * - Open streams: Use OpenStream to communicate with the backend via WebSocket.
  *
  * Has three parts:
  * 1) Header which contains view tile and on view options:
@@ -192,10 +193,6 @@ class View {
 		return undefined;
 	}
 
-	static HasParameters(port) { return View.#privateFields.m_parametersToPort.has(port); }
-
-	static GetParameters(port) { return View.#privateFields.m_parametersToPort.get(port); }
-
 	static SaveView(view)
 	{
 		if (!view) {
@@ -211,15 +208,17 @@ class View {
 
 	static GetCreatedViews() { return View.#privateFields.m_createdViews; }
 
-	static GetViewByTypeAndPort(viewType, port)
+	static ShowExistedView(newView)
 	{
 		for (let view of View.#privateFields.m_createdViews.values()) {
-			if (view.m_viewType == viewType && view.m_port == port) {
-				return view;
+			if (view.m_viewType == newView.m_viewType && view.m_port == newView.m_port) {
+				view.Show();
+				newView.m_silentExit = true;
+				return true;
 			}
 		}
 
-		return undefined;
+		return false;
 	}
 
 	static RemoveCreatedView(view) { View.#privateFields.m_createdViews.delete(view.m_uid); }
@@ -260,355 +259,338 @@ class View {
 
 	constructor(viewType, parameters)
 	{
-		(async () => {
-			try {
-				this.m_viewType = viewType;
-				this.m_title = viewType;
-				this.m_parameters = parameters;
+		try {
+			this.m_viewType = viewType;
+			this.m_title = viewType;
+			this.m_parameters = parameters;
 
-				if (parameters && parameters.parent) {
-					this.m_parentNode = parameters.parent;
-				}
-				else {
-					this.m_parentNode = document.querySelector("body > main > section.views");
-				}
+			if (parameters && parameters.parent) {
+				this.m_parentNode = parameters.parent;
+			}
+			else {
+				this.m_parentNode = document.querySelector("body > main > section.views");
+			}
 
-				if (!this.m_parentNode) {
-					console.error("Can't find parent node for view");
-					return false;
-				}
+			if (!this.m_parentNode) {
+				console.error("Can't find parent node for view");
+				return false;
+			}
 
-				if (!View.#privateFields.m_viewTemplateToViewType.has(viewType)) {
-					console.error("Can't find view template for view");
-					return false;
-				}
+			if (!View.#privateFields.m_viewTemplateToViewType.has(viewType)) {
+				console.error("Can't find view template for view");
+				return false;
+			}
 
-				let specificTemplate = View.#privateFields.m_viewTemplateToViewType.get(viewType);
-				if (!specificTemplate.templateElement) {
-					const template = document.createElement("template");
-					template.innerHTML = specificTemplate.template;
-					specificTemplate.templateElement = template;
-				}
+			let specificTemplate = View.#privateFields.m_viewTemplateToViewType.get(viewType);
+			if (!specificTemplate.templateElement) {
+				const template = document.createElement("template");
+				template.innerHTML = specificTemplate.template;
+				specificTemplate.templateElement = template;
+			}
 
-				if (parameters && parameters.isInterfaceUnit) {
-					this.m_view = specificTemplate.templateElement.content.cloneNode(true).firstElementChild;
-					this.m_parentNode.appendChild(this.m_view);
+			if (parameters && parameters.isInterfaceUnit) {
+				this.m_view = specificTemplate.templateElement.content.cloneNode(true).firstElementChild;
+				this.m_parentNode.appendChild(this.m_view);
 
-					if (!(await this.Constructor(parameters))) {
-						this.Destructor();
-						console.error("Can't create view");
-						return;
-					}
-
+				if (!this.Constructor(parameters)) {
+					this.Destructor();
+					console.error("Can't create view");
 					return;
 				}
 
-				if (!View.#generalTemplateElement) {
-					const template = document.createElement("template");
-					template.innerHTML = View.#generalTemplate;
-					View.#generalTemplateElement = template;
-				}
+				return;
+			}
 
-				this.m_parentView = View.#generalTemplateElement.content.cloneNode(true).firstElementChild;
-				this.m_parentView.querySelector(".title > span").textContent = this.m_title;
-				this.m_parentView.querySelector(".viewContent")
-					.appendChild(specificTemplate.templateElement.content.cloneNode(true));
-				this.m_view = this.m_parentView.querySelector(".viewContent").lastElementChild;
-				this.m_footer = this.m_parentView.querySelector(".viewFooter");
-				this.m_parentNode.appendChild(this.m_parentView);
+			if (!View.#generalTemplateElement) {
+				const template = document.createElement("template");
+				template.innerHTML = View.#generalTemplate;
+				View.#generalTemplateElement = template;
+			}
 
-				this.m_tables = new Map();
+			this.m_parentView = View.#generalTemplateElement.content.cloneNode(true).firstElementChild;
+			this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+			this.m_parentView.querySelector(".viewContent")
+				.appendChild(specificTemplate.templateElement.content.cloneNode(true));
+			this.m_view = this.m_parentView.querySelector(".viewContent").lastElementChild;
+			this.m_footer = this.m_parentView.querySelector(".viewFooter");
+			this.m_parentNode.appendChild(this.m_parentView);
 
-				this.MakeDraggable(this.m_parentView.querySelector(".viewHeader .title"), this.m_parentView);
-				this.m_parentView.addEventListener("mousedown", () => { View.UpdateZIndex(this); });
+			this.m_tables = new Map();
 
-				this.m_parentView.style.left = "0px";
-				this.m_parentView.style.top = "0px";
+			this.MakeDraggable(this.m_parentView.querySelector(".viewHeader .title"), this.m_parentView);
+			this.m_parentView.addEventListener("mousedown", () => { View.UpdateZIndex(this); });
 
-				if (parameters) {
-					this.m_canBeHidden = parameters.canBeHidden != false;
-					this.m_canBeMaximized = parameters.canBeMaximized != false;
-					this.m_canBeSticked = parameters.canBeSticked != false;
-					this.m_canBeClosed = parameters.canBeClosed != false;
-					this.m_canBeClinged = parameters.canBeClinged != false;
-				}
-				else {
-					this.m_canBeHidden = true;
-					this.m_canBeMaximized = true;
-					this.m_canBeSticked = true;
-					this.m_canBeClosed = true;
-					this.m_canBeClinged = true;
-				}
+			this.m_parentView.style.left = "0px";
+			this.m_parentView.style.top = "0px";
 
-				this.m_parentView.querySelectorAll('.handleResize').forEach(handle => {
-					const direction = Array.from(handle.classList);
-					handle.addEventListener('mousedown', e => { StartResizing(e, direction, this); });
+			if (parameters) {
+				this.m_canBeHidden = parameters.canBeHidden != false;
+				this.m_canBeMaximized = parameters.canBeMaximized != false;
+				this.m_canBeSticked = parameters.canBeSticked != false;
+				this.m_canBeClosed = parameters.canBeClosed != false;
+				this.m_canBeClinged = parameters.canBeClinged != false;
+			}
+			else {
+				this.m_canBeHidden = true;
+				this.m_canBeMaximized = true;
+				this.m_canBeSticked = true;
+				this.m_canBeClosed = true;
+				this.m_canBeClinged = true;
+			}
 
-					handle.addEventListener('dblclick', e => {
-						if (this.m_sticked) {
-							return;
-						}
+			this.m_parentView.querySelectorAll('.handleResize').forEach(handle => {
+				const direction = Array.from(handle.classList);
+				handle.addEventListener('mousedown', e => { StartResizing(e, direction, this); });
 
-						if (direction.includes('right') || direction.includes('left')) {
-							let w = Helper.GetFullDimensions(this.m_view).width;
-							const style = window.getComputedStyle(this.m_parentView);
-							w += parseFloat(style.marginLeft) || 0;
-							w += parseFloat(style.marginRight) || 0;
-							w += parseFloat(style.borderLeftWidth) || 0;
-							w += parseFloat(style.borderRightWidth) || 0;
-							w += parseFloat(style.paddingLeft) || 0;
-							w += parseFloat(style.paddingRight) || 0;
-							this.m_parentView.style.width = w + 'px';
-						}
-
-						if (direction.includes('bottom') || direction.includes('top')) {
-							let h = Helper.GetFullDimensions(this.m_view).height;
-							h += Helper.GetFullDimensions(this.m_parentView.querySelector('.viewHeader')).height
-								+ Helper.GetFullDimensions(this.m_parentView.querySelector('.viewFooter')).height;
-							const style = window.getComputedStyle(this.m_parentView);
-							h += parseFloat(style.marginTop) || 0;
-							h += parseFloat(style.marginBottom) || 0;
-							h += parseFloat(style.borderTopWidth) || 0;
-							h += parseFloat(style.borderBottomWidth) || 0;
-							h += parseFloat(style.paddingTop) || 0;
-							h += parseFloat(style.paddingBottom) || 0;
-							this.m_parentView.style.height = h + 'px';
-						}
-					});
-				});
-
-				function StartResizing(element, direction, savedThis)
-				{
-					if (savedThis.m_sticked) {
+				handle.addEventListener('dblclick', e => {
+					if (this.m_sticked) {
 						return;
 					}
 
-					savedThis.m_parentView.classList.add("resizing");
-					View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.add("changing"); });
+					if (direction.includes('right') || direction.includes('left')) {
+						let w = Helper.GetFullDimensions(this.m_view).width;
+						const style = window.getComputedStyle(this.m_parentView);
+						w += parseFloat(style.marginLeft) || 0;
+						w += parseFloat(style.marginRight) || 0;
+						w += parseFloat(style.borderLeftWidth) || 0;
+						w += parseFloat(style.borderRightWidth) || 0;
+						w += parseFloat(style.paddingLeft) || 0;
+						w += parseFloat(style.paddingRight) || 0;
+						this.m_parentView.style.width = w + 'px';
+					}
 
-					element.preventDefault();
-					const startX = element.clientX;
-					const startY = element.clientY;
-					const startWidth = savedThis.m_parentView.offsetWidth;
-					const startHeight = savedThis.m_parentView.offsetHeight;
-					const startTop = savedThis.m_parentView.offsetTop;
-					const startLeft = savedThis.m_parentView.offsetLeft;
+					if (direction.includes('bottom') || direction.includes('top')) {
+						let h = Helper.GetFullDimensions(this.m_view).height;
+						h += Helper.GetFullDimensions(this.m_parentView.querySelector('.viewHeader')).height
+							+ Helper.GetFullDimensions(this.m_parentView.querySelector('.viewFooter')).height;
+						const style = window.getComputedStyle(this.m_parentView);
+						h += parseFloat(style.marginTop) || 0;
+						h += parseFloat(style.marginBottom) || 0;
+						h += parseFloat(style.borderTopWidth) || 0;
+						h += parseFloat(style.borderBottomWidth) || 0;
+						h += parseFloat(style.paddingTop) || 0;
+						h += parseFloat(style.paddingBottom) || 0;
+						this.m_parentView.style.height = h + 'px';
+					}
+				});
+			});
 
-					function OnMouseMove(ev)
-					{
-						let newWidth = startWidth;
-						let newHeight = startHeight;
-						let newTop = startTop;
-						let newLeft = startLeft;
-						let includesTop = direction.includes('top');
-						let includesRight = direction.includes('right');
-						let includesBottom = direction.includes('bottom');
-						let includesLeft = direction.includes('left');
+			function StartResizing(element, direction, savedThis)
+			{
+				if (savedThis.m_sticked) {
+					return;
+				}
 
-						if (includesRight) {
-							newWidth += ev.clientX - startX;
-							if (newWidth + newLeft > window.innerWidth) {
-								newWidth = window.innerWidth - newLeft;
-							}
+				savedThis.m_parentView.classList.add("resizing");
+				View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.add("changing"); });
 
-							if (newWidth < 50) {
-								newWidth = 50;
-							}
+				element.preventDefault();
+				const startX = element.clientX;
+				const startY = element.clientY;
+				const startWidth = savedThis.m_parentView.offsetWidth;
+				const startHeight = savedThis.m_parentView.offsetHeight;
+				const startTop = savedThis.m_parentView.offsetTop;
+				const startLeft = savedThis.m_parentView.offsetLeft;
+
+				function OnMouseMove(ev)
+				{
+					let newWidth = startWidth;
+					let newHeight = startHeight;
+					let newTop = startTop;
+					let newLeft = startLeft;
+					let includesTop = direction.includes('top');
+					let includesRight = direction.includes('right');
+					let includesBottom = direction.includes('bottom');
+					let includesLeft = direction.includes('left');
+
+					if (includesRight) {
+						newWidth += ev.clientX - startX;
+						if (newWidth + newLeft > window.innerWidth) {
+							newWidth = window.innerWidth - newLeft;
 						}
-						if (includesLeft) {
-							const dx = ev.clientX - startX;
-							if (newLeft + dx < 0) {
-								newWidth += newLeft;
-								newLeft = 0;
+
+						if (newWidth < 50) {
+							newWidth = 50;
+						}
+					}
+					if (includesLeft) {
+						const dx = ev.clientX - startX;
+						if (newLeft + dx < 0) {
+							newWidth += newLeft;
+							newLeft = 0;
+						}
+						else {
+							newWidth -= dx;
+							newLeft += dx;
+						}
+
+						if (newWidth < 50) {
+							newWidth = 50;
+							newLeft = startLeft + (startWidth - newWidth);
+						}
+					}
+					if (includesBottom) {
+						newHeight += ev.clientY - startY;
+
+						if (newHeight < 50) {
+							newHeight = 50;
+						}
+					}
+					if (includesTop) {
+						const dy = ev.clientY - startY;
+						if (newTop + dy < 0) {
+							newHeight += newTop;
+							newTop = 0;
+						}
+						else {
+							newHeight -= dy;
+							newTop += dy;
+						}
+
+						if (newHeight < 50) {
+							newHeight = 50;
+							newTop = startTop + (startHeight - newHeight);
+						}
+					}
+
+					if (!savedThis.m_canBeClinged) {
+						savedThis.m_parentView.style.left = newLeft + "px";
+						savedThis.m_parentView.style.top = newTop + "px";
+						savedThis.m_parentView.style.width = newWidth + "px";
+						savedThis.m_parentView.style.height = newHeight + "px";
+					}
+					else {
+						const clingData = savedThis.FindClosestToCling(
+							{ top : newTop, right : newLeft + newWidth, bottom : newTop + newHeight, left : newLeft });
+
+						if (clingData) {
+							if (includesRight) {
+								savedThis.m_parentView.style.left = newLeft + "px";
+								savedThis.m_parentView.style.width = newWidth + (clingData.left - newLeft) + "px";
 							}
 							else {
-								newWidth -= dx;
-								newLeft += dx;
+								savedThis.m_parentView.style.left = clingData.left + "px";
+								savedThis.m_parentView.style.width = newWidth - (clingData.left - newLeft) + "px";
 							}
 
-							if (newWidth < 50) {
-								newWidth = 50;
-								newLeft = startLeft + (startWidth - newWidth);
-							}
-						}
-						if (includesBottom) {
-							newHeight += ev.clientY - startY;
-
-							if (newHeight < 50) {
-								newHeight = 50;
-							}
-						}
-						if (includesTop) {
-							const dy = ev.clientY - startY;
-							if (newTop + dy < 0) {
-								newHeight += newTop;
-								newTop = 0;
+							if (includesBottom) {
+								savedThis.m_parentView.style.top = newTop + "px";
+								savedThis.m_parentView.style.height = newHeight + (clingData.top - newTop) + "px";
 							}
 							else {
-								newHeight -= dy;
-								newTop += dy;
-							}
-
-							if (newHeight < 50) {
-								newHeight = 50;
-								newTop = startTop + (startHeight - newHeight);
+								savedThis.m_parentView.style.top = clingData.top + "px";
+								savedThis.m_parentView.style.height = newHeight - (clingData.top - newTop) + "px";
 							}
 						}
-
-						if (!savedThis.m_canBeClinged) {
+						else {
 							savedThis.m_parentView.style.left = newLeft + "px";
 							savedThis.m_parentView.style.top = newTop + "px";
 							savedThis.m_parentView.style.width = newWidth + "px";
 							savedThis.m_parentView.style.height = newHeight + "px";
 						}
-						else {
-							const clingData = savedThis.FindClosestToCling({
-								top : newTop,
-								right : newLeft + newWidth,
-								bottom : newTop + newHeight,
-								left : newLeft
-							});
-
-							if (clingData) {
-								if (includesRight) {
-									savedThis.m_parentView.style.left = newLeft + "px";
-									savedThis.m_parentView.style.width = newWidth + (clingData.left - newLeft) + "px";
-								}
-								else {
-									savedThis.m_parentView.style.left = clingData.left + "px";
-									savedThis.m_parentView.style.width = newWidth - (clingData.left - newLeft) + "px";
-								}
-
-								if (includesBottom) {
-									savedThis.m_parentView.style.top = newTop + "px";
-									savedThis.m_parentView.style.height = newHeight + (clingData.top - newTop) + "px";
-								}
-								else {
-									savedThis.m_parentView.style.top = clingData.top + "px";
-									savedThis.m_parentView.style.height = newHeight - (clingData.top - newTop) + "px";
-								}
-							}
-							else {
-								savedThis.m_parentView.style.left = newLeft + "px";
-								savedThis.m_parentView.style.top = newTop + "px";
-								savedThis.m_parentView.style.width = newWidth + "px";
-								savedThis.m_parentView.style.height = newHeight + "px";
-							}
-						}
-					}
-
-					function OnMouseUp()
-					{
-						savedThis.m_parentView.classList.remove("resizing");
-						View.GetCreatedViews().values().forEach(
-							(view) => { view.m_view.classList.remove("changing"); });
-						document.removeEventListener('mousemove', OnMouseMove);
-						document.removeEventListener('mouseup', OnMouseUp);
-					}
-
-					document.addEventListener('mousemove', OnMouseMove);
-					document.addEventListener('mouseup', OnMouseUp);
-				}
-
-				let closeButton = this.m_parentView.querySelector(".viewHeader .close");
-				if (!closeButton) {
-					console.error("Can't find close button for view");
-					return;
-				}
-				if (this.m_canBeClosed) {
-					closeButton.addEventListener("click", () => {
-						if (this.m_sticked) {
-							return;
-						}
-						this.Destructor();
-					});
-				}
-				else {
-					closeButton.style.display = "none";
-				}
-
-				let hideButton = this.m_parentView.querySelector(".viewHeader .hide");
-				if (!hideButton) {
-					console.error("Can't find hide button for view");
-					this.Destructor();
-				}
-				this.m_maximizeButton = this.m_parentView.querySelector(".viewHeader .maximize");
-				if (!this.m_maximizeButton) {
-					console.error("Can't find maximize button for view");
-					this.Destructor();
-				}
-
-				if (this.m_canBeMaximized) {
-					hideButton.addEventListener("click", () => { this.Hide(); });
-					this.m_maximizeButton.addEventListener("click", () => { this.Maximize(); });
-				}
-				else {
-					hideButton.style.display = "none";
-					this.m_maximizeButton.style.display = "none";
-				}
-
-				let stickButton = this.m_parentView.querySelector(".viewHeader .stick");
-				if (!stickButton) {
-					console.error("Can't find stick button for view");
-					this.Destructor();
-				}
-				if (this.m_canBeSticked) {
-					this.m_sticked = false;
-					stickButton.addEventListener("click", () => {
-						this.m_sticked = !this.m_sticked;
-						stickButton.classList.toggle("on");
-						this.m_parentView.classList.toggle("sticked");
-					});
-				}
-				else {
-					stickButton.style.display = "none";
-				}
-
-				if (parameters && parameters.hasOwnProperty("port")) {
-					this.m_port = parameters.port;
-				}
-
-				if (!(await this.Constructor(parameters))) {
-					this.Destructor();
-					if (!this.m_silentExit) {
-						console.error("Can't create view");
-					}
-					return;
-				}
-
-				this.m_uid = Helper.GenerateUid();
-				View.SaveView(this);
-				this.m_parentView.setAttribute("uid", this.m_uid);
-				this.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
-
-				if (parameters) {
-					if (parameters.hasOwnProperty("postCreateFunction")) {
-						if (typeof parameters.postCreateFunction != "function") {
-							console.error("Invalid post create function type, function is expected",
-								parameters.postCreateFunction);
-							this.Destructor();
-							return;
-						}
-						parameters.postCreateFunction({ view : this });
-					}
-
-					if (parameters.hasOwnProperty("positionUnder")) {
-						this.m_parentView.style.left = parameters.positionUnder.getBoundingClientRect().left + "px";
-						this.m_parentView.style.top = parameters.positionUnder.getBoundingClientRect().bottom + "px";
-						this.m_parentView.style.position = "absolute";
 					}
 				}
 
-				this.m_created = true;
+				function OnMouseUp()
+				{
+					savedThis.m_parentView.classList.remove("resizing");
+					View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.remove("changing"); });
+					document.removeEventListener('mousemove', OnMouseMove);
+					document.removeEventListener('mouseup', OnMouseUp);
+				}
+
+				document.addEventListener('mousemove', OnMouseMove);
+				document.addEventListener('mouseup', OnMouseUp);
 			}
-			catch (error) {
-				console.error("Can't create view:", error);
+
+			let closeButton = this.m_parentView.querySelector(".viewHeader .close");
+			if (!closeButton) {
+				console.error("Can't find close button for view");
+				return;
+			}
+			if (this.m_canBeClosed) {
+				closeButton.addEventListener("click", () => {
+					if (this.m_sticked) {
+						return;
+					}
+					this.Destructor();
+				});
+			}
+			else {
+				closeButton.style.display = "none";
+			}
+
+			let hideButton = this.m_parentView.querySelector(".viewHeader .hide");
+			if (!hideButton) {
+				console.error("Can't find hide button for view");
 				this.Destructor();
 			}
-		})();
+			this.m_maximizeButton = this.m_parentView.querySelector(".viewHeader .maximize");
+			if (!this.m_maximizeButton) {
+				console.error("Can't find maximize button for view");
+				this.Destructor();
+			}
+
+			if (this.m_canBeMaximized) {
+				hideButton.addEventListener("click", () => { this.Hide(); });
+				this.m_maximizeButton.addEventListener("click", () => { this.Maximize(); });
+			}
+			else {
+				hideButton.style.display = "none";
+				this.m_maximizeButton.style.display = "none";
+			}
+
+			let stickButton = this.m_parentView.querySelector(".viewHeader .stick");
+			if (!stickButton) {
+				console.error("Can't find stick button for view");
+				this.Destructor();
+			}
+			if (this.m_canBeSticked) {
+				this.m_sticked = false;
+				stickButton.addEventListener("click", () => {
+					this.m_sticked = !this.m_sticked;
+					stickButton.classList.toggle("on");
+					this.m_parentView.classList.toggle("sticked");
+				});
+			}
+			else {
+				stickButton.style.display = "none";
+			}
+
+			if (parameters && parameters.hasOwnProperty("port")) {
+				this.m_port = parameters.port;
+			}
+
+			this.m_uid = Helper.GenerateUid();
+			if (!this.Constructor(parameters)) {
+				this.Destructor();
+				if (!this.m_silentExit) {
+					console.error("Can't create view");
+				}
+				return;
+			}
+
+			View.SaveView(this);
+			this.m_parentView.setAttribute("uid", this.m_uid);
+			this.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
+
+			if (parameters) {
+				if (parameters.hasOwnProperty("positionUnder")) {
+					this.m_parentView.style.left = parameters.positionUnder.getBoundingClientRect().left + "px";
+					this.m_parentView.style.top = parameters.positionUnder.getBoundingClientRect().bottom + "px";
+					this.m_parentView.style.position = "absolute";
+				}
+			}
+
+			this.m_created = true;
+		}
+		catch (error) {
+			console.error("Can't create view:", error);
+			this.Destructor();
+		}
 	}
 
-	async Constructor(parameters)
+	Constructor(parameters)
 	{
 		console.error("Constructor is not implemented for view of type", this.m_viewType);
 		return false;
@@ -617,7 +599,9 @@ class View {
 	Destructor()
 	{
 		View.RemoveCreatedView(this);
-		this.Show();
+		if (this.m_parentView.style.zIndex != "") {
+			this.Show();
+		}
 		if (this.m_tables) {
 			this.m_tables.forEach(table => { table.Destructor(); });
 		}
@@ -627,6 +611,7 @@ class View {
 		}
 		delete this.m_grid;
 		this.m_parentView.remove();
+		WebSocketHandler.ClearViewRelatedEvents(this.m_uid);
 	}
 
 	Maximize()
@@ -800,7 +785,7 @@ class View {
 
 	HideErrorMessage()
 	{
-		if (this.m_errorMessage !== undefined && this.m_errorMessage.classList.contains("visible")) {
+		if (this.m_errorMessage !== undefined && this.m_footer.classList.contains("visible")) {
 			this.m_footer.classList.remove("visible");
 		}
 	}
@@ -939,7 +924,6 @@ class View {
 					}
 					else if (type == "getParameters") {
 						if ("parameters" in json) {
-							View.#privateFields.m_parametersToPort.set(options.headers["Port"], json["parameters"]);
 							View.HandleResponse(type, json, { "port" : options.headers["Port"] });
 						}
 						else {

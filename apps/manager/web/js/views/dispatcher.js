@@ -35,7 +35,7 @@ class Dispatcher extends View {
 
 	constructor() { super("Dispatcher", { "isInterfaceUnit" : true }); }
 
-	async Constructor()
+	Constructor()
 	{
 		this.m_control = this.m_view.querySelector('.control');
 		this.m_control.addEventListener("click", () => { this.m_view.classList.toggle('hidden'); });
@@ -159,12 +159,12 @@ class Dispatcher extends View {
 }
 
 View.AddViewTemplate("Dispatcher", `<div class="dispatcher hidden">
-		<div class="hiddenViews">
-			<div class="title">Hidden views</div>
-			<div class="list"></div>
-		</div>
 		<div class="registeredPanels">
 			<div class="title">Registered panels</div>
+			<div class="list"></div>
+		</div>
+		<div class="hiddenViews">
+			<div class="title">Hidden views</div>
 			<div class="list"></div>
 		</div>
         <div class="control"><span></span></div>

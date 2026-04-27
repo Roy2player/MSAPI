@@ -12,7 +12,7 @@
  *
  * @brief Represents a grid object. Provides ability to create a grid with columns and rows. Rows can be added, updated,
  * removed and swapped. Columns can be added and swapped. Cell can be updated. Cell can represent any of MSAPI data
- * types, if it is a TableData, it will be clickable and will open a new table view with dynamicly updated data.
+ * types, if it is a TableData, it will be clickable and will open a new table view with dynamically updated data.
  *
  * Has required parameters:
  * @brief parent - parent node to append grid to.
@@ -380,207 +380,206 @@ class Grid {
 				canBeMaximized : false,
 				canBeSticked : false,
 				canBeClinged : false,
-				postCreateFunction : ({ view }) => {
-					let alignLeft = view.m_view.querySelector(".group > .action.alignLeft");
-					if (!alignLeft) {
-						console.error("Align left is not found");
-						return;
-					}
-					let alignCenter = view.m_view.querySelector(".group > .action.alignCenter");
-					if (!alignCenter) {
-						console.error("Align center is not found");
-						return;
-					}
-					let alignRight = view.m_view.querySelector(".group > .action.alignRight");
-					if (!alignRight) {
-						console.error("Align right is not found");
-						return;
-					}
-					let sortingAscending = view.m_view.querySelector(".group > .action.ascending");
-					if (!sortingAscending) {
-						console.error("Ascending is not found");
-						return;
-					}
-					let sortingNone = view.m_view.querySelector(".group > .action.none");
-					if (!sortingNone) {
-						console.error("None is not found");
-						return;
-					}
-					let sortingDescending = view.m_view.querySelector(".group > .action.descending");
-					if (!sortingDescending) {
-						console.error("Descending is not found");
-						return;
-					}
-					let filterGeneral = view.m_view.querySelector(".group > .action.filter");
-					if (!filterGeneral) {
-						console.error("Filter is not found");
-						return;
-					}
-					let filters = view.m_view.querySelector(".filters");
-					if (!filters) {
-						console.error("Container for filters is not found");
-						return;
-					}
-
-					if (columnObject.aligned == Grid.ALIGN_TYPE.left) {
-						alignLeft.classList.add("active");
-					}
-					else if (columnObject.aligned == Grid.ALIGN_TYPE.center) {
-						alignCenter.classList.add("active");
-					}
-					else if (columnObject.aligned == Grid.ALIGN_TYPE.right) {
-						alignRight.classList.add("active");
-					}
-					else {
-						console.error("Invalid alignment type", columnObject.aligned);
-					}
-
-					alignLeft.addEventListener("click", () => {
-						if (alignLeft.classList.contains("active")) {
-							return;
-						}
-
-						alignLeft.classList.add("active");
-						alignCenter.classList.remove("active");
-						alignRight.classList.remove("active");
-						columnObject.aligned = Grid.ALIGN_TYPE.left;
-						Grid.ApplyAlignment({ columnObject });
-					});
-
-					alignCenter.addEventListener("click", () => {
-						if (alignCenter.classList.contains("active")) {
-							return;
-						}
-
-						alignLeft.classList.remove("active");
-						alignCenter.classList.add("active");
-						alignRight.classList.remove("active");
-						columnObject.aligned = Grid.ALIGN_TYPE.center;
-						Grid.ApplyAlignment({ columnObject });
-					});
-
-					alignRight.addEventListener("click", () => {
-						if (alignRight.classList.contains("active")) {
-							return;
-						}
-
-						alignLeft.classList.remove("active");
-						alignCenter.classList.remove("active");
-						alignRight.classList.add("active");
-						columnObject.aligned = Grid.ALIGN_TYPE.right;
-						Grid.ApplyAlignment({ columnObject });
-					});
-
-					if (columnObject.sorting == Grid.SORTING_TYPE.ascending) {
-						sortingAscending.classList.add("active");
-						sortingNone.classList.add("disabled");
-					}
-					else if (columnObject.sorting == Grid.SORTING_TYPE.none) {
-						sortingNone.classList.add("active");
-					}
-					else if (columnObject.sorting == Grid.SORTING_TYPE.descending) {
-						sortingDescending.classList.add("active");
-						sortingNone.classList.add("disabled");
-					}
-					else {
-						console.error("Invalid sorting type", columnObject.sorting);
-					}
-
-					sortingAscending.addEventListener("click", () => {
-						if (sortingAscending.classList.contains("active")) {
-							return;
-						}
-
-						sortingAscending.classList.add("active");
-						sortingNone.classList.remove("active");
-						sortingDescending.classList.remove("active");
-						sortingNone.classList.add("disabled");
-						columnObject.sorting = Grid.SORTING_TYPE.ascending;
-						savedThis.ApplySorting({ columnObject });
-					});
-
-					sortingNone.addEventListener("click", () => {
-						if (sortingNone.classList.contains("active")) {
-							return;
-						}
-
-						sortingAscending.classList.remove("active");
-						sortingNone.classList.add("active");
-						sortingDescending.classList.remove("active");
-						columnObject.sorting = Grid.SORTING_TYPE.none;
-					});
-
-					sortingDescending.addEventListener("click", () => {
-						if (sortingDescending.classList.contains("active")) {
-							return;
-						}
-
-						sortingAscending.classList.remove("active");
-						sortingNone.classList.remove("active");
-						sortingDescending.classList.add("active");
-						sortingNone.classList.add("disabled");
-						columnObject.sorting = Grid.SORTING_TYPE.descending;
-						savedThis.ApplySorting({ columnObject });
-					});
-
-					if (columnObject.isFilterActive) {
-						filterGeneral.classList.add("active");
-					}
-
-					filterGeneral.addEventListener("click", () => {
-						if (columnObject.filters.length == 0) {
-							return;
-						}
-						if (columnObject.isFilterActive) {
-							columnObject.isFilterActive = false;
-						}
-						else {
-							columnObject.isFilterActive = true;
-						}
-
-						savedThis.ApplyFilters({ columnObject });
-					});
-
-					const filterTypeMetadata = MetadataCollector.GetMetadata(columnObject.systemTableMetadataId);
-					if (filterTypeMetadata) {
-						let filtersTable = new Table({
-							parent : filters,
-							metadata : {
-								"name" : "Filters",
-								"type" : "TableData",
-								"canBeEmpty" : true,
-								"columns" : [
-									filterTypeMetadata.metadata.columns[0],
-									columnObject.metadata.metadata,
-								]
-							},
-							isMutable : true,
-							id : columnObject.systemTableMetadataId,
-							postSaveFunction : () => {
-								const newData = filtersTable.GetData();
-								if (columnObject.filters != newData) {
-									if (newData.length == 0) {
-										columnObject.isFilterActive = false;
-										filterGeneral.classList.remove("active");
-									}
-									else {
-										columnObject.isFilterActive = true;
-										filterGeneral.classList.add("active");
-									}
-
-									columnObject.filters = newData;
-									savedThis.ApplyFilters({ columnObject });
-								}
-							}
-						});
-
-						view.m_tables.set(columnObject.systemTableMetadataId, filtersTable);
-
-						columnObject.filters.forEach((filter) => { filtersTable.AddRow(filter); });
-						filtersTable.Save();
-					}
-				}
 			});
+
+			let alignLeft = settingsView.m_view.querySelector(".group > .action.alignLeft");
+			if (!alignLeft) {
+				console.error("Align left is not found");
+				return;
+			}
+			let alignCenter = settingsView.m_view.querySelector(".group > .action.alignCenter");
+			if (!alignCenter) {
+				console.error("Align center is not found");
+				return;
+			}
+			let alignRight = settingsView.m_view.querySelector(".group > .action.alignRight");
+			if (!alignRight) {
+				console.error("Align right is not found");
+				return;
+			}
+			let sortingAscending = settingsView.m_view.querySelector(".group > .action.ascending");
+			if (!sortingAscending) {
+				console.error("Ascending is not found");
+				return;
+			}
+			let sortingNone = settingsView.m_view.querySelector(".group > .action.none");
+			if (!sortingNone) {
+				console.error("None is not found");
+				return;
+			}
+			let sortingDescending = settingsView.m_view.querySelector(".group > .action.descending");
+			if (!sortingDescending) {
+				console.error("Descending is not found");
+				return;
+			}
+			let filterGeneral = settingsView.m_view.querySelector(".group > .action.filter");
+			if (!filterGeneral) {
+				console.error("Filter is not found");
+				return;
+			}
+			let filters = settingsView.m_view.querySelector(".filters");
+			if (!filters) {
+				console.error("Container for filters is not found");
+				return;
+			}
+
+			if (columnObject.aligned == Grid.ALIGN_TYPE.left) {
+				alignLeft.classList.add("active");
+			}
+			else if (columnObject.aligned == Grid.ALIGN_TYPE.center) {
+				alignCenter.classList.add("active");
+			}
+			else if (columnObject.aligned == Grid.ALIGN_TYPE.right) {
+				alignRight.classList.add("active");
+			}
+			else {
+				console.error("Invalid alignment type", columnObject.aligned);
+			}
+
+			alignLeft.addEventListener("click", () => {
+				if (alignLeft.classList.contains("active")) {
+					return;
+				}
+
+				alignLeft.classList.add("active");
+				alignCenter.classList.remove("active");
+				alignRight.classList.remove("active");
+				columnObject.aligned = Grid.ALIGN_TYPE.left;
+				Grid.ApplyAlignment({ columnObject });
+			});
+
+			alignCenter.addEventListener("click", () => {
+				if (alignCenter.classList.contains("active")) {
+					return;
+				}
+
+				alignLeft.classList.remove("active");
+				alignCenter.classList.add("active");
+				alignRight.classList.remove("active");
+				columnObject.aligned = Grid.ALIGN_TYPE.center;
+				Grid.ApplyAlignment({ columnObject });
+			});
+
+			alignRight.addEventListener("click", () => {
+				if (alignRight.classList.contains("active")) {
+					return;
+				}
+
+				alignLeft.classList.remove("active");
+				alignCenter.classList.remove("active");
+				alignRight.classList.add("active");
+				columnObject.aligned = Grid.ALIGN_TYPE.right;
+				Grid.ApplyAlignment({ columnObject });
+			});
+
+			if (columnObject.sorting == Grid.SORTING_TYPE.ascending) {
+				sortingAscending.classList.add("active");
+				sortingNone.classList.add("disabled");
+			}
+			else if (columnObject.sorting == Grid.SORTING_TYPE.none) {
+				sortingNone.classList.add("active");
+			}
+			else if (columnObject.sorting == Grid.SORTING_TYPE.descending) {
+				sortingDescending.classList.add("active");
+				sortingNone.classList.add("disabled");
+			}
+			else {
+				console.error("Invalid sorting type", columnObject.sorting);
+			}
+
+			sortingAscending.addEventListener("click", () => {
+				if (sortingAscending.classList.contains("active")) {
+					return;
+				}
+
+				sortingAscending.classList.add("active");
+				sortingNone.classList.remove("active");
+				sortingDescending.classList.remove("active");
+				sortingNone.classList.add("disabled");
+				columnObject.sorting = Grid.SORTING_TYPE.ascending;
+				savedThis.ApplySorting({ columnObject });
+			});
+
+			sortingNone.addEventListener("click", () => {
+				if (sortingNone.classList.contains("active")) {
+					return;
+				}
+
+				sortingAscending.classList.remove("active");
+				sortingNone.classList.add("active");
+				sortingDescending.classList.remove("active");
+				columnObject.sorting = Grid.SORTING_TYPE.none;
+			});
+
+			sortingDescending.addEventListener("click", () => {
+				if (sortingDescending.classList.contains("active")) {
+					return;
+				}
+
+				sortingAscending.classList.remove("active");
+				sortingNone.classList.remove("active");
+				sortingDescending.classList.add("active");
+				sortingNone.classList.add("disabled");
+				columnObject.sorting = Grid.SORTING_TYPE.descending;
+				savedThis.ApplySorting({ columnObject });
+			});
+
+			if (columnObject.isFilterActive) {
+				filterGeneral.classList.add("active");
+			}
+
+			filterGeneral.addEventListener("click", () => {
+				if (columnObject.filters.length == 0) {
+					return;
+				}
+				if (columnObject.isFilterActive) {
+					columnObject.isFilterActive = false;
+				}
+				else {
+					columnObject.isFilterActive = true;
+				}
+
+				savedThis.ApplyFilters({ columnObject });
+			});
+
+			const filterTypeMetadata = MetadataCollector.GetMetadata(columnObject.systemTableMetadataId);
+			if (filterTypeMetadata) {
+				let filtersTable = new Table({
+					parent : filters,
+					metadata : {
+						"name" : "Filters",
+						"type" : "TableData",
+						"canBeEmpty" : true,
+						"columns" : [
+							filterTypeMetadata.metadata.columns[0],
+							columnObject.metadata.metadata,
+						]
+					},
+					isMutable : true,
+					id : columnObject.systemTableMetadataId,
+					postSaveFunction : () => {
+						const newData = filtersTable.GetData();
+						if (columnObject.filters != newData) {
+							if (newData.length == 0) {
+								columnObject.isFilterActive = false;
+								filterGeneral.classList.remove("active");
+							}
+							else {
+								columnObject.isFilterActive = true;
+								filterGeneral.classList.add("active");
+							}
+
+							columnObject.filters = newData;
+							savedThis.ApplyFilters({ columnObject });
+						}
+					}
+				});
+
+				settingsView.m_tables.set(columnObject.systemTableMetadataId, filtersTable);
+
+				columnObject.filters.forEach((filter) => { filtersTable.AddRow(filter); });
+				filtersTable.Save();
+			}
 
 			settingsViews.add(settingsView);
 		});
@@ -1167,27 +1166,26 @@ class Grid {
 					canBeHidden : false,
 					canBeMaximized : false,
 					canBeSticked : false,
-					canBeClinged : false,
-					postCreateFunction : () => {
-						let table = tableView.m_tables.get(id);
-						if (!table) {
-							console.error("Table is not found", id);
-							return;
-						}
+					canBeClinged : false
+				});
 
-						const tableValue = values[id];
-						if (tableValue) {
-							if ("Rows" in tableValue) {
-								for (let row of tableValue.Rows) {
-									table.AddRow(row);
-								}
-							}
-							else {
-								console.error("Rows is not found in value", tableValue);
-							}
+				let table = tableView.m_tables.get(id);
+				if (!table) {
+					console.error("Table is not found", id);
+					return;
+				}
+
+				const tableValue = values[id];
+				if (tableValue) {
+					if ("Rows" in tableValue) {
+						for (let row of tableValue.Rows) {
+							table.AddRow(row);
 						}
 					}
-				});
+					else {
+						console.error("Rows is not found in value", tableValue);
+					}
+				}
 
 				if (!tableViews.has(values[this.m_indexColumnId])) {
 					tableViews.set(values[this.m_indexColumnId], new Map());

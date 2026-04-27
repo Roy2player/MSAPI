@@ -283,7 +283,8 @@
     position: relative;
 }
 
-.view .customView .items.vertical>:not(:last-child) {
+.view .customView .items.vertical>:not(:last-child)
+, .view .customView .buttons.vertical>:not(:last-child) {
     margin-bottom: 5px;
 }
 
@@ -293,9 +294,25 @@
     font-size: 14px;
 }
 
-.view .customView .items.vertical>.item>.title {
-    display: flex;
-    align-items: center;
+.view .customView .items.vertical > .item > .text {
+  display: flex;
+  align-items: center;
+  position: relative;
+  min-height: 30px;
+  height: auto;
+  margin-bottom: 5px;
+}
+
+.view .customView .items.vertical > .item > .text::before {
+  content: '';
+  display: block;
+  width: 2px;
+  height: 100%;
+  position: absolute;
+  background: var(--border-color-sub-general);
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .view .customView .items>.item>:where(select, input) {
@@ -343,7 +360,8 @@
     background: var(--background-element-enabled);
 }
 
-.view .customView>.button {
+.view .customView>.button
+,.view .customView .button.multi {
     padding: 0 7px;
     background: var(--background-element-general);
     transition: all 0.3s ease 0s;
@@ -356,7 +374,8 @@
     user-select: none;
 }
 
-.view .customView>.button:hover {
+.view .customView>.button:hover
+,.view .customView .button.multi:hover {
     background: var(--background-element-general-hover);
 }
 
@@ -544,6 +563,7 @@
     mask-repeat: no-repeat;
     transition: all 0.3s ease 0s;
     background-color: var(--text-color-general);
+    display: inline-table;
 }
 
 .view>.viewContent>.selectView>.search>.caseSensitive.disabled {
@@ -657,4 +677,56 @@
 .view>.viewContent>.gridSettingsView>.group>.action.disabled {
     width: 0;
     margin: 0;
+}
+
+.view > .viewContent > .customView .switch {
+  display: flex;
+  justify-content: center;
+  padding: 0 10px 5px 10px;
+  border-bottom: 1px dashed var(--border-color-sub-general);
+  margin-bottom: 5px;
+}
+
+.view > .viewContent > .customView .switch > div {
+  padding: 10px;
+  font-size: 18px;
+  background: var(--background-element-disabled);
+  width: 100px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease 0s;
+  user-select: none;
+  margin: 0 5px;
+}
+
+.view > .viewContent > .customView .switch > div.active {
+  background: var(--background-element-enabled);
+  cursor: default;
+}
+
+.view > .viewContent > .customView .switch > div:not(.active):hover {
+  background-color: var(--background-element-general-hover);
+}
+
+.view > .viewContent > .customView .contentSwitch > div {
+  visibility: hidden;
+  opacity: 0;
+  transition: all 0.3s ease 0s;
+  height: 0;
+  overflow: hidden;
+}
+
+.view > .viewContent > .customView .contentSwitch > div.active {
+  visibility: visible;
+  opacity: 1;
+  height: auto;
+}
+
+.view > .viewContent > .customView .contentSwitch > div > .button:hover
+{
+  background: var(--background-element-general-hover);
+}
+
+.view > .viewContent > .customView.accountView {
+  min-width: 250px;
 }

@@ -90,6 +90,12 @@ void Manager::HandleParameters(const int connection, const std::map<size_t, std:
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
+void Manager::HandleIncomeDisconnect(const int32_t id, const int32_t connection)
+{
+	LOG_PROTOCOL_NEW("id {} connection {}", id, connection);
+	MSAPI::ActionsCounter::IncrementActionsNumber();
+}
+
 void Manager::SendData(const MSAPI::Protocol::Standard::Data& data)
 {
 	if (m_activeConnection == -1) {

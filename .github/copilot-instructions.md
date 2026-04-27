@@ -25,6 +25,7 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
   - `object.h` / `object.cpp`: Lightweight object protocol for POD-like copyable structs; serialization assumes trivially copyable layout.
   - `http.h` / `http.cpp`: Minimal HTTP parsing (request line, headers). Not a full RFC implementation—avoid relying on unsupported features.
   - `webSocket.inl`: Implementation of data and parallel execution safe functional abstractions for 13 version (RFC 6455) WebSocket protocol.
+  - `webSocketEvents.inl` Parallel execution distributing model which works on top of web socket protocol with json payload, supports single and stream events with filters. Uses `Authorization` to control data access rights.
 
 3. **Utility Modules** (`library/source/help/`)
   - `log.h` / `log.cpp`: Logger with logging levels and console/file output support.
@@ -222,6 +223,8 @@ Prefer RETURN_IF_FALSE for early exits on failed assertions.
 - **Duration:** (apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time units
 - **Select:** (apps/manager/web/js/select.js) Custom select input with searchable options, validation, and dynamic metadata integration
 - **Helper:** (apps/manager/web/js/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more
+- **WebSocket handler:** (apps/manager/web/js/helper.js) Client implementation of events protocol to interact with [server](library/source/protocol/webSocketEvents.inl).
+- **Dynamic:** (apps/manager/web/js/dynamic.js) Helpers to add interface dynamic.
 
 ### Default views
 - **InstalledApps:** (apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications
@@ -232,6 +235,7 @@ Prefer RETURN_IF_FALSE for early exits on failed assertions.
 - **TableView:** (apps/manager/web/js/views/tableView.js) Displays a read-only MSAPI table for a given parameter
 - **SelectView:** (apps/manager/web/js/views/selectView.js) Provides a searchable, case-sensitive select dialog for choosing parameter values
 - **GridSettingsView:** (apps/manager/web/js/views/gridSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options
+- **Account:** (apps/manager/web/js/views/account.js) View to display logging and sign up forms, manage account and its information
 
 ### JS Style & Conventions
 - File header: Use same Polyform license block as existing JS files

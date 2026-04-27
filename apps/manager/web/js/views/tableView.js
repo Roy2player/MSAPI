@@ -20,7 +20,7 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 class TableView extends View {
 	constructor(parameters) { super("TableView", parameters); }
 
-	async Constructor(parameters)
+	Constructor(parameters)
 	{
 		this.m_title += ": " + parameters.viewTitle;
 		this.m_parentView.querySelector(".title > span").textContent = this.m_title;

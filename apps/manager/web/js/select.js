@@ -87,39 +87,38 @@ class Select {
 				canBeMaximized : false,
 				canBeSticked : false,
 				canBeClinged : false,
-				postCreateFunction : () => {
-					let selectItems = view.m_view.querySelector(".options");
-					if (!selectItems) {
-						console.error(`Select container for options is not found, parameter id: ${parameterId}`);
-						return;
-					}
-
-					for (let [key, value] of Object.entries(stringInterpretations)) {
-						let divElement = document.createElement("div");
-						let valueSpan = document.createElement("span");
-						let keySpan = document.createElement("span");
-						valueSpan.innerHTML = value;
-						keySpan.innerHTML = key;
-						divElement.appendChild(valueSpan);
-						divElement.appendChild(keySpan);
-
-						divElement.addEventListener("click", () => {
-							input.value = value;
-							input.setAttribute("select", key);
-							Select.Validate(input);
-							view.Destructor();
-
-							selectViews.forEach(selectView => {
-								if (!selectView.m_parentView.parentNode) {
-									selectViews.delete(selectView);
-								}
-							});
-						});
-
-						selectItems.appendChild(divElement);
-					}
-				}
 			});
+
+			let selectItems = view.m_view.querySelector(".options");
+			if (!selectItems) {
+				console.error(`Select container for options is not found, parameter id: ${parameterId}`);
+				return;
+			}
+
+			for (let [key, value] of Object.entries(stringInterpretations)) {
+				let divElement = document.createElement("div");
+				let valueSpan = document.createElement("span");
+				let keySpan = document.createElement("span");
+				valueSpan.innerHTML = value;
+				keySpan.innerHTML = key;
+				divElement.appendChild(valueSpan);
+				divElement.appendChild(keySpan);
+
+				divElement.addEventListener("click", () => {
+					input.value = value;
+					input.setAttribute("select", key);
+					Select.Validate(input);
+					view.Destructor();
+
+					selectViews.forEach(selectView => {
+						if (!selectView.m_parentView.parentNode) {
+							selectViews.delete(selectView);
+						}
+					});
+				});
+
+				selectItems.appendChild(divElement);
+			}
 
 			selectViews.add(view);
 
