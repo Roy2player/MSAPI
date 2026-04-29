@@ -77,7 +77,7 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 
 ### MSAPI Manager preview
 
-![MSAPI Manager preview](/apps/manager/MSAPI_Manager_preview.mp4)
+![MSAPI Manager preview](/apps/manager/MSAPI_Manager_preview.gif)
 
  **Scenario:** Load page -> open created apps view (some app were created before) -> attempt to create app -> login -> create app -> search for app by type filter -> create app view -> run app -> interact with run app.
 
