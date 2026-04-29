@@ -81,9 +81,9 @@ private:
 
 	public:
 		/**
-		 * @brief Get the Port object
+		 * @return Unique port.
 		 *
-		 * @return FORCE_INLINE
+		 * @todo Add unit test.
 		 */
 		FORCE_INLINE [[nodiscard]] uint16_t Get()
 		{
