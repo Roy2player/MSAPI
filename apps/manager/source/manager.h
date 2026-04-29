@@ -88,11 +88,11 @@ private:
 		 */
 		FORCE_INLINE [[nodiscard]] uint16_t Get()
 		{
-			m_mersenne.seed(static_cast<uint64_t>(MSAPI::Timer{}.GetNanoseconds()));
 			uint16_t port;
 			m_counter = 0;
 
 			MSAPI::Pthread::AtomicLock::ExitGuard _{ m_portsLock };
+			m_mersenne.seed(static_cast<uint64_t>(MSAPI::Timer{}.GetNanoseconds()));
 			do {
 				port = static_cast<uint16_t>(m_mersenne() % (65535 - 3000) + 3000);
 				if (m_ports.find(port) == m_ports.end()) {
@@ -109,7 +109,7 @@ private:
 		 *
 		 * @param port Port to be erased.
 		 *
-		 * @test Add unit test.
+		 * @todo Add unit test.
 		 */
 		FORCE_INLINE void Erase(const uint16_t port) noexcept
 		{
@@ -120,7 +120,7 @@ private:
 		/**
 		 * @brief Clear range of used ports.
 		 *
-		 * @test Add unit test.
+		 * @todo Add unit test.
 		 */
 		FORCE_INLINE void Clear() noexcept
 		{
@@ -350,6 +350,9 @@ private:
 		return MSAPI::Protocol::WebSocket::Events::HandleResult::Success;
 	}
 
+	// TODO: Here password or login can be changed from another user. The current login must be saved by connection and
+	// used here.
+	// That functionality should be provided my the module itself.
 	FORCE_INLINE MSAPI::Protocol::WebSocket::Events::HandleResult ModifyAccount(
 		std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single)
 	{

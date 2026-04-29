@@ -13,6 +13,7 @@
 
 const { WebSocketServer } = require('ws');
 const Helper = require("../help/helper");
+const WebSocketStream = require("../core/webSocketHandler").WebSocketStream;
 
 /**
  * @brief Server's behavior simulator.
@@ -103,6 +104,7 @@ class ServerSimulator {
 			let response
 				= { "uids" : [ json["uid"] ], "state" : WebSocketStream.State.Failed, "error" : "Unknown app type" };
 			connection.send(Helper.ParametersToJson(response));
+			return;
 		}
 
 		const port = Math.floor(Math.random() * (65535 - 1000 + 1)) + 1000;

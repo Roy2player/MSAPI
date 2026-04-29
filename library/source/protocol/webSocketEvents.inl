@@ -260,7 +260,7 @@ public:
 	/**
 	 * @brief Create empty filter.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE IdentityFilter() noexcept
 		: identity{}
@@ -272,7 +272,7 @@ public:
 	 *
 	 * @param identity Event identity.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE IdentityFilter(const uint64_t identity) noexcept
 		: identity{ identity }
@@ -283,7 +283,7 @@ public:
 	 * @brief Create filter from json. Filter is expected to be under "filter" key with unsigned type, empty filter is
 	 * created by default.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE IdentityFilter(const Json& json) noexcept
 	{
