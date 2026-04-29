@@ -78,7 +78,6 @@ private:
 		MSAPI::Pthread::AtomicLock m_portsLock;
 		std::mt19937 m_mersenne;
 		const int32_t m_limit{ 50000 };
-		int32_t m_counter{};
 
 	public:
 		/**
@@ -89,7 +88,7 @@ private:
 		FORCE_INLINE [[nodiscard]] uint16_t Get()
 		{
 			uint16_t port;
-			m_counter = 0;
+			int32_t counter{};
 
 			MSAPI::Pthread::AtomicLock::ExitGuard _{ m_portsLock };
 			m_mersenne.seed(static_cast<uint64_t>(MSAPI::Timer{}.GetNanoseconds()));
@@ -99,7 +98,7 @@ private:
 					m_ports.emplace(port);
 					return port;
 				}
-			} while (++m_counter < m_limit);
+			} while (++counter < m_limit);
 
 			return 0;
 		}
