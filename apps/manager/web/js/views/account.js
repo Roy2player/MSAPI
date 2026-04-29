@@ -310,7 +310,7 @@ class Account extends View {
 				this.m_parentView.classList.remove("loading");
 				this.HideErrorMessage();
 				loginNameInput.value = signupLoginInput.value;
-				ClearForm(signupForm);
+				Dynamic.ClearForm(signupForm);
 				loginSwitch.click();
 			};
 

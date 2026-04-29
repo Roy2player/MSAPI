@@ -94,7 +94,7 @@ class View {
 		};
 	})();
 
-	static m_clingSensitive = 40;
+	static m_clingSensitive = 20;
 
 	FindClosestToCling({ top, right, bottom, left })
 	{
