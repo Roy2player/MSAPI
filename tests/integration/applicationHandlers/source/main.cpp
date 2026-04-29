@@ -65,7 +65,8 @@
  * 38) Check parameters on client side;
  * 39) Manager asks parameters from the client;
  * 40) Manager asks metadata from the client;
- * 41) Manager stops, HandleDisconnect is called, client is paused;
+ * 41) Manager stops, HandleOutcomeDisconnect on client and HandleIncomeDisconnect on manager are called, client is
+ * paused;
  * 42) Manager starts, HandleReconnect is called, client is running;
  * 43) Manager sends delete request to the client, state is changed;
  * 44) Check actions and unhandled actions numbers for all applications.
@@ -856,7 +857,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	test.Assert(client->MSAPI::Application::GetState(), MSAPI::Application::State::Running,
 		"Client state is not changed after metadata request");
 
-	//* 41) Manager stops, HandleDisconnect is called, client is paused
+	//* 41) Manager stops, HandleOutcomeDisconnect on client and HandleIncomeDisconnect on manager are called, client is
+	// paused
 	manager->Stop();
 	MSAPI::Test::Wait(
 		50000, [&manager]() { return manager->MSAPI::Server::GetState() == MSAPI::Server::State::Stopped; });
@@ -864,6 +866,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"Manager unexpectedly stopped on application side");
 	test.Assert(manager->MSAPI::Server::GetState(), MSAPI::Server::State::Stopped,
 		"Manager unexpectedly stopped on server side");
+	manager->WaitActionsNumber(test, 5000000, 10);
+	test.Assert(actionsManager, 10, "Correct number of actions on manager side: 10");
 	client->WaitActionsNumber(test, 50000, 18);
 	test.Assert(actions, 18, "Correct number of actions 18");
 	test.Assert(client->MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
@@ -871,8 +875,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
 	//* 42) Manager starts, HandleReconnect is called, client is running
 	(void)managerPtr->Start(INADDR_LOOPBACK, managerPtr->GetPort());
-	manager->WaitActionsNumber(test, 5000000, 10);
-	test.Assert(actionsManager, 10, "Correct number of actions on manager side: 10");
+	manager->WaitActionsNumber(test, 5000000, 11);
+	test.Assert(actionsManager, 11, "Correct number of actions on manager side: 11");
 	test.Assert(manager->MSAPI::Server::GetState(), MSAPI::Server::State::Running, "Manager restarted successfully");
 	test.Assert(manager->MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
 		"Manager application is still paused");

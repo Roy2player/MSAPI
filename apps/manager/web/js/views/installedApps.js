@@ -11,20 +11,25 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief View to display installed MSAPI applications. On creation requests metadata for all installed apps if not yet
- * available.
+ * available. Only one instance can be created.
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
-	MetadataCollector = require("../views/metadataCollector");
-	Dispatcher = require("../views/dispatcher").Dispatcher;
+	View = require("../core/view");
+	MetadataCollector = require("./metadataCollector");
+	Dispatcher = require("./dispatcher").Dispatcher;
+	WebSocketSingle = require("../core/webSocketHandler").WebSocketSingle;
 }
 
 class InstalledApps extends View {
-	constructor(parameters) { super("InstalledApps", parameters); }
+	constructor(parameters) { super("Installed apps", parameters); }
 
-	async Constructor(parameters)
+	Constructor(parameters)
 	{
+		if (View.ShowExistedView(this)) {
+			return false;
+		}
+
 		this.m_grid = new Grid({
 			parent : this.m_view,
 			indexColumnId : 5,
@@ -38,38 +43,45 @@ class InstalledApps extends View {
 			}
 		});
 
-		this.AddCallback("getInstalledApps", (response) => {
-			if ("apps" in response) {
-				response.apps.forEach(app => { this.m_grid.AddOrUpdateRow({ 5 : app.type }); });
+		const handleResponse = (response) => {
+			response.forEach(app => {
+				this.m_grid.AddOrUpdateRow({ 5 : app.type });
 
-				response.apps.forEach(app => {
-					if (!MetadataCollector.GetAppMetadata(app.type)) {
-						View.SendRequest({
-							method : "GET",
-							mode : "cors",
-							headers : { "Accept" : "application/json", "Type" : "getMetadata", "AppType" : app.type }
-						});
-					}
+				if (!MetadataCollector.GetAppMetadata(app.type)) {
+					new WebSocketSingle({
+						event : Helper.StringHash32Uint("getMetadata"),
+						handleResponse : (metadata) => { MetadataCollector.AddAppMetadata(app.type, metadata); },
+						handleFailed : (error) => { this.DisplayErrorMessage(error); },
+						viewUid : this.m_uid,
+						data : {
+							"appType" : Helper.StringHash32Uint(app.type),
+							"filter" : Helper.StringHash32Uint(app.type)
+						}
+					});
+				}
 
-					if ("viewPortParameter" in app) {
-						MetadataCollector.SetViewPortParameterToAppType(app.type, app.viewPortParameter);
-					}
-				});
-			}
-		});
+				if ("viewPortParameter" in app) {
+					MetadataCollector.SetViewPortParameterToAppType(app.type, app.viewPortParameter);
+				}
+			});
+		};
 
-		void View.SendRequest({
-			method : "GET",
-			mode : "cors",
-			headers : { "Accept" : "application/json", "Type" : "getInstalledApps" }
+		new WebSocketSingle({
+			event : Helper.StringHash32Uint("installedApp"),
+			handleResponse : handleResponse,
+			handleFailed : (error) => {
+				this.m_parentView.classList.remove("loading");
+				this.DisplayErrorMessage(error);
+			},
+			viewUid : this.m_uid
 		});
 
 		return true;
 	}
 }
 
-View.AddViewTemplate("InstalledApps", `<div></div>`);
-Dispatcher.RegisterPanel("InstalledApps", () => new InstalledApps());
+View.AddViewTemplate("Installed apps", `<div></div>`);
+Dispatcher.RegisterPanel("Installed apps", () => new InstalledApps());
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = InstalledApps;

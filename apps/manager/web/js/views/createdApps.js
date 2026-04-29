@@ -26,16 +26,18 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
-	MetadataCollector = require("../views/metadataCollector");
-	Dispatcher = require("../views/dispatcher").Dispatcher;
+	View = require("../core/view");
+	MetadataCollector = require("./metadataCollector");
+	Dispatcher = require("./dispatcher").Dispatcher;
+	WebSocketStream = require("../core/webSocketHandler").WebSocketStream;
 }
 
 class CreatedApps extends View {
-	constructor(parameters) { super("CreatedApps", parameters); }
+	constructor(parameters) { super("Created apps", parameters); }
 
-	async Constructor(parameters)
+	Constructor(parameters)
 	{
+		this.m_portToParametersStream = new Map();
 		this.m_grid = new Grid({
 			parent : this.m_view,
 			indexColumnId : 1000009,
@@ -61,14 +63,15 @@ class CreatedApps extends View {
 							return;
 						}
 
-						View.SendRequest({
-							method : "GET",
-							mode : "cors",
-							headers : {
-								"Accept" : "application/json",
-								"Type" : state == 1 ? "run" : "pause",
-								"Port" : rowObject.values[1000009]
-							}
+						new WebSocketSingle({
+							event : Helper.StringHash32Uint(state == 1 ? "run" : "pause"),
+							handleResponse : (response) => {},
+							handleFailed : (error) => {
+								changeStateCell.classList.remove("loading");
+								this.DisplayErrorMessage(error);
+							},
+							viewUid : this.m_uid,
+							data : { "port" : port }
 						});
 						changeStateCell.classList.add("loading");
 					});
@@ -111,11 +114,28 @@ class CreatedApps extends View {
 
 							return;
 						}
-						View.SendRequest({
-							method : "GET",
-							mode : "cors",
-							headers : { "Accept" : "application/json", "Type" : "delete", "Port" : port }
+
+						new WebSocketSingle({
+							event : Helper.StringHash32Uint("delete"),
+							handleResponse : (response) => {
+								this.m_grid.RemoveRow({ indexValue : port });
+								let destructed = 0;
+								// Destruct all views related to the deleted application in terms of same port
+								for (let view of View.GetCreatedViews().values()) {
+									if (view.m_port == port) {
+										view.Destructor();
+										destructed++;
+									}
+								}
+							},
+							handleFailed : (error) => {
+								deleteCell.classList.remove("loading");
+								this.DisplayErrorMessage(error);
+							},
+							viewUid : this.m_uid,
+							data : { "port" : port }
 						});
+						deleteCell.classList.add("loading");
 					});
 
 					deleteCell.classList.add("action", "delete");
@@ -133,6 +153,10 @@ class CreatedApps extends View {
 							changeStateCell.classList.add("pause");
 							changeStateCell.classList.remove("run");
 						}
+
+						if (changeStateCell.classList.contains("loading")) {
+							changeStateCell.classList.remove("loading");
+						}
 					}
 				}
 
@@ -147,13 +171,18 @@ class CreatedApps extends View {
 						const viewPortParameter = MetadataCollector.GetViewPortParameterToAppType(appType);
 						if (viewPortParameter != undefined) {
 							viewCell.addEventListener("click", () => {
-								const port = rowObject.values[1000009];
+								const port = rowObject.values[viewPortParameter];
 								if (port === undefined) {
 									console.error("Can't find server port in row values");
 									return;
 								}
+								const ip = rowObject.values[1000008];
+								if (ip === undefined) {
+									console.error("Can't find server ip in row values");
+									return;
+								}
 
-								new AppView({ appType, port, viewPortParameter });
+								new AppView({ appType, port, ip });
 							});
 
 							viewCell.classList.add("action", "openAppView");
@@ -162,103 +191,64 @@ class CreatedApps extends View {
 				}
 			}
 		});
-		this.AddCallback("getCreatedApps", (response) => {
-			if ("apps" in response) {
-				this.m_grid.m_rowByIndexValue.forEach((rowObject, indexValue) => {
-					if (!response.apps.some(app => app.port == indexValue)) {
-						this.m_grid.RemoveRow({ indexValue : indexValue });
-					}
-				});
 
-				response.apps.forEach(app => {
+		let handleCreatedApps = (data) => {
+			if ("deleted" in data) {
+				data.deleted.forEach((port) => {
+					let stream = this.m_portToParametersStream.get(port);
+					if (stream) {
+						stream.Close();
+						this.m_portToParametersStream.delete(port);
+					}
+					else {
+						console.warn("Unexpectedly absence of parameters stream for app on port", port);
+					}
+					this.m_grid.RemoveRow({ indexValue : port });
+				})
+			}
+
+			if ("created" in data) {
+				data.created.forEach((app) => {
 					this.m_grid.AddOrUpdateRow({
 						1000009 : app.port,
 						5 : app.type,
 						10 : app.viewPortParameter,
 					});
-					View.SendRequest({
-						method : "GET",
-						mode : "cors",
-						headers : { "Accept" : "application/json", "Type" : "getParameters", "Port" : app.port }
+
+					let stream = new WebSocketStream({
+						event : Helper.StringHash32Uint("parameters"),
+						handleData : (parameters) => {
+							if (parameters["1000009"] == undefined) {
+								if (Object.keys(parameters).length != 0) {
+									console.warn(
+										"Update for app row is not empty but does not contain index row", parameters);
+								}
+								return;
+							}
+							this.m_grid.AddOrUpdateRow(parameters);
+						},
+						handleFailed : (error) => { this.DisplayErrorMessage(error); },
+						viewUid : this.m_uid,
+						data : { "port" : app.port, "filter" : app.port }
 					});
-				});
+					this.m_portToParametersStream.set(app.port, stream);
+				})
 			}
-		});
+		};
 
-		this.AddCallback("run", (response, extraParameters) => {
-			if (response.status && response.result) {
-				(async () => {
-					await View.SendRequest({
-						method : "GET",
-						mode : "cors",
-						headers :
-							{ "Accept" : "application/json", "Type" : "getParameters", "Port" : extraParameters.port }
-					});
-				})();
-			}
-			let rowObject = this.m_grid.m_rowByIndexValue.get(extraParameters.port);
-			if (rowObject) {
-				let actionCell = rowObject.row.querySelector(".cell[parameter-id='2']");
-				if (actionCell) {
-					actionCell.classList.remove("loading");
-				}
-			}
-			else {
-				console.error("Can't find row for port", extraParameters.port);
-			}
+		new WebSocketStream({
+			event : Helper.StringHash32Uint("createdApps"),
+			handleData : handleCreatedApps,
+			handleFailed : (error) => { this.DisplayErrorMessage(error); },
+			viewUid : this.m_uid
 		});
-
-		this.AddCallback("pause", (response, extraParameters) => {
-			if (response.status && response.result) {
-				(async () => {
-					await View.SendRequest({
-						method : "GET",
-						mode : "cors",
-						headers :
-							{ "Accept" : "application/json", "Type" : "getParameters", "Port" : extraParameters.port }
-					});
-				})();
-			}
-			let rowObject = this.m_grid.m_rowByIndexValue.get(extraParameters.port);
-			if (rowObject) {
-				let actionCell = rowObject.row.querySelector(".cell[parameter-id='2']");
-				if (actionCell) {
-					actionCell.classList.remove("loading");
-				}
-			}
-			else {
-				console.error("Can't find row for port", extraParameters.port);
-			}
-		});
-
-		this.AddCallback("delete", (response, extraParameters) => {
-			this.m_grid.RemoveRow({ indexValue : extraParameters.port });
-			let destructed = 0;
-			// Destruct all views related to the deleted application in terms of same port
-			for (let view of View.GetCreatedViews().values()) {
-				if (view.m_port == extraParameters.port) {
-					view.Destructor();
-					destructed++;
-				}
-			}
-			return destructed > 0;
-		});
-
-		this.AddCallback("getParameters", (response, extraParameters) => {
-			if ("parameters" in response && "port" in extraParameters) {
-				this.m_grid.AddOrUpdateRow(response.parameters);
-			}
-		});
-
-		View.SendRequest(
-			{ method : "GET", mode : "cors", headers : { "Accept" : "application/json", "Type" : "getCreatedApps" } });
 
 		return true;
 	}
 }
 
-View.AddViewTemplate("CreatedApps", `<div></div>`);
-Dispatcher.RegisterPanel("CreatedApps", () => new CreatedApps());
+View.AddViewTemplate("Created apps", `<div></div>`);
+Dispatcher.RegisterPanel("Created apps", () => new CreatedApps());
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = CreatedApps;

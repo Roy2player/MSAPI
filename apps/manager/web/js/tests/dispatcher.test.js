@@ -11,20 +11,22 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner } = require("./testRunner");
+const { TestRunner, testRunner } = require("../test/testRunner");
 const { Dispatcher } = require("../views/dispatcher");
-
-const Grid = require("../grid");
-const View = require("../view");
+const Grid = require("../core/grid");
+const View = require("../core/view");
 const InstalledApps = require("../views/installedApps");
 const CreatedApps = require("../views/createdApps");
+const Account = require("../views/account");
+const { WebSocketHandler, WebSocketStream, WebSocketSingle } = require("../core/webSocketHandler");
 
 global.Grid = Grid;
 global.View = View;
 
-global.dispatcher.UnregisterPanel('MetadataCollector');
-global.dispatcher.UnregisterPanel('InstalledApps');
-global.dispatcher.UnregisterPanel('CreatedApps');
+global.dispatcher.UnregisterPanel('Metadata collector');
+global.dispatcher.UnregisterPanel('Installed apps');
+global.dispatcher.UnregisterPanel('Created apps');
+global.dispatcher.UnregisterPanel('Account');
 
 function DestroyViews()
 {
@@ -38,9 +40,10 @@ function DestroyViews()
 
 function UnregisterPanels()
 {
-	global.dispatcher.UnregisterPanel('MetadataCollector');
-	global.dispatcher.UnregisterPanel('InstalledApps');
-	global.dispatcher.UnregisterPanel('CreatedApps');
+	global.dispatcher.UnregisterPanel('Metadata collector');
+	global.dispatcher.UnregisterPanel('Installed apps');
+	global.dispatcher.UnregisterPanel('Created apps');
+	global.dispatcher.UnregisterPanel('Account');
 }
 
 function CheckHiddenViewsList(expectedSize)
@@ -167,7 +170,7 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 	//* Add hidden view
 	global.dispatcher.AddHiddenView(view1);
 	CheckHiddenViewsList(1);
-	testRunner.Assert(hiddenViewsList.childNodes[0].querySelector('span').innerHTML, 'InstalledApps',
+	testRunner.Assert(hiddenViewsList.childNodes[0].querySelector('span').innerHTML, 'Installed apps',
 		'Unexpected name on hidden view');
 	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
 
@@ -187,7 +190,7 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
 
 	//* Add another hidden view
-	let view2 = new InstalledApps();
+	let view2 = new Account();
 	await TestRunner.WaitFor(() => view2.m_created, 'view2 created');
 	CheckClassList(view2.m_parentView, [ 'view' ]);
 	global.dispatcher.AddHiddenView(view2);
@@ -200,8 +203,8 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 	CheckClassList(view3.m_parentView, [ 'view' ]);
 	global.dispatcher.AddHiddenView(view3);
 	CheckHiddenViewsList(3);
-	testRunner.Assert(
-		hiddenViewsList.childNodes[2].querySelector('span').innerHTML, 'CreatedApps', 'Unexpected name on hidden view');
+	testRunner.Assert(hiddenViewsList.childNodes[2].querySelector('span').innerHTML, 'Created apps',
+		'Unexpected name on hidden view');
 	CheckClassList(view3.m_parentView, [ 'view', 'hidden' ]);
 
 	//* Call show on view
@@ -297,17 +300,17 @@ testRunner.Test('Manage list of registered panels', async () => {
 	};
 
 	//* Register panel
-	Dispatcher.RegisterPanel('InstalledApps', () => new InstalledApps());
+	Dispatcher.RegisterPanel('Installed apps', () => new InstalledApps());
 	checkRegisteredPanelsList(1, 0);
-	testRunner.Assert(registeredPanelsList.childNodes[0].querySelector('span').innerHTML, 'InstalledApps',
+	testRunner.Assert(registeredPanelsList.childNodes[0].querySelector('span').innerHTML, 'Installed apps',
 		'Unexpected name on registered panel');
 
 	//* Register panel
-	Dispatcher.RegisterPanel('InstalledApps', () => new InstalledApps());
+	Dispatcher.RegisterPanel('Installed apps', () => new InstalledApps());
 	checkRegisteredPanelsList(1, 0);
 
 	//* Register panel
-	Dispatcher.RegisterPanel('CreatedApps', () => new CreatedApps());
+	Dispatcher.RegisterPanel('Created apps', () => new CreatedApps());
 	checkRegisteredPanelsList(2, 0);
 
 	//* Click to create panel
@@ -317,7 +320,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 
 	testRunner.Assert(View.GetCreatedViews().size, 1, 'Unexpected created views count');
 	testRunner.Assert(
-		Array.from(View.GetCreatedViews().values())[0].m_title, 'InstalledApps', 'Unexpected name on created view');
+		Array.from(View.GetCreatedViews().values())[0].m_title, 'Installed apps', 'Unexpected name on created view');
 
 	//* Click to create panel
 	registeredPanelsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
@@ -325,7 +328,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 	checkRegisteredPanelsList(2, 0);
 	testRunner.Assert(View.GetCreatedViews().size, 2, 'Unexpected created views count');
 	testRunner.Assert(
-		Array.from(View.GetCreatedViews().values())[1].m_title, 'CreatedApps', 'Unexpected name on created view');
+		Array.from(View.GetCreatedViews().values())[1].m_title, 'Created apps', 'Unexpected name on created view');
 
 	//* Click to create panel
 	registeredPanelsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
@@ -333,7 +336,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 	checkRegisteredPanelsList(2, 0);
 	testRunner.Assert(View.GetCreatedViews().size, 3, 'Unexpected created views count');
 	testRunner.Assert(
-		Array.from(View.GetCreatedViews().values())[2].m_title, 'CreatedApps', 'Unexpected name on created view');
+		Array.from(View.GetCreatedViews().values())[2].m_title, 'Created apps', 'Unexpected name on created view');
 
 	//* Hide views
 	let views = Array.from(View.GetCreatedViews().values());

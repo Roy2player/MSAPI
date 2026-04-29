@@ -8,33 +8,32 @@
  *
  * For commercial use, please contact: maks.angels@mail.ru
  *
- * Required Notice: MSAPI, copyright © 2021–2025 Maksim Andreevich Leonov, maks.angels@mail.ru
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief View to display an MSAPI application with its own UI in the iframe.
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
+	View = require("../core/view");
 }
 
 class AppView extends View {
 	constructor(parameters) { super("AppView", parameters); }
 
-	async Constructor(parameters)
+	Constructor(parameters)
 	{
-		this.m_title += ": " + parameters.appType + " (port: " + this.m_port + ")";
-		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
-
-		const parametersToPort = View.GetParameters(this.m_port);
-
-		// Create an iframe to display the app at the given URL and port
-		const listeningIp = parametersToPort && parametersToPort[1000008] ? parametersToPort[1000008] : null;
-		if (!listeningIp) {
-			console.error("Parameter 1000008 (Listening IP) is not available for app on port", this.m_port);
+		if (!this.m_port) {
+			console.error("Listening port is not provided");
 			return false;
 		}
 
-		const url = parameters.url || `http://${listeningIp}:${parametersToPort[parameters.viewPortParameter]}/`;
+		this.m_listeningIp = parameters.ip;
+		if (!this.m_listeningIp) {
+			console.error("Listening IP is not provided");
+			return false;
+		}
+
+		const url = parameters.url || `http://${this.m_listeningIp}:${this.m_port}/`;
 		const iframe = document.createElement("iframe");
 		iframe.src = url;
 		iframe.style.width = "100%";
@@ -56,16 +55,41 @@ class AppView extends View {
 			}
 		});
 
-		const refreshIframe = (response, extraParameters) => {
-			if (response.status && response.result && "port" in extraParameters
-				&& extraParameters.port === this.m_port) {
-				this.m_view.classList.add("loading");
-				iframe.src = url + (url.includes("?") ? "&" : "?") + "reloaded=" + Date.now();
-			}
-		};
+		let isTitleUpdated = false;
+		let appState = undefined;
+		let stream = new WebSocketStream({
+			event : Helper.StringHash32Uint("parameters"),
+			handleData : (parameters) => {
+				let name = parameters["2000001"];
+				if (!isTitleUpdated && name != undefined) {
+					if (name) {
+						this.m_title += ": " + name + " on port " + this.m_port;
+					}
+					else {
+						this.m_title += ": " + this.m_appType + " on port " + this.m_port;
+					}
+					isTitleUpdated = true;
+					this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+				}
 
-		this.AddCallback("run", refreshIframe);
-		this.AddCallback("pause", refreshIframe);
+				const state = parameters["2000002"];
+				if (state != undefined) {
+					if (appState == undefined) {
+						appState = state;
+						return;
+					}
+
+					if (state != appState) {
+						this.m_view.classList.add("loading");
+						iframe.src = url + (url.includes("?") ? "&" : "?") + "reloaded=" + Date.now();
+					}
+					appState = state;
+				}
+			},
+			handleFailed : (error) => { this.DisplayErrorMessage(error); },
+			viewUid : this.m_uid,
+			data : { "port" : this.m_port, "filter" : this.m_port }
+		});
 
 		return true;
 	}

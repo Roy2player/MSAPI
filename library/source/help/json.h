@@ -30,6 +30,12 @@
 namespace MSAPI {
 
 class JsonNode;
+class Json;
+
+#define JsonNodeTypes                                                                                                  \
+	MSAPI::Json, std::list<MSAPI::JsonNode>, std::string, double, int64_t, uint64_t, bool, std::nullptr_t
+
+template <typename T> constexpr bool is_json_node_type = is_any_of<T, JsonNodeTypes>;
 
 /**************************
  * @brief Object for parsing Json data. Initialization in constructor from string, generate array pairs { key, value }.
@@ -90,6 +96,21 @@ public:
 	 */
 	const JsonNode* GetValue(std::string_view key) const noexcept;
 
+	/**
+	 * @brief Get the Value Type object
+	 *
+	 * @tparam T Json node type.
+	 *
+	 * @param key Key of the value.
+	 *
+	 * @return Readable pointer on value of key, nullptr if does not exist or type is different.
+	 *
+	 * @test Has unit test.
+	 */
+	template <typename T>
+		requires is_json_node_type<T>
+	[[nodiscard]] const T* GetValueType(std::string_view key) const noexcept;
+
 	/**************************
 	 * @brief Clear all data and set invalid flag.
 	 *
@@ -144,11 +165,6 @@ public:
 	 */
 	friend std::ostream& operator<<(std::ostream& os, Json& json);
 };
-
-#define JsonNodeTypes                                                                                                  \
-	MSAPI::Json, std::list<MSAPI::JsonNode>, std::string, double, int64_t, uint64_t, bool, std::nullptr_t
-
-template <typename T> constexpr bool is_json_node_type = is_any_of<T, JsonNodeTypes>;
 
 /**************************
  * @brief Variant with possible node types. Exists to provide a way to store Json data in a tree structure.
@@ -255,6 +271,18 @@ private:
 	 */
 	friend std::string Json::ToJson() const noexcept;
 };
+
+template <typename T>
+	requires is_json_node_type<T>
+[[nodiscard]] const T* Json::GetValueType(const std::string_view key) const noexcept
+{
+	const auto* node{ GetValue(key) };
+	if (node == nullptr) {
+		return nullptr;
+	}
+
+	return std::get_if<T>(&node->GetValue());
+}
 
 }; //* namespace MSAPI
 

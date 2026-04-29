@@ -14,13 +14,13 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
+	View = require("../core/view");
 }
 
 class GridSettingsView extends View {
 	constructor(parameters) { super("GridSettingsView", parameters); }
 
-	async Constructor(parameters)
+	Constructor(parameters)
 	{
 		this.m_parentView.querySelector(".title > span").textContent = parameters.viewTitle;
 		this.m_eventTarget = parameters.eventTarget;

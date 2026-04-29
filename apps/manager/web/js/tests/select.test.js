@@ -11,10 +11,10 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner } = require("./testRunner");
-const Select = require("../select");
+const { TestRunner, testRunner } = require("../test/testRunner");
+const Select = require("../core/select");
 const MetadataCollector = require("../views/metadataCollector");
-const View = require("../view");
+const View = require("../core/view");
 
 const parameter_const = 7683294087;
 const parameter_mutable = 908766347869289;

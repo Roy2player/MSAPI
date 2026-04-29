@@ -11,9 +11,9 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner } = require("./testRunner");
-const Table = require("../table");
-const View = require("../view");
+const { TestRunner, testRunner } = require("../test/testRunner");
+const Table = require("../core/table");
+const View = require("../core/view");
 const MetadataCollector = require("../views/metadataCollector");
 
 class RowChecking {

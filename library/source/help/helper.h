@@ -685,6 +685,23 @@ FORCE_INLINE [[nodiscard]] std::span<const T> Base64Decode(const std::string_vie
 	return { reinterpret_cast<const T*>(buffer.data()), bufferIndex };
 }
 
+/**
+ * @param str String to be hashed.
+ *
+ * @return Unsigned 32 bit hash for provided string.
+ *
+ * @todo Add unit test.
+ */
+FORCE_INLINE [[nodiscard]] constexpr uint32_t StringHash32Uint(const std::string_view str) noexcept
+{
+	uint32_t hash{};
+	for (const char c : str) {
+		hash = (hash << 5) - hash + static_cast<uint8_t>(c);
+	}
+
+	return hash;
+}
+
 }; //* namespace Helper
 
 }; //* namespace MSAPI

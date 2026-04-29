@@ -14,19 +14,16 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
-	MetadataCollector = require("../views/metadataCollector");
+	View = require("../core/view");
+	MetadataCollector = require("./metadataCollector");
 }
 
 class ModifyApp extends View {
 	constructor(parameters) { super("ModifyApp", parameters); }
 
-	async Constructor(parameters)
+	Constructor(parameters)
 	{
-		let existedApp = View.GetViewByTypeAndPort(this.m_viewType, this.m_port);
-		if (existedApp) {
-			existedApp.Show();
-			this.m_silentExit = true;
+		if (View.ShowExistedView(this)) {
 			return false;
 		}
 
@@ -35,29 +32,15 @@ class ModifyApp extends View {
 
 		let metadata = MetadataCollector.GetAppMetadata(this.m_appType);
 		if (!metadata) {
-			let result = await View.SendRequest({
-				method : "GET",
-				mode : "cors",
-				headers : { "Accept" : "application/json", "Type" : "getMetadata", "AppType" : this.m_appType }
-			});
-			if (!("status" in result) || !result.status) {
-				console.error("Can't get metadata for application", this.m_appType);
-				return false;
-			}
-		}
-		metadata = MetadataCollector.GetAppMetadata(this.m_appType);
-
-		let result = await View.SendRequest({
-			method : "GET",
-			mode : "cors",
-			headers : { "Accept" : "application/json", "Type" : "getParameters", "Port" : this.m_port }
-		});
-		if (!("status" in result) || !result.status) {
-			console.error("Can't get parameters for application", this.m_appType);
+			console.error("Can't get metadata for application", this.m_appType);
 			return false;
 		}
 
 		let inputs = this.m_view.querySelector(".inputs");
+		if (!inputs) {
+			console.error("No inputs to fill app parameters");
+			return false;
+		}
 
 		function parseParameter(parameterId, parameter, parent, mutable, saveThis)
 		{
@@ -253,25 +236,27 @@ class ModifyApp extends View {
 			View.ValidateInputs(containerWithInputs);
 		}
 
-		const parametersToPort = View.GetParameters(this.m_port);
-		if (parametersToPort) {
-			displayParameters(this, parametersToPort);
+		let isTitleUpdated = false;
+		let stream = new WebSocketStream({
+			event : Helper.StringHash32Uint("parameters"),
+			handleData : (parameters) => {
+				let name = parameters["2000001"];
+				if (!isTitleUpdated && name != undefined) {
+					if (name) {
+						this.m_title += ": " + name + " on port " + this.m_port;
+					}
+					else {
+						this.m_title += ": " + this.m_appType + " on port " + this.m_port;
+					}
+					isTitleUpdated = true;
+					this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+				}
 
-			parametersToPort[5] = this.m_appType;
-			parametersToPort[10] = this.m_viewPortParameter;
-		}
-		if (parametersToPort && parametersToPort.hasOwnProperty(2000001)) {
-			this.m_title += ": " + parametersToPort[2000001];
-		}
-		else {
-			this.m_title += ": " + this.m_appType;
-		}
-		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
-
-		this.AddCallback("getParameters", (response, extraParameters) => {
-			if ("parameters" in response && "port" in extraParameters && extraParameters.port == this.m_port) {
-				displayParameters(this, response.parameters);
-			}
+				displayParameters(this, parameters);
+			},
+			handleFailed : (error) => { this.DisplayErrorMessage(error); },
+			viewUid : this.m_uid,
+			data : { "port" : this.m_port, "filter" : this.m_port }
 		});
 
 		this.m_view.querySelector(".button").addEventListener("click", async () => {
@@ -287,32 +272,21 @@ class ModifyApp extends View {
 			}
 
 			this.m_parentView.classList.add("loading");
-			let headers = { "Accept" : "application/json", "Type" : "modify", "Port" : this.m_port };
 			let newParameters
 				= View.ParseInputs(containerWithInputs, false, MetadataCollector.GetAppMetadata(this.m_appType));
-
 			for (const table of this.m_tables.values()) {
 				newParameters[table.m_id] = table.GetData();
 			}
-
-			headers["Parameters"] = Helper.ParametersToJson(newParameters);
-
-			let result = await View.SendRequest({ method : "GET", mode : "cors", headers });
-			if ("status" in result) {
-				this.m_parentView.classList.remove("loading");
-				if (!result.status) {
-					this.DisplayErrorMessage(result.message);
-				}
-
-				View.SendRequest({
-					method : "GET",
-					mode : "cors",
-					headers : { "Accept" : "application/json", "Type" : "getParameters", "Port" : this.m_port }
-				});
-			}
-			else {
-				this.DisplayErrorMessage("Error: No status in response");
-			}
+			new WebSocketSingle({
+				event : Helper.StringHash32Uint("modify"),
+				handleResponse : (response) => { this.m_parentView.classList.remove("loading"); },
+				handleFailed : (error) => {
+					this.m_parentView.classList.remove("loading");
+					this.DisplayErrorMessage(error);
+				},
+				viewUid : this.m_uid,
+				data : { "parameters" : newParameters, "port" : this.m_port, "filter" : this.m_port }
+			});
 		});
 
 		return true;

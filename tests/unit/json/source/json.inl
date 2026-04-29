@@ -79,6 +79,15 @@ bool Json()
 		RETURN_IF_FALSE(t.Assert(rootArray->Valid(), true, "rootArray is valid"));
 		RETURN_IF_FALSE(
 			t.Assert(std::get<std::list<MSAPI::JsonNode>>(rootArray->GetValue()).empty(), true, "rootArray is empty"));
+		const auto* rootArrayValueType{ json3.GetValueType<std::list<MSAPI::JsonNode>>("rootArray") };
+		RETURN_IF_FALSE(
+			t.Assert(rootArrayValueType != nullptr, true, "Expected result of GetValueType for valid array node"));
+		RETURN_IF_FALSE(t.Assert(rootArrayValueType == std::get_if<std::list<MSAPI::JsonNode>>(&rootArray->GetValue()),
+			true, "Expected value of GetValueType for valid array node"));
+		RETURN_IF_FALSE(t.Assert(json3.GetValueType<std::list<MSAPI::JsonNode>>("rootArra") == nullptr, true,
+			"Expected result of GetValueType for invalid array node"));
+		RETURN_IF_FALSE(t.Assert(json3.GetValueType<double>("rootArray") == nullptr, true,
+			"Expected result of GetValueType for invalid array node type"));
 		RETURN_IF_FALSE(t.Assert(json3.ToString(), "Json:\n{\n\trootArray : [] <valid: true>\n} <valid: true>",
 			"Json string interpretation is correct"));
 		RETURN_IF_FALSE(t.Assert(json3.ToJson(), "{\"rootArray\":[]}", "Json interpretation is correct"));
@@ -204,6 +213,11 @@ bool Json()
 				t.Assert(std::get<std::string>(bin->GetValue()), expectedApp->second.bin, "Bin path matches"));
 			RETURN_IF_FALSE(t.Assert(
 				std::get<std::string>(settings->GetValue()), expectedApp->second.settings, "Settings path matches"));
+			const auto* expectedAppValueType{ appKeysAndValues.GetValueType<std::string>("App") };
+			RETURN_IF_FALSE(t.Assert(
+				expectedAppValueType != nullptr, true, "Expected result of GetValueType for valid string node"));
+			RETURN_IF_FALSE(t.Assert(expectedAppValueType == std::get_if<std::string>(&appName->GetValue()), true,
+				"Expected value of GetValueType for valid string node"));
 		}
 
 		json.Clear();
@@ -293,6 +307,12 @@ bool Json()
 		RETURN_IF_FALSE(
 			t.Assert(std::get<MSAPI::Json>(information->GetValue()).Valid(), true, "Json node 'information' is valid"));
 
+		const auto* informationValueType{ keysAndValues.GetValueType<MSAPI::Json>("information") };
+		RETURN_IF_FALSE(
+			t.Assert(informationValueType != nullptr, true, "Expected result of GetValueType for valid json node"));
+		RETURN_IF_FALSE(t.Assert(informationValueType == std::get_if<MSAPI::Json>(&information->GetValue()), true,
+			"Expected value of GetValueType for valid json node"));
+
 		const auto& informationKeysAndValues = std::get<MSAPI::Json>(information->GetValue());
 		RETURN_IF_FALSE(
 			t.Assert(informationKeysAndValues.GetKeysAndValues().size(), 3, "'information' json size is 3"));
@@ -308,6 +328,12 @@ bool Json()
 			"Type of key 'balance1' is unsigned integer"));
 		RETURN_IF_FALSE(
 			t.Assert(std::get<uint64_t>(informationBalance1->GetValue()), 123, "Value of key 'balance1' is 123"));
+		const auto* informationBalance1ValueType{ informationKeysAndValues.GetValueType<uint64_t>("balance1") };
+		RETURN_IF_FALSE(t.Assert(
+			informationBalance1ValueType != nullptr, true, "Expected result of GetValueType for valid uint64_t node"));
+		RETURN_IF_FALSE(
+			t.Assert(informationBalance1ValueType == std::get_if<uint64_t>(&informationBalance1->GetValue()), true,
+				"Expected value of GetValueType for valid uint64_t node"));
 		const auto* informationBalance2{ informationKeysAndValues.GetValue("balance2") };
 		RETURN_IF_FALSE(t.Assert(informationBalance2 != nullptr, true, "Key 'balance2' found"));
 		RETURN_IF_FALSE(t.Assert(std::holds_alternative<std::string>(informationBalance2->GetValue()), true,
