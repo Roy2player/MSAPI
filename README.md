@@ -75,7 +75,7 @@ Unit/end-to-end tests utilities with ability to run servers as daemons.
 
 MSAPI frontend provides a modular set of views for managing, configuring, and interacting with MSAPI applications and their parameters through a unified web interface.
 
-### MSAPI Manager preview
+### 🎬 Preview
 
 ![MSAPI Manager preview](/apps/manager/MSAPI_Manager_preview.gif)
 
