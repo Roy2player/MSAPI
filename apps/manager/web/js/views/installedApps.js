@@ -18,6 +18,7 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	View = require("../view");
 	MetadataCollector = require("../views/metadataCollector");
 	Dispatcher = require("../views/dispatcher").Dispatcher;
+	WebSocketSingle = require("../webSocketHandler").WebSocketSingle;
 }
 
 class InstalledApps extends View {
@@ -48,12 +49,14 @@ class InstalledApps extends View {
 
 				if (!MetadataCollector.GetAppMetadata(app.type)) {
 					new WebSocketSingle({
-						event : Helper.StringHashDjb2("getMetadata"),
+						event : Helper.StringHash32Uint("getMetadata"),
 						handleResponse : (metadata) => { MetadataCollector.AddAppMetadata(app.type, metadata); },
 						handleFailed : (error) => { this.DisplayErrorMessage(error); },
 						viewUid : this.m_uid,
-						data :
-							{ "appType" : Helper.StringHashDjb2(app.type), "filter" : Helper.StringHashDjb2(app.type) }
+						data : {
+							"appType" : Helper.StringHash32Uint(app.type),
+							"filter" : Helper.StringHash32Uint(app.type)
+						}
 					});
 				}
 
@@ -64,7 +67,7 @@ class InstalledApps extends View {
 		};
 
 		new WebSocketSingle({
-			event : Helper.StringHashDjb2("installedApp"),
+			event : Helper.StringHash32Uint("installedApp"),
 			handleResponse : handleResponse,
 			handleFailed : (error) => {
 				this.m_parentView.classList.remove("loading");

@@ -13,8 +13,11 @@
 
 const { JSDOM } = require('jsdom');
 
+const port = 1614;
 let jsdom
-	= new JSDOM(`<html><body><div class="tables"></div><main><section class="views"></section></main></body></html>`);
+	= new JSDOM(`<html><body><div class="tables"></div><main><section class="views"></section></main></body></html>`, {
+		  url : `http://localhost:${port}/`,
+	  });
 global.document = jsdom.window.document;
 global.Node = jsdom.window.Node;
 global.Event = jsdom.window.Event;
@@ -59,87 +62,14 @@ const event = new jsdom.window.Event("DOMContentLoaded", { bubbles : true, cance
 global.document.dispatchEvent(event);
 
 const Helper = require("../helper");
-
-global.createdApps = new Map();
-
-// TODO: That should be defined for each test separately ?
-// TODO: It can be solved as container of conditions in stack organization. Default cases can be added here for general
-// TODO: usage and it will be posible to override/manage more specific cases in each test.
-global.fetch = (url, options) => {
-	if (options.headers.Type === 'getInstalledApps') {
-		return Promise.resolve({
-			ok : true,
-			status : 200,
-			text : () => Promise.resolve(
-				'{"status":true,"apps":[{"type":"Gateway T"},{"type":"Strategy"},{"type":"Storage"},{"type":"Graph"}]}')
-		});
-	}
-
-	if (options.headers.Type === 'createApp') {
-		if (global.failCreateApp) {
-			return Promise.resolve({
-				ok : true,
-				status : 200,
-				text : () => Promise.resolve(
-					'{"status":false,"message":"Can\'t create app with type: ' + options.headers.AppType + '"}')
-			});
-		}
-
-		const port = Math.floor(Math.random() * (65535 - 1000 + 1)) + 1000;
-		global.createdApps.set(port, options.headers.AppType);
-
-		return Promise.resolve({ text : () => Promise.resolve('{"status":true,"port":' + port + '}') });
-	}
-
-	if (options.headers.Type === 'getCreatedApps') {
-		return Promise.resolve({
-			ok : true,
-			status : 200,
-			text : () => Promise.resolve('{"status":true,"apps":['
-				+ Array.from(global.createdApps.entries())
-					  .map(([ port, appType ]) => `{"appType":"${appType}","port":${port}}`)
-					  .join(',')
-				+ ']}')
-		});
-	}
-
-	if (options.headers.Type === 'getMetadata') {
-		if (options.headers.AppType == 'Strategy') {
-			return Promise.resolve({
-				ok : true,
-				status : 200,
-				text : () => Promise.resolve(
-					`{"status":true,"metadata":{"mutable":{"30001":{"name":"Price type","type":"Int16","min":1,"max":3,"stringInterpretations":{"0":"Undefined","1":"Fair","2":"Soft"}},"30002":{"name":"Start trading time delay","type":"Duration","canBeEmpty":false,"durationType":"Seconds"},"30003":{"name":"End trading time delay","type":"Duration","canBeEmpty":false,"durationType":"Seconds"},"30004":{"name":"Order hold time","type":"Duration","min":1000000000,"canBeEmpty":false,"durationType":"Seconds"},"30005":{"name":"Active minimum trend strike mode","type":"Bool"},"30006":{"name":"Minimum trend strike","type":"Int64"},"30007":{"name":"Active minimum trend strike price limit","type":"Bool"},"30008":{"name":"Minimum trend strike price limit","type":"Double"},"30009":{"name":"Active target order cost mode","type":"Bool"},"30010":{"name":"Target order cost","type":"Double"},"30011":{"name":"Trend strike barrier","type":"Uint64"},"30012":{"name":"Size buffer soft price change","type":"Uint64","min":1},"30013":{"name":"Gateway id","type":"OptionalInt32","canBeEmpty":false},"30014":{"name":"Commissions","type":"TableData","canBeEmpty":false,"columns":{"0":{"type":"Int16","name":"Instrument type","stringInterpretations":{"0":"Undefined","1":"Bond","2":"Share","3":"Currency","4":"ETF","5":"Futures","6":"StructuralProduct","7":"Option","8":"ClearingCertificate","9":"Index","10":"Commodity"}},"1":{"type":"Double","name":"%"}}},"30015":{"name":"Figis to trade","type":"TableData","canBeEmpty":false,"columns":{"0":{"type":"Uint64","name":"figi"},"1":{"type":"Uint64","name":"Default lots volume"}}},"1000001":{"name":"Seconds between try to connect","type":"Uint32","min":1},"1000002":{"name":"Limit of attempts to connection","type":"Uint64","min":1},"1000003":{"name":"Limit of connections from one IP","type":"Uint64","min":1},"1000004":{"name":"Recv buffer size","type":"Uint64","min":3},"1000005":{"name":"Recv buffer size limit","type":"Uint64","min":1024}},"const":{"1000006":{"name":"Server state","type":"Int16","stringInterpretations":{"0":"Undefined","1":"Initialization","2":"Running","3":"Stopped"}},"1000007":{"name":"Max connections","type":"Int32"},"1000008":{"name":"Listening IP","type":"Uint32"},"1000009":{"name":"Listening port","type":"Uint16"},"2000001":{"name":"Name","type":"String"},"2000002":{"name":"Application state","type":"Int16","stringInterpretations":{"0":"Undefined","1":"Paused","2":"Running"}}}}}`)
-			});
-		}
-
-		return Promise.resolve({
-			ok : true,
-			status : 200,
-			text : () => Promise.resolve(`{"status":true,"metadata":{"mutable":{},"const":{}}}`)
-		});
-	}
-
-	if (options.headers.Type === 'getParameters') {
-		let parameters = [];
-		if (global.createdApps.has(options.headers.Port)) {
-			let appType = global.createdApps.get(options.headers.Port);
-			if (appType === "Strategy") {
-				parameters.add({ "2000001" : "Soft scalping" });
-			}
-		}
-		return Promise.resolve(
-			{ ok : true, status : 200, text : () => Promise.resolve('{"status":true,"parameters":""}') });
-	}
-
-	return Promise.reject(new Error(`Unknown request: ${JSON.stringify(options.headers)}`));
-};
+const { WebSocketServer } = require('ws');
 
 class TestRunner {
 	constructor()
 	{
 		this.m_postTestFunction = null;
-		this.m_failedAssertions = 0;
+		this.m_passedAssertions = 0;
+		this.m_totalAssertions = 0;
 		this.m_failedTests = 0;
 		this.m_totalTests = 0;
 		this.m_tests = [];
@@ -156,33 +86,28 @@ class TestRunner {
 		if (!Helper.DeepEqual(expected, actual)) {
 			const error = new Error();
 			const callerLine = error.stack.split('\n')[2].trim();
-			console.error(`Actual: ${actual}, expected: ${expected}, ${callerLine}.${message ? ' ' + message : ''}`);
-			this.m_failedAssertions++;
+			throw new Error(`Actual: ${actual}, expected: ${expected}, ${callerLine}.${message ? ' ' + message : ''}`);
 		}
+
+		this.m_passedAssertions++;
 	}
 
 	async Run()
 	{
 		for (const { name, testFunction } of this.m_tests) {
 			this.m_totalTests++;
+			console.log(`▶️ ${name}`);
+			this.m_passedAssertions = 0;
 			try {
-				console.log(`▶️ ${name}`);
-				this.m_failedAssertions = 0;
 				await testFunction();
-				if (this.m_failedAssertions == 0) {
-					console.log(`\x1b[32m✔️ ${name}\x1b[0m`);
-				}
-				else {
-					this.m_failedTests++;
-					console.error(`\x1b[31m❌ ${name}\x1b[0m`);
-				}
+				console.log(`\x1b[32m✔️ ${name}. ${this.m_passedAssertions} passed assertions\x1b[0m`);
 			}
 			catch (error) {
 				this.m_failedTests++;
 				console.error(`\x1b[31m❌ ${name}\x1b[0m`);
 				console.error(error);
 			}
-
+			this.m_totalAssertions += this.m_passedAssertions;
 			if (this.m_postTestFunction) {
 				this.m_postTestFunction();
 			}
@@ -193,16 +118,18 @@ class TestRunner {
 				console.log('✔️ No tests found.');
 			}
 			else if (this.m_totalTests === 1) {
-				console.log('✔️\x1b[32m Test passed.\x1b[0m');
+				console.log(`✔️\x1b[32m Test passed. ${this.m_totalAssertions} passed assertions\x1b[0m`);
 			}
 			else {
-				console.log(`✔️\x1b[32m All ${this.m_totalTests} tests passed.\x1b[0m`);
+				console.log(`✔️\x1b[32m All ${this.m_totalTests} tests passed. ${
+					this.m_totalAssertions} passed assertions\x1b[0m`);
 			}
 
 			process.exit(0);
 		}
 
-		console.log(`❌\x1b[31m Failed ${this.m_failedTests} tests out of ${this.m_totalTests}.\x1b[0m`);
+		console.log(`❌\x1b[31m Failed ${this.m_failedTests} tests out of ${this.m_totalTests}. ${
+			this.m_totalAssertions} passed assertions\x1b[0m`);
 		process.exit(1);
 	}
 
@@ -293,6 +220,230 @@ class TableChecker {
 	}
 };
 
+class ServerSimulator {
+	constructor()
+	{
+		this.m_createdApps = new Map();
+		this.m_installedApps
+			= new Set([ { type : "Gateway T" }, { type : "Strategy" }, { type : "Storage" }, { type : "Graph" } ]);
+	}
+
+	InitSocket()
+	{
+		this.m_serverSocket = new WebSocketServer({ port });
+		this.m_serverSocket.on("connection", (connection) => {
+			connection.on("message", (json) => {
+				json = Helper.JsonStringToObject(json);
+
+				if (!("uid" in json)) {
+					throw new Error(`Message from client does not contain uid ${json}`);
+					return;
+				}
+
+				if (!("event" in json)) {
+					throw new Error(`Message from client does not contain event ${json}`);
+					return;
+				}
+
+				const event = json["event"];
+				if (event == Helper.StringHash32Uint("installedApp")) {
+					this.SendInstalledApps(connection, json);
+					return;
+				}
+
+				if (event == Helper.StringHash32Uint("createApp")) {
+					this.CreateApp(connection, json);
+					return;
+				}
+
+				if (event == Helper.StringHash32Uint("createdApps")) {
+					this.SendCreatedApps(connection, json);
+					return;
+				}
+
+				if (event == Helper.StringHash32Uint("getMetadata")) {
+					this.SendMetadata(connection, json);
+					return;
+				}
+
+				if (event == Helper.StringHash32Uint("parameters")) {
+					this.SendParameters(connection, json);
+					return;
+				}
+
+				throw new Error(`Message from client contains unexpected event`, event);
+			});
+
+			connection.on("error", (error) => console.error(`Socket error: ", ${error}`));
+			connection.on("close", (code, reason) => console.log(`Socket is closed: ${code} ${reason}`));
+		});
+	}
+
+	SendInstalledApps(connection, json)
+	{
+		let response = { "uids" : [ json["uid"] ], "data" : [] };
+		this.m_installedApps.forEach((appData) => { response["data"].push(appData); });
+		connection.send(Helper.ParametersToJson(response));
+	}
+
+	CreateApp(connection, json)
+	{
+		if (!("appType" in json)) {
+			throw new Error(`Message from client does not contain appType ${json}`);
+			return;
+		}
+
+		const appType = json["appType"];
+		let appData = undefined;
+		for (const data of this.m_installedApps) {
+			if (data["type"] == appType) {
+				appData = data;
+				break;
+			}
+		}
+
+		if (appData == undefined) {
+			let response
+				= { "uids" : [ json["uid"] ], "state" : WebSocketStream.State.Failed, "error" : "Unknown app type" };
+			connection.send(Helper.ParametersToJson(response));
+		}
+
+		const port = Math.floor(Math.random() * (65535 - 1000 + 1)) + 1000;
+		this.m_createdApps.set(
+			port, { "type" : appType, "port" : port, "pid" : port, "creation time" : "2026-04-28 16:53:15.460089632" });
+		let response = { "uids" : [ json["uid"] ], "data" : { "port" : port } };
+		connection.send(Helper.ParametersToJson(response));
+	}
+
+	SendCreatedApps(connection, json)
+	{
+		let response = { "uids" : [ json["uid"] ], "data" : { "created" : [] } };
+		this.m_createdApps.forEach((appData) => { response["data"]["created"].push(appData); });
+		connection.send(Helper.ParametersToJson(response));
+	}
+
+	SendMetadata(connection, json)
+	{
+		let response = {};
+		if (json["appType"] == Helper.StringHash32Uint("Strategy")) {
+			response = {
+				"uids" : [ json["uid"] ],
+				"data" : {
+					"mutable" : {
+						"30001" : {
+							"name" : "Price type",
+							"type" : "Int16",
+							"min" : 1,
+							"max" : 3,
+							"stringInterpretations" : { "0" : "Undefined", "1" : "Fair", "2" : "Soft" }
+						},
+						"30002" : {
+							"name" : "Start trading time delay",
+							"type" : "Duration",
+							"canBeEmpty" : false,
+							"durationType" : "Seconds"
+						},
+						"30003" : {
+							"name" : "End trading time delay",
+							"type" : "Duration",
+							"canBeEmpty" : false,
+							"durationType" : "Seconds"
+						},
+						"30004" : {
+							"name" : "Order hold time",
+							"type" : "Duration",
+							"min" : 1000000000,
+							"canBeEmpty" : false,
+							"durationType" : "Seconds"
+						},
+						"30005" : { "name" : "Active minimum trend strike mode", "type" : "Bool" },
+						"30006" : { "name" : "Minimum trend strike", "type" : "Int64" },
+						"30007" : { "name" : "Active minimum trend strike price limit", "type" : "Bool" },
+						"30008" : { "name" : "Minimum trend strike price limit", "type" : "Double" },
+						"30009" : { "name" : "Active target order cost mode", "type" : "Bool" },
+						"30010" : { "name" : "Target order cost", "type" : "Double" },
+						"30011" : { "name" : "Trend strike barrier", "type" : "Uint64" },
+						"30012" : { "name" : "Size buffer soft price change", "type" : "Uint64", "min" : 1 },
+						"30013" : { "name" : "Gateway id", "type" : "OptionalInt32", "canBeEmpty" : false },
+						"30014" : {
+							"name" : "Commissions",
+							"type" : "TableData",
+							"canBeEmpty" : false,
+							"columns" : {
+								"0" : {
+									"type" : "Int16",
+									"name" : "Instrument type",
+									"stringInterpretations" : {
+										"0" : "Undefined",
+										"1" : "Bond",
+										"2" : "Share",
+										"3" : "Currency",
+										"4" : "ETF",
+										"5" : "Futures",
+										"6" : "StructuralProduct",
+										"7" : "Option",
+										"8" : "ClearingCertificate",
+										"9" : "Index",
+										"10" : "Commodity"
+									}
+								},
+								"1" : { "type" : "Double", "name" : "%" }
+							}
+						},
+						"30015" : {
+							"name" : "Figis to trade",
+							"type" : "TableData",
+							"canBeEmpty" : false,
+							"columns" : {
+								"0" : { "type" : "Uint64", "name" : "figi" },
+								"1" : { "type" : "Uint64", "name" : "Default lots volume" }
+							}
+						},
+						"1000001" : { "name" : "Seconds between try to connect", "type" : "Uint32", "min" : 1 },
+						"1000002" : { "name" : "Limit of attempts to connection", "type" : "Uint64", "min" : 1 },
+						"1000003" : { "name" : "Limit of connections from one IP", "type" : "Uint64", "min" : 1 },
+						"1000004" : { "name" : "Recv buffer size", "type" : "Uint64", "min" : 3 },
+						"1000005" : { "name" : "Recv buffer size limit", "type" : "Uint64", "min" : 1024 }
+					},
+					"const" : {
+						"1000006" : {
+							"name" : "Server state",
+							"type" : "Int16",
+							"stringInterpretations" :
+								{ "0" : "Undefined", "1" : "Initialization", "2" : "Running", "3" : "Stopped" }
+						},
+						"1000007" : { "name" : "Max connections", "type" : "Int32" },
+						"1000008" : { "name" : "Listening IP", "type" : "Uint32" },
+						"1000009" : { "name" : "Listening port", "type" : "Uint16" },
+						"2000001" : { "name" : "Name", "type" : "String" },
+						"2000002" : {
+							"name" : "Application state",
+							"type" : "Int16",
+							"stringInterpretations" : { "0" : "Undefined", "1" : "Paused", "2" : "Running" }
+						}
+					}
+				}
+			};
+		}
+		else {
+			response = { "uids" : [ json["uid"] ], "data" : { "mutable" : {}, "const" : {} } };
+		}
+
+		connection.send(Helper.ParametersToJson(response));
+	}
+
+	SendParameters(connection, json)
+	{
+		let response = { "uids" : [ json["uid"] ], "data" : {} };
+		if (json["appType"] == Helper.StringHash32Uint("Strategy")) {
+			response["data"]["response"] = "Soft scalping";
+		}
+
+		connection.send(Helper.ParametersToJson(response));
+	}
+};
+
 module.exports.TestRunner = TestRunner;
 module.exports.testRunner = testRunner;
+module.exports.ServerSimulator = ServerSimulator;
 module.exports.TableChecker = TableChecker;

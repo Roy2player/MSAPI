@@ -29,6 +29,7 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	View = require("../view");
 	MetadataCollector = require("../views/metadataCollector");
 	Dispatcher = require("../views/dispatcher").Dispatcher;
+	WebSocketStream = require("../webSocketHandler").WebSocketStream;
 }
 
 class CreatedApps extends View {
@@ -63,7 +64,7 @@ class CreatedApps extends View {
 						}
 
 						new WebSocketSingle({
-							event : Helper.StringHashDjb2(state == 1 ? "run" : "pause"),
+							event : Helper.StringHash32Uint(state == 1 ? "run" : "pause"),
 							handleResponse : (response) => {},
 							handleFailed : (error) => {
 								changeStateCell.classList.remove("loading");
@@ -115,7 +116,7 @@ class CreatedApps extends View {
 						}
 
 						new WebSocketSingle({
-							event : Helper.StringHashDjb2("delete"),
+							event : Helper.StringHash32Uint("delete"),
 							handleResponse : (response) => {
 								this.m_grid.RemoveRow({ indexValue : port });
 								let destructed = 0;
@@ -215,11 +216,11 @@ class CreatedApps extends View {
 					});
 
 					let stream = new WebSocketStream({
-						event : Helper.StringHashDjb2("parameters"),
+						event : Helper.StringHash32Uint("parameters"),
 						handleData : (parameters) => {
 							if (parameters["1000009"] == undefined) {
 								if (Object.keys(parameters).length != 0) {
-									log.warn(
+									console.warn(
 										"Update for app row is not empty but does not contain index row", parameters);
 								}
 								return;
@@ -236,7 +237,7 @@ class CreatedApps extends View {
 		};
 
 		new WebSocketStream({
-			event : Helper.StringHashDjb2("createdApps"),
+			event : Helper.StringHash32Uint("createdApps"),
 			handleData : handleCreatedApps,
 			handleFailed : (error) => { this.DisplayErrorMessage(error); },
 			viewUid : this.m_uid

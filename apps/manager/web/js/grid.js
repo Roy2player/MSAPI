@@ -364,7 +364,6 @@ class Grid {
 
 		let settingsView;
 		let settingsViews = Grid.#privateFields.m_settingsViews;
-		let savedThis = this;
 
 		settings.addEventListener("click", () => {
 			if (settingsView && settingsView.m_parentView.parentNode) {
@@ -381,6 +380,8 @@ class Grid {
 				canBeSticked : false,
 				canBeClinged : false,
 			});
+
+			settingsViews.add(settingsView);
 
 			let alignLeft = settingsView.m_view.querySelector(".group > .action.alignLeft");
 			if (!alignLeft) {
@@ -497,7 +498,7 @@ class Grid {
 				sortingDescending.classList.remove("active");
 				sortingNone.classList.add("disabled");
 				columnObject.sorting = Grid.SORTING_TYPE.ascending;
-				savedThis.ApplySorting({ columnObject });
+				this.ApplySorting({ columnObject });
 			});
 
 			sortingNone.addEventListener("click", () => {
@@ -521,7 +522,7 @@ class Grid {
 				sortingDescending.classList.add("active");
 				sortingNone.classList.add("disabled");
 				columnObject.sorting = Grid.SORTING_TYPE.descending;
-				savedThis.ApplySorting({ columnObject });
+				this.ApplySorting({ columnObject });
 			});
 
 			if (columnObject.isFilterActive) {
@@ -539,7 +540,7 @@ class Grid {
 					columnObject.isFilterActive = true;
 				}
 
-				savedThis.ApplyFilters({ columnObject });
+				this.ApplyFilters({ columnObject });
 			});
 
 			const filterTypeMetadata = MetadataCollector.GetMetadata(columnObject.systemTableMetadataId);
@@ -570,7 +571,7 @@ class Grid {
 							}
 
 							columnObject.filters = newData;
-							savedThis.ApplyFilters({ columnObject });
+							this.ApplyFilters({ columnObject });
 						}
 					}
 				});
@@ -580,8 +581,6 @@ class Grid {
 				columnObject.filters.forEach((filter) => { filtersTable.AddRow(filter); });
 				filtersTable.Save();
 			}
-
-			settingsViews.add(settingsView);
 		});
 
 		filter.addEventListener("click", () => {
@@ -765,7 +764,7 @@ class Grid {
 				}
 				rowObject.filteredBy.splice(index, 1);
 
-				if (!rowObject.isFiltired) {
+				if (!rowObject.isFiltered) {
 					return;
 				}
 
@@ -776,7 +775,7 @@ class Grid {
 				}
 
 				rowObject.row.style.display = "";
-				rowObject.isFiltired = false;
+				rowObject.isFiltered = false;
 			});
 
 			let filter = columnObject.headerCell.querySelector(".filter");
@@ -798,7 +797,7 @@ class Grid {
 					return;
 				}
 
-				if (!rowObject.isFiltired) {
+				if (!rowObject.isFiltered) {
 					return;
 				}
 
@@ -809,7 +808,7 @@ class Grid {
 				}
 
 				rowObject.row.style.display = "";
-				rowObject.isFiltired = false;
+				rowObject.isFiltered = false;
 			});
 
 			let filter = columnObject.headerCell.querySelector(".filter");
@@ -827,9 +826,9 @@ class Grid {
 			if (index == -1) {
 				rowObject.filteredBy.push(columnObject);
 			}
-			if (!rowObject.isFiltired) {
+			if (!rowObject.isFiltered) {
 				rowObject.row.style.display = "none";
-				rowObject.isFiltired = true;
+				rowObject.isFiltered = true;
 			}
 			hasFilteredRows = true;
 		};
@@ -1008,7 +1007,7 @@ class Grid {
 				}
 			}
 
-			if (rowObject.isFiltired) {
+			if (rowObject.isFiltered) {
 				if (index != -1) {
 					rowObject.filteredBy.splice(index, 1);
 				}
@@ -1020,7 +1019,7 @@ class Grid {
 				}
 
 				rowObject.row.style.display = "";
-				rowObject.isFiltired = false;
+				rowObject.isFiltered = false;
 			}
 		});
 
@@ -1252,7 +1251,7 @@ class Grid {
 		let row = document.createElement("div");
 		row.classList.add("row");
 		row.style.gridRow = this.m_view.children.length + 1;
-		const rowObject = { row, values, filteredBy : [], isFiltired : false };
+		const rowObject = { row, values, filteredBy : [], isFiltered : false };
 		this.m_rowByGridRow.set(+row.style.gridRow, rowObject);
 		this.m_rowByIndexValue.set(values[this.m_indexColumnId], rowObject);
 
@@ -1262,7 +1261,7 @@ class Grid {
 				order, values);
 
 			this.ApplySorting({ columnObject });
-			if (columnObject.isFilterActive && columnObject.filters.length != 0 && !rowObject.isFiltired) {
+			if (columnObject.isFilterActive && columnObject.filters.length != 0 && !rowObject.isFiltered) {
 				this.ApplyFilters({ columnObject });
 			}
 

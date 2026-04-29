@@ -58,7 +58,7 @@ class AppView extends View {
 		let isTitleUpdated = false;
 		let appState = undefined;
 		let stream = new WebSocketStream({
-			event : Helper.StringHashDjb2("parameters"),
+			event : Helper.StringHash32Uint("parameters"),
 			handleData : (parameters) => {
 				let name = parameters["2000001"];
 				if (!isTitleUpdated && name != undefined) {

@@ -108,7 +108,7 @@ public:
 	 * @test Has unit test.
 	 */
 	template <typename T>
-		requires is_json_node_type<std::decay_t<T>>
+		requires is_json_node_type<T>
 	[[nodiscard]] const T* GetValueType(std::string_view key) const noexcept;
 
 	/**************************
@@ -273,7 +273,7 @@ private:
 };
 
 template <typename T>
-	requires is_json_node_type<std::decay_t<T>>
+	requires is_json_node_type<T>
 [[nodiscard]] const T* Json::GetValueType(const std::string_view key) const noexcept
 {
 	const auto* node{ GetValue(key) };

@@ -86,7 +86,7 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 - [**Duration:**](apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time units.
 - [**Select:**](apps/manager/web/js/select.js) Custom select input with searchable options, validation, and dynamic metadata integration.
 - [**Helper:**](apps/manager/web/js/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more.
-- [**WebSocket handler:**](apps/manager/web/js/helper.js) Client implementation of events protocol to interact with [server](library/source/protocol/webSocketEvents.inl).
+- [**WebSocket handler:**](apps/manager/web/js/webSocketHandler.js) Client implementation of events protocol to interact with [server](library/source/protocol/webSocketEvents.inl).
 - [**Dynamic:**](apps/manager/web/js/dynamic.js) Helpers to add interface dynamic.
 
 ### Default views

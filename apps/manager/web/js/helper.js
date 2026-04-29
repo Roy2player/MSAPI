@@ -212,9 +212,9 @@ class Helper {
 	static FloatEqual(first, second, epsilon = 1e-10) { return Math.abs(first - second) < epsilon; }
 
 	/**
-	 * @return Unsigned 32 bit DJB2 hash for provided string.
+	 * @return Unsigned 32 bit hash for provided string.
 	 */
-	static StringHashDjb2(str)
+	static StringHash32Uint(str)
 	{
 		if (str.length === 0) {
 			return 0;

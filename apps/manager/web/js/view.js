@@ -77,6 +77,7 @@
  *
  * @todo Think if web sockets can be used for communication.
  */
+
 class View {
 	static #privateFields = (() => {
 		const m_viewTemplateToViewType = new Map();
@@ -604,13 +605,15 @@ class View {
 		}
 		if (this.m_tables) {
 			this.m_tables.forEach(table => { table.Destructor(); });
+			this.m_tables.clear();
 		}
-		this.m_tables.clear();
 		if (this.m_grid) {
 			this.m_grid.Destructor();
+			delete this.m_grid;
 		}
-		delete this.m_grid;
-		this.m_parentView.remove();
+		if (this.m_parentView) {
+			this.m_parentView.remove();
+		}
 		WebSocketHandler.ClearViewRelatedEvents(this.m_uid);
 	}
 
@@ -896,48 +899,7 @@ class View {
 				json = Helper.JsonStringToObject(json);
 				if ("status" in json && json["status"]) {
 					let type = options.headers["Type"];
-					if (type === "createApp") {
-						void new ModifyApp({
-							appType : options.headers["AppType"],
-							port : json.port,
-						});
-
-						View.SendRequest({
-							method : "GET",
-							mode : "cors",
-							headers : { "Accept" : "application/json", "Type" : "getCreatedApps" }
-						});
-					}
-					else if (type == "getCreatedApps") {
-						View.HandleResponse(type, json);
-					}
-					else if (type == "getInstalledApps") {
-						View.HandleResponse(type, json);
-					}
-					else if (type == "getMetadata") {
-						if ("metadata" in json) {
-							MetadataCollector.AddAppMetadata(options.headers["AppType"], json["metadata"]);
-						}
-						else {
-							return { "status" : false, "message" : "Metadata are not specified in response" };
-						}
-					}
-					else if (type == "getParameters") {
-						if ("parameters" in json) {
-							View.HandleResponse(type, json, { "port" : options.headers["Port"] });
-						}
-						else {
-							return { "status" : false, "message" : "Parameters are not specified in response" };
-						}
-					}
-					else if (type == "run" || type == "pause" || type == "delete") {
-						View.HandleResponse(type, json, { "port" : options.headers["Port"] });
-					}
-					else if (type == "modify") {
-					}
-					else {
-						return { "status" : false, "message" : "Unknown request type" };
-					}
+					return { "status" : false, "message" : "Unknown request type" };
 				}
 				else {
 					return { "status" : false, "message" : "message" in json ? json["message"] : "Request failed" };
@@ -988,5 +950,6 @@ window.addEventListener("message", function(event) {
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	Helper = require("./helper");
+	WebSocketHandler = require("./webSocketHandler").WebSocketHandler;
 	module.exports = View;
 }

@@ -24,6 +24,7 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	View = require("../view");
 	MetadataCollector = require("../views/metadataCollector");
 	Dispatcher = require("../views/dispatcher").Dispatcher;
+	Dynamic = require("../dynamic");
 }
 
 class Account extends View {
@@ -187,7 +188,7 @@ class Account extends View {
 				};
 
 				new WebSocketSingle({
-					event : Helper.StringHashDjb2("modifyAccount"),
+					event : Helper.StringHash32Uint("modifyAccount"),
 					handleResponse : handleResponse,
 					handleFailed : (error) => {
 						this.m_parentView.classList.remove("loading");
@@ -211,7 +212,7 @@ class Account extends View {
 				};
 
 				new WebSocketSingle({
-					event : Helper.StringHashDjb2("logout"),
+					event : Helper.StringHash32Uint("logout"),
 					handleResponse : handleResponse,
 					handleFailed : (error) => {
 						this.m_parentView.classList.remove("loading");
@@ -223,7 +224,7 @@ class Account extends View {
 
 			login.value = Account.m_login;
 
-			InitTriggers(this.m_view);
+			Dynamic.InitTriggers(this.m_view);
 
 			return true;
 		}
@@ -274,8 +275,8 @@ class Account extends View {
 			return false;
 		}
 
-		InitForm(loginForm);
-		InitForm(signupForm);
+		Dynamic.InitForm(loginForm);
+		Dynamic.InitForm(signupForm);
 
 		loginButton.addEventListener("click", () => {
 			this.m_parentView.classList.add("loading");
@@ -290,7 +291,7 @@ class Account extends View {
 			};
 
 			new WebSocketSingle({
-				event : Helper.StringHashDjb2("login"),
+				event : Helper.StringHash32Uint("login"),
 				handleResponse : handleResponse,
 				handleFailed : (error) => {
 					this.m_parentView.classList.remove("loading");
@@ -314,7 +315,7 @@ class Account extends View {
 			};
 
 			new WebSocketSingle({
-				event : Helper.StringHashDjb2("register"),
+				event : Helper.StringHash32Uint("register"),
 				handleResponse : handleResponse,
 				handleFailed : (error) => {
 					this.m_parentView.classList.remove("loading");
@@ -325,7 +326,7 @@ class Account extends View {
 			});
 		});
 
-		InitTriggers(this.m_view);
+		Dynamic.InitTriggers(this.m_view);
 
 		return true;
 	}

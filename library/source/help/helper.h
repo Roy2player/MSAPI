@@ -688,11 +688,11 @@ FORCE_INLINE [[nodiscard]] std::span<const T> Base64Decode(const std::string_vie
 /**
  * @param str String to be hashed.
  *
- * @return DJB2 hash for provided string.
+ * @return Unsigned 32 bit hash for provided string.
  *
  * @test Add unit test.
  */
-FORCE_INLINE [[nodiscard]] constexpr uint32_t StringHashDjb2(const std::string_view str) noexcept
+FORCE_INLINE [[nodiscard]] constexpr uint32_t StringHash32Uint(const std::string_view str) noexcept
 {
 	uint32_t hash{};
 	for (const char c : str) {

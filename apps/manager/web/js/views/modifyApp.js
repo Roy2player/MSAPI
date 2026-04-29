@@ -238,7 +238,7 @@ class ModifyApp extends View {
 
 		let isTitleUpdated = false;
 		let stream = new WebSocketStream({
-			event : Helper.StringHashDjb2("parameters"),
+			event : Helper.StringHash32Uint("parameters"),
 			handleData : (parameters) => {
 				let name = parameters["2000001"];
 				if (!isTitleUpdated && name != undefined) {
@@ -278,7 +278,7 @@ class ModifyApp extends View {
 				newParameters[table.m_id] = table.GetData();
 			}
 			new WebSocketSingle({
-				event : Helper.StringHashDjb2("modify"),
+				event : Helper.StringHash32Uint("modify"),
 				handleResponse : (response) => { this.m_parentView.classList.remove("loading"); },
 				handleFailed : (error) => {
 					this.m_parentView.classList.remove("loading");

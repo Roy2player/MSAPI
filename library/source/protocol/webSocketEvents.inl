@@ -439,6 +439,8 @@ public:
 /**
  * @brief Send failed event state with error.
  *
+ * @attention Error must not contain quotes/backslashes/control characters.
+ *
  * @param uid Event uid.
  * @param connection Request connection.
  * @param error Description of the failure.

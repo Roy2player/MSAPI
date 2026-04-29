@@ -74,7 +74,7 @@ class MetadataCollector extends View {
 		else if (metadata.type == "TableData") {
 			for (let column of Object.entries(metadata.columns)) {
 				if (column.length > 1 && "stringInterpretations" in column[1]) {
-					const tableColumnHash = Helper.StringHashDjb2(id.toString() + "-" + column[0].toString());
+					const tableColumnHash = Helper.StringHash32Uint(id.toString() + "-" + column[0].toString());
 					MetadataCollector.#privateFields.m_stringInterpretationsToId.set(
 						tableColumnHash, column[1].stringInterpretations);
 
@@ -232,6 +232,8 @@ class MetadataCollector extends View {
 
 		return MetadataCollector.#privateFields.m_metadataToId.get(+id);
 	}
+
+	static HasMetadata(id) { return MetadataCollector.#privateFields.m_metadataToId.has(+id); }
 
 	/**************************
 	 * @param id - Parameter ID to get string interpretations for.

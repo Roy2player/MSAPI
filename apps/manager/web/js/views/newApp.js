@@ -18,7 +18,7 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 }
 
 class NewApp extends View {
-	constructor(parameters) { super("NewApp", parameters); }
+	constructor(parameters) { super("New app", parameters); }
 
 	Constructor(parameters)
 	{
@@ -35,11 +35,11 @@ class NewApp extends View {
 			this.m_parentView.classList.add("loading");
 
 			let data = {};
-			data["appType"] = Helper.StringHashDjb2(this.m_appType);
+			data["appType"] = Helper.StringHash32Uint(this.m_appType);
 			data["parameters"] = View.ParseInputs(this.m_view, true);
 
 			new WebSocketSingle({
-				event : Helper.StringHashDjb2("createApp"),
+				event : Helper.StringHash32Uint("createApp"),
 				handleResponse : (result) => { this.Destructor(); },
 				handleFailed : (error) => {
 					this.m_parentView.classList.remove("loading");
@@ -54,12 +54,12 @@ class NewApp extends View {
 	}
 }
 
-View.AddParametersTemplate("NewApp", "default", [
+View.AddParametersTemplate("New app", "default", [
 	{ "inputs" : [ { "key" : "ip", "value" : 0 } ] }, { "selects" : [ { "key" : "LogLevel", "value" : 5 } ] },
 	{ "checkboxes" : [ { "key" : "logInFile", "value" : true }, { "key" : "separateDaysLogging", "value" : true } ] }
 ]);
 
-View.AddViewTemplate("NewApp", `<div class="customView">
+View.AddViewTemplate("New app", `<div class="customView">
         <div class="items vertical">
 			<div class="item"><input name="name" type="text" placeholder="Name"/></div>
 			<div class="item"><input value="127.0.0.1" name="ip" type="text" placeholder="Listening IP" canBeEmpty="false" /></div>

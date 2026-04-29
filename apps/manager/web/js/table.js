@@ -165,7 +165,7 @@ class Table {
 						? (columnMetadata.canBeEmpty == undefined ? "true" : columnMetadata.canBeEmpty.toString())
 						: "false");
 
-				const tableColumnHash = Helper.StringHashDjb2(id + "-" + columnId);
+				const tableColumnHash = Helper.StringHash32Uint(id + "-" + columnId);
 				if (MetadataCollector.IsSelect(tableColumnHash)) {
 					inputElement.setAttribute("parameter-id", tableColumnHash);
 					Select.Apply({ input : inputElement });

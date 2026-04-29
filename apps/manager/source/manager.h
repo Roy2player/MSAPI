@@ -430,7 +430,7 @@ private:
 		}
 
 		const auto* parameters{ json.GetValueType<MSAPI::Json>("parameters") };
-		if (appType == nullptr) {
+		if (parameters == nullptr) {
 			out = "Create app request contains incorrect parameters field";
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
@@ -820,7 +820,7 @@ private:
 		auto backIt{ std::back_inserter(out) };
 		std::format_to(backIt, "{{\"created\":[");
 		{
-			MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::read> _{ m_tableIdToColumnsLock };
+			MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::read> _{ m_portToCreatedAppLock };
 			if (!m_portToCreatedApp.empty()) {
 				auto it{ m_portToCreatedApp.begin() };
 				const auto end{ m_portToCreatedApp.end() };

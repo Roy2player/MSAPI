@@ -34,66 +34,66 @@ Manager::Manager()
 
 	RegisterParameter(1001, { "Web sources path", &m_webSourcesPath });
 
-	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHashDjb2("installedApp"),
+	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("installedApp"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->FillInstalledApps(out, single);
 		});
-	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHashDjb2("getMetadata"),
+	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("getMetadata"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->FillMetadata(out, single);
 		});
-	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHashDjb2("register"),
+	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("register"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->Register(out, single);
 		});
-	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHashDjb2("login"),
+	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("login"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->Login(out, single);
 		});
-	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHashDjb2("logout"),
+	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("logout"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->Logout(out, single);
 		});
-	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHashDjb2("modifyAccount"),
+	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("modifyAccount"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->ModifyAccount(out, single);
 		});
 	m_singlesDistributor.SetHandlerWithPermissions(
-		MSAPI::Helper::StringHashDjb2("createApp"),
+		MSAPI::Helper::StringHash32Uint("createApp"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->CreateApp(out, single);
 		},
 		MSAPI::Authorization::Base::Grade::User);
 	m_singlesDistributor.SetHandlerWithPermissions(
-		MSAPI::Helper::StringHashDjb2("pause"),
+		MSAPI::Helper::StringHash32Uint("pause"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->PauseApp(out, single);
 		},
 		MSAPI::Authorization::Base::Grade::User);
 	m_singlesDistributor.SetHandlerWithPermissions(
-		MSAPI::Helper::StringHashDjb2("run"),
+		MSAPI::Helper::StringHash32Uint("run"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->RunApp(out, single);
 		},
 		MSAPI::Authorization::Base::Grade::User);
 	m_singlesDistributor.SetHandlerWithPermissions(
-		MSAPI::Helper::StringHashDjb2("delete"),
+		MSAPI::Helper::StringHash32Uint("delete"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->DeleteApp(out, single);
 		},
 		MSAPI::Authorization::Base::Grade::User);
 	m_singlesDistributor.SetHandlerWithPermissions(
-		MSAPI::Helper::StringHashDjb2("modify"),
+		MSAPI::Helper::StringHash32Uint("modify"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->ModifyApp(out, single);
 		},
 		MSAPI::Authorization::Base::Grade::User);
 
-	m_streamsDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHashDjb2("createdApps"),
+	m_streamsDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("createdApps"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Stream& stream) {
 			return this->FillCreatedApps(out, stream);
 		});
-	m_streamsDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHashDjb2("parameters"),
+	m_streamsDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("parameters"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Stream& stream) {
 			return this->FillAppParameters(out, stream);
 		});
@@ -255,7 +255,7 @@ void Manager::HandleRunRequest()
 		}() };
 
 		MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> _{ m_hashToInstalledAppDataLock };
-		appId = MSAPI::Helper::StringHashDjb2(*appValue);
+		appId = MSAPI::Helper::StringHash32Uint(*appValue);
 		auto it{ m_hashToInstalledAppData.find(appId) };
 		if (it == m_hashToInstalledAppData.end()) {
 			if (viewValue == nullptr) {
@@ -490,7 +490,7 @@ void Manager::HandleParameters(const int connection, const std::map<size_t, std:
 	} };
 
 	(void)m_streamsDistributor.SendData(
-		{ MSAPI::Helper::StringHashDjb2("parameters"),
+		{ MSAPI::Helper::StringHash32Uint("parameters"),
 			MSAPI::Protocol::WebSocket::Events::IdentityFilter{ static_cast<uint64_t>(*port) } },
 		serialize);
 }
@@ -682,7 +682,7 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 		parseTables(constParameters);
 	}
 
-	m_singlesDistributor.CheckDelayed({ MSAPI::Helper::StringHashDjb2("getMetadata"),
+	m_singlesDistributor.CheckDelayed({ MSAPI::Helper::StringHash32Uint("getMetadata"),
 										  MSAPI::Protocol::WebSocket::Events::IdentityFilter{ createdAppData->hash } },
 		metadata);
 }
@@ -842,7 +842,7 @@ uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, 
 		} };
 
 		(void)m_streamsDistributor.SendData(
-			{ MSAPI::Helper::StringHashDjb2("createdApps"), MSAPI::Protocol::WebSocket::Events::IdentityFilter{} },
+			{ MSAPI::Helper::StringHash32Uint("createdApps"), MSAPI::Protocol::WebSocket::Events::IdentityFilter{} },
 			serialize);
 		return port;
 	}
@@ -940,7 +940,7 @@ void Manager::CheckVforkedApps()
 			return true;
 		} };
 		(void)m_streamsDistributor.SendData(
-			{ MSAPI::Helper::StringHashDjb2("createdApps"), MSAPI::Protocol::WebSocket::Events::IdentityFilter{} },
+			{ MSAPI::Helper::StringHash32Uint("createdApps"), MSAPI::Protocol::WebSocket::Events::IdentityFilter{} },
 			serialize);
 	}
 }
