@@ -319,10 +319,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		LOG_INFO_NEW(
 			"Testing merging message with {} payload size in message with {}", payloadFrom.size(), payloadTo.size());
 
-		if (isMasked && !payloadTo.empty() && payloadTo.size() % 4 != 0) {
+		if (isMasked && !payloadTo.empty() && payloadTo.size() % sizeof(uint32_t) != 0) {
 			RETURN_IF_FALSE(test.Assert(true, false,
 				"Merge payload check will not pass if destination data is masked and contain payload size not multiply "
-				"of 4"));
+				"of mask size"));
 		}
 
 		const auto mask{ isMasked ? MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey() : 0 };

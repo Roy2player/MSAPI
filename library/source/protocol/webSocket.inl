@@ -739,8 +739,10 @@ FORCE_INLINE Data::Data(RecvBufferInfo* const recvBufferInfo)
 			memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE,
 				static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE,
 				payloadHeaderSize + sizeof(uint32_t));
-			ApplyMask(m_buffer.data() + m_headerSize, payloadHeaderSize,
-				*reinterpret_cast<uint32_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE));
+
+			uint32_t mask;
+			memcpy(&mask, m_buffer.data() + REQUIRED_HEADER_SIZE, sizeof(uint32_t));
+			ApplyMask(m_buffer.data() + m_headerSize, payloadHeaderSize, mask);
 			return;
 		}
 
@@ -1062,18 +1064,6 @@ FORCE_INLINE [[nodiscard]] uint32_t Data::GenerateMaskingKey()
 FORCE_INLINE void Data::ApplyMask(uint8_t* const payload, const size_t size, const uint32_t mask) noexcept
 {
 	size_t index{};
-	while (index < size && (reinterpret_cast<uintptr_t>(payload + index) & 3)) {
-		payload[index] ^= static_cast<uint8_t>(mask >> (8 * (index & 3)));
-		index++;
-	}
-
-	uint32_t* const p32 = static_cast<uint32_t*>(static_cast<void*>(payload + index));
-	const size_t blocks{ (size - index) / 4 };
-	for (size_t b{}; b < blocks; b++) {
-		p32[b] ^= mask;
-	}
-	index += blocks * 4;
-
 	while (index < size) {
 		payload[index] ^= static_cast<uint8_t>(mask >> (8 * (index & 3)));
 		index++;
@@ -1582,19 +1572,13 @@ FORCE_INLINE [[nodiscard]] bool IHandler::SetFragmentedDataLimit(const double li
 		return false;
 	}
 
-	if (ratio > 0) {
-		Pthread::AtomicLock::ExitGuard guard{ m_fragmentedDataLock };
-		LOG_PROTOCOL_NEW("WebSocket fragmented data limit changed from {:.17f} MB to {:.17f} MB",
-			m_storedFragmentedDataLimitMb, limitMb);
-		m_storedFragmentedDataLimitMb = limitMb;
-		return true;
-	}
-
 	Pthread::AtomicLock::ExitGuard guard{ m_fragmentedDataLock };
 	LOG_PROTOCOL_NEW("WebSocket fragmented data limit changed from {:.17f} MB to {:.17f} MB",
 		m_storedFragmentedDataLimitMb, limitMb);
 	m_storedFragmentedDataLimitMb = limitMb;
-	(void)PurgeStoredData<CHECK_BEFORE>();
+	if (ratio < 0) {
+		(void)PurgeStoredData<CHECK_BEFORE>();
+	}
 
 	return true;
 }

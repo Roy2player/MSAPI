@@ -138,6 +138,12 @@ void Client::HandleParameters(
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
+void Client::HandleIncomeDisconnect(const int32_t id, const int32_t connection)
+{
+	LOG_PROTOCOL_NEW("id {} connection {}", id, connection);
+	MSAPI::ActionsCounter::IncrementActionsNumber();
+}
+
 int8_t Client::GetParameter1() const noexcept { return m_parameter1; }
 
 int16_t Client::GetParameter2() const noexcept { return m_parameter2; }

@@ -377,7 +377,10 @@ public:
 				LOG_INFO(
 					"Will close " + std::string{ RecvProcessingTypeToString_v<Type> } + " connection, id: " + _S(id));
 				if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {
-					HandleDisconnect(id);
+					HandleOutcomeDisconnect(id, connection);
+				}
+				else {
+					HandleIncomeDisconnect(id, connection);
 				}
 				break;
 			}
@@ -393,7 +396,10 @@ public:
 					LOG_PROTOCOL("Recv returned unrecoverable error №104: Connection reset by peer, "
 						+ RecvProcessingTypeToString_v<Type> + " connection id: " + _S(id));
 					if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {
-						HandleDisconnect(id);
+						HandleOutcomeDisconnect(id, connection);
+					}
+					else {
+						HandleIncomeDisconnect(id, connection);
 					}
 					break;
 				}
@@ -407,7 +413,10 @@ public:
 				LOG_ERROR("Recv returned unrecoverable error №" + _S(errno) + ": " + std::strerror(errno) + ", "
 					+ RecvProcessingTypeToString_v<Type> + " connection id: " + _S(id));
 				if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {
-					HandleDisconnect(id);
+					HandleOutcomeDisconnect(id, connection);
+				}
+				else {
+					HandleIncomeDisconnect(id, connection);
 				}
 				break;
 			}

@@ -11,8 +11,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, msapi.info@mail.ru
  */
 
-const { TestRunner } = require("./testRunner");
-const Duration = require('../duration');
+const { TestRunner } = require("../test/testRunner");
+const Duration = require('../core/duration');
 
 let testRunner = new TestRunner();
 

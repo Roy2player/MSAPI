@@ -66,7 +66,11 @@ void Server::HandleModifyRequest(const std::map<size_t, std::variant<standardTyp
 	MSAPI_HANDLE_MODIFY_REQUEST_PRESET
 }
 
-void Server::HandleDeleteRequest() { Stop(); }
+void Server::HandleDeleteRequest()
+{
+	HandlePauseRequest();
+	Stop();
+}
 
 std::string Server::GetIp(const int connection) const
 {

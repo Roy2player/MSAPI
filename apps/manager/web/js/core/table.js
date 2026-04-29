@@ -165,7 +165,7 @@ class Table {
 						? (columnMetadata.canBeEmpty == undefined ? "true" : columnMetadata.canBeEmpty.toString())
 						: "false");
 
-				const tableColumnHash = Helper.StringHash(id + "-" + columnId);
+				const tableColumnHash = Helper.StringHash32Uint(id + "-" + columnId);
 				if (MetadataCollector.IsSelect(tableColumnHash)) {
 					inputElement.setAttribute("parameter-id", tableColumnHash);
 					Select.Apply({ input : inputElement });
@@ -621,9 +621,9 @@ class Table {
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Table;
-	Helper = require("./helper");
+	Helper = require("../help/helper");
 	Timer = require("./timer");
 	Select = require("./select");
 	Duration = require("./duration");
-	MetadataCollector = require("./views/metadataCollector");
+	MetadataCollector = require("../views/metadataCollector");
 }

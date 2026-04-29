@@ -57,8 +57,7 @@ namespace Unit {
  * @brief HandleModifyRequest - default behavior: merge parameters and apply pause state if parameters are not valid.
  * Macros MSAPI_HANDLE_MODIFY_REQUEST_PRESET can be placed in the beginning of overridden method for enabling with
  * predefined logic.
- * @brief HandleDeleteRequest - default behavior: end main server process. If signal comes from manager before this
- * callback, the HandlePauseRequest will be called firstly.
+ * @brief HandleDeleteRequest - default behavior: handle pause and call server stop to cancel main server process.
  *
  * Not predefined and can be handled from any outcome connection:
  * @brief HandleHello - handler of signal which sends for every newly open outcome connection if or when server becomes
@@ -75,8 +74,10 @@ namespace Unit {
  * @brief HandleParameters - handler of response for parameters request. Contains all application parameters.
  *
  * Predefined not network callbacks:
- * @brief HandleDisconnect - signal about disconnection of outcome connection. Will not be called if connection was
- * closed by server. Default behavior: call HandlePauseRequest.
+ * @brief HandleOutcomeDisconnect - signal about disconnection of outcome connection. Will not be called if connection
+ * was closed by the server itself. Default behavior: call HandlePauseRequest.
+ * @brief HandleIncomeDisconnect - signal about disconnection of income connection. Will not be called if connection
+ * was closed by the server itself.
  * @brief HandleReconnect - signal about reconnection of outcome connection. Will not be called if connection was closed
  * by server. Default behavior: call HandleRunRequest.
  *
@@ -497,8 +498,7 @@ public:
 
 	/**************************
 	 * @brief Handle delete request from External application. Already defined in Server class, but can be
-	 * overridden. Default behavior: end main server process. If signal comes from manager before this callback, the
-	 * HandlePauseRequest will be called firstly.
+	 * overridden. Default behavior: handle pause and call server stop to cancel main server process.
 	 *
 	 * @test Has unit tests.
 	 */
@@ -541,10 +541,21 @@ public:
 	 * in Application class, but can be overridden. Default behavior is to call HandlePauseRequest.
 	 *
 	 * @param id Id of connection.
+	 * @param connection Connection.
 	 *
 	 * @test Has unit tests.
 	 */
-	virtual void HandleDisconnect(int id);
+	virtual void HandleOutcomeDisconnect(int32_t id, int32_t connection);
+
+	/**************************
+	 * @brief Not network signal about previously income connection was closed no by server.
+	 *
+	 * @param id Id of connection.
+	 * @param connection Connection.
+	 *
+	 * @test Has unit tests.
+	 */
+	virtual void HandleIncomeDisconnect(int32_t id, int32_t connection);
 
 	/**************************
 	 * @brief Not network signal about previously closed connection by id was reopened. Already defined in

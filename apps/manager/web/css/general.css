@@ -41,7 +41,7 @@
         --border-color-general: #999;
         --border-color-sub-general: #555;
         --text-color-general: #f0f0f0;
-        --loader-background: rgba(0, 0, 0, 0.5);
+        --loader-background: rgba(255, 255, 255, 0.5);
         --loader-background-element: #222;
         --error-message-color: #ff6666;
     }

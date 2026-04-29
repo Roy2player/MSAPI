@@ -29,7 +29,7 @@ jobs:
         working-directory: apps/manager/web/js
         run: |
           mkdir -p /opt/jsnode/node_modules
-          npm install jsdom mutation-observer
+          npm install jsdom mutation-observer ws
           export NODE_PATH=/opt/jsnode/node_modules
           echo "NODE_PATH=$NODE_PATH" >> $GITHUB_ENV
 

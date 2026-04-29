@@ -624,9 +624,6 @@ void Application::Collect(const int connection, const Protocol::Standard::Data& 
 		HandleRunRequest();
 		return;
 	case Protocol::Standard::cipherActionDelete:
-		if (Application::IsRunning()) {
-			HandlePauseRequest();
-		}
 		HandleDeleteRequest();
 		return;
 	case Protocol::Standard::cipherActionModify:
@@ -1042,10 +1039,15 @@ void Application::HandleParameters([[maybe_unused]] const int connection,
 	LOG_PROTOCOL("Action is skipped");
 }
 
-void Application::HandleDisconnect(const int id)
+void Application::HandleOutcomeDisconnect(const int32_t id, const int32_t connection)
 {
-	LOG_PROTOCOL("Id: " + _S(id));
+	LOG_PROTOCOL_NEW("Id: {} connection {}", id, connection);
 	HandlePauseRequest();
+}
+
+void Application::HandleIncomeDisconnect(const int32_t id, const int32_t connection)
+{
+	LOG_PROTOCOL_NEW("Id: {} connection {}", id, connection);
 }
 
 void Application::HandleReconnect(const int id)

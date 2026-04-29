@@ -14,49 +14,52 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
+	View = require("../core/view");
 }
 
 class NewApp extends View {
-	constructor(parameters) { super("NewApp", parameters); }
+	constructor(parameters) { super("New app", parameters); }
 
-	async Constructor(parameters)
+	Constructor(parameters)
 	{
 		this.m_appType = parameters.appType;
 		this.m_title += ": " + this.m_appType;
 		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
 
-		this.m_view.querySelector(".button").addEventListener("click", async () => {
+		this.m_view.querySelector(".button").addEventListener("click", () => {
 			this.HideErrorMessage();
 			if (!View.ValidateInputs(this.m_view)) {
 				return;
 			}
 
 			this.m_parentView.classList.add("loading");
-			let headers = View.ParseInputs(this.m_view, true);
-			headers["Accept"] = "application/json";
-			headers["Type"] = "createApp";
-			headers["AppType"] = this.m_appType;
-			let result = await View.SendRequest({ method : "GET", mode : "cors", headers });
-			if (result.status) {
-				this.Destructor();
-			}
-			else {
-				this.m_parentView.classList.remove("loading");
-				this.DisplayErrorMessage(result.message);
-			}
+
+			let data = {};
+			data["appType"] = Helper.StringHash32Uint(this.m_appType);
+			data["parameters"] = View.ParseInputs(this.m_view, true);
+
+			new WebSocketSingle({
+				event : Helper.StringHash32Uint("createApp"),
+				handleResponse : (result) => { this.Destructor(); },
+				handleFailed : (error) => {
+					this.m_parentView.classList.remove("loading");
+					this.DisplayErrorMessage(error);
+				},
+				data : data,
+				viewUid : this.m_uid
+			});
 		});
 
 		return true;
 	}
 }
 
-View.AddParametersTemplate("NewApp", "default", [
+View.AddParametersTemplate("New app", "default", [
 	{ "inputs" : [ { "key" : "ip", "value" : 0 } ] }, { "selects" : [ { "key" : "LogLevel", "value" : 5 } ] },
 	{ "checkboxes" : [ { "key" : "logInFile", "value" : true }, { "key" : "separateDaysLogging", "value" : true } ] }
 ]);
 
-View.AddViewTemplate("NewApp", `<div class="customView">
+View.AddViewTemplate("New app", `<div class="customView">
         <div class="items vertical">
 			<div class="item"><input name="name" type="text" placeholder="Name"/></div>
 			<div class="item"><input value="127.0.0.1" name="ip" type="text" placeholder="Listening IP" canBeEmpty="false" /></div>
@@ -74,7 +77,7 @@ View.AddViewTemplate("NewApp", `<div class="customView">
 				</label>
 			</div>
 			<div class="item">
-				<span class="title">Log level:</span>
+				<span class="text">Log level:</span>
 				<select name="logLevel" canBeEmpty="false">
 					<option value="1">ERROR</option>
 					<option value="2">WARNING</option>

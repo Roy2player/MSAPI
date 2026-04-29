@@ -14,13 +14,13 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
+	View = require("../core/view");
 }
 
 class SelectView extends View {
 	constructor(parameters) { super("SelectView", parameters); }
 
-	async Constructor(parameters)
+	Constructor(parameters)
 	{
 		this.m_title = parameters.viewTitle;
 		this.m_parentView.querySelector(".title > span").textContent = this.m_title;

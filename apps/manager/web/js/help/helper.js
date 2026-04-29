@@ -211,7 +211,10 @@ class Helper {
 	 */
 	static FloatEqual(first, second, epsilon = 1e-10) { return Math.abs(first - second) < epsilon; }
 
-	static StringHash(str)
+	/**
+	 * @return Unsigned 32 bit hash for provided string.
+	 */
+	static StringHash32Uint(str)
 	{
 		if (str.length === 0) {
 			return 0;
@@ -226,7 +229,7 @@ class Helper {
 			hash |= 0;
 		}
 
-		return hash;
+		return hash >>> 0;
 	}
 
 	static CheckMinimum(input)
