@@ -99,8 +99,8 @@ class Select {
 				let divElement = document.createElement("div");
 				let valueSpan = document.createElement("span");
 				let keySpan = document.createElement("span");
-				valueSpan.innerHTML = value;
-				keySpan.innerHTML = key;
+				valueSpan.textContent = value;
+				keySpan.textContent = key;
 				divElement.appendChild(valueSpan);
 				divElement.appendChild(keySpan);
 
@@ -208,7 +208,7 @@ class Select {
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Select;
-	MetadataCollector = require("./views/metadataCollector");
+	MetadataCollector = require("../views/metadataCollector");
 	View = require("./view");
-	SelectView = require("./views/selectView");
+	SelectView = require("../views/selectView");
 }

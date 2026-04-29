@@ -600,9 +600,6 @@ class View {
 	Destructor()
 	{
 		View.RemoveCreatedView(this);
-		if (this.m_parentView.style.zIndex != "") {
-			this.Show();
-		}
 		if (this.m_tables) {
 			this.m_tables.forEach(table => { table.Destructor(); });
 			this.m_tables.clear();
@@ -612,6 +609,9 @@ class View {
 			delete this.m_grid;
 		}
 		if (this.m_parentView) {
+			if (this.m_parentView.style.zIndex != "") {
+				this.Show();
+			}
 			this.m_parentView.remove();
 		}
 		WebSocketHandler.ClearViewRelatedEvents(this.m_uid);
@@ -949,7 +949,7 @@ window.addEventListener("message", function(event) {
 });
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	Helper = require("./helper");
+	Helper = require("../help/helper");
 	WebSocketHandler = require("./webSocketHandler").WebSocketHandler;
 	module.exports = View;
 }

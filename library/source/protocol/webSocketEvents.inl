@@ -325,7 +325,10 @@ public:
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] bool operator>(const IdentityFilter other) const noexcept { return !operator<(other); }
+	FORCE_INLINE [[nodiscard]] bool operator>(const IdentityFilter other) const noexcept
+	{
+		return identity > other.identity;
+	}
 };
 
 /**
@@ -595,7 +598,7 @@ public:
 		{
 			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_eventsLock };
 			if (m_events.erase(timestamp) == 0) [[unlikely]] {
-				LOG_WARNING_NEW("Events with timestamp {} is not erased, connection ", timestamp.ToString(),
+				LOG_WARNING_NEW("Events with timestamp {} is not erased, connection {}", timestamp.ToString(),
 					m_data.GetConnection());
 				return;
 			}
@@ -623,7 +626,7 @@ public:
 			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_eventsLock };
 			for (const auto timestamp : timestamps) {
 				if (m_events.erase(timestamp) == 0) [[unlikely]] {
-					LOG_WARNING_NEW("Events with timestamp {} is not erased, connection ", timestamp.ToString(),
+					LOG_WARNING_NEW("Events with timestamp {} is not erased, connection {}", timestamp.ToString(),
 						m_data.GetConnection());
 					continue;
 				}
@@ -695,8 +698,16 @@ public:
 		FORCE_INLINE [[nodiscard]] int32_t GetConnection() const noexcept { return m_connection; }
 
 		/**
+		 * @todo Add static asserts in future test.
+		 */
+		static constexpr inline bool lookup{ true };
+		static constexpr inline bool create{ false };
+
+		/**
 		 * @attention Read locks structure. Write locks structure and create new events structure for filter if does not
 		 * exist.
+		 *
+		 * @tparam Lookup True if only existed events are required, otherwise new events object will be created.
 		 *
 		 * @param filter Filter to find related events.
 		 *
@@ -704,6 +715,7 @@ public:
 		 *
 		 * @todo Add unit test.
 		 */
+		template <bool Lookup>
 		FORCE_INLINE [[nodiscard]] std::shared_ptr<Events> GetEvents(const filter_t& filter) noexcept
 		{
 			{
@@ -714,8 +726,13 @@ public:
 				}
 			}
 
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_filterToEventsLock };
-			return m_filterToEvents.emplace(filter, std::make_shared<Events>(*this)).first->second;
+			if constexpr (!Lookup) {
+				const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_filterToEventsLock };
+				return m_filterToEvents.emplace(filter, std::make_shared<Events>(*this)).first->second;
+			}
+			else {
+				return {};
+			}
 		}
 
 		/**
@@ -884,7 +901,7 @@ public:
 
 			LOG_PROTOCOL_NEW("Events purging limit is changed from {} to {}, connection {}", old, value, m_connection);
 			m_limit.store(value);
-			if (ratio < 0) {
+			if (ratio > 0) {
 				CheckLimitAndPurge();
 			}
 			return true;
@@ -1278,16 +1295,22 @@ public:
 	 *
 	 * @param filter Filter to find related events.
 	 *
-	 * @return Array of non empty events data from all stored connections.
+	 * @return Array of existed events data from all stored connections.
 	 *
 	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] std::vector<std::shared_ptr<Events>> GetEventsArray(const filter_t& filter) noexcept
 	{
+		std::shared_ptr<Events> events;
 		std::vector<std::shared_ptr<Events>> eventsArray;
 		const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_connectionToEventsDataLock };
 		for (const auto& [connection, eventsData] : m_connectionToEventsData) {
-			eventsArray.emplace_back(std::move(eventsData->GetEvents(filter)));
+			events = eventsData->template GetEvents<EventsData::lookup>(filter);
+			if (events.get()) {
+				// Interraction with events is required locking, same as for checking on empty
+				// That is worth to lock once at the usage cycle
+				eventsArray.emplace_back(std::move(events));
+			}
 		}
 
 		return eventsArray;
@@ -1406,7 +1429,7 @@ private:
 			return;
 		case HandleResult::Delay: {
 			std::shared_ptr<typename base_t::EventsData> eventsData{ this->GetEventsData(connection) };
-			std::shared_ptr<typename base_t::Events> events{ eventsData->GetEvents(
+			std::shared_ptr<typename base_t::Events> events{ eventsData->template GetEvents<base_t::EventsData::create>(
 				typename base_t::filter_t{ hash, std::move(filter) }) };
 
 			LOG_PROTOCOL_NEW("New single event is delayed, uid {} connection {}", uid, connection);
@@ -1471,7 +1494,7 @@ private:
 		case HandleResult::Success: {
 			stream->SendState(Stream::State::Opened);
 			std::shared_ptr<typename base_t::EventsData> eventsData{ this->GetEventsData(connection) };
-			std::shared_ptr<typename base_t::Events> events{ eventsData->GetEvents(
+			std::shared_ptr<typename base_t::Events> events{ eventsData->template GetEvents<base_t::EventsData::create>(
 				typename base_t::filter_t{ hash, std::move(filter) }) };
 			events->AddEvent(stream);
 

@@ -14,8 +14,8 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
-	MetadataCollector = require("../views/metadataCollector");
+	View = require("../core/view");
+	MetadataCollector = require("./metadataCollector");
 }
 
 class ModifyApp extends View {

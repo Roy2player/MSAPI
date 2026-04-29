@@ -11,15 +11,14 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner } = require("./testRunner");
+const { TestRunner, testRunner } = require("../test/testRunner");
 const { Dispatcher } = require("../views/dispatcher");
-
-const Grid = require("../grid");
-const View = require("../view");
+const Grid = require("../core/grid");
+const View = require("../core/view");
 const InstalledApps = require("../views/installedApps");
 const CreatedApps = require("../views/createdApps");
 const Account = require("../views/account");
-const { WebSocketHandler, WebSocketStream, WebSocketSingle } = require("../webSocketHandler");
+const { WebSocketHandler, WebSocketStream, WebSocketSingle } = require("../core/webSocketHandler");
 
 global.Grid = Grid;
 global.View = View;

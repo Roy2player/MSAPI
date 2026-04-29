@@ -75,30 +75,38 @@ Unit/end-to-end tests utilities with ability to run servers as daemons.
 
 MSAPI frontend provides a modular set of views for managing, configuring, and interacting with MSAPI applications and their parameters through a unified web interface.
 
-![Short preview](./apps/manager/web/images/MSAPI_Manager_preview.gif)
+### MSAPI Manager preview
 
-### JS Core
+![MSAPI Manager preview](/apps/manager/web/images/MSAPI_Manager_preview.gif)
 
-- [**View:**](apps/manager/web/js/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling.
-- [**Table:**](apps/manager/web/js/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types.
-- [**Grid:**](apps/manager/web/js/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations.
-- [**Timer:**](apps/manager/web/js/timer.js) Timestamp input handling, normalization, and validation with timezone support.
-- [**Duration:**](apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time units.
-- [**Select:**](apps/manager/web/js/select.js) Custom select input with searchable options, validation, and dynamic metadata integration.
-- [**Helper:**](apps/manager/web/js/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more.
-- [**WebSocket handler:**](apps/manager/web/js/webSocketHandler.js) Client implementation of events protocol to interact with [server](library/source/protocol/webSocketEvents.inl).
-- [**Dynamic:**](apps/manager/web/js/dynamic.js) Helpers to add interface dynamic.
+ **Scenario:** Load page -> open created apps view (some app were created before) -> attempt to create app -> login -> create app -> search for app by type filter -> create app view -> run app -> interact with run app.
 
-### Default views
+### [JS Core](/apps/manager/web/js/core)
+- [**View:**](apps/manager/web/js/core/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling.
+- [**Table:**](apps/manager/web/js/core/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types.
+- [**Grid:**](apps/manager/web/js/core/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations.
+- [**Timer:**](apps/manager/web/js/core/timer.js) Timestamp input handling, normalization, and validation with timezone support.
+- [**Duration:**](apps/manager/web/js/core/duration.js) Duration input parsing, normalization, and validation for multiple time units.
+- [**Select:**](apps/manager/web/js/core/select.js) Custom select input with searchable options, validation, and dynamic metadata integration.
+- [**WebSocket handler:**](apps/manager/web/js/core/webSocketHandler.js) Client implementation of events protocol to interact with [server](library/source/protocol/webSocketEvents.inl).
 
-- [**InstalledApps:**](apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications.
-- [**CreatedApps:**](apps/manager/web/js/views/createdApps.js) Shows a grid of created/running apps with parameters and action buttons.
-- [**NewApp:**](apps/manager/web/js/views/newApp.js) Presents a form for creating new applications.
-- [**ModifyApp:**](apps/manager/web/js/views/modifyApp.js) Allows modification of application parameters.
-- [**AppView:**](apps/manager/web/js/views/appView.js) Embeds the application’s custom UI in an iframe.
-- [**TableView:**](apps/manager/web/js/views/tableView.js) Displays a read-only MSAPI table for a given parameter.
-- [**SelectView:**](apps/manager/web/js/views/selectView.js) Provides a searchable, case-sensitive select dialog for choosing parameter values.
-- [**GridSettingsView:**](apps/manager/web/js/views/gridSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options.
+### [JS Help](/apps/manager/web/js/help)
+- [**Helper:**](apps/manager/web/js/help/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more.
+- [**Dynamic:**](apps/manager/web/js/help/dynamic.js) Helpers to add interface dynamic.
+
+### [JS Testing Framework](/apps/manager/web/js/test)
+- [**Server simulator:**](apps/manager/web/js/test/serverSimulator.js) Server's behavior simulator.
+- [**Server simulator:**](apps/manager/web/js/test/testRunner.js) Test execution controller, assertions result tracker.
+
+### [Default views](/apps/manager/web/js/views)
+- [**Installed apps:**](apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications.
+- [**Created apps:**](apps/manager/web/js/views/createdApps.js) Shows a grid of created/running apps with parameters and action buttons.
+- [**New app:**](apps/manager/web/js/views/newApp.js) Presents a form for creating new applications.
+- [**Modify app:**](apps/manager/web/js/views/modifyApp.js) Allows modification of application parameters.
+- [**App view:**](apps/manager/web/js/views/appView.js) Embeds the application’s custom UI in an iframe.
+- [**Table view:**](apps/manager/web/js/views/tableView.js) Displays a read-only MSAPI table for a given parameter.
+- [**Select view:**](apps/manager/web/js/views/selectView.js) Provides a searchable, case-sensitive select dialog for choosing parameter values.
+- [**Grid settings view:**](apps/manager/web/js/views/gridSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options.
 - [**Account:**](apps/manager/web/js/views/account.js) View to display logging and sign up forms, manage account and its information.
 
 ## ⚖️ License

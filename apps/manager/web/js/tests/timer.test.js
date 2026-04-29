@@ -11,8 +11,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner } = require("./testRunner");
-const Timer = require("../timer");
+const { TestRunner } = require("../test/testRunner");
+const Timer = require("../core/timer");
 
 let testRunner = new TestRunner();
 

@@ -15,10 +15,10 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
-	MetadataCollector = require("../views/metadataCollector");
-	Dispatcher = require("../views/dispatcher").Dispatcher;
-	WebSocketSingle = require("../webSocketHandler").WebSocketSingle;
+	View = require("../core/view");
+	MetadataCollector = require("./metadataCollector");
+	Dispatcher = require("./dispatcher").Dispatcher;
+	WebSocketSingle = require("../core/webSocketHandler").WebSocketSingle;
 }
 
 class InstalledApps extends View {

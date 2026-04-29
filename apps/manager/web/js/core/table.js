@@ -621,9 +621,9 @@ class Table {
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Table;
-	Helper = require("./helper");
+	Helper = require("../help/helper");
 	Timer = require("./timer");
 	Select = require("./select");
 	Duration = require("./duration");
-	MetadataCollector = require("./views/metadataCollector");
+	MetadataCollector = require("../views/metadataCollector");
 }

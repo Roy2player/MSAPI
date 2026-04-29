@@ -11,13 +11,14 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-const { TestRunner, testRunner, ServerSimulator } = require("./testRunner");
-const View = require("../view");
+const { TestRunner, testRunner } = require("../test/testRunner");
+const ServerSimulator = require("../test/serverSimulator");
+const View = require("../core/view");
 const InstalledApps = require("../views/installedApps");
 const NewApp = require("../views/newApp");
 const CreatedApps = require("../views/createdApps");
-const Table = require("../table");
-const Grid = require("../grid");
+const Table = require("../core/table");
+const Grid = require("../core/grid");
 
 global.Grid = Grid;
 global.Table = Table;
@@ -99,7 +100,7 @@ function DestroyViews()
 testRunner.SetPostTestFunction(DestroyViews);
 
 serverSimulator = new ServerSimulator();
-serverSimulator.InitSocket();
+serverSimulator.InitSocket(global.port);
 
 testRunner.Test('Create InstalledApps panel', async () => {
 	const view = new InstalledApps();

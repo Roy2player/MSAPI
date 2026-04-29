@@ -1517,14 +1517,14 @@ class Grid {
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = Grid;
-	Helper = require("./helper");
+	Helper = require("../help/helper");
 	Timer = require("./timer");
 	Select = require("./select");
 	Duration = require("./duration");
 	View = require("./view");
 	Table = require("./table");
-	TableView = require("./views/tableView");
-	GridSettingsView = require("./views/gridSettingsView");
-	SelectView = require("./views/selectView");
-	MetadataCollector = require("./views/metadataCollector");
+	TableView = require("../views/tableView");
+	GridSettingsView = require("../views/gridSettingsView");
+	SelectView = require("../views/selectView");
+	MetadataCollector = require("../views/metadataCollector");
 }

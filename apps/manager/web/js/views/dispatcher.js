@@ -23,7 +23,7 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
+	View = require("../core/view");
 }
 
 class Dispatcher extends View {

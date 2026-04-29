@@ -14,7 +14,7 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
+	View = require("../core/view");
 }
 
 class NewApp extends View {

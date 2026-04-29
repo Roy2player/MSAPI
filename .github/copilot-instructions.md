@@ -12,45 +12,6 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
 
 ## Architecture
 
-### Core Components (Concrete File References)
-
-1. **Server Framework** (`library/source/server/`)
-  - `server.h` / `server.cpp`: Socket accept loop, connection read/write, buffer dispatch via `HandleBuffer`. Avoid blocking operations inside `HandleBuffer`.
-  - `application.h` / `application.cpp`: Application lifecycle (`HandleRunRequest`, `HandlePauseRequest`, `HandleStopRequest`), parameter registration and retrieval. Parameters are currently non-owning references (see Data Models & Ownership).
-  - `authorization.inl`: Generic thread-safe account management and authentication. Supports login, logout, session management with extensible data models.
-
-2. **Protocol Modules** (`library/source/protocol/`)
-  - `dataHeader.h` / `dataHeader.cpp`: Common framing header (size, type identifiers). Always validate length before decoding payload.
-  - `standard.h` / `standard.cpp`: Key–value dynamic message container (`Standard::Data`). Encoding focuses on minimal copies; keep buffer reuse strategies.
-  - `object.h` / `object.cpp`: Lightweight object protocol for POD-like copyable structs; serialization assumes trivially copyable layout.
-  - `http.h` / `http.cpp`: Minimal HTTP parsing (request line, headers). Not a full RFC implementation—avoid relying on unsupported features.
-  - `webSocket.inl`: Implementation of data and parallel execution safe functional abstractions for 13 version (RFC 6455) WebSocket protocol.
-  - `webSocketEvents.inl` Parallel execution distributing model which works on top of web socket protocol with json payload, supports single and stream events with filters. Uses `Authorization` to control data access rights.
-
-3. **Utility Modules** (`library/source/help/`)
-  - `log.h` / `log.cpp`: Logger with logging levels and console/file output support.
-  - `time.h` / `time.cpp`: Timer, Date, Duration and Event scheduling helpers.
-  - `html.h` / `html.cpp`: Lightweight HTML parser.
-  - `json.h` / `json.cpp`: Custom JSON DOM + serializer (no external libs). Keep allocations minimal.
-  - `table.h` / `table.cpp`: Tabular data structures (`Table`, `TableData`).
-  - `io.inl`: Filesystem I/O utilities.
-  - `helper.h` / `helper.cpp`: Generic helpers (string ops, path resolution, env utilities, FP comparison).
-  - `pthread.hpp`: Threading primitives (mutex/atomic locks/RAII wrappers).
-  - `meta.hpp`: Compile-time patterns.
-  - `diagnostic.h` / `diagnostic.cpp`: Diagnostic counters / event tracking.
-  - `identifier.h` / `identifier.cpp`: UID generation.
-  - `standardType.hpp`: Shared standard protocol type enumerations.
-  - `sha256.inl`: SHA-256 hashing implementation.
-
-4. **Testing Framework** (`library/source/test/`)
-  - `test.h` / `test.cpp`: Base test registration, output formatting.
-  - `daemon.hpp`: Support for running servers in the background with direct access.
-  - `actionsCounter.*`: Helper for counting test actions.
-  - No external test frameworks; everything is custom.
-
-5. **Manager Application Frontend** (`apps/manager/web/`)
-  - `html/`, `css/`, `js/`, `images/`: Static assets. (See Frontend Workflow section for enhancement recommendations.)
-
 ### Interaction Overview
 `Server` receives raw bytes → constructs / validates `DataHeader` → dispatches to protocol decoder (`standard` / `object` / `http`) → application logic consumes decoded structures. Utilities (`log`, `json`, `table`, allocators) support the flow with minimal allocations and deterministic resource handling.
 
@@ -214,28 +175,6 @@ Prefer RETURN_IF_FALSE for early exits on failed assertions.
 - Static assets only under `apps/manager/web/` (no `package.json`)
 - Keep JS modular; avoid global pollution—wrap logic in IIFEs or ES modules
 - Optimize images (lossless or WebP) before commit
-
-### JS Core
-- **View:** (apps/manager/web/js/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling
-- **Table:** (apps/manager/web/js/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types
-- **Grid:** (apps/manager/web/js/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations
-- **Timer:** (apps/manager/web/js/timer.js) Timestamp input handling, normalization, and validation with timezone support
-- **Duration:** (apps/manager/web/js/duration.js) Duration input parsing, normalization, and validation for multiple time units
-- **Select:** (apps/manager/web/js/select.js) Custom select input with searchable options, validation, and dynamic metadata integration
-- **Helper:** (apps/manager/web/js/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more
-- **WebSocket handler:** (apps/manager/web/js/webSocketHandler.js) Client implementation of events protocol to interact with [server](library/source/protocol/webSocketEvents.inl).
-- **Dynamic:** (apps/manager/web/js/dynamic.js) Helpers to add interface dynamic.
-
-### Default views
-- **InstalledApps:** (apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications
-- **CreatedApps:** (apps/manager/web/js/views/createdApps.js) Shows a grid of created/running apps with parameters and action buttons
-- **NewApp:** (apps/manager/web/js/views/newApp.js) Presents a form for creating new applications
-- **ModifyApp:** (apps/manager/web/js/views/modifyApp.js) Allows modification of application parameters
-- **AppView:** (apps/manager/web/js/views/appView.js) Embeds the application’s custom UI in an iframe
-- **TableView:** (apps/manager/web/js/views/tableView.js) Displays a read-only MSAPI table for a given parameter
-- **SelectView:** (apps/manager/web/js/views/selectView.js) Provides a searchable, case-sensitive select dialog for choosing parameter values
-- **GridSettingsView:** (apps/manager/web/js/views/gridSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options
-- **Account:** (apps/manager/web/js/views/account.js) View to display logging and sign up forms, manage account and its information
 
 ### JS Style & Conventions
 - File header: Use same Polyform license block as existing JS files

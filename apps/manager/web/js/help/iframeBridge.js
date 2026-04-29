@@ -15,7 +15,7 @@
  * This script should be included in app views that are displayed in iframes within the MSAPI Manager.
  *
  * @usage Include this script in your app's HTML:
- * <script src="/iframeBridge.js"></script>
+ * <script src="/help/iframeBridge.js"></script>
  */
 
 // Listen for initialization message from parent window

@@ -406,7 +406,7 @@ class WebSocketStream {
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	WebSocket = require('ws');
-	Helper = require("./helper");
+	Helper = require("../help/helper");
 	module.exports.WebSocketHandler = WebSocketHandler;
 	module.exports.WebSocketStream = WebSocketStream;
 	module.exports.WebSocketSingle = WebSocketSingle;

@@ -21,10 +21,10 @@
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	View = require("../view");
-	MetadataCollector = require("../views/metadataCollector");
-	Dispatcher = require("../views/dispatcher").Dispatcher;
-	Dynamic = require("../dynamic");
+	View = require("../core/view");
+	MetadataCollector = require("./metadataCollector");
+	Dispatcher = require("./dispatcher").Dispatcher;
+	Dynamic = require("../help/dynamic");
 }
 
 class Account extends View {
