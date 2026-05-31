@@ -463,7 +463,7 @@ FORCE_INLINE [[nodiscard]] bool RecvBuffer::Drop(const uint64_t toDrop) const
 	uint64_t rest{ toDrop };
 	while (true) {
 		const auto result{ splice(m_connection, nullptr, guardFd.value, nullptr, rest, SPLICE_F_MOVE) };
-		if (result <= 0) [[unlikely]] {
+		if (result == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Failed to splice data to /dev/null error №{}: {}, connection id {}", errno,
 				std::strerror(errno), m_connectionId);
 			return false;
