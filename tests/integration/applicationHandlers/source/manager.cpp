@@ -19,16 +19,16 @@
 
 #include "manager.h"
 
-void Manager::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
+void Manager::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 {
-	MSAPI::DataHeader header{ *recvBufferInfo->buffer };
+	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 	if (header.GetCipher() == helloForHelloCipher) {
 		if (m_outcomeConnection != -1) {
 			LOG_ERROR("Outcome connection is already set");
 			m_unhandledActions.IncrementActionsNumber();
 			return;
 		}
-		m_outcomeConnection = recvBufferInfo->connection;
+		m_outcomeConnection = recvBuffer.GetConnection();
 		MSAPI::ActionsCounter::IncrementActionsNumber();
 		return;
 	}

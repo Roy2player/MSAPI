@@ -43,7 +43,7 @@ public:
 	ObjectClient();
 
 	//* MSAPI::Server
-	void HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo) final;
+	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
 	//* MSAPI::Protocol::Object::IHandler
 	void HandleStreamOpened(int streamId) final;
 	void HandleStreamSnapshotDone(int streamId) final;

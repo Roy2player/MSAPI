@@ -74,7 +74,7 @@ public:
 	 *
 	 * @test Has unit test.
 	 */
-	Data(const DataHeader& header, void* buffer);
+	Data(const DataHeader& header, const void* buffer);
 
 	/**************************
 	 * @return Size of buffer.
@@ -185,7 +185,7 @@ public:
 		}
 		else if constexpr (std::is_same_v<S, std::string>) {
 			if (value.empty()) {
-				m_data.emplace(key, "");
+				m_data.emplace(key, std::string{ "" });
 				m_dataTypes.emplace(key, StandardType::Type::StringEmpty);
 				m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t);
 			}
@@ -224,7 +224,7 @@ public:
 	 *
 	 * @attention Freeing up memory after using is required.
 	 *
-	 * @return pointer to reallocated memory.
+	 * @return Pointer to memory, nullptr if cannot allocate.
 	 *
 	 * @test Has unit test.
 	 */

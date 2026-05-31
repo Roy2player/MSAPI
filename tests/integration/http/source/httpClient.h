@@ -35,7 +35,7 @@ public:
 	HTTPClient();
 
 	//* MSAPI::Server
-	void HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo) final;
+	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
 	//* MSAPI::Protocol::HTTP::IHandler
 	void HandleHttp(int connection, const MSAPI::Protocol::HTTP::Data& data) final;
 

@@ -29,20 +29,20 @@ namespace MSAPI {
  */
 class DataHeader {
 protected:
-	const size_t m_cipher;
-	size_t m_bufferSize{ 16 };
+	uint64_t m_cipher;
+	uint64_t m_bufferSize;
 
 public:
 	/**************************
 	 * @brief Construct a new Data Header object, parse cipher and buffer size from buffer.
 	 *
-	 * @attention Buffer must be at least 16 bytes long, otherwise undefined behaviour.
+	 * @attention Buffer must be at least 16 bytes long.
 	 *
 	 * @param buffer Buffer with data to parse.
 	 *
 	 * @test Has unit test.
 	 */
-	DataHeader(const void* buffer);
+	DataHeader(std::span<const uint8_t> buffer) noexcept;
 
 	/**************************
 	 * @brief Construct a new Data Header object with specific cipher, empty constructor.
@@ -51,21 +51,21 @@ public:
 	 *
 	 * @test Has unit test.
 	 */
-	DataHeader(size_t cipher) noexcept;
+	DataHeader(uint64_t cipher) noexcept;
 
 	/**************************
 	 * @return Cipher of data.
 	 *
 	 * @test Has unit test.
 	 */
-	size_t GetCipher() const noexcept;
+	uint64_t GetCipher() const noexcept;
 
 	/**************************
-	 * @return Buffer size of data.
+	 * @return Buffer size of data, zero if invalid.
 	 *
 	 * @test Has unit test.
 	 */
-	size_t GetBufferSize() const noexcept;
+	uint64_t GetBufferSize() const noexcept;
 
 	/**************************
 	 * @example Data header:

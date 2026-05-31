@@ -36,7 +36,7 @@ public:
 	HTTPServer();
 
 	//* MSAPI::Server
-	void HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo) final;
+	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
 	//* MSAPI::Application
 	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
 	//* MSAPI::Protocol::HTTP::IHandler

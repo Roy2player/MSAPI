@@ -25,7 +25,7 @@
 #include <sys/resource.h>
 
 struct ServerImpl : MSAPI::Server {
-	void HandleBuffer([[maybe_unused]] MSAPI::RecvBufferInfo* recvBufferInfo) override { }
+	void HandleBuffer([[maybe_unused]] MSAPI::RecvBuffer& recvBuffer) override { }
 };
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])

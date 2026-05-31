@@ -38,7 +38,7 @@ public:
 	ObjectDistributor();
 
 	//* MSAPI::Server
-	void HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo) final;
+	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
 	//* MSAPI::Protocol::Object::Distributor
 	void HandleNewStreamOpened(int streamId, const MSAPI::Protocol::Object::StreamData& streamData) final;
 

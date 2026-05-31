@@ -143,11 +143,11 @@ public:
 	 *
 	 * @attention Payload will be unmasked.
 	 *
-	 * @param recvBufferInfo Pointer to recv buffer info object with allocated memory. Must not be nullptr.
+	 * @param recvBuffer Recv buffer data object.
 	 *
 	 * @test Has unit test.
 	 */
-	FORCE_INLINE Data(RecvBufferInfo* recvBufferInfo);
+	FORCE_INLINE Data(RecvBuffer& recvBuffer);
 
 	/**
 	 * @return String interpretation of WebSocket data message.
@@ -704,20 +704,24 @@ FORCE_INLINE Data::Data(const std::span<const uint8_t> payload, const Opcode opc
 	}
 }
 
-FORCE_INLINE Data::Data(RecvBufferInfo* const recvBufferInfo)
+FORCE_INLINE Data::Data(RecvBuffer& recvBuffer)
 {
-	// Below code assumes that MSAPI minimum buffer size is 2 bytes
-	memcpy(m_buffer.data(), *recvBufferInfo->buffer, REQUIRED_HEADER_SIZE);
+	if (const auto size{ recvBuffer.GetBufferSize() }; size != 2) [[unlikely]] {
+		LOG_ERROR_NEW("Unexpected size of recv buffer {} != 2", size);
+		return;
+	}
+
+	memcpy(m_buffer.data(), recvBuffer.GetData(), REQUIRED_HEADER_SIZE);
 	auto payloadHeaderSize{ static_cast<uint64_t>(m_buffer[1] & 0x7F) };
 	if (static_cast<int64_t>(payloadHeaderSize) <= 0) {
 		if (IsMasked()) {
 			m_headerSize += int8_t{ sizeof(uint32_t) };
-			if (!Server::ReadAdditionalData(recvBufferInfo, static_cast<size_t>(m_headerSize))) {
+			if (!recvBuffer.RecvAdditional(static_cast<size_t>(m_headerSize))) {
 				return;
 			}
 			m_buffer.resize(static_cast<size_t>(m_headerSize));
-			memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE,
-				static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE, sizeof(uint32_t));
+			memcpy(
+				m_buffer.data() + REQUIRED_HEADER_SIZE, recvBuffer.GetData() + REQUIRED_HEADER_SIZE, sizeof(uint32_t));
 		}
 
 		return;
@@ -730,14 +734,13 @@ FORCE_INLINE Data::Data(RecvBufferInfo* const recvBufferInfo)
 
 	if (payloadHeaderSize <= 125) {
 		const auto totalSize{ static_cast<size_t>(m_headerSize) + payloadHeaderSize };
-		if (!Server::ReadAdditionalData(recvBufferInfo, totalSize)) {
+		if (!recvBuffer.RecvAdditional(totalSize)) {
 			return;
 		}
 		m_buffer.resize(totalSize);
 
 		if (isMasked) {
-			memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE,
-				static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE,
+			memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE, recvBuffer.GetData() + REQUIRED_HEADER_SIZE,
 				payloadHeaderSize + sizeof(uint32_t));
 
 			uint32_t mask;
@@ -746,62 +749,56 @@ FORCE_INLINE Data::Data(RecvBufferInfo* const recvBufferInfo)
 			return;
 		}
 
-		memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE,
-			static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE, payloadHeaderSize);
+		memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE, recvBuffer.GetData() + REQUIRED_HEADER_SIZE, payloadHeaderSize);
 		return;
 	}
 
 	if (payloadHeaderSize == 126) {
 		m_headerSize += int8_t{ sizeof(uint16_t) };
-		if (!Server::ReadAdditionalData(recvBufferInfo, static_cast<size_t>(m_headerSize))) {
+		if (!recvBuffer.RecvAdditional(static_cast<size_t>(m_headerSize))) {
 			return;
 		}
-		payloadHeaderSize = be16toh(*reinterpret_cast<const uint16_t*>(
-			static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE));
+		payloadHeaderSize = be16toh(*reinterpret_cast<const uint16_t*>(recvBuffer.GetData() + REQUIRED_HEADER_SIZE));
 		const auto totalSize{ static_cast<size_t>(m_headerSize) + payloadHeaderSize };
-		if (!Server::ReadAdditionalData(recvBufferInfo, totalSize, static_cast<size_t>(m_headerSize))) {
+		if (!recvBuffer.RecvAdditional(totalSize)) {
 			return;
 		}
 		m_buffer.resize(totalSize);
 
 		if (isMasked) {
-			memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE,
-				static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE,
+			memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE, recvBuffer.GetData() + REQUIRED_HEADER_SIZE,
 				payloadHeaderSize + sizeof(uint16_t) + sizeof(uint32_t));
 			ApplyMask(m_buffer.data() + m_headerSize, payloadHeaderSize,
 				*reinterpret_cast<uint32_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE + sizeof(uint16_t)));
 			return;
 		}
 
-		memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE,
-			static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE,
+		memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE, recvBuffer.GetData() + REQUIRED_HEADER_SIZE,
 			payloadHeaderSize + sizeof(uint16_t));
 		return;
 	}
 
 	m_headerSize += static_cast<int8_t>(sizeof(uint64_t));
-	if (!Server::ReadAdditionalData(recvBufferInfo, static_cast<size_t>(m_headerSize))) {
+	if (!recvBuffer.RecvAdditional(static_cast<size_t>(m_headerSize))) {
 		return;
 	}
-	payloadHeaderSize = be64toh(
-		*reinterpret_cast<const uint64_t*>(static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE));
+	payloadHeaderSize = be64toh(*reinterpret_cast<const uint64_t*>(recvBuffer.GetData() + REQUIRED_HEADER_SIZE));
 	const auto totalSize{ static_cast<size_t>(m_headerSize) + payloadHeaderSize };
-	if (!Server::ReadAdditionalData(recvBufferInfo, totalSize, static_cast<size_t>(m_headerSize))) {
+	if (!recvBuffer.RecvAdditional(totalSize)) {
 		return;
 	}
 	m_buffer.resize(totalSize);
 
 	if (isMasked) {
-		memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE,
-			static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE,
+		memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE, recvBuffer.GetData() + REQUIRED_HEADER_SIZE,
 			payloadHeaderSize + sizeof(uint64_t) + sizeof(uint32_t));
 		ApplyMask(m_buffer.data() + m_headerSize, payloadHeaderSize,
 			*reinterpret_cast<uint32_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE + sizeof(uint64_t)));
 		return;
 	}
 
-	memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE,
-		static_cast<const char*>(*recvBufferInfo->buffer) + REQUIRED_HEADER_SIZE, payloadHeaderSize + sizeof(uint64_t));
+	memcpy(m_buffer.data() + REQUIRED_HEADER_SIZE, recvBuffer.GetData() + REQUIRED_HEADER_SIZE,
+		payloadHeaderSize + sizeof(uint64_t));
 }
 
 FORCE_INLINE [[nodiscard]] std::string Data::ToString() const

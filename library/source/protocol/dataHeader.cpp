@@ -23,20 +23,28 @@
 
 namespace MSAPI {
 
-DataHeader::DataHeader(const void* buffer)
-	: m_cipher{ static_cast<const size_t*>(buffer)[0] }
+DataHeader::DataHeader(const std::span<const uint8_t> buffer) noexcept
 {
-	memcpy(&m_bufferSize, static_cast<const int8_t*>(buffer) + sizeof(size_t), sizeof(size_t));
+	if (buffer.size() < 16) [[unlikely]] {
+		m_cipher = 0;
+		m_bufferSize = 0;
+		return;
+	}
+
+	const auto* data{ buffer.data() };
+	memcpy(&m_cipher, data, sizeof(uint64_t));
+	memcpy(&m_bufferSize, data + sizeof(uint64_t), sizeof(uint64_t));
 }
 
-DataHeader::DataHeader(const size_t cipher) noexcept
+DataHeader::DataHeader(const uint64_t cipher) noexcept
 	: m_cipher{ cipher }
+	, m_bufferSize{ 16 }
 {
 }
 
-size_t DataHeader::GetCipher() const noexcept { return m_cipher; }
+uint64_t DataHeader::GetCipher() const noexcept { return m_cipher; }
 
-size_t DataHeader::GetBufferSize() const noexcept { return m_bufferSize; }
+uint64_t DataHeader::GetBufferSize() const noexcept { return m_bufferSize; }
 
 std::string DataHeader::ToString() const
 {

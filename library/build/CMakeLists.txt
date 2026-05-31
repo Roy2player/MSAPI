@@ -21,7 +21,6 @@ set(SOURCE_CPP
         ../source/help/json.cpp
         ../source/help/log.cpp
         ../source/help/time.cpp
-        ../source/help/diagnostic.cpp
         ../source/help/table.cpp
         ../source/protocol/http.cpp
         ../source/protocol/dataHeader.cpp

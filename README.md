@@ -79,7 +79,7 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 
 ![MSAPI Manager preview](/apps/manager/MSAPI_Manager_preview.gif)
 
- **Scenario:** Load page -> open created apps view (some app were created before) -> attempt to create app -> login -> create app -> search for app by type filter -> create app view -> run app -> interact with run app.
+ **Scenario:** Load page -> open created apps view (some apps were created before) -> attempt to create app -> login -> create app -> search for app by type filter -> create app view -> run app -> interact with run app.
 
 ### [JS Core](/apps/manager/web/js/core)
 - [**View:**](apps/manager/web/js/core/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling.
@@ -96,7 +96,7 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 
 ### [JS Testing Framework](/apps/manager/web/js/test)
 - [**Server simulator:**](apps/manager/web/js/test/serverSimulator.js) Server's behavior simulator.
-- [**Server simulator:**](apps/manager/web/js/test/testRunner.js) Test execution controller, assertions result tracker.
+- [**Test runner:**](apps/manager/web/js/test/testRunner.js) Test execution controller, assertions result tracker.
 
 ### [Default views](/apps/manager/web/js/views)
 - [**Installed apps:**](apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications.

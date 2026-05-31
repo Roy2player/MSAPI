@@ -18,7 +18,8 @@
  */
 
 #include "object.h"
-#include "../help/autoClearPtr.hpp"
+#include "../help/autoClearPtr.inl"
+#include "../help/diagnostic.inl"
 #include "../help/helper.h"
 #include "../server/application.h"
 
@@ -48,7 +49,7 @@ std::string StreamData::ToString() const
 Data
 ---------------------------------------------------------------------------------*/
 
-size_t Data::GetHash() const { return m_hash; }
+uint64_t Data::GetHash() const { return m_hash; }
 
 std::string Data::ToString() const
 {
@@ -61,44 +62,53 @@ std::string Data::ToString() const
 		m_cipher, m_bufferSize, m_hash, m_streamId);
 }
 
-int Data::GetStreamId() const { return m_streamId; }
+int32_t Data::GetStreamId() const { return m_streamId; }
 
 void* Data::PackData(const void* data) const
 {
 	void* buffer{ malloc(m_bufferSize) };
-	memcpy(buffer, &m_cipher, sizeof(size_t));
-	memcpy(&static_cast<char*>(buffer)[sizeof(size_t)], &m_bufferSize, sizeof(size_t));
-	memcpy(&static_cast<char*>(buffer)[sizeof(size_t) * 2], &m_streamId, sizeof(int));
-	memcpy(&static_cast<char*>(buffer)[sizeof(size_t) * 2 + sizeof(int)], &m_hash, sizeof(size_t));
-	memcpy(&static_cast<char*>(buffer)[sizeof(size_t) * 3 + sizeof(int)], data,
-		m_bufferSize - sizeof(size_t) * 3 - sizeof(int));
-	// Diagnostic::PrintBinaryDescriptor(buffer, m_bufferSize, "Packed memory");
+	if (buffer == nullptr) [[unlikely]] {
+		LOG_ERROR_NEW("Cannot allocate memory for packing data. Error №{}: {}", errno, std::strerror(errno));
+		return nullptr;
+	}
+
+	memcpy(buffer, &m_cipher, sizeof(uint64_t));
+	memcpy(&static_cast<char*>(buffer)[sizeof(uint64_t)], &m_bufferSize, sizeof(uint64_t));
+	memcpy(&static_cast<char*>(buffer)[sizeof(uint64_t) * 2], &m_streamId, sizeof(int32_t));
+	memcpy(&static_cast<char*>(buffer)[sizeof(uint64_t) * 2 + sizeof(int32_t)], &m_hash, sizeof(uint64_t));
+	memcpy(&static_cast<char*>(buffer)[sizeof(uint64_t) * 3 + sizeof(int32_t)], data,
+		m_bufferSize - sizeof(uint64_t) * 3 - sizeof(int32_t));
+	// Diagnostic::PrintBinaryDescriptor<Diagnostic::binary>(buffer, m_bufferSize, "Packed object data");
 	return buffer;
 }
 
-void Data::UnpackData(void** ptr, void* buffer)
+void Data::UnpackData(const void** ptr, const void* buffer)
 {
-	*ptr = &(static_cast<char*>(buffer)[sizeof(size_t) * 3 + sizeof(int)]);
+	*ptr = &(static_cast<const char*>(buffer)[sizeof(uint64_t) * 3 + sizeof(int32_t)]);
 }
 
-bool Data::IsValid() const { return m_cipher == 2666999999 && m_bufferSize >= sizeof(size_t) * 3 + sizeof(int); }
+bool Data::IsValid() const
+{
+	return m_cipher == 2666999999 && m_bufferSize >= sizeof(uint64_t) * 3 + sizeof(int32_t) && m_hash != 0
+		&& m_streamId != 0;
+}
 
 /*---------------------------------------------------------------------------------
 IHandlerBase
 ---------------------------------------------------------------------------------*/
 
-const std::map<int, StreamBase*>& IHandlerBase::GetStreamsContainer() const { return m_streamToId; }
+const std::map<int32_t, StreamBase*>& IHandlerBase::GetStreamsContainer() const { return m_streamToId; }
 
-void IHandlerBase::SetStream(const int streamId, StreamBase* stream)
+void IHandlerBase::SetStream(const int32_t streamId, StreamBase* stream)
 {
 	if (!m_streamToId.emplace(streamId, stream).second) {
 		LOG_ERROR("Duplicate a stream id: " + _S(streamId));
 	}
 }
 
-void IHandlerBase::RemoveStream(const int streamId) { m_streamToId.erase(streamId); }
+void IHandlerBase::RemoveStream(const int32_t streamId) { m_streamToId.erase(streamId); }
 
-void IHandlerBase::CollectStreamState(const int streamId, const StreamStateResponse* state)
+void IHandlerBase::CollectStreamState(const int32_t streamId, const StreamStateResponse* state)
 {
 	const auto it = m_streamToId.find(streamId);
 	if (it == m_streamToId.end()) {
@@ -139,17 +149,17 @@ Type FilterBase::GetType() const { return m_type; }
 
 void FilterBase::SetType(const Type type) { m_type = type; }
 
-size_t FilterBase::GetFilterSize() const { return m_filterSize; }
+uint64_t FilterBase::GetFilterSize() const { return m_filterSize; }
 
 bool FilterBase::Empty() const { return m_filterSize == 0; }
 
 void FilterBase::IncrementFilterSize() { ++m_filterSize; }
 
-size_t FilterBase::GetStreamObjectHash() const { return m_streamObjectHash; }
+uint64_t FilterBase::GetStreamObjectHash() const { return m_streamObjectHash; }
 
-void FilterBase::SetStreamObjectHash(const size_t streamObjectHash) { m_streamObjectHash = streamObjectHash; }
+void FilterBase::SetStreamObjectHash(const uint64_t streamObjectHash) { m_streamObjectHash = streamObjectHash; }
 
-size_t FilterBase::GetFilterObjectHash() const
+uint64_t FilterBase::GetFilterObjectHash() const
 {
 	LOG_ERROR("Call unexpected method by FilterBase class");
 	return 0;
@@ -178,7 +188,7 @@ State StreamBase::GetState() const { return m_state; }
 
 int32_t StreamBase::GetId() const noexcept { return m_id; }
 
-int StreamBase::GetConnection() const { return m_connection; }
+int32_t StreamBase::GetConnection() const { return m_connection; }
 
 bool StreamBase::Empty() const { return m_connection == 0; }
 
@@ -194,7 +204,7 @@ void StreamBase::SetState(const State state)
 
 bool StreamBase::IsSnapshotDone() const { return m_snapshotDone; }
 
-void StreamBase::SetConnection(const int connection) { m_connection = connection; }
+void StreamBase::SetConnection(const int32_t connection) { m_connection = connection; }
 
 /*---------------------------------------------------------------------------------
 ApplicationStateChecker
@@ -211,12 +221,15 @@ bool ApplicationStateChecker::CheckApplicationState() const { return m_applicati
 Another
 ---------------------------------------------------------------------------------*/
 
-void Send(const int connection, const Data& data, const void* object)
+void Send(const int32_t connection, const Data& data, const void* object)
 {
 	LOG_PROTOCOL("Send data: " + data.ToString() + ", to connection: " + _S(connection));
 	AutoClearPtr<void> packData{ data.PackData(object) };
+	if (packData.Get() == nullptr) [[unlikely]] {
+		return;
+	}
 
-	if (send(connection, packData.ptr, data.GetBufferSize(), MSG_NOSIGNAL) == -1) {
+	if (send(connection, packData.Get(), data.GetBufferSize(), MSG_NOSIGNAL) == -1) {
 		if (errno == 104) {
 			LOG_DEBUG("Send returned error №104: Connection reset by peer");
 			return;

@@ -25,23 +25,23 @@ ObjectClient::ObjectClient()
 	MSAPI::Application::SetState(MSAPI::Application::State::Running);
 }
 
-void ObjectClient::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
+void ObjectClient::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 {
-	MSAPI::DataHeader header{ *recvBufferInfo->buffer };
+	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 
 	if (header.GetCipher() == 2666999999) {
-		if (!Server::ReadAdditionalData(recvBufferInfo, header.GetBufferSize())) {
+		if (!recvBuffer.RecvAdditional(header.GetBufferSize())) {
 			return;
 		}
 
-		MSAPI::Protocol::Object::Data data{ std::move(header), *recvBufferInfo->buffer };
+		MSAPI::Protocol::Object::Data data{ std::move(header), recvBuffer.GetBuffer() };
 
-		void* object;
-		MSAPI::Protocol::Object::Data::UnpackData(&object, *recvBufferInfo->buffer);
+		const void* object;
+		MSAPI::Protocol::Object::Data::UnpackData(&object, recvBuffer.GetData());
 
 		if (data.GetHash() == typeid(MSAPI::Protocol::Object::StreamStateResponse).hash_code()) {
 			CollectStreamState(
-				data.GetStreamId(), reinterpret_cast<MSAPI::Protocol::Object::StreamStateResponse*>(object));
+				data.GetStreamId(), reinterpret_cast<const MSAPI::Protocol::Object::StreamStateResponse*>(object));
 			return;
 		}
 
