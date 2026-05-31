@@ -203,10 +203,10 @@ public:
 	 *
 	 * @test Has unit test.
 	 */
-	size_t GetHash() const;
+	uint64_t GetHash() const;
 
 	/**************************
-	 * @return True if chipher is correct, buffer size, stream id and hash have not zero values.
+	 * @return True if cipher is correct, buffer size, stream id and hash have not zero values.
 	 *
 	 * @test Has unit test.
 	 */
@@ -217,7 +217,7 @@ public:
 	 *
 	 * @test Has unit test.
 	 */
-	int GetStreamId() const;
+	int32_t GetStreamId() const;
 
 	/**************************
 	 * @brief Pack data before sending in stream.
@@ -275,7 +275,7 @@ public:
  * @param data Data for sending
  * @param object Object for sending.
  */
-void Send(int connection, const Data& data, const void* object);
+void Send(int32_t connection, const Data& data, const void* object);
 
 class IHandlerBase;
 
@@ -289,7 +289,7 @@ private:
 
 protected:
 	const int32_t m_id;
-	int m_connection{ 0 };
+	int32_t m_connection{ 0 };
 	State m_state{ State::Undefined };
 	bool m_snapshotDone{ false };
 
@@ -322,7 +322,7 @@ public:
 	/**************************
 	 * @return Stream's source connection.
 	 */
-	int GetConnection() const;
+	int32_t GetConnection() const;
 
 	/**************************
 	 * @return True if stream connection is not set.
@@ -334,7 +334,7 @@ public:
 	 *
 	 * @param connection Connection to set.
 	 */
-	void SetConnection(int connection);
+	void SetConnection(int32_t connection);
 
 protected:
 	/**************************
@@ -375,7 +375,7 @@ public:
  */
 class IHandlerBase {
 private:
-	std::map<int, StreamBase*> m_streamToId;
+	std::map<int32_t, StreamBase*> m_streamToId;
 
 public:
 	/**************************
@@ -388,26 +388,26 @@ public:
 	 *
 	 * @param streamId Stream id for which callback is called.
 	 */
-	virtual void HandleStreamOpened(int streamId) = 0;
+	virtual void HandleStreamOpened(int32_t streamId) = 0;
 
 	/**************************
 	 * @brief Callback when stream got snapshot of data.
 	 *
 	 * @param streamId Stream id for which callback is called.
 	 */
-	virtual void HandleStreamSnapshotDone(int streamId) = 0;
+	virtual void HandleStreamSnapshotDone(int32_t streamId) = 0;
 
 	/**************************
 	 * @brief Callback when any error occurred on distributor side, reopen action is required.
 	 *
 	 * @param streamId Stream id for which callback is called.
 	 */
-	virtual void HandleStreamFailed(int streamId) = 0;
+	virtual void HandleStreamFailed(int32_t streamId) = 0;
 
 	/**************************
 	 * @return Readable link for container with all streams to their ids.
 	 */
-	const std::map<int, StreamBase*>& GetStreamsContainer() const;
+	const std::map<int32_t, StreamBase*>& GetStreamsContainer() const;
 
 	/**************************
 	 * @brief Set the Stream object for stream id.
@@ -415,14 +415,14 @@ public:
 	 * @param streamId Stream id for which stream is set.
 	 * @param stream Stream base object to set.
 	 */
-	void SetStream(int streamId, StreamBase* stream);
+	void SetStream(int32_t streamId, StreamBase* stream);
 
 	/**************************
 	 * @brief Remove stream id from container.
 	 *
 	 * @param streamId Stream id to remove.
 	 */
-	void RemoveStream(int streamId);
+	void RemoveStream(int32_t streamId);
 
 	/**************************
 	 * @brief Collect stream state from stream id.
@@ -432,7 +432,7 @@ public:
 	 * @param streamId Stream id for which state is collected.
 	 * @param state Stream state to collect.
 	 */
-	void CollectStreamState(int streamId, const StreamStateResponse* state);
+	void CollectStreamState(int32_t streamId, const StreamStateResponse* state);
 };
 
 /**************************
@@ -453,7 +453,7 @@ public:
 	 * @param streamId Stream id for which callback is called.
 	 * @param object Object for which callback is called.
 	 */
-	virtual void HandleObject(int streamId, const T& object) = 0;
+	virtual void HandleObject(int32_t streamId, const T& object) = 0;
 
 	/**************************
 	 * @brief Collect data object from stream and manage call callback function.
@@ -499,8 +499,8 @@ public:
 class FilterBase {
 private:
 	Type m_type{ Type::Undefined };
-	size_t m_filterSize{ 0 };
-	size_t m_streamObjectHash{ 0 };
+	uint64_t m_filterSize{ 0 };
+	uint64_t m_streamObjectHash{ 0 };
 
 public:
 	/**************************
@@ -529,7 +529,7 @@ public:
 	/**************************
 	 * @return Number of objects in filter.
 	 */
-	size_t GetFilterSize() const;
+	uint64_t GetFilterSize() const;
 
 	/**************************
 	 * @return True if filter is empty, means - filter has not objects.
@@ -558,17 +558,17 @@ public:
 	 * @todo Should be called automatically after creating specific filter. Because filter didn't know which objects
 	 * stream will send.
 	 */
-	void SetStreamObjectHash(size_t streamObjectHash);
+	void SetStreamObjectHash(uint64_t streamObjectHash);
 
 	/**************************
 	 * @return Hash of stream object.
 	 */
-	size_t GetStreamObjectHash() const;
+	uint64_t GetStreamObjectHash() const;
 
 	/**************************
 	 * @return Hash of filter object.
 	 */
-	virtual size_t GetFilterObjectHash() const = 0;
+	virtual uint64_t GetFilterObjectHash() const = 0;
 
 	/**************************
 	 * @example Filter base:
@@ -600,7 +600,7 @@ template <typename T>
 	requires std::is_class_v<T>
 class Filter : public FilterBase {
 private:
-	size_t m_hash{ typeid(T).hash_code() };
+	uint64_t m_hash{ typeid(T).hash_code() };
 	std::vector<T> m_objects;
 
 public:
@@ -650,7 +650,7 @@ public:
 	/**************************
 	 * @return Hash of filter object.
 	 */
-	size_t GetFilterObjectHash() const final { return m_hash; }
+	uint64_t GetFilterObjectHash() const final { return m_hash; }
 
 	/**************************
 	 * @example Filter special:
@@ -720,11 +720,11 @@ template <typename... Ts>
 class Distributor : virtual protected ApplicationStateChecker {
 protected:
 	//* { { stream id client, connection }, stream data } }
-	std::map<std::pair<int, int>, StreamData> m_streamDataToIdAndConnection;
+	std::map<std::pair<int32_t, int32_t>, StreamData> m_streamDataToIdAndConnection;
 	//* { { stream id client, connection }, stream data } }
-	std::multimap<std::pair<int, int>, std::variant<Filter<Ts>...>> m_filtersToStreamIdAndConnection;
+	std::multimap<std::pair<int32_t, int32_t>, std::variant<Filter<Ts>...>> m_filtersToStreamIdAndConnection;
 	//* { object hash, { stream id, connection } } only for snapshot and live streams
-	std::multimap<size_t, std::pair<int, int>> m_activeStreamsToObjectHash;
+	std::multimap<uint64_t, std::pair<int32_t, int32_t>> m_activeStreamsToObjectHash;
 
 public:
 	/**************************
@@ -761,7 +761,7 @@ public:
 	 * @param idAndConnection Stream id and connection for which action is applied.
 	 * @param response Income stream state response from client.
 	 */
-	void StreamExternalAction(const std::pair<int, int>& idAndConnection, const StreamStateResponse* response)
+	void StreamExternalAction(const std::pair<int32_t, int32_t>& idAndConnection, const StreamStateResponse* response)
 	{
 		switch (response->state) {
 		case State::Closed:
@@ -800,13 +800,13 @@ public:
 	 */
 	template <typename T>
 		requires is_included_in<T, Ts...>
-	void Collect(const int connection, const Data& data, const void* object)
+	void Collect(const int32_t connection, const Data& data, const void* object)
 	{
 		if (CheckApplicationState()) {
 			LOG_PROTOCOL("Collect data: " + data.ToString() + ", connection: " + _S(connection));
 			const auto hash{ data.GetHash() };
-			const int streamId{ data.GetStreamId() };
-			std::pair<int, int> idAndConnection{ streamId, connection };
+			const int32_t streamId{ data.GetStreamId() };
+			std::pair<int32_t, int32_t> idAndConnection{ streamId, connection };
 			if (typeid(Filter<T>).hash_code() == hash) {
 				if (m_filtersToStreamIdAndConnection.find(idAndConnection) != m_filtersToStreamIdAndConnection.end()) {
 					LOG_ERROR(
@@ -923,7 +923,7 @@ public:
 	 */
 	template <template <typename> typename T, typename S>
 		requires std::is_class_v<S>
-	void SendOldObjects(const int streamId, const StreamData& streamData, const T<S>& objects,
+	void SendOldObjects(const int32_t streamId, const StreamData& streamData, const T<S>& objects,
 		const std::function<bool(const FilterBase* filter, const S& object)>& filterPredicate) const
 	{
 		LOG_PROTOCOL("Try to send old objects for stream id: " + _S(streamId)
@@ -946,7 +946,7 @@ public:
 	 */
 	template <typename T>
 		requires std::is_class_v<T>
-	void SendOldObject(const int streamId, const StreamData& streamData, const T& object,
+	void SendOldObject(const int32_t streamId, const StreamData& streamData, const T& object,
 		const std::function<bool(const FilterBase* filter, const T& object)>& filterPredicate) const
 	{
 		LOG_PROTOCOL(
@@ -1027,14 +1027,14 @@ private:
 	 * @param streamId Stream id for which callback is called.
 	 * @param streamData Stream data for which callback is called.
 	 */
-	virtual void HandleNewStreamOpened(const int id, const StreamData& streamData) = 0;
+	virtual void HandleNewStreamOpened(const int32_t id, const StreamData& streamData) = 0;
 
 	/**************************
 	 * @brief Open stream for particular stream id.
 	 *
 	 * @param id Stream id for which stream is opened.
 	 */
-	void Open(const std::pair<int, int>& idAndConnection)
+	void Open(const std::pair<int32_t, int32_t>& idAndConnection)
 	{
 		auto it = m_streamDataToIdAndConnection.find(idAndConnection);
 		if (it == m_streamDataToIdAndConnection.end()) {
@@ -1067,7 +1067,7 @@ private:
 		}
 	}
 
-	void SendFailed(const std::pair<int, int>& idAndConnection, const Issue issue)
+	void SendFailed(const std::pair<int32_t, int32_t>& idAndConnection, const Issue issue)
 	{
 		const auto it = m_streamDataToIdAndConnection.find(idAndConnection);
 		if (it == m_streamDataToIdAndConnection.end()) {
@@ -1095,7 +1095,7 @@ private:
 	 */
 	template <typename T>
 		requires std::is_class_v<T>
-	void Send(const int id, const T& object, const StreamData& streamData,
+	void Send(const int32_t id, const T& object, const StreamData& streamData,
 		const std::function<bool(const FilterBase* filter, const T& object)>& filterPredicate) const
 	{
 		bool send{ false };
@@ -1132,7 +1132,7 @@ private:
 	 *
 	 * @param id Stream id for which information is removed.
 	 */
-	void RemoveInformationAboutStream(const std::pair<int, int>& idAndConnection)
+	void RemoveInformationAboutStream(const std::pair<int32_t, int32_t>& idAndConnection)
 	{
 		const auto it = m_streamDataToIdAndConnection.find(idAndConnection);
 		if (it == m_streamDataToIdAndConnection.end()) {

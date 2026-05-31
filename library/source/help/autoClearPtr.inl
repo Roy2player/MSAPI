@@ -33,8 +33,8 @@ template <typename T>
 concept AutoClearPtrT = !std::is_pointer_v<T> && !std::is_reference_v<T> && !std::is_array_v<T>;
 
 /**************************
- * @brief RAII owner of pointer on allocated memory with error error logging, const and non-const accessors and
- * reallocation possibility.
+ * @brief RAII owner of pointer on allocated memory with error logging, const and non-const accessors and reallocation
+ * possibility.
  */
 template <AutoClearPtrT T> struct AutoClearPtr {
 private:
@@ -81,7 +81,7 @@ public:
 	FORCE_INLINE AutoClearPtr(AutoClearPtr&& other) noexcept;
 
 	/**************************
-	 * @brief Move pointer from object and set nullptr back.
+	 * @brief Free memory if allocated, move pointer from object and set nullptr back.
 	 *
 	 * @test Add unit test.
 	 */
@@ -157,6 +157,10 @@ FORCE_INLINE AutoClearPtr<T>::AutoClearPtr(AutoClearPtr<T>&& other) noexcept
 
 template <AutoClearPtrT T> FORCE_INLINE AutoClearPtr<T>& AutoClearPtr<T>::operator=(AutoClearPtr<T>&& other) noexcept
 {
+	if (m_ptr != nullptr) {
+		free(m_ptr);
+	}
+
 	m_ptr = other.m_ptr;
 	other.m_ptr = nullptr;
 	return *this;

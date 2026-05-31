@@ -463,13 +463,14 @@ FORCE_INLINE [[nodiscard]] bool RecvBuffer::Drop(const uint64_t toDrop) const
 	uint64_t rest{ toDrop };
 	while (true) {
 		const auto result{ splice(m_connection, nullptr, guardFd.value, nullptr, rest, SPLICE_F_MOVE) };
-		if (result == -1) [[unlikely]] {
+		if (result <= 0) [[unlikely]] {
 			LOG_ERROR_NEW("Failed to splice data to /dev/null error №{}: {}, connection id {}", errno,
 				std::strerror(errno), m_connectionId);
 			return false;
 		}
 
-		if (rest -= result != 0) [[unlikely]] {
+		rest -= static_cast<uint64_t>(result);
+		if (rest != 0) [[unlikely]] {
 			LOG_PROTOCOL_NEW("Partially spliced {} out of {} bytes from socket to /dev/null, connection id {}", result,
 				toDrop, m_connectionId);
 			continue;
