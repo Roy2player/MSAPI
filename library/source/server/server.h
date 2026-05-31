@@ -260,6 +260,7 @@ public:
 	template <RecvProcessingType Type> FORCE_INLINE void ConnectionRecvProcessing(const int id)
 	{
 		int connection;
+		bool isReady{ true };
 
 		if constexpr (Type == RecvProcessingType::Income) {
 			if (const auto connectionIt{ m_connectionToId.find(id) }; connectionIt != m_connectionToId.end())
@@ -268,7 +269,7 @@ public:
 			}
 			else {
 				LOG_ERROR("Income connection is not found, id: " + _S(id));
-				return;
+				isReady = false;
 			}
 		}
 		else if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {
@@ -278,7 +279,7 @@ public:
 			}
 			else {
 				LOG_ERROR("Outcome connection is not found, id: " + _S(id));
-				return;
+				isReady = false;
 			}
 		}
 		else {
@@ -286,50 +287,55 @@ public:
 		}
 
 		RecvBuffer recvBuffer{ &m_recvBufferSizeLimit, sizeof(uint64_t) * 2, connection, id };
-		LOG_DEBUG_NEW("Recv loop is started for connection {} id {}", connection, id);
+		if (recvBuffer.GetData() == nullptr) [[unlikely]] {
+			isReady = false;
+		}
 
-		while (true) {
-			const auto action{ recvBuffer.Recv() };
-			if (action.bufferSize == 0) [[unlikely]] {
-				break;
-			}
+		if (isReady) [[likely]] {
+			LOG_DEBUG_NEW("Recv loop is started for connection {} id {}", connection, id);
+			while (true) {
+				const auto action{ recvBuffer.Recv() };
+				if (action.bufferSize == 0) [[unlikely]] {
+					break;
+				}
 
-			const auto checkServerProtocol{ [this, &recvBuffer, connection](const size_t limit) {
-				const auto* data{ recvBuffer.GetData() };
-				uint64_t lastNumber [[gnu::uninitialized]];
-				memcpy(&lastNumber, data, sizeof(uint64_t));
+				const auto checkServerProtocol{ [this, &recvBuffer, connection](const size_t limit) {
+					const auto* data{ recvBuffer.GetData() };
+					uint64_t lastNumber [[gnu::uninitialized]];
+					memcpy(&lastNumber, data, sizeof(uint64_t));
 
-				if (lastNumber % 934875930 < limit) {
-					uint64_t size [[gnu::uninitialized]];
-					memcpy(&size, data + sizeof(uint64_t), sizeof(uint64_t));
-					if (size > sizeof(uint64_t) * 2) {
-						if (!recvBuffer.RecvAdditional(size)) [[unlikely]] {
-							return true;
+					if (lastNumber % 934875930 < limit) {
+						uint64_t size [[gnu::uninitialized]];
+						memcpy(&size, data + sizeof(uint64_t), sizeof(uint64_t));
+						if (size > sizeof(uint64_t) * 2) {
+							if (!recvBuffer.RecvAdditional(size)) [[unlikely]] {
+								return true;
+							}
+						}
+
+						Application::Collect(connection,
+							Protocol::Standard::Data{ DataHeader{ recvBuffer.GetBuffer() }, recvBuffer.GetData() });
+						return true;
+					}
+
+					return false;
+				} };
+
+				if (recvBuffer.GetDataType() == 0 && recvBuffer.GetToProcessSize() >= sizeof(uint64_t) * 2) {
+					if constexpr (Type == RecvProcessingType::Manager) {
+						if (checkServerProtocol(10)) {
+							continue;
 						}
 					}
-
-					Application::Collect(connection,
-						Protocol::Standard::Data{ DataHeader{ recvBuffer.GetBuffer() }, recvBuffer.GetData() });
-					return true;
-				}
-
-				return false;
-			} };
-
-			if (recvBuffer.GetDataType() == 0 && recvBuffer.GetToProcessSize() >= sizeof(uint64_t) * 2) {
-				if constexpr (Type == RecvProcessingType::Manager) {
-					if (checkServerProtocol(10)) {
-						continue;
+					else {
+						if (checkServerProtocol(3)) {
+							continue;
+						}
 					}
 				}
-				else {
-					if (checkServerProtocol(3)) {
-						continue;
-					}
-				}
+
+				HandleBuffer(recvBuffer);
 			}
-
-			HandleBuffer(recvBuffer);
 		}
 
 		if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {

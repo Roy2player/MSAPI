@@ -231,8 +231,8 @@ private:
 	 */
 	FORCE_INLINE [[nodiscard]] bool CheckCapacity(uint64_t requiredSize);
 
-	static constexpr inline bool checkCapacity{ true };
-	static constexpr inline bool doNotCheckCapacity{ false };
+	static constexpr inline bool irregular{ true };
+	static constexpr inline bool regular{ false };
 
 	/**************************
 	 * @brief Extend existed buffer by recv particular number of bytes from socket in buffer and place after existed
@@ -242,7 +242,8 @@ private:
 	 * @attention Can invalidate pointer to buffer.
 	 *
 	 * @tparam Flags Recv flags.
-	 * @tparam DoCheckCapacity Flag if required size must be checked against buffer capacity.
+	 * @tparam IsRegular Flag if recv is regular. If yes - reset buffer and peeked sizes, else - required size is
+	 * checked against buffer capacity.
 	 *
 	 * @param requiredSize Required size of buffer.
 	 *
@@ -250,7 +251,7 @@ private:
 	 *
 	 * @test Add unit test.
 	 */
-	template <int32_t Flags, bool DoCheckCapacity> FORCE_INLINE [[nodiscard]] Result RecvImpl(uint64_t requiredSize);
+	template <int32_t Flags, bool IsIrregular> FORCE_INLINE [[nodiscard]] Result RecvImpl(uint64_t requiredSize);
 
 	/**************************
 	 * @brief Attempt to splice data from socket to /dev/null.
@@ -327,21 +328,16 @@ FORCE_INLINE [[nodiscard]] int32_t RecvBuffer::GetConnectionId() const noexcept 
 
 FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::GetDataType() const noexcept { return m_dataType; }
 
-FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::Recv()
-{
-	m_size = 0;
-	m_peekedSize = 0;
-	return RecvImpl<0, doNotCheckCapacity>(m_toProcessSize);
-}
+FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::Recv() { return RecvImpl<0, regular>(m_toProcessSize); }
 
 FORCE_INLINE [[nodiscard]] bool RecvBuffer::RecvAdditional(const uint64_t requiredSize)
 {
-	return RecvImpl<0, checkCapacity>(requiredSize).bufferSize != 0;
+	return RecvImpl<0, irregular>(requiredSize).bufferSize != 0;
 }
 
 FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::RecvAdditionalPeek(const uint64_t requiredSize)
 {
-	return RecvImpl<MSG_PEEK, checkCapacity>(requiredSize).bufferSize;
+	return RecvImpl<MSG_PEEK, irregular>(requiredSize).bufferSize;
 }
 
 FORCE_INLINE [[nodiscard]] bool RecvBuffer::CheckCapacity(const uint64_t requiredSize)
@@ -366,17 +362,24 @@ FORCE_INLINE [[nodiscard]] bool RecvBuffer::CheckCapacity(const uint64_t require
 	return true;
 }
 
-template <int32_t Flags, bool DoCheckCapacity>
+template <int32_t Flags, bool IsRegular>
 FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::RecvImpl(const uint64_t requiredSize)
 {
-	if (requiredSize <= m_size) [[unlikely]] {
-		LOG_WARNING_NEW("Attempt to recv invalid amount of data. Required size {} <= buffer size {}, connection id: {}",
-			requiredSize, m_size, m_connection);
-		return { 0, false };
-	}
+	uint64_t rest{ requiredSize };
 
-	uint64_t rest{ requiredSize - m_size };
-	if constexpr (DoCheckCapacity) {
+	if constexpr (IsRegular) {
+		m_size = 0;
+		m_peekedSize = 0;
+	}
+	else {
+		if (requiredSize <= m_size) [[unlikely]] {
+			LOG_WARNING_NEW(
+				"Attempt to recv invalid amount of data. Required size {} <= buffer size {}, connection id: {}",
+				requiredSize, m_size, m_connection);
+			return { 0, false };
+		}
+
+		rest -= m_size;
 		if (!CheckCapacity(requiredSize)) [[unlikely]] {
 			return { 0, Drop(rest) };
 		}
