@@ -234,8 +234,8 @@ private:
 	 */
 	FORCE_INLINE [[nodiscard]] bool CheckCapacity(uint64_t requiredSize);
 
-	static constexpr inline bool irregular{ true };
-	static constexpr inline bool regular{ false };
+	static constexpr inline bool regular{ true };
+	static constexpr inline bool irregular{ false };
 
 	/**************************
 	 * @brief Extend existed buffer by recv particular number of bytes from socket in buffer and place after existed

@@ -259,8 +259,7 @@ public:
 	 */
 	template <RecvProcessingType Type> FORCE_INLINE void ConnectionRecvProcessing(const int id)
 	{
-		int connection;
-		bool isReady{ true };
+		int connection [[gnu::uninitialized]];
 
 		if constexpr (Type == RecvProcessingType::Income) {
 			if (const auto connectionIt{ m_connectionToId.find(id) }; connectionIt != m_connectionToId.end())
@@ -269,7 +268,7 @@ public:
 			}
 			else {
 				LOG_ERROR("Income connection is not found, id: " + _S(id));
-				isReady = false;
+				return;
 			}
 		}
 		else if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {
@@ -279,7 +278,7 @@ public:
 			}
 			else {
 				LOG_ERROR("Outcome connection is not found, id: " + _S(id));
-				isReady = false;
+				return;
 			}
 		}
 		else {
@@ -287,11 +286,7 @@ public:
 		}
 
 		RecvBuffer recvBuffer{ &m_recvBufferSizeLimit, sizeof(uint64_t) * 2, connection, id };
-		if (recvBuffer.GetData() == nullptr) [[unlikely]] {
-			isReady = false;
-		}
-
-		if (isReady) [[likely]] {
+		if (recvBuffer.GetData() != nullptr) [[likely]] {
 			LOG_DEBUG_NEW("Recv loop is started for connection {} id {}", connection, id);
 			while (true) {
 				const auto action{ recvBuffer.Recv() };
