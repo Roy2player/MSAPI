@@ -37,7 +37,7 @@ namespace HTTP {
 Data
 ---------------------------------------------------------------------------------*/
 
-Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
+Data::Data(MSAPI::RecvBuffer& recvBuffer)
 {
 	bool isHeaders{ false };
 	bool isHtmlFormat{ true };
@@ -50,11 +50,11 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 	std::string value{ "" };
 	std::string key{ "" };
 
-	size_t readSize{ 2048 };
-	if (!MSAPI::Server::LookForAdditionalData(recvBufferInfo, readSize)) {
+	const auto bufferSize{ recvBuffer.RecvAdditionalPeek(2048) };
+	if (bufferSize == 0) [[unlikely]] {
 		return;
 	}
-	const void* buffer{ *recvBufferInfo->buffer };
+	const void* buffer{ recvBuffer.GetData() };
 
 	const auto fillHeaderIdentifier = [buffer](size_t& index, bool& currentType, std::string& currentValue,
 										  bool& nextType, const char separator = '/', const bool includeSpace = false) {
@@ -94,7 +94,7 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 	{
 		bool hasSpace{ false };
 		bool validity{ false };
-		for (size_t index{ 0 }; index < readSize; ++index) {
+		for (size_t index{ 0 }; index < bufferSize; ++index) {
 			if (static_cast<const char*>(buffer)[index] == ' ') {
 				hasSpace = true;
 			}
@@ -110,15 +110,15 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 			}
 		}
 		else {
-			LOG_ERROR("Invalid HTTP message format, connection: " + _S(recvBufferInfo->connection)
-				+ ", id: " + _S(recvBufferInfo->id));
+			LOG_ERROR("Invalid HTTP message format, connection: " + _S(recvBuffer.GetConnection())
+				+ ", id: " + _S(recvBuffer.GetConnectionId()));
 			return;
 		}
 	}
 
 	if (m_isRequest) {
 		bool isMessageType{ true };
-		for (size_t index{ 0 }; index < readSize; ++index) {
+		for (size_t index{ 0 }; index < bufferSize; ++index) {
 			if (!isHeaders) {
 				if (static_cast<const char*>(buffer)[index] != '\n') {
 					if (isMessageType) {
@@ -164,13 +164,13 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 					continue;
 				}
 
-				LOG_ERROR("Unexpected symbol inside request start line, connection: " + _S(recvBufferInfo->connection));
+				LOG_ERROR("Unexpected symbol inside request start line, connection: " + _S(recvBuffer.GetConnection()));
 				return;
 			}
 
 			if (static_cast<const char*>(buffer)[index] != '\n') {
 				if (static_cast<const char*>(buffer)[index] == ':'
-					&& index + 2 /* 1 + 1 because of can be used below */ < readSize
+					&& index + 2 /* 1 + 1 because of can be used below */ < bufferSize
 					&& static_cast<const char*>(buffer)[index + 1] == ' ') {
 
 					index += 2;
@@ -195,7 +195,7 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 				value.clear();
 			}
 
-			if (static_cast<const char*>(buffer)[index - 1] == '\r' && index + 2 < readSize
+			if (static_cast<const char*>(buffer)[index - 1] == '\r' && index + 2 < bufferSize
 				&& static_cast<const char*>(buffer)[index + 1] == '\r'
 				&& static_cast<const char*>(buffer)[index + 2] == '\n') {
 
@@ -211,19 +211,19 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 			&& m_messageType != "TRACE" && m_messageType != "PATCH") {
 
 			LOG_ERROR(
-				"Invalid HTTP message type: " + m_messageType + ", connection: " + _S(recvBufferInfo->connection));
+				"Invalid HTTP message type: " + m_messageType + ", connection: " + _S(recvBuffer.GetConnection()));
 			return;
 		}
 		if (m_HTTPtype != "HTTP" && m_HTTPtype != "HTTPS") {
-			LOG_ERROR("Invalid HTTP type: " + m_HTTPtype + ", connection: " + _S(recvBufferInfo->connection));
+			LOG_ERROR("Invalid HTTP type: " + m_HTTPtype + ", connection: " + _S(recvBuffer.GetConnection()));
 			return;
 		}
 		if (m_version.empty()) {
-			LOG_ERROR("Empty HTTP version, connection: " + _S(recvBufferInfo->connection));
+			LOG_ERROR("Empty HTTP version, connection: " + _S(recvBuffer.GetConnection()));
 			return;
 		}
 		if (m_url.empty()) {
-			LOG_ERROR("Empty HTTP url, connection: " + _S(recvBufferInfo->connection));
+			LOG_ERROR("Empty HTTP url, connection: " + _S(recvBuffer.GetConnection()));
 			return;
 		}
 
@@ -234,11 +234,11 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 	}
 	else {
 		isHTTPtype = true;
-		for (size_t index{ 0 }; index < readSize; ++index) {
+		for (size_t index{ 0 }; index < bufferSize; ++index) {
 			if (isHeaders) {
 				if (static_cast<const char*>(buffer)[index] != '\n') {
 					if (static_cast<const char*>(buffer)[index] == ':'
-						&& index + 2 /* 1 + 1 because of can be used below */ < readSize
+						&& index + 2 /* 1 + 1 because of can be used below */ < bufferSize
 						&& static_cast<const char*>(buffer)[index + 1] == ' ') {
 
 						index += 2;
@@ -263,8 +263,8 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 					value.clear();
 				}
 
-				if (index + 1 < readSize && static_cast<const char*>(buffer)[index + 1] == '\r') {
-					if (index + 2 < readSize && static_cast<const char*>(buffer)[index + 2] == '\n') {
+				if (index + 1 < bufferSize && static_cast<const char*>(buffer)[index + 1] == '\r') {
+					if (index + 2 < bufferSize && static_cast<const char*>(buffer)[index + 2] == '\n') {
 						m_messageSize = index + 3 /* 2 + 1 because of first index is 0 */;
 						break;
 					}
@@ -297,23 +297,23 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 		}
 
 		if (m_HTTPtype != "HTTP" && m_HTTPtype != "HTTPS") {
-			LOG_ERROR("Invalid HTTP type: " + m_HTTPtype + ", connection: " + _S(recvBufferInfo->connection)
-				+ ", id: " + _S(recvBufferInfo->id));
+			LOG_ERROR("Invalid HTTP type: " + m_HTTPtype + ", connection: " + _S(recvBuffer.GetConnection())
+				+ ", id: " + _S(recvBuffer.GetConnectionId()));
 			return;
 		}
 		if (m_version.empty()) {
-			LOG_ERROR("Empty HTTP version, connection: " + _S(recvBufferInfo->connection)
-				+ ", id: " + _S(recvBufferInfo->id));
+			LOG_ERROR("Empty HTTP version, connection: " + _S(recvBuffer.GetConnection())
+				+ ", id: " + _S(recvBuffer.GetConnectionId()));
 			return;
 		}
 		if (m_code.empty()) {
-			LOG_ERROR(
-				"Empty HTTP code, connection: " + _S(recvBufferInfo->connection) + ", id: " + _S(recvBufferInfo->id));
+			LOG_ERROR("Empty HTTP code, connection: " + _S(recvBuffer.GetConnection())
+				+ ", id: " + _S(recvBuffer.GetConnectionId()));
 			return;
 		}
 		if (m_codeText.empty()) {
-			LOG_ERROR("Empty HTTP code text, connection: " + _S(recvBufferInfo->connection)
-				+ ", id: " + _S(recvBufferInfo->id));
+			LOG_ERROR("Empty HTTP code text, connection: " + _S(recvBuffer.GetConnection())
+				+ ", id: " + _S(recvBuffer.GetConnectionId()));
 			return;
 		}
 		m_isValid = true;
@@ -331,16 +331,15 @@ Data::Data(MSAPI::RecvBufferInfo* recvBufferInfo)
 		}
 
 		const size_t httpMessageSize{ contentLength + m_messageSize };
-		if (!MSAPI::Server::ReadAdditionalData(recvBufferInfo, httpMessageSize)) {
+		if (!recvBuffer.RecvAdditional(httpMessageSize)) [[unlikely]] {
 			return;
 		}
 
-		m_body = std::move(
-			std::string{ &static_cast<const char*>(*recvBufferInfo->buffer)[m_messageSize], contentLength });
+		m_body = std::string{ &reinterpret_cast<const char*>(recvBuffer.GetData())[m_messageSize], contentLength };
 		m_messageSize = httpMessageSize;
 	}
 	else {
-		MSAPI::Server::ReadAdditionalData(recvBufferInfo, m_messageSize);
+		(void)recvBuffer.RecvAdditional(m_messageSize);
 	}
 }
 

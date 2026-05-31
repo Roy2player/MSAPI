@@ -28,6 +28,7 @@
 #ifndef MSAPI_PROTOCOL_HTTP_H
 #define MSAPI_PROTOCOL_HTTP_H
 
+#include "../server/recvBuffer.inl"
 #include "webSocket.inl"
 #include <iostream>
 #include <map>
@@ -38,7 +39,6 @@
 namespace MSAPI {
 
 class Application;
-class RecvBufferInfo;
 
 namespace Protocol {
 
@@ -72,9 +72,9 @@ public:
 	 * @attention HTTP header section cannot be longer than 2048 bytes.
 	 * @attention If request does not contain format, it will be set as html.
 	 *
-	 * @param recvBufferInfo Pointer to recv buffer info object with allocated memory.
+	 * @param recvBuffer Recv buffer object.
 	 */
-	Data(MSAPI::RecvBufferInfo* recvBufferInfo);
+	Data(MSAPI::RecvBuffer& recvBuffer);
 
 	/**************************
 	 * @return Readable link to maps with headers like { header, value }.
@@ -303,15 +303,14 @@ void SendRequest(int connection, const std::string& HTTP);
 } // namespace MSAPI
 
 #define MSAPI_HANDLER_HTTP_PRESET                                                                                      \
-	if (MSAPI::Protocol::HTTP::Data http(recvBufferInfo); http.IsValid()) {                                            \
+	if (MSAPI::Protocol::HTTP::Data http(recvBuffer); http.IsValid()) {                                                \
 		MSAPI_HANDLER_HTTP_PRESET_INTERNAL_PART                                                                        \
 	}
 
-// TODO: recvBufferInfo can contain additional enum to check the type of protocol
 #define MSAPI_HANDLER_WEBSOCKET_PRESET                                                                                 \
-	if (recvBufferInfo->GetReadDataSize() == 2) {                                                                      \
+	if (recvBuffer.GetDataType() == typeid(MSAPI::Protocol::WebSocket::Data).hash_code()) {                            \
 		MSAPI::Protocol::WebSocket::IHandler::Collect(                                                                 \
-			recvBufferInfo->connection, MSAPI::Protocol::WebSocket::Data{ recvBufferInfo });                           \
+			recvBuffer.GetConnection(), MSAPI::Protocol::WebSocket::Data{ recvBuffer });                               \
 		return;                                                                                                        \
 	}
 
@@ -320,10 +319,11 @@ void SendRequest(int connection, const std::string& HTTP);
 		if (http.IsWebSocketUpgradeRequest()) {                                                                        \
 			if (MSAPI::Application::IsRunning()) {                                                                     \
 				LOG_PROTOCOL(http.ToString());                                                                         \
-				if (!http.SendWebSocketUpgradeResponse(recvBufferInfo->connection)) {                                  \
+				if (!http.SendWebSocketUpgradeResponse(recvBuffer.GetConnection())) {                                  \
 					return;                                                                                            \
 				}                                                                                                      \
-				recvBufferInfo->SetReadDataSize(2);                                                                    \
+				recvBuffer.SetToProcessSize(2);                                                                        \
+				recvBuffer.SetDataType(typeid(MSAPI::Protocol::WebSocket::Data).hash_code());                          \
 				return;                                                                                                \
 			}                                                                                                          \
 			LOG_PROTOCOL_NEW("Application is not running. {}", http.ToString());                                       \
@@ -333,7 +333,8 @@ void SendRequest(int connection, const std::string& HTTP);
 		if (http.IsWebSocketUpgradeResponse()) {                                                                       \
 			if (MSAPI::Application::IsRunning()) {                                                                     \
 				LOG_PROTOCOL(http.ToString());                                                                         \
-				recvBufferInfo->SetReadDataSize(2);                                                                    \
+				recvBuffer.SetToProcessSize(2);                                                                        \
+				recvBuffer.SetDataType(typeid(MSAPI::Protocol::WebSocket::Data).hash_code());                          \
 				return;                                                                                                \
 			}                                                                                                          \
 			LOG_PROTOCOL_NEW("Application is not running. {}", http.ToString());                                       \
@@ -341,7 +342,7 @@ void SendRequest(int connection, const std::string& HTTP);
 		}                                                                                                              \
 	}                                                                                                                  \
                                                                                                                        \
-	MSAPI::Protocol::HTTP::IHandler::Collect(recvBufferInfo->connection, http);                                        \
+	MSAPI::Protocol::HTTP::IHandler::Collect(recvBuffer.GetConnection(), http);                                        \
 	return;
 
 #endif // MSAPI_PROTOCOL_HTTP_H

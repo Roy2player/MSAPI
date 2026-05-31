@@ -49,6 +49,11 @@ bool DataHeader()
 	LOG_INFO_UNITTEST("MSAPI Data header");
 	MSAPI::Test t;
 
+	RETURN_IF_FALSE(t.Assert(
+		MSAPI::DataHeader{ std::span<const uint8_t>{} }.GetCipher(), 0, "Cipher of empty data header is expected"));
+	RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ std::span<const uint8_t>{} }.GetBufferSize(), 0,
+		"Buffer size of empty data header is expected"));
+
 	RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ 8 }.GetCipher(), 8, "Cipher is expected"));
 	RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ 8 }.GetBufferSize(), 16, "Buffer size is expected"));
 	RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ 8 }.ToString(),
@@ -66,20 +71,27 @@ bool DataHeader()
 
 	{
 		std::array<uint64_t, 2> data1{ UINT64(67125387623456789), UINT64(98765434) };
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::DataHeader{ data1.data() }.GetCipher(), 67125387623456789, "Cipher is expected"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::DataHeader{ data1.data() }.GetBufferSize(), 98765434, "Buffer size is expected"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ data1.data() }.ToString(),
+		std::span<const uint8_t> data1span{ reinterpret_cast<const uint8_t*>(data1.data()),
+			sizeof(uint64_t) * data1.size() };
+		RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ data1span }.GetCipher(), 67125387623456789, "Cipher is expected"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ data1span }.GetBufferSize(), 98765434, "Buffer size is expected"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ data1span }.ToString(),
 			"Data header:\n{"
 			"\n\tcipher      : 67125387623456789"
 			"\n\tbuffer size : 98765434\n}",
 			"Data to string is expected"));
 		std::array<uint64_t, 2> data2{ UINT64(67125387623456789), UINT64(98765435) };
-		RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ data1.data() } == MSAPI::DataHeader{ data2.data() }, false,
+		std::span<const uint8_t> data2span{ reinterpret_cast<const uint8_t*>(data2.data()),
+			sizeof(uint64_t) * data2.size() };
+		RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ data1span } == MSAPI::DataHeader{ data2span }, false,
 			"Objects are not equal by buffer size, operator=="));
-		RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ data1.data() } != MSAPI::DataHeader{ data2.data() }, true,
+		RETURN_IF_FALSE(t.Assert(MSAPI::DataHeader{ data1span } != MSAPI::DataHeader{ data2span }, true,
 			"Objects are not equal by buffer size, operator!="));
+
+		RETURN_IF_FALSE(
+			t.Assert(MSAPI::DataHeader{ data1span.subspan(0, 15) }.GetCipher(), 0, "Cipher of empty data is expected"));
+		RETURN_IF_FALSE(t.Assert(
+			MSAPI::DataHeader{ data1span.subspan(0, 15) }.GetBufferSize(), 0, "Buffer size of empty data is expected"));
 	}
 
 	return true;

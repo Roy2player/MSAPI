@@ -27,10 +27,10 @@ HTTPServer::HTTPServer()
 	MSAPI::Application::SetState(MSAPI::Application::State::Paused);
 }
 
-void HTTPServer::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
+void HTTPServer::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 {
 	MSAPI::ActionsCounter::IncrementActionsNumber();
-	MSAPI::DataHeader header{ *recvBufferInfo->buffer };
+	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 	MSAPI_HANDLER_HTTP_PRESET
 	LOG_ERROR("Unknown protocol: " + header.ToString());
 }

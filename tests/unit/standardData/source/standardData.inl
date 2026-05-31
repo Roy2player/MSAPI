@@ -205,8 +205,9 @@ bool StandardData()
 	data.SetData(43, tableData);
 
 	MSAPI::AutoClearPtr<void> buffer{ data.Encode() };
-	MSAPI::DataHeader header{ buffer.ptr };
-	MSAPI::Protocol::Standard::Data copyData{ header, buffer.ptr };
+	const std::span<const uint8_t> bufferSpan{ static_cast<const uint8_t*>(buffer.Get()), sizeof(uint64_t) * 2 };
+	MSAPI::DataHeader header{ bufferSpan };
+	MSAPI::Protocol::Standard::Data copyData{ header, buffer.Get() };
 
 	RETURN_IF_FALSE(
 		t.Assert(data.ToString(), copyData.ToString(), "For standard data from buffer ToString is as on source data"));

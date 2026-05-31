@@ -99,11 +99,11 @@ Manager::Manager()
 		});
 }
 
-void Manager::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
+void Manager::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 {
 	MSAPI_HANDLER_WEBSOCKET_PRESET;
 
-	MSAPI::DataHeader header{ *recvBufferInfo->buffer };
+	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 	MSAPI_HANDLER_HTTP_PRESET;
 
 	LOG_ERROR("Unknown protocol: " + header.ToString());

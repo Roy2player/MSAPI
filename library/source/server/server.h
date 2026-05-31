@@ -22,10 +22,9 @@
 
 #include "../help/pthread.hpp"
 #include "application.h"
-#include <cstring>
+#include "recvBuffer.inl"
 #include <list>
 #include <optional>
-#include <sys/socket.h>
 
 namespace MSAPI {
 
@@ -83,81 +82,6 @@ namespace MSAPI {
  * some cases. Way with int generation + check in container event worse. Probably it should be UID generator with two
  * uint64_t values.
  */
-
-class Server;
-
-/**************************
- * @brief Structure for managing size of recv buffer.
- *
- * @todo Probably this structure can be merged into ConnectionInfo structure. But that structure works only with
- * outcome connections, but not with income. Maybe when secure protocol will be implemented this situation will be
- * changed.
- */
-class RecvBufferInfo {
-public:
-	enum class Action : short { Undefined, Return, Read, Drop, Max };
-
-public:
-	void** buffer;
-	const int connection;
-	const int id;
-
-	static constexpr inline size_t DEFAULT_READ_DATA_SIZE{ sizeof(size_t) * 2 };
-
-private:
-	size_t m_currentRecvBufferSize;
-	const size_t* m_recvBufferSizeLimit;
-	size_t m_readDataSize;
-	Server* m_server;
-
-public:
-	/**************************
-	 * @brief Construct a new Recv Buffer Info object, empty constructor.
-	 *
-	 * @note Is not inside Server class for ability to use it in MSAPI::HTTP protocol.
-	 */
-	RecvBufferInfo(void** buffer, int connection, int id, size_t currentRecvBufferSize,
-		const size_t* recvBufferSizeLimit, size_t readDataSize, Server* server);
-
-	/**************************
-	 * @return Read data size of recv buffer.
-	 */
-	FORCE_INLINE [[nodiscard]] size_t GetReadDataSize() const noexcept { return m_readDataSize; }
-
-	/**************************
-	 * @brief Check and set the read data size of recv buffer. Cannot be less than 1.
-	 *
-	 * @param size New read data size of recv buffer.
-	 */
-	FORCE_INLINE void SetReadDataSize(size_t size)
-	{
-		if (size < 1) [[unlikely]] {
-			LOG_WARNING("Read data size cannot be less than 1");
-			return;
-		}
-
-		if (ManageBuffer(size) != Action::Read) [[unlikely]] {
-			return;
-		}
-
-		LOG_PROTOCOL_NEW("Change read data size from {} to {} bytes, connection id: {}", m_readDataSize, size, id);
-		m_readDataSize = size;
-	}
-
-private:
-	/**************************
-	 * @brief Check if buffer size is enough or reallocate memory if required size is greater than current size and
-	 * less than limit. If reallocation fails, then state is not changed.
-	 *
-	 * @param bufferSize Required size of buffer.
-	 *
-	 * @return Action for next step.
-	 */
-	Action ManageBuffer(size_t bufferSize);
-
-	//* For managing recv buffer size
-	friend class Server;
-};
 
 class Server : public Application {
 public:
@@ -335,7 +259,7 @@ public:
 	 */
 	template <RecvProcessingType Type> FORCE_INLINE void ConnectionRecvProcessing(const int id)
 	{
-		int connection;
+		int connection [[gnu::uninitialized]];
 
 		if constexpr (Type == RecvProcessingType::Income) {
 			if (const auto connectionIt{ m_connectionToId.find(id) }; connectionIt != m_connectionToId.end())
@@ -361,100 +285,59 @@ public:
 			static_assert(sizeof(Type) + 1 == 0, "Unknown type of recv processing");
 		}
 
-		ssize_t requestSize{ 0 };
-		AutoClearPtr<void> buffer{ m_recvBufferSize };
-		RecvBufferInfo recvBufferInfo{ &buffer.ptr, connection, id, m_recvBufferSize, &m_recvBufferSizeLimit,
-			RecvBufferInfo::DEFAULT_READ_DATA_SIZE, this };
-		LOG_DEBUG_NEW("Recv loop is started for connection {} id {}", connection, id);
-		while (true) {
-			size_t offset{ 0 };
-		doRecv:
-			requestSize = recv(
-				connection, &static_cast<char*>(buffer.ptr)[offset], recvBufferInfo.GetReadDataSize() - offset, 0);
-
-			//* Socket closed from other side
-			if (requestSize == 0) [[unlikely]] {
-				LOG_INFO(
-					"Will close " + std::string{ RecvProcessingTypeToString_v<Type> } + " connection, id: " + _S(id));
-				if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {
-					HandleOutcomeDisconnect(id, connection);
-				}
-				else {
-					HandleIncomeDisconnect(id, connection);
-				}
-				break;
-			}
-
-			if (requestSize == -1) [[unlikely]] {
-				if (errno == EAGAIN || errno == EWOULDBLOCK) {
-					LOG_PROTOCOL("Non-blocking operation returned EAGAIN or EWOULDBLOC, "
-						+ RecvProcessingTypeToString_v<Type> + " connection id: " + _S(id));
-					continue;
+		RecvBuffer recvBuffer{ &m_recvBufferSizeLimit, sizeof(uint64_t) * 2, connection, id };
+		if (recvBuffer.GetData() != nullptr) [[likely]] {
+			LOG_DEBUG_NEW("Recv loop is started for connection {} id {}", connection, id);
+			while (true) {
+				const auto action{ recvBuffer.Recv() };
+				if (action.bufferSize == 0) [[unlikely]] {
+					break;
 				}
 
-				if (errno == 104) {
-					LOG_PROTOCOL("Recv returned unrecoverable error №104: Connection reset by peer, "
-						+ RecvProcessingTypeToString_v<Type> + " connection id: " + _S(id));
-					if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {
-						HandleOutcomeDisconnect(id, connection);
+				const auto checkServerProtocol{ [this, &recvBuffer, connection](const size_t limit) {
+					const auto* data{ recvBuffer.GetData() };
+					uint64_t lastNumber [[gnu::uninitialized]];
+					memcpy(&lastNumber, data, sizeof(uint64_t));
+
+					if (lastNumber % 934875930 < limit) {
+						uint64_t size [[gnu::uninitialized]];
+						memcpy(&size, data + sizeof(uint64_t), sizeof(uint64_t));
+						if (size > sizeof(uint64_t) * 2) {
+							if (!recvBuffer.RecvAdditional(size)) [[unlikely]] {
+								return true;
+							}
+						}
+
+						Application::Collect(connection,
+							Protocol::Standard::Data{ DataHeader{ recvBuffer.GetBuffer() }, recvBuffer.GetData() });
+						return true;
+					}
+
+					return false;
+				} };
+
+				if (recvBuffer.GetDataType() == 0 && recvBuffer.GetToProcessSize() >= sizeof(uint64_t) * 2) {
+					if constexpr (Type == RecvProcessingType::Manager) {
+						if (checkServerProtocol(10)) {
+							continue;
+						}
 					}
 					else {
-						HandleIncomeDisconnect(id, connection);
+						if (checkServerProtocol(3)) {
+							continue;
+						}
 					}
-					break;
 				}
 
-				if (errno == 9) {
-					LOG_PROTOCOL("Recv returned unrecoverable error №9: Bad file descriptor, "
-						+ RecvProcessingTypeToString_v<Type> + " connection id: " + _S(id));
-					break;
-				}
-
-				LOG_ERROR("Recv returned unrecoverable error №" + _S(errno) + ": " + std::strerror(errno) + ", "
-					+ RecvProcessingTypeToString_v<Type> + " connection id: " + _S(id));
-				if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {
-					HandleOutcomeDisconnect(id, connection);
-				}
-				else {
-					HandleIncomeDisconnect(id, connection);
-				}
-				break;
+				HandleBuffer(recvBuffer);
 			}
+		}
 
-			if (offset += UINT64(requestSize); offset != recvBufferInfo.GetReadDataSize()) [[unlikely]] {
-				goto doRecv;
-			}
-
-			// Diagnostic::PrintBinaryDescriptor(buffer.ptr, recvBufferInfo.GetReadDataSize(), "Recv first income
-			// data");
-
-			LOG_PROTOCOL("Get data from " + RecvProcessingTypeToString_v<Type>
-				+ " connection: " + _S(connection) + ", id: " + _S(id));
-
-#define TMP_MSAPI_SERVER_PROCESS_DATA(limit)                                                                           \
-	if (static_cast<size_t*>(buffer.ptr)[0] % 934875930 < limit) {                                                     \
-		if (static_cast<size_t*>(buffer.ptr)[1] > RecvBufferInfo::DEFAULT_READ_DATA_SIZE                               \
-			&& !ReadAdditionalData(&recvBufferInfo, static_cast<size_t*>(buffer.ptr)[1])) [[unlikely]] {               \
-                                                                                                                       \
-			continue;                                                                                                  \
-		}                                                                                                              \
-                                                                                                                       \
-		Application::Collect(connection, { { buffer.ptr }, buffer.ptr });                                              \
-		continue;                                                                                                      \
-	}
-			// TODO: Need to think how to handle standard application callbacks in more flexible way
-			if (recvBufferInfo.GetReadDataSize() >= RecvBufferInfo::DEFAULT_READ_DATA_SIZE) {
-				if constexpr (Type == RecvProcessingType::Manager) {
-					TMP_MSAPI_SERVER_PROCESS_DATA(10);
-				}
-				else {
-					TMP_MSAPI_SERVER_PROCESS_DATA(3);
-				}
-			}
-
-#undef TMP_MSAPI_SERVER_PROCESS_DATA
-
-			HandleBuffer(&recvBufferInfo);
+		if constexpr (Type == RecvProcessingType::Outcome || Type == RecvProcessingType::Manager) {
+			HandleOutcomeDisconnect(id, connection);
+		}
+		else {
+			HandleIncomeDisconnect(id, connection);
 		}
 
 		if (m_state == State::Stopped) {
@@ -472,29 +355,6 @@ public:
 	 */
 	static std::string_view EnumToString(State state);
 
-	/**************************
-	 * @brief Blocking reading additional data from socket with 0 flags by id with read data size minus offset.
-	 *
-	 * @param recvBufferInfo Pointer to recv buffer info object with allocated memory.
-	 * @param bufferSize Expected size of buffer to be.
-	 * @param offset Number of bytes already presented in buffer. Default is 0 - recv buffer data size.
-	 *
-	 * @return True if data was read, false otherwise.
-	 */
-	static bool ReadAdditionalData(RecvBufferInfo* recvBufferInfo, size_t bufferSize, size_t offset = 0);
-
-	/**************************
-	 * @brief Non blocking lookup reading up to requested amount of data from socket with MSG_PEEK flag by id with read
-	 * data size minus offset.
-	 *
-	 * @param recvBufferInfo Pointer to recv buffer info object with allocated memory.
-	 * @param bufferSize Expected size of buffer to be. Will be set to buffer size after reading.
-	 * @param offset Number of bytes already presented in buffer. Default is 0 - recv buffer data size.
-	 *
-	 * @return True if data was read, false otherwise.
-	 */
-	static bool LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& bufferSize, size_t offset = 0);
-
 protected:
 	/**************************
 	 * @return Get the Connect object by id, empty optional if connection is unknown.
@@ -505,9 +365,9 @@ protected:
 	 * @brief Handler for income data from connection by id. After calling need to decide which data contained
 	 * inside and make decision about specific action.
 	 *
-	 * @param recvBufferInfo Pointer to recv buffer info object with allocated memory.
+	 * @param recvBuffer Recv buffer object.
 	 */
-	virtual void HandleBuffer(RecvBufferInfo* recvBufferInfo) = 0;
+	virtual void HandleBuffer(RecvBuffer& recvBuffer) = 0;
 
 	/**************************
 	 * @return Number of listened port.

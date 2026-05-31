@@ -86,7 +86,7 @@ public:
 	Client();
 
 	//* MSAPI::Server
-	void HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo) final;
+	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
 	//* MSAPI::Application
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;

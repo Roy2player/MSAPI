@@ -72,9 +72,9 @@ Client::Client()
 	MSAPI::Application::RegisterParameter(44, { "Parameter 44 - Table", &m_parameter44 });
 }
 
-void Client::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
+void Client::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 {
-	MSAPI::DataHeader header{ *recvBufferInfo->buffer };
+	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 
 	LOG_ERROR("Unexpected buffer received: " + header.ToString());
 	m_unhandledActions.IncrementActionsNumber();

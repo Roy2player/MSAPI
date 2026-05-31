@@ -65,7 +65,7 @@ bool Table()
 			RETURN_IF_FALSE(t.Assert(table.GetBufferSize(), sizeof(size_t), "Table buffer size for empty table"));
 			MSAPI::AutoClearPtr<void> tableBuffer{ table.Encode() };
 			RETURN_IF_FALSE(
-				t.Assert(*static_cast<size_t*>(tableBuffer.ptr), sizeof(size_t), "Table buffer empty size content"));
+				t.Assert(*static_cast<size_t*>(tableBuffer.Get()), sizeof(size_t), "Table buffer empty size content"));
 		}
 
 		return true;
@@ -88,7 +88,7 @@ bool Table()
 		RETURN_IF_FALSE(t.Assert(tableData1.GetBufferSize(), table.GetBufferSize(), "TableData(Table) buffer size"));
 
 		MSAPI::AutoClearPtr<void> buffer{ table.Encode() };
-		MSAPI::TableData tableData2{ buffer.ptr };
+		MSAPI::TableData tableData2{ buffer.Get() };
 		RETURN_IF_FALSE(t.Assert(tableData2.GetBuffer() != nullptr, true, "TableData(buffer) buffer is not nullptr"));
 		RETURN_IF_FALSE(t.Assert(tableData2.GetBufferSize(), table.GetBufferSize(), "TableData(buffer) buffer size"));
 		RETURN_IF_FALSE(t.Assert(tableData1, tableData2, "Tables data are equal, operator =="));
@@ -182,7 +182,7 @@ bool Table()
 
 		RETURN_IF_FALSE(basicTableCheck(table, 0, { 111111, 111112, 111113 }));
 
-		MSAPI::TableData tableData{ buffer.ptr };
+		MSAPI::TableData tableData{ buffer.Get() };
 		table.Copy(tableData);
 		RETURN_IF_FALSE(basicTableCheck(table, 20, { 111111, 111112, 111113 }));
 
@@ -321,7 +321,7 @@ bool Table()
 
 		RETURN_IF_FALSE(basicTableCheck(table, 0, { 111111, 222222, 333333 }));
 
-		MSAPI::TableData tableData{ buffer.ptr };
+		MSAPI::TableData tableData{ buffer.Get() };
 		table.Copy(tableData);
 		RETURN_IF_FALSE(basicTableCheck(table, 20, { 111111, 222222, 333333 }));
 
@@ -596,7 +596,7 @@ bool Table()
 
 		RETURN_IF_FALSE(basicTableCheck(table, 0, { 111111, 222222, 333333, 444444, 555555, 666666, 777777 }));
 
-		MSAPI::TableData tableData{ buffer.ptr };
+		MSAPI::TableData tableData{ buffer.Get() };
 		table.Copy(tableData);
 		RETURN_IF_FALSE(basicTableCheck(table, 20, { 111111, 222222, 333333, 444444, 555555, 666666, 777777 }));
 
@@ -1258,7 +1258,7 @@ bool Table()
 				2121212121, 2222222222, 2323232323, 2424242424, 2525252525, 2626262626, 2727272727, 2828282828,
 				2929292929, 3030303030, 3131313131, 3232323232, 3333333333 }));
 
-		MSAPI::TableData tableData{ buffer.ptr };
+		MSAPI::TableData tableData{ buffer.Get() };
 		table.Copy(tableData);
 
 		RETURN_IF_FALSE(basicTableCheck(table, 20,
@@ -2082,20 +2082,20 @@ bool Table()
 			"TableData from nullptr is equal to same TableData, operator =="));
 
 		MSAPI::AutoClearPtr<void> table1Data1{ table1.Encode() };
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } != MSAPI::TableData{ table1Data1.ptr }, false,
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } != MSAPI::TableData{ table1Data1.Get() }, false,
 			"TableData of empty table is equal to TableData from pointer to its table encoded buffer, operator !="));
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 }, MSAPI::TableData{ table1Data1.ptr },
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 }, MSAPI::TableData{ table1Data1.Get() },
 			"TableData of empty table is equal to TableData from pointer to its table encoded buffer, operator =="));
 
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1Data1.ptr } != MSAPI::TableData{ table1Data1.ptr }, false,
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1Data1.Get() } != MSAPI::TableData{ table1Data1.Get() }, false,
 			"TableData of empty table from pointer to its table encoded buffer is equal to itself, operator !="));
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1Data1.ptr }, MSAPI::TableData{ table1Data1.ptr },
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1Data1.Get() }, MSAPI::TableData{ table1Data1.Get() },
 			"TableData of empty table from pointer to its table encoded buffer is equal to itself, operator =="));
 
 		MSAPI::AutoClearPtr<void> table2Data1{ table2.Encode() };
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } != MSAPI::TableData{ table2Data1.ptr }, false,
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } != MSAPI::TableData{ table2Data1.Get() }, false,
 			"TableData of empty table is equal to TableData from pointer to same table's encoded buffer, operator !="));
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 }, MSAPI::TableData{ table2Data1.ptr },
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 }, MSAPI::TableData{ table2Data1.Get() },
 			"TableData of empty table is equal to TableData from pointer to same table's encoded buffer, operator =="));
 
 		table1.AddRow(false);
@@ -2117,23 +2117,23 @@ bool Table()
 			"TableData of non empty table is not equal to TableData from nullptr, operator =="));
 
 		MSAPI::AutoClearPtr<void> table1Data2{ table1.Encode() };
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } != MSAPI::TableData{ table1Data2.ptr }, false,
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } != MSAPI::TableData{ table1Data2.Get() }, false,
 			"TableData of non empty table is equal to TableData from pointer to its table encoded buffer, operator "
 			"!="));
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 }, MSAPI::TableData{ table1Data2.ptr },
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 }, MSAPI::TableData{ table1Data2.Get() },
 			"TableData of non empty table is equal to TableData from pointer to its table encoded buffer, operator "
 			"=="));
 
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1Data2.ptr } != MSAPI::TableData{ table1Data2.ptr }, false,
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1Data2.Get() } != MSAPI::TableData{ table1Data2.Get() }, false,
 			"TableData of non empty table from pointer to its table encoded buffer is equal to itself, operator !="));
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1Data2.ptr }, MSAPI::TableData{ table1Data2.ptr },
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1Data2.Get() }, MSAPI::TableData{ table1Data2.Get() },
 			"TableData of non empty table from pointer to its table encoded buffer is equal to itself, operator =="));
 
 		MSAPI::AutoClearPtr<void> table2Data2{ table2.Encode() };
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } != MSAPI::TableData{ table2Data2.ptr }, true,
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } != MSAPI::TableData{ table2Data2.Get() }, true,
 			"TableData of non empty table is not equal to TableData from pointer to different table's encoded buffer, "
 			"operator !="));
-		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } == MSAPI::TableData{ table2Data2.ptr }, false,
+		RETURN_IF_FALSE(t.Assert(MSAPI::TableData{ table1 } == MSAPI::TableData{ table2Data2.Get() }, false,
 			"TableData of non empty table is not equal to TableData from pointer to different table's encoded buffer, "
 			"operator =="));
 	}
