@@ -88,6 +88,8 @@ public:
 	/**************************
 	 * @brief Construct a new Recv Buffer object, guarantee that to process size is not greater than limit.
 	 *
+	 * @attention On construction, the internal buffer can be nullptr due to malloc error.
+	 *
 	 * @param capacityLimit Pointer to capacity limit.
 	 * @param toProcessSize Minimum required size to be read on socket to allow execution unit move forward.
 	 * @param connection Connection descriptor.
@@ -181,6 +183,7 @@ public:
 	 * @brief Renew existed buffer by blocking read minimum required size from socket to allow execution unit move
 	 * forward.
 	 *
+	 * @attention On construction, the internal buffer can be nullptr due to malloc error.
 	 * @attention Can invalidate pointer to buffer.
 	 *
 	 * @return Buffer size (include peeked) on success, zero with flag if data was dropped otherwise.
@@ -375,7 +378,7 @@ FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::RecvImpl(const uint64_
 		if (requiredSize <= m_size) [[unlikely]] {
 			LOG_WARNING_NEW(
 				"Attempt to recv invalid amount of data. Required size {} <= buffer size {}, connection id: {}",
-				requiredSize, m_size, m_connection);
+				requiredSize, m_size, m_connectionId);
 			return { 0, false };
 		}
 
