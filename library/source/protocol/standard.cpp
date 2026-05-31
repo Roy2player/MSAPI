@@ -319,7 +319,7 @@ void Send(const int connection, const Data& data)
 {
 	LOG_PROTOCOL("Send " + data.ToString() + " to connection: " + _S(connection));
 	AutoClearPtr<void> ptr{ data.Encode() };
-	if (pre.Get() == nullptr) [[unlikely]] {
+	if (ptr.Get() == nullptr) [[unlikely]] {
 		return;
 	}
 
