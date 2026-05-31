@@ -254,7 +254,7 @@ private:
 	 *
 	 * @test Add unit test.
 	 */
-	template <int32_t Flags, bool IsIrregular> FORCE_INLINE [[nodiscard]] Result RecvImpl(uint64_t requiredSize);
+	template <int32_t Flags, bool IsRegular> FORCE_INLINE [[nodiscard]] Result RecvImpl(uint64_t requiredSize);
 
 	/**************************
 	 * @brief Attempt to splice data from socket to /dev/null.
