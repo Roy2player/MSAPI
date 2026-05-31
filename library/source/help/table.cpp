@@ -88,11 +88,11 @@ TableData::TableData(const TableBase& table) noexcept
 {
 }
 
-TableData::TableData(void* buffer)
+TableData::TableData(const void* buffer)
 	: m_sharedBuffer{ buffer }
 {
 	if (buffer != nullptr) {
-		m_bufferSize = *static_cast<size_t*>(buffer);
+		m_bufferSize = *static_cast<const size_t*>(buffer);
 	}
 }
 
@@ -432,7 +432,7 @@ const void* TableData::GetBuffer() const noexcept
 			return buffer;
 		}
 
-		return buffer->ptr;
+		return buffer->Get();
 	}
 
 	return m_sharedBuffer;

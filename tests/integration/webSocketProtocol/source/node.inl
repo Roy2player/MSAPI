@@ -42,16 +42,16 @@ public:
 	}
 
 	// MSAPI::Server
-	void HandleBuffer(MSAPI::RecvBufferInfo* const recvBufferInfo) final
+	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final
 	{
 		MSAPI_HANDLER_WEBSOCKET_PRESET;
 
-		MSAPI::DataHeader header{ *recvBufferInfo->buffer };
+		MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 
-		if (MSAPI::Protocol::HTTP::Data http(recvBufferInfo); http.IsValid()) {
+		if (MSAPI::Protocol::HTTP::Data http(recvBuffer); http.IsValid()) {
 			{
 				MSAPI::Pthread::AtomicLock::ExitGuard lock{ m_httpDataLock };
-				m_httpDataToConnection[recvBufferInfo->connection].emplace_back(http);
+				m_httpDataToConnection[recvBuffer.GetConnection()].emplace_back(http);
 			}
 
 			MSAPI_HANDLER_HTTP_PRESET_INTERNAL_PART;

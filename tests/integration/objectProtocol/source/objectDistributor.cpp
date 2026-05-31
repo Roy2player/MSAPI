@@ -25,30 +25,30 @@ ObjectDistributor::ObjectDistributor()
 	MSAPI::Application::SetState(MSAPI::Application::State::Running);
 }
 
-void ObjectDistributor::HandleBuffer(MSAPI::RecvBufferInfo* recvBufferInfo)
+void ObjectDistributor::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 {
-	MSAPI::DataHeader header{ *recvBufferInfo->buffer };
+	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 
 	if (header.GetCipher() == 2666999999) {
-		if (!Server::ReadAdditionalData(recvBufferInfo, header.GetBufferSize())) {
+		if (!recvBuffer.RecvAdditional(header.GetBufferSize())) {
 			return;
 		}
 
-		MSAPI::Protocol::Object::Data data{ std::move(header), *recvBufferInfo->buffer };
+		MSAPI::Protocol::Object::Data data{ std::move(header), recvBuffer.GetBuffer() };
 
-		void* object;
-		MSAPI::Protocol::Object::Data::UnpackData(&object, *recvBufferInfo->buffer);
+		const void* object;
+		MSAPI::Protocol::Object::Data::UnpackData(&object, recvBuffer.GetData());
 
 		if (data.GetHash() == typeid(MSAPI::Protocol::Object::StreamStateResponse).hash_code()) {
-			Distributor::StreamExternalAction({ data.GetStreamId(), recvBufferInfo->connection },
-				reinterpret_cast<MSAPI::Protocol::Object::StreamStateResponse*>(object));
+			Distributor::StreamExternalAction({ data.GetStreamId(), recvBuffer.GetConnection() },
+				reinterpret_cast<const MSAPI::Protocol::Object::StreamStateResponse*>(object));
 			return;
 		}
 
 		if (data.GetHash() == typeid(MSAPI::Protocol::Object::Filter<FilterStructure>).hash_code()
 			|| data.GetHash() == typeid(FilterStructure).hash_code()) {
 
-			Distributor::Collect<FilterStructure>(recvBufferInfo->connection, data, object);
+			Distributor::Collect<FilterStructure>(recvBuffer.GetConnection(), data, object);
 			return;
 		}
 

@@ -77,7 +77,7 @@ bool ObjectData()
 	CustomObject first{ 1, 2, 3.369, 9009008001 };
 
 	const auto hashCode{ typeid(CustomObject).hash_code() };
-	const auto objectSize{ sizeof(first) };
+	constexpr auto objectSize{ sizeof(CustomObject) };
 
 	MSAPI::Protocol::Object::Data data{ 1, hashCode, objectSize };
 	AutoClearPtr<void> packData{ data.PackData(&first) };
@@ -110,16 +110,64 @@ bool ObjectData()
 			  "\n}",
 		"Data to string is correct"));
 
-	MSAPI::DataHeader header(packData.ptr);
-	MSAPI::Protocol::Object::Data dataUnpacked{ header, packData.ptr };
+	const std::span<const uint8_t> dataSpan{ static_cast<const uint8_t*>(packData.Get()), 28 + objectSize };
+	MSAPI::DataHeader header(dataSpan);
+	MSAPI::Protocol::Object::Data dataUnpacked{ header, dataSpan };
 
 	RETURN_IF_FALSE(t.Assert(dataUnpacked, data, "Unpacked data is equal to packed one, operator=="));
 	RETURN_IF_FALSE(t.Assert(dataUnpacked != data, false, "Unpacked is data equal to packed one, operator!="));
 
-	void* unpackObject;
-	MSAPI::Protocol::Object::Data::UnpackData(&unpackObject, packData.ptr);
+	const void* unpackObject;
+	MSAPI::Protocol::Object::Data::UnpackData(&unpackObject, packData.Get());
 
 	RETURN_IF_FALSE(CustomObject::AreEqual(*reinterpret_cast<const CustomObject*>(unpackObject), first, t));
+
+	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.GetHash(), 0,
+		"Hash of empty data is expected"));
+	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.GetStreamId(), 0,
+		"Stream id of empty data is expected"));
+	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.GetCipher(), 2666999999,
+		"Cipher is expected"));
+	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.GetBufferSize(),
+		28 + objectSize, "Buffer size is expected"));
+	RETURN_IF_FALSE(t.Assert(
+		MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.IsValid(), false, "Empty data is invalid"));
+
+	RETURN_IF_FALSE(t.Assert(
+		MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ std::span<const uint8_t>{} }, std::span<const uint8_t>{} }
+			.GetHash(),
+		0, "Hash of empty data is expected"));
+	RETURN_IF_FALSE(t.Assert(
+		MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ std::span<const uint8_t>{} }, std::span<const uint8_t>{} }
+			.GetStreamId(),
+		0, "Stream id of empty data is expected"));
+	RETURN_IF_FALSE(t.Assert(
+		MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ std::span<const uint8_t>{} }, std::span<const uint8_t>{} }
+			.GetCipher(),
+		0, "Cipher of empty data is expected"));
+	RETURN_IF_FALSE(t.Assert(
+		MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ std::span<const uint8_t>{} }, std::span<const uint8_t>{} }
+			.GetBufferSize(),
+		0, "Buffer of empty data size is expected"));
+	RETURN_IF_FALSE(t.Assert(
+		MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ std::span<const uint8_t>{} }, std::span<const uint8_t>{} }
+			.IsValid(),
+		false, "Empty data is invalid"));
+
+	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ 1, 1, 0 }.IsValid(), true, "Object is valid"));
+	RETURN_IF_FALSE(
+		t.Assert(MSAPI::Protocol::Object::Data{ 0, 1, 0 }.IsValid(), false, "Object is invalid because of stream id"));
+	RETURN_IF_FALSE(
+		t.Assert(MSAPI::Protocol::Object::Data{ 1, 0, 0 }.IsValid(), false, "Object is invalid because of hash"));
+	RETURN_IF_FALSE(t.Assert(
+		MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ dataSpan }, dataSpan }.IsValid(), true, "Object is valid"));
+	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ 2666999999 + 1 }, dataSpan }.IsValid(),
+		false, "Object is invalid because of cipher"));
+	std::array<uint64_t, 2> data1{ UINT64(2666999999), UINT64(15) };
+	std::span<const uint8_t> data1span{ reinterpret_cast<const uint8_t*>(data1.data()),
+		sizeof(uint64_t) * data1.size() };
+	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ data1span }, dataSpan }.IsValid(), false,
+		"Object is invalid because of buffer size"));
 
 	return true;
 }

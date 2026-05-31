@@ -53,7 +53,6 @@
 #ifndef MSAPI_PROTOCOL_OBJECT_H
 #define MSAPI_PROTOCOL_OBJECT_H
 
-#include "../help/diagnostic.h"
 #include "../help/log.h"
 #include "dataHeader.h"
 #include <cstring>
@@ -73,9 +72,9 @@ namespace Protocol {
 
 namespace Object {
 
-enum class Type : int16_t { Undefined, Snapshot, SnapshotAndLive, Max };
-enum class State : int16_t { Undefined, Pending, Opened, Done, Failed, Closed, Removed, Max };
-enum class Issue : int16_t {
+enum class Type : int8_t { Undefined, Snapshot, SnapshotAndLive, Max };
+enum class State : int8_t { Undefined, Pending, Opened, Done, Failed, Closed, Removed, Max };
+enum class Issue : int8_t {
 	Undefined,
 	Empty,
 	NotUniqueFilter,
@@ -123,11 +122,11 @@ struct StreamStateResponse {
  * @brief Structure for HandleNewStreamOpened callback.
  */
 struct StreamData {
-	const int connection{ 0 };
+	const int32_t connection{ 0 };
 	Type type{ Type::Undefined };
 	bool open{ false };
-	size_t objectHash{ 0 };
-	size_t filterSize{ 0 };
+	uint64_t objectHash{ 0 };
+	uint64_t filterSize{ 0 };
 
 	/**************************
 	 * @example Stream data:
@@ -147,8 +146,8 @@ struct StreamData {
  */
 class Data : public DataHeader {
 private:
-	int m_streamId;
-	size_t m_hash;
+	uint64_t m_hash;
+	int32_t m_streamId;
 
 public:
 	/**************************
@@ -163,18 +162,18 @@ public:
 	 *
 	 * @todo Move stream_id in separated StreamData object
 	 */
-	Data(const int streamId, const size_t hash, const size_t size)
+	Data(const int32_t streamId, const uint64_t hash, const uint64_t size)
 		: DataHeader{ 2666999999 }
-		, m_streamId{ streamId }
 		, m_hash{ hash }
+		, m_streamId{ streamId }
 	{
-		m_bufferSize += sizeof(size_t) + sizeof(int) + size;
+		m_bufferSize += sizeof(uint64_t) + sizeof(int32_t) + size;
 	}
 
 	/**************************
 	 * @brief Construct a new Data object from buffer, copy stream id and hash from it.
 	 *
-	 * @attention Buffer must be at least 28 bytes long, otherwise undefined behaviour.
+	 * @attention Buffer must be at least 28 bytes long.
 	 *
 	 * @tparam T DataHeader.
 	 *
@@ -184,12 +183,19 @@ public:
 	 * @test Has unit test.
 	 */
 	template <typename T>
-	Data(T&& header, const void* buffer)
+	Data(T&& header, const std::span<const uint8_t> buffer)
 		requires std::is_same_v<std::decay_t<T>, DataHeader>
 		: DataHeader{ std::forward<T>(header) }
 	{
-		memcpy(&m_streamId, static_cast<const int8_t*>(buffer) + sizeof(size_t) * 2, sizeof(int));
-		memcpy(&m_hash, static_cast<const int8_t*>(buffer) + sizeof(size_t) * 2 + sizeof(int), sizeof(size_t));
+		if (buffer.size() < sizeof(uint64_t) * 3 + sizeof(uint32_t)) [[unlikely]] {
+			m_streamId = 0;
+			m_hash = 0;
+			return;
+		}
+
+		const auto* data{ buffer.data() };
+		memcpy(&m_streamId, data + sizeof(uint64_t) * 2, sizeof(int32_t));
+		memcpy(&m_hash, data + sizeof(uint64_t) * 2 + sizeof(int32_t), sizeof(uint64_t));
 	}
 
 	/**************************
@@ -200,7 +206,7 @@ public:
 	size_t GetHash() const;
 
 	/**************************
-	 * @return True if object is valid, means, object data cipher is correct.
+	 * @return True if chipher is correct, buffer size, stream id and hash have not zero values.
 	 *
 	 * @test Has unit test.
 	 */
@@ -232,11 +238,11 @@ public:
 	 * @brief Unpack data after receiving from stream.
 	 *
 	 * @param ptr Pointer to unpacked data.
-	 * @param buffer Buffer for packed data.
+	 * @param buffer Buffer with packed data.
 	 *
 	 * @test Has unit test.
 	 */
-	static void UnpackData(void** ptr, void* buffer);
+	static void UnpackData(const void** ptr, const void* buffer);
 
 	/**************************
 	 * @test Has unit test.
@@ -744,7 +750,6 @@ public:
 				Protocol::Object::Send(streamData.connection,
 					{ idAndConnection.first, typeid(StreamStateResponse).hash_code(), sizeof(StreamStateResponse) },
 					&state);
-				// Diagnostic::PrintBinaryDescriptor(data, sizeof(Protocol::Object::Data), "Right after send");
 				RemoveInformationAboutStream(idAndConnection);
 			}
 		}
@@ -1044,7 +1049,7 @@ private:
 			+ ", connection: " + _S(idAndConnection.second) + ", only snapshot: " + _S(onlySnapshot));
 
 		if (!onlySnapshot) {
-			LOG_PROTOCOL("Stream id: " + _S(idAndConnection.second) + ", connection: " + _S(idAndConnection.second)
+			LOG_PROTOCOL("Stream id: " + _S(idAndConnection.first) + ", connection: " + _S(idAndConnection.second)
 				+ " set as active");
 			m_activeStreamsToObjectHash.emplace(it->second.objectHash, idAndConnection);
 		}

@@ -18,7 +18,8 @@
  */
 
 #include "object.h"
-#include "../help/autoClearPtr.hpp"
+#include "../help/autoClearPtr.inl"
+#include "../help/diagnostic.inl"
 #include "../help/helper.h"
 #include "../server/application.h"
 
@@ -72,16 +73,19 @@ void* Data::PackData(const void* data) const
 	memcpy(&static_cast<char*>(buffer)[sizeof(size_t) * 2 + sizeof(int)], &m_hash, sizeof(size_t));
 	memcpy(&static_cast<char*>(buffer)[sizeof(size_t) * 3 + sizeof(int)], data,
 		m_bufferSize - sizeof(size_t) * 3 - sizeof(int));
-	// Diagnostic::PrintBinaryDescriptor(buffer, m_bufferSize, "Packed memory");
+	// Diagnostic::PrintBinaryDescriptor<Diagnostic::binary>(buffer, m_bufferSize, "Packed object data");
 	return buffer;
 }
 
-void Data::UnpackData(void** ptr, void* buffer)
+void Data::UnpackData(const void** ptr, const void* buffer)
 {
-	*ptr = &(static_cast<char*>(buffer)[sizeof(size_t) * 3 + sizeof(int)]);
+	*ptr = &(static_cast<const char*>(buffer)[sizeof(size_t) * 3 + sizeof(int)]);
 }
 
-bool Data::IsValid() const { return m_cipher == 2666999999 && m_bufferSize >= sizeof(size_t) * 3 + sizeof(int); }
+bool Data::IsValid() const
+{
+	return m_cipher == 2666999999 && m_bufferSize >= sizeof(size_t) * 3 + sizeof(int) && m_hash != 0 && m_streamId != 0;
+}
 
 /*---------------------------------------------------------------------------------
 IHandlerBase
@@ -216,7 +220,7 @@ void Send(const int connection, const Data& data, const void* object)
 	LOG_PROTOCOL("Send data: " + data.ToString() + ", to connection: " + _S(connection));
 	AutoClearPtr<void> packData{ data.PackData(object) };
 
-	if (send(connection, packData.ptr, data.GetBufferSize(), MSG_NOSIGNAL) == -1) {
+	if (send(connection, packData.Get(), data.GetBufferSize(), MSG_NOSIGNAL) == -1) {
 		if (errno == 104) {
 			LOG_DEBUG("Send returned error №104: Connection reset by peer");
 			return;

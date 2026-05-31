@@ -20,9 +20,7 @@
 #ifndef MSAPI_TABLE_H
 #define MSAPI_TABLE_H
 
-#include "autoClearPtr.hpp"
-#include "cstring"
-#include "log.h"
+#include "autoClearPtr.inl"
 #include "standardType.hpp"
 #include <list>
 #include <memory>
@@ -170,7 +168,7 @@ private:
 	//* Not const for enable copy/move semantics.
 	//* Shared pointer to allow copy constructor and assignment operator.
 	std::shared_ptr<AutoClearPtr<void>> m_ownBuffer{ nullptr };
-	void* m_sharedBuffer{ nullptr };
+	const void* m_sharedBuffer{ nullptr };
 	size_t m_bufferSize{ 8 };
 
 public:
@@ -195,7 +193,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	TableData(void* buffer);
+	TableData(const void* buffer);
 
 	/**************************
 	 * @brief Construct a new Table Data object without useful data.

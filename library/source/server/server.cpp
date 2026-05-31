@@ -18,13 +18,11 @@
  */
 
 #include "server.h"
-#include "../help/autoClearPtr.hpp"
-#include "../help/diagnostic.h"
+#include "../help/autoClearPtr.inl"
 #include <climits>
 #include <fcntl.h>
 #include <iomanip>
 #include <netinet/tcp.h>
-#include <sys/ioctl.h>
 #include <thread>
 #include <unistd.h>
 
@@ -590,151 +588,6 @@ void Server::CloseConnect(ConnectionInfo& info)
 	Close(info.id, info.connection);
 }
 
-#define TMP_MSAPI_SERVER_DO_RECV(flags)                                                                                \
-	const auto result{ recv(                                                                                           \
-		recvBufferInfo->connection, &(static_cast<char*>(*recvBufferInfo->buffer))[offset], readData, flags) };        \
-	if (result == 0) [[unlikely]] {                                                                                    \
-		/* Not sure if it is required pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr); */                      \
-		LOG_INFO("Connection will be closed, id: " + _S(recvBufferInfo->id));                                          \
-		return false;                                                                                                  \
-	}                                                                                                                  \
-                                                                                                                       \
-	if (result == -1) [[unlikely]] {                                                                                   \
-		if (errno == EAGAIN || errno == EWOULDBLOCK) {                                                                 \
-			LOG_PROTOCOL(                                                                                              \
-				"Non-blocking operation returned EAGAIN or EWOULDBLOC, connection id: " + _S(recvBufferInfo->id));     \
-			return false;                                                                                              \
-		}                                                                                                              \
-                                                                                                                       \
-		if (errno == 104) {                                                                                            \
-			LOG_PROTOCOL("Recv returned unrecoverable error №104: Connection reset by peer, connection id: "         \
-				+ _S(recvBufferInfo->id));                                                                             \
-			return false;                                                                                              \
-		}                                                                                                              \
-                                                                                                                       \
-		LOG_ERROR("Recv returned unrecoverable error №" + _S(errno) + ": " + std::strerror(errno)                      \
-			+ ", connection id: " + _S(recvBufferInfo->id));                                                           \
-		return false;                                                                                                  \
-	}                                                                                                                  \
-	/* Not sure if it is required pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, nullptr); */                           \
-	LOG_PROTOCOL("Get data from connection: " + _S(recvBufferInfo->connection) + ", id: " + _S(recvBufferInfo->id)     \
-		+ ", size: " + _S(readData) + ", read size: " + _S(result) + ", flags: " + _S(flags)                           \
-		+ ", offset: " + _S(offset));
-
-#define TMP_MSAPI_SERVER_DO_DROP                                                                                       \
-	int devNull{ open("/dev/null", O_WRONLY) };                                                                        \
-	if (devNull == -1) [[unlikely]] {                                                                                  \
-		LOG_ERROR("Failed to open /dev/null");                                                                         \
-		return false;                                                                                                  \
-	}                                                                                                                  \
-	const auto bytesSpliced{ splice(                                                                                   \
-		recvBufferInfo->connection, nullptr, devNull, nullptr, bufferSize - offset, SPLICE_F_MOVE) };                  \
-	if (bytesSpliced == -1) [[unlikely]] {                                                                             \
-		LOG_ERROR("Failed to splice data to /dev/null, id: " + _S(recvBufferInfo->id) + ". Error №" + _S(errno) + ": " \
-			+ std::strerror(errno));                                                                                   \
-		close(devNull);                                                                                                \
-		return false;                                                                                                  \
-	}                                                                                                                  \
-	LOG_PROTOCOL("Spliced " + _S(bytesSpliced) + " out of " + _S(bufferSize - offset)                                  \
-		+ " bytes to /dev/null, id: " + _S(recvBufferInfo->id));                                                       \
-	close(devNull);
-
-bool Server::ReadAdditionalData(RecvBufferInfo* recvBufferInfo, const size_t bufferSize, size_t offset)
-{
-	const auto action{ recvBufferInfo->ManageBuffer(bufferSize) };
-	switch (action) {
-	case RecvBufferInfo::Action::Return:
-		return false;
-	case RecvBufferInfo::Action::Read: {
-		int bytesAvailable{ 0 };
-		if (offset == 0) {
-			offset = recvBufferInfo->GetReadDataSize();
-		}
-		ioctl(recvBufferInfo->connection, FIONREAD, &bytesAvailable);
-		if (bytesAvailable > 0) [[likely]] {
-			size_t readData{ bufferSize - offset };
-			if (UINT64(bytesAvailable) < readData) {
-				LOG_PROTOCOL("Available number of bytes is less than need to be read, id: " + _S(recvBufferInfo->id)
-					+ ", available: " + _S(bytesAvailable));
-				do {
-					TMP_MSAPI_SERVER_DO_RECV(0);
-					offset += UINT64(result);
-					readData -= UINT64(result);
-				} while (readData > 0);
-			}
-			else {
-				TMP_MSAPI_SERVER_DO_RECV(0);
-			}
-
-			// Diagnostic::PrintBinaryDescriptor(*buffer, bufferSize, "Additional read memory");
-			return true;
-		}
-
-		if (bytesAvailable == 0) [[likely]] {
-			LOG_WARNING("No data available, id: " + _S(recvBufferInfo->id));
-			return false;
-		}
-
-		LOG_ERROR("Fail to get available number of bytes, id: " + _S(recvBufferInfo->id) + ". Error №" + _S(errno)
-			+ ": " + std::strerror(errno));
-		return false;
-	}
-	case RecvBufferInfo::Action::Drop: {
-		TMP_MSAPI_SERVER_DO_DROP;
-		return false;
-	}
-	default:
-		LOG_ERROR("Unknown action " + _S(static_cast<short>(action)) + ", id: " + _S(recvBufferInfo->id));
-		return false;
-	}
-}
-
-bool Server::LookForAdditionalData(RecvBufferInfo* recvBufferInfo, size_t& bufferSize, size_t offset)
-{
-	const auto action{ recvBufferInfo->ManageBuffer(bufferSize) };
-	switch (action) {
-	case RecvBufferInfo::Action::Return:
-		return false;
-	case RecvBufferInfo::Action::Read: {
-		int bytesAvailable{ 0 };
-		if (offset == 0) {
-			offset = recvBufferInfo->GetReadDataSize();
-		}
-		ioctl(recvBufferInfo->connection, FIONREAD, &bytesAvailable);
-		if (bytesAvailable > 0) [[likely]] {
-			const auto readData{ bufferSize - offset };
-			if (UINT64(bytesAvailable) < readData) {
-				LOG_PROTOCOL("Available number of bytes is less than need to be read, id: " + _S(recvBufferInfo->id)
-					+ ", available: " + _S(bytesAvailable));
-			}
-
-			TMP_MSAPI_SERVER_DO_RECV(MSG_PEEK);
-			bufferSize = UINT64(result) + offset;
-			return true;
-		}
-
-		if (bytesAvailable == 0) [[likely]] {
-			LOG_WARNING("No data available, id: " + _S(recvBufferInfo->id));
-			return false;
-		}
-
-		LOG_ERROR("Fail to get available number of bytes, id: " + _S(recvBufferInfo->id) + ". Error №" + _S(errno)
-			+ ": " + std::strerror(errno));
-		return false;
-	}
-	case RecvBufferInfo::Action::Drop: {
-		TMP_MSAPI_SERVER_DO_DROP;
-		return false;
-	}
-	default:
-		LOG_ERROR("Unknown action " + _S(static_cast<short>(action)) + ", id: " + _S(recvBufferInfo->id));
-		return false;
-	}
-}
-
-#undef TMP_MSAPI_SERVER_DO_DROP
-#undef TMP_MSAPI_SERVER_DO_RECV
-
 std::optional<int> Server::GetConnect(const int id) const
 {
 	const auto connectionIt = m_infoToConnection.find(id);
@@ -814,47 +667,6 @@ Server::ConnectionInfo::ConnectionInfo(const int id, const in_addr_t& ip, const 
 	, textIp(textIp)
 	, needReconnection(needReconnection)
 {
-}
-
-/*---------------------------------------------------------------------------------
-RecvBufferInfo
----------------------------------------------------------------------------------*/
-
-RecvBufferInfo::RecvBufferInfo(void** buffer, const int connection, const int id, const size_t currentRecvBufferSize,
-	const size_t* m_recvBufferSizeLimit, const size_t readDataSize, Server* server)
-	: buffer{ buffer }
-	, connection{ connection }
-	, id{ id }
-	, m_currentRecvBufferSize{ currentRecvBufferSize }
-	, m_recvBufferSizeLimit{ m_recvBufferSizeLimit }
-	, m_readDataSize{ readDataSize }
-	, m_server{ server }
-{
-}
-
-RecvBufferInfo::Action RecvBufferInfo::ManageBuffer(const size_t bufferSize)
-{
-	if (bufferSize <= m_currentRecvBufferSize) [[likely]] {
-		return Action::Read;
-	}
-
-	if (bufferSize > *m_recvBufferSizeLimit) [[unlikely]] {
-		LOG_ERROR("Needed buffer size (" + _S(bufferSize) + ") is greater than limit (" + _S(*m_recvBufferSizeLimit)
-			+ "), connection id: " + _S(id));
-		return Action::Drop;
-	}
-
-	void* newBuffer{ realloc(*buffer, bufferSize) };
-	if (newBuffer == nullptr) [[unlikely]] {
-		LOG_ERROR("Failed to reallocate " + _S(bufferSize) + " bytes of memory, connection id: " + _S(id));
-		return Action::Drop;
-	}
-
-	m_currentRecvBufferSize = bufferSize;
-	*buffer = newBuffer;
-	LOG_PROTOCOL(
-		"Reallocate buffer size: " + _S(m_currentRecvBufferSize) + " bytes successfully, connection id: " + _S(id));
-	return Action::Read;
 }
 
 }; //* namespace MSAPI

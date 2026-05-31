@@ -37,25 +37,25 @@ Data::Data(const size_t cipher)
 {
 }
 
-Data::Data(const DataHeader& header, void* buffer)
+Data::Data(const DataHeader& header, const void* buffer)
 	: DataHeader(header)
 {
 	size_t offset{ sizeof(size_t) * 2 };
-	StandardType::Type type{ StandardType::Type::Undefined };
+	StandardType::Type type [[gnu::uninitialized]];
 	size_t key{ 0 };
 
 	while (m_bufferSize > offset) {
-		memcpy(&type, &static_cast<char*>(buffer)[offset], sizeof(type));
+		memcpy(&type, &static_cast<const char*>(buffer)[offset], sizeof(type));
 		offset += sizeof(type);
 
-		memcpy(&key, &static_cast<char*>(buffer)[offset], sizeof(size_t));
+		memcpy(&key, &static_cast<const char*>(buffer)[offset], sizeof(size_t));
 		offset += sizeof(size_t);
 
 		switch (type) {
 		case StandardType::Type::Int8:
 
 #define TMP_MSAPI_STANDARD_SET_PRIMITIVE_DATA(type)                                                                    \
-	m_data.emplace(key, *reinterpret_cast<type*>(&static_cast<char*>(buffer)[offset]));                                \
+	m_data.emplace(key, *reinterpret_cast<const type*>(&static_cast<const char*>(buffer)[offset]));                    \
 	offset += sizeof(type);
 
 			TMP_MSAPI_STANDARD_SET_PRIMITIVE_DATA(int8_t);
@@ -93,7 +93,8 @@ Data::Data(const DataHeader& header, void* buffer)
 		case StandardType::Type::OptionalInt8:
 
 #define TMP_MSAPI_STANDARD_SET_OPTIONAL_DATA(type)                                                                     \
-	m_data.emplace(key, std::optional<type>{ *reinterpret_cast<type*>(&static_cast<char*>(buffer)[offset]) });         \
+	m_data.emplace(                                                                                                    \
+		key, std::optional<type>{ *reinterpret_cast<const type*>(&static_cast<const char*>(buffer)[offset]) });        \
 	offset += sizeof(type);
 
 			TMP_MSAPI_STANDARD_SET_OPTIONAL_DATA(int8_t);
@@ -157,9 +158,9 @@ Data::Data(const DataHeader& header, void* buffer)
 			break;
 		case StandardType::Type::String: {
 			size_t size;
-			memcpy(&size, &static_cast<char*>(buffer)[offset], sizeof(size_t));
+			memcpy(&size, &static_cast<const char*>(buffer)[offset], sizeof(size_t));
 			offset += sizeof(size_t);
-			m_data.emplace(key, std::string{ &static_cast<char*>(buffer)[offset], size });
+			m_data.emplace(key, std::string{ &static_cast<const char*>(buffer)[offset], size });
 			offset += size;
 		} break;
 		case StandardType::Type::StringEmpty:
@@ -172,8 +173,8 @@ Data::Data(const DataHeader& header, void* buffer)
 			TMP_MSAPI_STANDARD_SET_PRIMITIVE_DATA(Timer::Duration);
 			break;
 		case StandardType::Type::TableData:
-			m_data.emplace(key, TableData{ &static_cast<char*>(buffer)[offset] });
-			offset += *reinterpret_cast<size_t*>(&static_cast<char*>(buffer)[offset]);
+			m_data.emplace(key, TableData{ &static_cast<const char*>(buffer)[offset] });
+			offset += *reinterpret_cast<const size_t*>(&static_cast<const char*>(buffer)[offset]);
 			break;
 		default:
 			LOG_ERROR("Parsing of message object encountered an error, unsupported type: "
@@ -314,7 +315,7 @@ void Send(const int connection, const Data& data)
 	LOG_PROTOCOL("Send " + data.ToString() + " to connection: " + _S(connection));
 	AutoClearPtr<void> ptr{ data.Encode() };
 
-	if (send(connection, ptr.ptr, data.GetBufferSize(), MSG_NOSIGNAL) == -1) {
+	if (send(connection, ptr.Get(), data.GetBufferSize(), MSG_NOSIGNAL) == -1) {
 		if (errno == 104) {
 			LOG_DEBUG("Send returned error №104: Connection reset by peer");
 			return;
