@@ -209,6 +209,7 @@ public:
 	/**************************
 	 * @brief Extend existed buffer by blocking peek additional data from socket. Blocks till any size peek or error.
 	 *
+	 * @attention Each peeking overwrites previous peek.
 	 * @attention Can invalidate pointer to buffer.
 	 *
 	 * @param requiredSize Required buffer size.
@@ -242,6 +243,7 @@ private:
 	 * data. Overwrites peeked bytes if any and reduces peeked size.
 	 *
 	 * @attention For non-blocking recv function return only after successful read or error.
+	 * @attention Each peeking overwrites previous peek.
 	 * @attention Can invalidate pointer to buffer.
 	 *
 	 * @tparam Flags Recv flags.
@@ -388,6 +390,10 @@ FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::RecvImpl(const uint64_
 		}
 	}
 
+	if constexpr (Flags & MSG_PEEK) {
+		m_peekedSize = 0;
+	}
+
 	while (true) {
 		const auto result{ recv(m_connection, m_buffer.Get() + m_size, rest, Flags) };
 
@@ -472,6 +478,11 @@ FORCE_INLINE [[nodiscard]] bool RecvBuffer::Drop(const uint64_t toDrop) const
 		if (result == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Failed to splice data to /dev/null error №{}: {}, connection id {}", errno,
 				std::strerror(errno), m_connectionId);
+			return false;
+		}
+
+		if (result == 0) [[unlikely]] {
+			LOG_WARNING_NEW("Splice returned 0 while dropping {} byte(s), connection id {}", rest, m_connectionId);
 			return false;
 		}
 
