@@ -190,6 +190,11 @@ size_t Data::GetBufferSize() const noexcept { return m_bufferSize; }
 void* Data::Encode() const
 {
 	void* buffer{ malloc(m_bufferSize) };
+	if (buffer == nullptr) [[unlikely]] {
+		LOG_ERROR_NEW("Cannot allocate memory for encoding data. Error №{}: {}", errno, std::strerror(errno));
+		return nullptr;
+	}
+
 	memcpy(static_cast<char*>(buffer), &m_cipher, sizeof(size_t));
 
 	size_t offset{ sizeof(size_t) };
@@ -314,6 +319,9 @@ void Send(const int connection, const Data& data)
 {
 	LOG_PROTOCOL("Send " + data.ToString() + " to connection: " + _S(connection));
 	AutoClearPtr<void> ptr{ data.Encode() };
+	if (pre.Get() == nullptr) [[unlikely]] {
+		return;
+	}
 
 	if (send(connection, ptr.Get(), data.GetBufferSize(), MSG_NOSIGNAL) == -1) {
 		if (errno == 104) {

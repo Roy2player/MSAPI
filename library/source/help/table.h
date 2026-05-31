@@ -1083,7 +1083,7 @@ public:
 
 		void* buffer{ malloc(m_bufferSize) };
 		if (buffer == nullptr) [[unlikely]] {
-			LOG_ERROR("Cannot allocate memory for encoding table. Error №" + _S(errno) + ": " + std::strerror(errno));
+			LOG_ERROR_NEW("Cannot allocate memory for encoding table. Error №{}: {}", errno, std::strerror(errno));
 			return nullptr;
 		}
 

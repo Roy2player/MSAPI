@@ -226,7 +226,7 @@ public:
 	 *
 	 * @param data Data for packing.
 	 *
-	 * @return Packed data for sending.
+	 * @return Packed data for sending, nullptr if cannot allocate memory.
 	 *
 	 * @test Has unit test.
 	 *

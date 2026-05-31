@@ -67,6 +67,11 @@ int32_t Data::GetStreamId() const { return m_streamId; }
 void* Data::PackData(const void* data) const
 {
 	void* buffer{ malloc(m_bufferSize) };
+	if (buffer == nullptr) [[unlikely]] {
+		LOG_ERROR_NEW("Cannot allocate memory for packing data. Error №{}: {}", errno, std::strerror(errno));
+		return nullptr;
+	}
+
 	memcpy(buffer, &m_cipher, sizeof(uint64_t));
 	memcpy(&static_cast<char*>(buffer)[sizeof(uint64_t)], &m_bufferSize, sizeof(uint64_t));
 	memcpy(&static_cast<char*>(buffer)[sizeof(uint64_t) * 2], &m_streamId, sizeof(int32_t));
@@ -220,6 +225,9 @@ void Send(const int32_t connection, const Data& data, const void* object)
 {
 	LOG_PROTOCOL("Send data: " + data.ToString() + ", to connection: " + _S(connection));
 	AutoClearPtr<void> packData{ data.PackData(object) };
+	if (packData.Get() == nullptr) [[unlikely]] {
+		return;
+	}
 
 	if (send(connection, packData.Get(), data.GetBufferSize(), MSG_NOSIGNAL) == -1) {
 		if (errno == 104) {

@@ -224,7 +224,7 @@ public:
 	 *
 	 * @attention Freeing up memory after using is required.
 	 *
-	 * @return pointer to reallocated memory.
+	 * @return Pointer to memory, nullptr if cannot allocate.
 	 *
 	 * @test Has unit test.
 	 */

@@ -417,7 +417,7 @@ TableData::TableData(const std::list<JsonNode>& rows, const std::vector<Standard
 #undef suppress
 
 	*reinterpret_cast<size_t*>(newBuffer) = offset;
-	m_ownBuffer = std::make_unique<AutoClearPtr<void>>(newBuffer);
+	m_ownBuffer = std::make_shared<AutoClearPtr<void>>(newBuffer);
 	m_bufferSize = offset;
 }
 
