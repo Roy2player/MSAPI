@@ -466,15 +466,15 @@ FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::RecvImpl(const uint64_
 
 FORCE_INLINE [[nodiscard]] bool RecvBuffer::Drop(const uint64_t toDrop) const
 {
-	IO::FileDescriptor::ExitGuard guardFd{ "/dev/null", O_WRONLY, 644 };
-	if (guardFd.value == -1) [[unlikely]] {
+	IO::File::Guard fd{ "/dev/null", O_WRONLY, 644 };
+	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR("Failed to open /dev/null");
 		return false;
 	}
 
 	uint64_t rest{ toDrop };
 	while (true) {
-		const auto result{ splice(m_connection, nullptr, guardFd.value, nullptr, rest, SPLICE_F_MOVE) };
+		const auto result{ splice(m_connection, nullptr, fd.value, nullptr, rest, SPLICE_F_MOVE) };
 		if (result == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Failed to splice data to /dev/null error №{}: {}, connection id {}", errno,
 				std::strerror(errno), m_connectionId);

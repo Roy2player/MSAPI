@@ -344,7 +344,7 @@ public:
 			return;
 		}
 
-		MSAPI::Lock::Atomic::ExitGuard exitGuard{ m_closingConnectionLocks };
+		MSAPI::Lock::Atomic::Guard _{ m_closingConnectionLocks };
 		Close(id, connection);
 	}
 

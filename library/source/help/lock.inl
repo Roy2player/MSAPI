@@ -144,26 +144,31 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>&
 /**************************
  * @brief Resource acquisition is initialization (RAII) Guard for locking and unlocking mutex.
  */
-class ExitGuard {
+class Guard {
 private:
 	NamedMutex<pthread_mutex_t>& m_namedMutex;
 
 public:
 	/**************************
-	 * @brief Construct a new Exit Guard object, lock mutex.
+	 * @brief Construct a new Guard object, lock mutex.
 	 *
 	 * @param namedMutex Named mutex.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE ExitGuard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept;
+	FORCE_INLINE Guard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept;
+
+	Guard(const Guard&) = delete;
+	const Guard& operator=(const Guard&) = delete;
+	Guard(Guard&&) = delete;
+	const Guard& operator=(Guard&&) = delete;
 
 	/**************************
-	 * @brief Destroy the Exit Guard object, unlock mutex.
+	 * @brief Destroy the Guard object, unlock mutex.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE ~ExitGuard() noexcept;
+	FORCE_INLINE ~Guard() noexcept;
 };
 
 class AtomicRW;
@@ -173,27 +178,32 @@ class AtomicRW;
  *
  * @tparam Wr True for write lock, false for read lock.
  */
-template <bool Wr> class ExitGuardRW {
+template <bool Wr> class GuardRW {
 private:
 	NamedMutex<pthread_rwlock_t>& m_namedMutex;
 
 public:
 	/**************************
-	 * @brief Construct a new Exit Guard RW object, lock mutex.
+	 * @brief Construct a new Guard RW object, lock mutex.
 	 *
 	 * @param mutex Pointer to mutex.
 	 * @param name Mutex name for logging.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE ExitGuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept;
+	FORCE_INLINE GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept;
+
+	GuardRW(const GuardRW&) = delete;
+	const GuardRW& operator=(const GuardRW&) = delete;
+	GuardRW(GuardRW&&) = delete;
+	const GuardRW& operator=(GuardRW&&) = delete;
 
 	/**************************
-	 * @brief Destroy the Exit Guard RW object, unlock mutex.
+	 * @brief Destroy the Guard RW object, unlock mutex.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE ~ExitGuardRW() noexcept;
+	FORCE_INLINE ~GuardRW() noexcept;
 };
 
 /**************************
@@ -204,32 +214,44 @@ public:
 	/**************************
 	 * @brief Resource acquisition is initialization (RAII) Guard for locking and unlocking atomic lock.
 	 */
-	class ExitGuard {
+	class Guard {
 	private:
 		Atomic& m_atomicLock;
 
 	public:
 		/**************************
-		 * @brief Construct a new Exit Guard object, lock atomic lock.
+		 * @brief Construct a new Guard object, lock atomic lock.
 		 *
 		 * @param atomicLock Atomic lock.
 		 *
 		 * @todo Add unit test.
 		 */
-		FORCE_INLINE ExitGuard(Atomic& atomicLock) noexcept;
+		FORCE_INLINE Guard(Atomic& atomicLock) noexcept;
+
+		Guard(const Guard&) = delete;
+		const Guard& operator=(const Guard&) = delete;
+		Guard(Guard&&) = delete;
+		const Guard& operator=(Guard&&) = delete;
 
 		/**************************
-		 * @brief Destroy the Exit Guard object, unlock atomic lock.
+		 * @brief Destroy the Guard object, unlock atomic lock.
 		 *
 		 * @todo Add unit test.
 		 */
-		FORCE_INLINE ~ExitGuard() noexcept;
+		FORCE_INLINE ~Guard() noexcept;
 	};
 
 private:
 	std::atomic_flag m_lock{};
 
 public:
+	FORCE_INLINE Atomic() noexcept = default;
+
+	Atomic(const Atomic&) = delete;
+	const Atomic& operator=(const Atomic&) = delete;
+	Atomic(Atomic&&) = delete;
+	const Atomic& operator=(Atomic&&) = delete;
+
 	/**************************
 	 * @brief Wait for lock is false and set it to true.
 	 *
@@ -267,26 +289,31 @@ public:
 	 *
 	 * @tparam Wr True for write lock, false for read lock.
 	 */
-	template <bool Wr> class ExitGuard {
+	template <bool Wr> class Guard {
 	private:
 		AtomicRW& m_atomicRWLock;
 
 	public:
 		/**************************
-		 * @brief Construct a new Exit Guard object, lock atomic read/write lock.
+		 * @brief Construct a new Guard object, lock atomic read/write lock.
 		 *
 		 * @param atomicRWLock Atomic read/write lock.
 		 *
 		 * @todo Add unit test.
 		 */
-		FORCE_INLINE ExitGuard(AtomicRW& atomicRWLock) noexcept;
+		FORCE_INLINE Guard(AtomicRW& atomicRWLock) noexcept;
+
+		Guard(const Guard&) = delete;
+		const Guard& operator=(const Guard&) = delete;
+		Guard(Guard&&) = delete;
+		const Guard& operator=(Guard&&) = delete;
 
 		/**************************
-		 * @brief Destroy the Exit Guard object, unlock atomic read/write lock.
+		 * @brief Destroy the Guard object, unlock atomic read/write lock.
 		 *
 		 * @todo Add unit test.
 		 */
-		FORCE_INLINE ~ExitGuard() noexcept;
+		FORCE_INLINE ~Guard() noexcept;
 	};
 
 private:
@@ -294,6 +321,13 @@ private:
 	Atomic m_writeLock;
 
 public:
+	FORCE_INLINE AtomicRW() noexcept = default;
+
+	AtomicRW(const AtomicRW&) = delete;
+	const AtomicRW& operator=(const AtomicRW&) = delete;
+	AtomicRW(AtomicRW&&) = delete;
+	const AtomicRW& operator=(AtomicRW&&) = delete;
+
 	/**************************
 	 * @brief Lock for read, wait if write lock is not set.
 	 *
@@ -524,30 +558,30 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>&
 	return true;
 }
 
-FORCE_INLINE ExitGuard::ExitGuard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept
+FORCE_INLINE Guard::Guard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept
 	: m_namedMutex{ namedMutex }
 {
 	(void)MutexLock(namedMutex);
 }
 
-FORCE_INLINE ExitGuard::~ExitGuard() noexcept { (void)MutexUnlock(m_namedMutex); }
+FORCE_INLINE Guard::~Guard() noexcept { (void)MutexUnlock(m_namedMutex); }
 
 template <bool Wr>
-FORCE_INLINE ExitGuardRW<Wr>::ExitGuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept
+FORCE_INLINE GuardRW<Wr>::GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept
 	: m_namedMutex{ namedMutex }
 {
 	(void)MutexRWLock<Wr, doLock>(m_namedMutex);
 }
 
-template <bool Wr> FORCE_INLINE ExitGuardRW<Wr>::~ExitGuardRW() noexcept { (void)MutexUnlock(m_namedMutex); }
+template <bool Wr> FORCE_INLINE GuardRW<Wr>::~GuardRW() noexcept { (void)MutexUnlock(m_namedMutex); }
 
-FORCE_INLINE Atomic::ExitGuard::ExitGuard(Atomic& atomicLock) noexcept
+FORCE_INLINE Atomic::Guard::Guard(Atomic& atomicLock) noexcept
 	: m_atomicLock{ atomicLock }
 {
 	m_atomicLock.Lock();
 }
 
-FORCE_INLINE Atomic::ExitGuard::~ExitGuard() noexcept { m_atomicLock.Unlock(); }
+FORCE_INLINE Atomic::Guard::~Guard() noexcept { m_atomicLock.Unlock(); }
 
 FORCE_INLINE void Atomic::Lock() noexcept
 {
@@ -565,7 +599,7 @@ FORCE_INLINE void Atomic::Unlock() noexcept
 }
 
 template <bool Wr>
-FORCE_INLINE AtomicRW::ExitGuard<Wr>::ExitGuard(AtomicRW& atomicRWLock) noexcept
+FORCE_INLINE AtomicRW::Guard<Wr>::Guard(AtomicRW& atomicRWLock) noexcept
 	: m_atomicRWLock{ atomicRWLock }
 {
 	if constexpr (Wr) {
@@ -576,7 +610,7 @@ FORCE_INLINE AtomicRW::ExitGuard<Wr>::ExitGuard(AtomicRW& atomicRWLock) noexcept
 	}
 }
 
-template <bool Wr> FORCE_INLINE AtomicRW::ExitGuard<Wr>::~ExitGuard() noexcept
+template <bool Wr> FORCE_INLINE AtomicRW::Guard<Wr>::~Guard() noexcept
 {
 	if constexpr (Wr) {
 		m_atomicRWLock.WriteUnlock();

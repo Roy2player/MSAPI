@@ -186,11 +186,11 @@ bool Io()
 		}
 
 		{
-			MSAPI::IO::Directory::ExitGuard dirPathChild3{ pathChild3V };
+			MSAPI::IO::Directory::Guard dirPathChild3{ pathChild3V };
 			RETURN_IF_FALSE(t.Assert(dirPathChild3.value != nullptr, true, "Open directory"));
-			MSAPI::IO::Directory::ExitGuard dirPath{ pathV };
+			MSAPI::IO::Directory::Guard dirPath{ pathV };
 			RETURN_IF_FALSE(t.Assert(dirPath.value != nullptr, true, "Open directory"));
-			MSAPI::IO::Directory::ExitGuard dirPathChildDir2{ std::string_view{ path + "childDir/childDir2" } };
+			MSAPI::IO::Directory::Guard dirPathChildDir2{ std::string_view{ path + "childDir/childDir2" } };
 			RETURN_IF_FALSE(t.Assert(dirPathChildDir2.value != nullptr, true, "Open directory"));
 			RETURN_IF_FALSE(t.Assert(testList(dirPathChild3.value, dirPath.value, dirPathChildDir2.value), true,
 				"Test listing files and dirs with dirs"));
@@ -481,18 +481,18 @@ bool Io()
 		const std::string_view pathFd3V{ pathFd3 };
 		const auto& pathVecFd{ path + "vecFd" };
 		const std::string_view pathVecFdV{ pathVecFd };
-		IO::FileDescriptor::ExitGuard fd1;
+		IO::File::Guard fd1;
 		RETURN_IF_FALSE(t.Assert(fd1.value, -1, "Open empty file descriptor for o1Fd"));
-		fd1 = IO::FileDescriptor::ExitGuard{ pathFd1V, O_RDWR | O_CREAT, 0644 };
+		fd1 = IO::File::Guard{ pathFd1V, O_RDWR | O_CREAT, 0644 };
 		RETURN_IF_FALSE(t.Assert(fd1.value != -1, true, "Open initialized file descriptor for o1Fd"));
 
 		int32_t fd;
 		{
-			IO::FileDescriptor::ExitGuard fd3{ pathFd3V, O_RDWR | O_CREAT, 0644 };
+			IO::File::Guard fd3{ pathFd3V, O_RDWR | O_CREAT, 0644 };
 			fd = fd3.value;
 			RETURN_IF_FALSE(t.Assert(fd3.value != -1, true, "Open file descriptor for o3Fd"));
-			IO::FileDescriptor::ExitGuard fdVec{ pathVecFdV, O_RDWR | O_CREAT, 0644 };
-			IO::FileDescriptor::ExitGuard fdVec2{ std::move(fdVec) };
+			IO::File::Guard fdVec{ pathVecFdV, O_RDWR | O_CREAT, 0644 };
+			IO::File::Guard fdVec2{ std::move(fdVec) };
 			RETURN_IF_FALSE(t.Assert(fdVec.value, -1, "Open file descriptor for vecFd"));
 			RETURN_IF_FALSE(t.Assert(fdVec2.value != -1, true, "Open file descriptor for fdVec2"));
 
@@ -500,7 +500,7 @@ bool Io()
 				true, "Test binary with file descriptors"));
 		}
 		RETURN_IF_FALSE(t.Assert(fcntl(fd, F_GETFD) == -1 && errno == EBADF, true,
-			"File descriptor should be closed in OS after ExitGuard destruction"));
+			"File descriptor should be closed in OS after Guard destruction"));
 
 		fd = fd1.value;
 		fd1.Clear();
@@ -575,18 +575,18 @@ bool Io()
 	}
 
 	{
-		IO::Directory::ExitGuard dir{ pathV };
+		IO::Directory::Guard dir{ pathV };
 		auto* const dirPtr{ dir.value };
 		RETURN_IF_FALSE(t.Assert(dirPtr != nullptr, true, "Open directory"));
 
 		const int fd{ dirfd(dirPtr) };
 		RETURN_IF_FALSE(t.Assert(fd != -1, true, "Get directory fd"));
 
-		IO::Directory::ExitGuard dir1{ std::move(dir) };
+		IO::Directory::Guard dir1{ std::move(dir) };
 		RETURN_IF_FALSE(t.Assert(dir.value, nullptr, "Moved directory should be null"));
 		RETURN_IF_FALSE(t.Assert(dir1.value, dirPtr, "Moved directory should be valid"));
 
-		IO::Directory::ExitGuard dir2;
+		IO::Directory::Guard dir2;
 		dir2 = std::move(dir1);
 
 		RETURN_IF_FALSE(t.Assert(dir1.value, nullptr, "Moved directory should be null"));

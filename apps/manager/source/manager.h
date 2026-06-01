@@ -90,7 +90,7 @@ private:
 			uint16_t port;
 			int32_t counter{};
 
-			MSAPI::Lock::Atomic::ExitGuard _{ m_portsLock };
+			MSAPI::Lock::Atomic::Guard _{ m_portsLock };
 			m_mersenne.seed(static_cast<uint64_t>(MSAPI::Timer{}.GetNanoseconds()));
 			do {
 				port = static_cast<uint16_t>(m_mersenne() % (65535 - 3000) + 3000);
@@ -112,7 +112,7 @@ private:
 		 */
 		FORCE_INLINE void Erase(const uint16_t port) noexcept
 		{
-			MSAPI::Lock::Atomic::ExitGuard _{ m_portsLock };
+			MSAPI::Lock::Atomic::Guard _{ m_portsLock };
 			m_ports.erase(port);
 		}
 
@@ -123,7 +123,7 @@ private:
 		 */
 		FORCE_INLINE void Clear() noexcept
 		{
-			MSAPI::Lock::Atomic::ExitGuard _{ m_portsLock };
+			MSAPI::Lock::Atomic::Guard _{ m_portsLock };
 			m_ports.clear();
 		}
 	};
@@ -235,7 +235,7 @@ private:
 		auto backIt{ std::back_inserter(out) };
 		std::format_to(backIt, "[");
 		{
-			MSAPI::Lock::AtomicRW::ExitGuard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
 			if (!m_hashToInstalledAppData.empty()) {
 				auto it{ m_hashToInstalledAppData.begin() };
 				const auto end{ m_hashToInstalledAppData.end() };
@@ -269,7 +269,7 @@ private:
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
-		MSAPI::Lock::AtomicRW::ExitGuard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
+		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
 		const auto it{ m_hashToInstalledAppData.find(*appType) };
 		if (it == m_hashToInstalledAppData.end()) {
 			out = std::format("Metadata request contains unknown appType: {}", *appType);
@@ -457,7 +457,7 @@ private:
 
 		int32_t connection;
 		{
-			MSAPI::Lock::AtomicRW::ExitGuard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
@@ -488,7 +488,7 @@ private:
 
 		int32_t connection;
 		{
-			MSAPI::Lock::AtomicRW::ExitGuard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
@@ -519,7 +519,7 @@ private:
 
 		int32_t connection;
 		{
-			MSAPI::Lock::AtomicRW::ExitGuard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
@@ -557,7 +557,7 @@ private:
 
 		std::shared_ptr<CreatedAppData> createdAppData;
 		{
-			MSAPI::Lock::AtomicRW::ExitGuard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
@@ -685,7 +685,7 @@ private:
 
 					std::shared_ptr<std::vector<MSAPI::StandardType::Type>> columns;
 					{
-						MSAPI::Lock::AtomicRW::ExitGuard<MSAPI::Lock::read> _{ m_tableIdToColumnsLock };
+						MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_tableIdToColumnsLock };
 						const auto it{ m_tableIdToColumns.find(key) };
 						if (it == m_tableIdToColumns.end()) [[unlikely]] {
 							LOG_ERROR_NEW("Columns for table with id: {} are not found, app with port: {}", key, *port);
@@ -822,7 +822,7 @@ private:
 		auto backIt{ std::back_inserter(out) };
 		std::format_to(backIt, "{{\"created\":[");
 		{
-			MSAPI::Lock::AtomicRW::ExitGuard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			if (!m_portToCreatedApp.empty()) {
 				auto it{ m_portToCreatedApp.begin() };
 				const auto end{ m_portToCreatedApp.end() };
@@ -852,7 +852,7 @@ private:
 
 		int32_t connection;
 		{
-			MSAPI::Lock::AtomicRW::ExitGuard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto createdAppDataIt{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (createdAppDataIt == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} does not exist", *port);

@@ -50,7 +50,7 @@ public:
 
 		if (MSAPI::Protocol::HTTP::Data http(recvBuffer); http.IsValid()) {
 			{
-				MSAPI::Lock::Atomic::ExitGuard lock{ m_httpDataLock };
+				MSAPI::Lock::Atomic::Guard _{ m_httpDataLock };
 				m_httpDataToConnection[recvBuffer.GetConnection()].emplace_back(http);
 			}
 
@@ -76,7 +76,7 @@ public:
 		case MSAPI::Protocol::WebSocket::Data::Opcode::Binary:
 		case MSAPI::Protocol::WebSocket::Data::Opcode::Close:
 		case MSAPI::Protocol::WebSocket::Data::Opcode::Continuation: {
-			MSAPI::Lock::Atomic::ExitGuard lock{ m_webSocketDataLock };
+			MSAPI::Lock::Atomic::Guard _{ m_webSocketDataLock };
 			m_webSocketDataToConnection[connection].emplace_back(std::move(data));
 		} break;
 		default:
@@ -87,14 +87,14 @@ public:
 
 	void HandleWebSocketPong(const int connection, MSAPI::Protocol::WebSocket::Data&& data) final
 	{
-		MSAPI::Lock::Atomic::ExitGuard lock{ m_webSocketDataLock };
+		MSAPI::Lock::Atomic::Guard _{ m_webSocketDataLock };
 		m_webSocketDataToConnection[connection].emplace_back(std::move(data));
 	}
 
 	// Non const output as test have to modify websocket data in some case
 	FORCE_INLINE [[nodiscard]] std::vector<MSAPI::Protocol::WebSocket::Data>* GetWebSocketData(const int connection)
 	{
-		MSAPI::Lock::Atomic::ExitGuard lock{ m_webSocketDataLock };
+		MSAPI::Lock::Atomic::Guard _{ m_webSocketDataLock };
 		if (const auto it{ m_webSocketDataToConnection.find(connection) }; it != m_webSocketDataToConnection.end()) {
 			return &it->second;
 		}
@@ -104,7 +104,7 @@ public:
 
 	FORCE_INLINE [[nodiscard]] const std::vector<MSAPI::Protocol::HTTP::Data>* GetHttpData(const int connection)
 	{
-		MSAPI::Lock::Atomic::ExitGuard lock{ m_httpDataLock };
+		MSAPI::Lock::Atomic::Guard _{ m_httpDataLock };
 		if (const auto it{ m_httpDataToConnection.find(connection) }; it != m_httpDataToConnection.end()) {
 			return &it->second;
 		}
@@ -134,7 +134,7 @@ public:
 
 	FORCE_INLINE [[nodiscard]] int DetectConnection(const std::string& key)
 	{
-		MSAPI::Lock::Atomic::ExitGuard lock{ m_httpDataLock };
+		MSAPI::Lock::Atomic::Guard _{ m_httpDataLock };
 		for (const auto& [connection, dataVector] : m_httpDataToConnection) {
 			for (const auto& data : dataVector) {
 				if (const auto* value{ data.GetValue(key) }; value != nullptr) {

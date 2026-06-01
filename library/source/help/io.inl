@@ -19,8 +19,8 @@
  * @brief Common functions for working with files and directories.
  */
 
-#ifndef MSAPI_IO_H
-#define MSAPI_IO_H
+#ifndef MSAPI_IO_INL
+#define MSAPI_IO_INL
 
 #include "../help/log.h"
 #include <cstring>
@@ -39,12 +39,12 @@ namespace IO {
 Declarations
 ---------------------------------------------------------------------------------*/
 
-namespace FileDescriptor {
+namespace File {
 
 /**************************
  * @brief RAII wrapper for POSIX file descriptor.
  */
-struct ExitGuard {
+struct Guard {
 	int32_t value{ -1 };
 
 	/**
@@ -62,7 +62,7 @@ struct ExitGuard {
 	 */
 	template <typename T>
 		requires StringableView<T>
-	FORCE_INLINE ExitGuard(const T path, const int32_t flags, const int32_t mode) noexcept
+	FORCE_INLINE Guard(const T path, const int32_t flags, const int32_t mode) noexcept
 		: value{ open(CString(path), flags, mode) }
 	{
 	}
@@ -72,31 +72,31 @@ struct ExitGuard {
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ExitGuard() noexcept = default;
+	FORCE_INLINE Guard() noexcept = default;
 
-	const ExitGuard& operator=(const ExitGuard&) = delete;
-	ExitGuard(const ExitGuard&) = delete;
-
-	/**
-	 * @brief Exchange file descriptor ownership. It is expected that moved from object will be destroyed soon.
-	 *
-	 * @test Has unit tests.
-	 */
-	FORCE_INLINE const ExitGuard& operator=(ExitGuard&& other) noexcept;
+	const Guard& operator=(const Guard&) = delete;
+	Guard(const Guard&) = delete;
 
 	/**
 	 * @brief Exchange file descriptor ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ExitGuard(ExitGuard&& other) noexcept;
+	FORCE_INLINE const Guard& operator=(Guard&& other) noexcept;
+
+	/**
+	 * @brief Exchange file descriptor ownership. It is expected that moved from object will be destroyed soon.
+	 *
+	 * @test Has unit tests.
+	 */
+	FORCE_INLINE Guard(Guard&& other) noexcept;
 
 	/**************************
 	 * @brief Call Clear on destruction.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ~ExitGuard();
+	FORCE_INLINE ~Guard();
 
 	/**************************
 	 * @brief Close file descriptor if it's valid and set value to -1.
@@ -106,14 +106,14 @@ struct ExitGuard {
 	FORCE_INLINE void Clear();
 };
 
-} // namespace FileDescriptor
+} // namespace File
 
 namespace Directory {
 
 /**************************
  * @brief RAII wrapper for POSIX directory.
  */
-struct ExitGuard {
+struct Guard {
 	DIR* value{};
 
 	/**
@@ -129,7 +129,7 @@ struct ExitGuard {
 	 */
 	template <typename T>
 		requires StringableView<T>
-	FORCE_INLINE ExitGuard(const T path) noexcept
+	FORCE_INLINE Guard(const T path) noexcept
 		: value{ opendir(CString(path)) }
 	{
 	}
@@ -139,31 +139,31 @@ struct ExitGuard {
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ExitGuard() noexcept = default;
+	FORCE_INLINE Guard() noexcept = default;
 
-	const ExitGuard& operator=(const ExitGuard&) = delete;
-	ExitGuard(const ExitGuard&) = delete;
-
-	/**
-	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
-	 *
-	 * @test Has unit tests.
-	 */
-	FORCE_INLINE const ExitGuard& operator=(ExitGuard&& other) noexcept;
+	const Guard& operator=(const Guard&) = delete;
+	Guard(const Guard&) = delete;
 
 	/**
 	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ExitGuard(ExitGuard&& other) noexcept;
+	FORCE_INLINE const Guard& operator=(Guard&& other) noexcept;
+
+	/**
+	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
+	 *
+	 * @test Has unit tests.
+	 */
+	FORCE_INLINE Guard(Guard&& other) noexcept;
 
 	/**
 	 * @brief Call Clear on destruction.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ~ExitGuard();
+	FORCE_INLINE ~Guard();
 
 	/**************************
 	 * @brief Close directory if it's opened and set value to nullptr.
@@ -263,11 +263,11 @@ template <bool Append = false, int32_t Mode = 0644, bool Multiple = false, typen
 		&& (std::is_same_v<S, int32_t> || StringableView<S>))
 FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, const S pathOrFd)
 {
-	FileDescriptor::ExitGuard fd{};
+	File::Guard fd{};
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, SuggestFlags(Append), Mode };
+		fd = File::Guard{ pathOrFd, SuggestFlags(Append), Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -363,11 +363,11 @@ template <bool Append = false, int32_t Mode = 0644, typename T, typename S>
 	requires(std::forward_iterator<typename T::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>))
 FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const S pathOrFd)
 {
-	FileDescriptor::ExitGuard fd{};
+	File::Guard fd{};
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, SuggestFlags(Append), Mode };
+		fd = File::Guard{ pathOrFd, SuggestFlags(Append), Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -437,11 +437,11 @@ template <int32_t Mode = 0644, typename T, typename S>
 	requires(std::is_same_v<S, int32_t> || StringableView<S>)
 FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd, const int64_t offset)
 {
-	FileDescriptor::ExitGuard fd{};
+	File::Guard fd{};
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, O_RDWR | O_CREAT, Mode };
+		fd = File::Guard{ pathOrFd, O_RDWR | O_CREAT, Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -560,11 +560,11 @@ template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint6
 		return true;
 	}
 
-	FileDescriptor::ExitGuard fd{};
+	File::Guard fd{};
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, SuggestFlags(Append), Mode };
+		fd = File::Guard{ pathOrFd, SuggestFlags(Append), Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -686,7 +686,7 @@ template <bool Append = false, int32_t Mode = 0644, typename T>
 	requires StringableView<T>
 FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const T path)
 {
-	FileDescriptor::ExitGuard fd{ path, SuggestFlags(Append), Mode };
+	File::Guard fd{ path, SuggestFlags(Append), Mode };
 
 	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Failed to open file: {}. Error №{}: {}", path, errno, std::strerror(errno));
@@ -751,7 +751,7 @@ template <typename T, typename S>
 		return false;
 	}
 
-	FileDescriptor::ExitGuard fd{ path, O_RDONLY, 0 };
+	File::Guard fd{ path, O_RDONLY, 0 };
 	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
 		return false;
@@ -795,7 +795,7 @@ template <template <typename> typename T, typename S, typename N>
 		return false;
 	}
 
-	FileDescriptor::ExitGuard fd{ path, O_RDONLY, 0 };
+	File::Guard fd{ path, O_RDONLY, 0 };
 	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
 		return false;
@@ -856,7 +856,7 @@ FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, const T path)
 		return false;
 	}
 
-	FileDescriptor::ExitGuard fd{ path, O_RDONLY, 0 };
+	File::Guard fd{ path, O_RDONLY, 0 };
 	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
 		return false;
@@ -952,8 +952,8 @@ template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(const st
 			return true;
 		}
 
-		Directory::ExitGuard guardDir{ buffer };
-		if (guardDir.value == nullptr) [[unlikely]] {
+		Directory::Guard dd{ buffer };
+		if (dd.value == nullptr) [[unlikely]] {
 			LOG_ERROR_NEW(
 				"Error opening directory {} to be removed. Error №{}: {}", buffer, errno, std::strerror(errno));
 			return false;
@@ -966,7 +966,7 @@ template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(const st
 
 		bool result{ true };
 		struct dirent* ent;
-		while ((ent = readdir(guardDir.value)) != nullptr) {
+		while ((ent = readdir(dd.value)) != nullptr) {
 			if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
 				continue;
 			}
@@ -1032,27 +1032,27 @@ template <typename T, typename S>
 	requires StringableView<T> && StringableView<S>
 [[nodiscard]] bool CopyFile(const T from, const S to)
 {
-	FileDescriptor::ExitGuard guardFdFrom{ from, O_RDONLY, 0 };
-	if (guardFdFrom.value == -1) [[unlikely]] {
+	File::Guard fdFrom{ from, O_RDONLY, 0 };
+	if (fdFrom.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", from, errno, std::strerror(errno));
 		return false;
 	}
 
-	FileDescriptor::ExitGuard guardFdTo{ to, O_WRONLY | O_CREAT | O_TRUNC, 0644 };
-	if (guardFdTo.value == -1) [[unlikely]] {
+	File::Guard fdTo{ to, O_WRONLY | O_CREAT | O_TRUNC, 0644 };
+	if (fdTo.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to save data: {}. Error №{}: {}", to, errno, std::strerror(errno));
 		return false;
 	}
 
 	struct stat st { };
-	if (fstat(guardFdFrom.value, &st) != 0) [[unlikely]] {
+	if (fstat(fdFrom.value, &st) != 0) [[unlikely]] {
 		LOG_ERROR_NEW("Failed to get file size for {}. Error №{}: {}", from, errno, std::strerror(errno));
 		return false;
 	}
 
 	if (st.st_size == 0) {
 		LOG_DEBUG_NEW("Source file {} is empty, created empty file {}", from, to);
-		if (write(guardFdTo.value, "", 0) == -1) [[unlikely]] {
+		if (write(fdTo.value, "", 0) == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Failed to create empty file {}. Error №{}: {}", to, errno, std::strerror(errno));
 			return false;
 		}
@@ -1068,7 +1068,7 @@ template <typename T, typename S>
 	off_t offset{ 0 };
 	const off_t total{ st.st_size };
 	while (offset < total) {
-		const auto result{ sendfile(guardFdTo.value, guardFdFrom.value, &offset, UINT64(total - offset)) };
+		const auto result{ sendfile(fdTo.value, fdFrom.value, &offset, UINT64(total - offset)) };
 		if (result == 0) {
 			break;
 		}
@@ -1212,14 +1212,14 @@ template <FileType FT, template <typename> typename T, typename S>
 	requires(StringableView<S> || std::is_same_v<S, DIR*>)
 FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S pathOrDir)
 {
-	Directory::ExitGuard guardDir;
+	Directory::Guard dd;
 	DIR* dirPtr;
 
 	if constexpr (StringableView<S>) {
-		guardDir = Directory::ExitGuard{ pathOrDir };
-		dirPtr = guardDir.value;
+		dd = Directory::Guard{ pathOrDir };
+		dirPtr = dd.value;
 
-		if (guardDir.value == nullptr) [[unlikely]] {
+		if (dd.value == nullptr) [[unlikely]] {
 			LOG_ERROR_NEW("Error opening directory: {}. Error №{}: {}", pathOrDir, errno, std::strerror(errno));
 			return false;
 		}
@@ -1262,19 +1262,19 @@ FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S pathOrDi
 Definitions
 ---------------------------------------------------------------------------------*/
 
-namespace FileDescriptor {
+namespace File {
 
-FORCE_INLINE const ExitGuard& ExitGuard::operator=(ExitGuard&& other) noexcept
+FORCE_INLINE const Guard& Guard::operator=(Guard&& other) noexcept
 {
 	std::swap(value, other.value);
 	return *this;
 }
 
-FORCE_INLINE ExitGuard::ExitGuard(ExitGuard&& other) noexcept { std::swap(value, other.value); }
+FORCE_INLINE Guard::Guard(Guard&& other) noexcept { std::swap(value, other.value); }
 
-FORCE_INLINE ExitGuard::~ExitGuard() { Clear(); }
+FORCE_INLINE Guard::~Guard() { Clear(); }
 
-FORCE_INLINE void ExitGuard::Clear()
+FORCE_INLINE void Guard::Clear()
 {
 	if (value != -1) {
 		if (close(value) == -1) [[unlikely]] {
@@ -1284,21 +1284,21 @@ FORCE_INLINE void ExitGuard::Clear()
 	}
 }
 
-}; //* namespace FileDescriptor
+} // namespace File
 
 namespace Directory {
 
-FORCE_INLINE const ExitGuard& ExitGuard::operator=(ExitGuard&& other) noexcept
+FORCE_INLINE const Guard& Guard::operator=(Guard&& other) noexcept
 {
 	std::swap(value, other.value);
 	return *this;
 }
 
-FORCE_INLINE ExitGuard::ExitGuard(ExitGuard&& other) noexcept { std::swap(value, other.value); }
+FORCE_INLINE Guard::Guard(Guard&& other) noexcept { std::swap(value, other.value); }
 
-FORCE_INLINE ExitGuard::~ExitGuard() { Clear(); }
+FORCE_INLINE Guard::~Guard() { Clear(); }
 
-FORCE_INLINE void ExitGuard::Clear()
+FORCE_INLINE void Guard::Clear()
 {
 	if (value != nullptr) {
 		if (closedir(value) != 0) [[unlikely]] {
@@ -1309,7 +1309,7 @@ FORCE_INLINE void ExitGuard::Clear()
 	}
 }
 
-} //* namespace Directory
+} // namespace Directory
 
 static_assert(IO::append, "Append global is true");
 static_assert(!IO::overwrite, "Overwrite global is false");
@@ -1390,8 +1390,8 @@ static_assert(EnumToString(FileType::Regular) == "Regular", "EnumToString Regula
 static_assert(EnumToString(FileType::Lnk) == "Lnk", "EnumToString Lnk failed");
 static_assert(EnumToString(FileType::Sock) == "Sock", "EnumToString Sock failed");
 
-}; //* namespace IO
+} // namespace IO
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_IO_H
+#endif // MSAPI_IO_INL
