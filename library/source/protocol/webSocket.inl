@@ -470,7 +470,7 @@ private:
 	double m_storedFragmentedDataLimitMb{ 10. };
 	std::unordered_map<int, FragmentedData> m_fragmentedDataToConnection;
 	std::map<Timer, FragmentedData*> m_fragmentedDataTimerToConnection;
-	Pthread::AtomicLock m_fragmentedDataLock;
+	Lock::Atomic m_fragmentedDataLock;
 
 public:
 	/**************************
@@ -1429,7 +1429,7 @@ FORCE_INLINE void IHandler::Collect(const int connection, Data&& data)
 		case Data::Opcode::Continuation: {
 			FragmentedData* fragmentedDataPtr{ nullptr };
 			{
-				Pthread::AtomicLock::ExitGuard guard{ m_fragmentedDataLock };
+				Lock::Atomic::ExitGuard guard{ m_fragmentedDataLock };
 				const auto it{ m_fragmentedDataToConnection.find(connection) };
 				if (it == m_fragmentedDataToConnection.end()) {
 					LOG_WARNING_NEW("Received continuation frame without initial fragment, message will be "
@@ -1459,7 +1459,7 @@ FORCE_INLINE void IHandler::Collect(const int connection, Data&& data)
 				const auto dataSizeMb{ static_cast<double>(dataRef.GetPayloadSize()) / Data::MB
 					+ Data::MAXIMUM_HEADER_MB };
 				HandleWebSocket(connection, std::move(fragmentedDataPtr->data));
-				Pthread::AtomicLock::ExitGuard guard{ m_fragmentedDataLock };
+				Lock::Atomic::ExitGuard guard{ m_fragmentedDataLock };
 				m_fragmentedDataToConnection.erase(connection);
 				m_storedFragmentedDataSizeMb -= dataSizeMb;
 				return;
@@ -1467,14 +1467,14 @@ FORCE_INLINE void IHandler::Collect(const int connection, Data&& data)
 
 			// Runtime overhead in favor of FIFO memory cleaning
 			// The design of protocol itself does not allow to have robust memory storing model without trade offs
-			Pthread::AtomicLock::ExitGuard guard{ m_fragmentedDataLock };
+			Lock::Atomic::ExitGuard guard{ m_fragmentedDataLock };
 			m_fragmentedDataTimerToConnection.emplace(fragmentedDataPtr->timestamp, fragmentedDataPtr);
 			return;
 		}
 		case Data::Opcode::Text:
 		case Data::Opcode::Binary:
 			if (!data.IsFinal()) {
-				Pthread::AtomicLock::ExitGuard guard{ m_fragmentedDataLock };
+				Lock::Atomic::ExitGuard guard{ m_fragmentedDataLock };
 				if (!CheckLimitForNew(static_cast<double>(data.GetPayloadSize()) / Data::MB + Data::MAXIMUM_HEADER_MB,
 						connection)) [[unlikely]] {
 					return;
@@ -1569,7 +1569,7 @@ FORCE_INLINE [[nodiscard]] bool IHandler::SetFragmentedDataLimit(const double li
 		return false;
 	}
 
-	Pthread::AtomicLock::ExitGuard guard{ m_fragmentedDataLock };
+	Lock::Atomic::ExitGuard guard{ m_fragmentedDataLock };
 	LOG_PROTOCOL_NEW("WebSocket fragmented data limit changed from {:.17f} MB to {:.17f} MB",
 		m_storedFragmentedDataLimitMb, limitMb);
 	m_storedFragmentedDataLimitMb = limitMb;
@@ -1582,7 +1582,7 @@ FORCE_INLINE [[nodiscard]] bool IHandler::SetFragmentedDataLimit(const double li
 
 FORCE_INLINE void IHandler::Clear() noexcept
 {
-	Pthread::AtomicLock::ExitGuard guard{ m_fragmentedDataLock };
+	Lock::Atomic::ExitGuard guard{ m_fragmentedDataLock };
 	m_fragmentedDataToConnection.clear();
 	m_fragmentedDataTimerToConnection.clear();
 	m_storedFragmentedDataSizeMb = 0.;
@@ -1590,7 +1590,7 @@ FORCE_INLINE void IHandler::Clear() noexcept
 
 FORCE_INLINE void IHandler::ClearConnection(const int connection) noexcept
 {
-	Pthread::AtomicLock::ExitGuard guard{ m_fragmentedDataLock };
+	Lock::Atomic::ExitGuard guard{ m_fragmentedDataLock };
 	const auto it{ m_fragmentedDataToConnection.find(connection) };
 	if (it != m_fragmentedDataToConnection.end()) {
 		m_storedFragmentedDataSizeMb

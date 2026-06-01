@@ -37,8 +37,8 @@
 
 #include "../help/helper.h"
 #include "../help/io.inl"
+#include "../help/lock.inl"
 #include "../help/log.h"
-#include "../help/pthread.hpp"
 #include "../help/sha256.inl"
 #include <cctype>
 #include <random>
@@ -242,7 +242,7 @@ private:
 	private:
 		A m_account;
 		std::string m_dataPath;
-		std::unique_ptr<Pthread::AtomicRWLock> m_rwLock;
+		std::unique_ptr<Lock::AtomicRW> m_rwLock;
 		int32_t m_connection{ -1 };
 		Timer m_lastActivity{ 0 };
 
@@ -330,7 +330,7 @@ private:
 		 *
 		 * @test Has unit tests.
 		 */
-		FORCE_INLINE Pthread::AtomicRWLock& GetRWLock() noexcept;
+		FORCE_INLINE Lock::AtomicRW& GetRWLock() noexcept;
 
 		/**
 		 * @brief Save the account data to its associated file.
@@ -356,9 +356,9 @@ private:
 
 private:
 	std::unordered_map<int32_t, std::shared_ptr<AccountData>> m_logonConnectionToAccountData;
-	Pthread::AtomicRWLock m_connectionsLock;
+	Lock::AtomicRW m_connectionsLock;
 	std::unordered_map<size_t, std::shared_ptr<AccountData>> m_loginHashToAccountData;
-	Pthread::AtomicRWLock m_accountsLock;
+	Lock::AtomicRW m_accountsLock;
 	std::string m_dataPath;
 	Timer::Event m_logoutEvent{ this };
 	Timer::Duration m_logoutTimeout{ Timer::Duration::CreateHours(12) };
@@ -770,7 +770,7 @@ template <Accountable A, Gradable G>
 FORCE_INLINE Module<A, G>::AccountData::AccountData(A&& account, std::string&& dataPath) noexcept
 	: m_account{ std::forward<A>(account) }
 	, m_dataPath{ std::move(dataPath) }
-	, m_rwLock{ std::make_unique<Pthread::AtomicRWLock>() }
+	, m_rwLock{ std::make_unique<Lock::AtomicRW>() }
 {
 }
 
@@ -800,7 +800,7 @@ FORCE_INLINE Module<A, G>::AccountData& Module<A, G>::AccountData::operator=(Acc
 
 template <Accountable A, Gradable G> FORCE_INLINE Module<A, G>::AccountData::~AccountData() noexcept
 {
-	Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ *m_rwLock };
+	Lock::AtomicRW::ExitGuard<Lock::write> guard{ *m_rwLock };
 }
 
 template <Accountable A, Gradable G> FORCE_INLINE A& Module<A, G>::AccountData::GetAccount() noexcept
@@ -831,7 +831,7 @@ template <Accountable A, Gradable G> FORCE_INLINE Timer Module<A, G>::AccountDat
 	return m_lastActivity;
 }
 
-template <Accountable A, Gradable G> FORCE_INLINE Pthread::AtomicRWLock& Module<A, G>::AccountData::GetRWLock() noexcept
+template <Accountable A, Gradable G> FORCE_INLINE Lock::AtomicRW& Module<A, G>::AccountData::GetRWLock() noexcept
 {
 	return *m_rwLock.get();
 }
@@ -864,7 +864,7 @@ template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G
 	}
 
 	LOG_DEBUG("Starting authorization module");
-	Pthread::AtomicRWLock::ExitGuard<Pthread::write> guardAccounts{ m_accountsLock };
+	Lock::AtomicRW::ExitGuard<Lock::write> guardAccounts{ m_accountsLock };
 	if (m_dataPath.empty()) {
 		m_dataPath.resize(512);
 		Helper::GetExecutableDir(m_dataPath);
@@ -932,8 +932,8 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::Stop()
 	LOG_DEBUG("Stopping authorization module");
 	m_logoutEvent.Stop();
 
-	Pthread::AtomicRWLock::ExitGuard<Pthread::write> guardAccounts{ m_accountsLock };
-	Pthread::AtomicRWLock::ExitGuard<Pthread::write> guardConnections{ m_connectionsLock };
+	Lock::AtomicRW::ExitGuard<Lock::write> guardAccounts{ m_accountsLock };
+	Lock::AtomicRW::ExitGuard<Lock::write> guardConnections{ m_connectionsLock };
 	const Timer timestamp{};
 
 	for (auto& [connection, accountData] : m_logonConnectionToAccountData) {
@@ -1009,7 +1009,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::RegisterAccount(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	typename std::unordered_map<size_t, std::shared_ptr<AccountData>>::iterator loginHashToDataIt;
 	{
-		Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ m_accountsLock };
+		Lock::AtomicRW::ExitGuard<Lock::write> guard{ m_accountsLock };
 		if (m_loginHashToAccountData.find(loginHash) != m_loginHashToAccountData.end()) {
 			error = "Account with this login already exists";
 			return false;
@@ -1033,7 +1033,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::RegisterAccount(
 	if (!accountData->Save()) [[unlikely]] {
 		error = "Account registration failed";
 		accountDataLock.WriteUnlock();
-		Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ m_accountsLock };
+		Lock::AtomicRW::ExitGuard<Lock::write> guard{ m_accountsLock };
 		m_loginHashToAccountData.erase(loginHashToDataIt);
 		return false;
 	}
@@ -1048,7 +1048,7 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::DeleteAccou
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ m_accountsLock };
+		Lock::AtomicRW::ExitGuard<Lock::write> guard{ m_accountsLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			LOG_DEBUG_NEW("Cannot find account with login: {}", login);
@@ -1059,11 +1059,11 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::DeleteAccou
 		m_loginHashToAccountData.erase(accountDataIt);
 	}
 
-	const Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ accountData->GetRWLock() };
+	const Lock::AtomicRW::ExitGuard<Lock::write> guard{ accountData->GetRWLock() };
 	const Timer timestamp{};
 
 	if (const auto connection{ accountData->GetConnection() }; connection != -1) {
-		Pthread::AtomicRWLock::ExitGuard<Pthread::write> connectionsGuard{ m_connectionsLock };
+		Lock::AtomicRW::ExitGuard<Lock::write> connectionsGuard{ m_connectionsLock };
 		m_logonConnectionToAccountData.erase(connection);
 		accountData->SetConnection(-1);
 		OnAccountActivity(*accountData, timestamp,
@@ -1093,7 +1093,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountLogin(
 	const auto newLoginHash{ std::hash<std::string_view>{}(newLogin) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ m_accountsLock };
+		const Lock::AtomicRW::ExitGuard<Lock::write> guard{ m_accountsLock };
 		auto oldAccountDataIt{ m_loginHashToAccountData.find(oldLoginHash) };
 		if (oldAccountDataIt == m_loginHashToAccountData.end()) {
 			LOG_DEBUG_NEW("Cannot find account with login {}", oldLogin);
@@ -1110,14 +1110,14 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountLogin(
 		m_loginHashToAccountData.erase(oldAccountDataIt);
 	}
 
-	const Pthread::AtomicRWLock::ExitGuard<Pthread::write> accountGuard{ accountData->GetRWLock() };
+	const Lock::AtomicRW::ExitGuard<Lock::write> accountGuard{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	accountData->GetAccount().SetLogin(newLogin);
 	if (!accountData->Save()) [[unlikely]] {
 		error = "Account modification failed";
 		accountData->GetAccount().SetLogin(oldLogin);
 
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ m_accountsLock };
+		const Lock::AtomicRW::ExitGuard<Lock::write> guard{ m_accountsLock };
 		m_loginHashToAccountData.emplace(oldLoginHash, accountData);
 		m_loginHashToAccountData.erase(newLoginHash);
 
@@ -1131,7 +1131,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountLogin(
 	if (!IO::Rename(accountData->GetDataPath().c_str(), newLoginPath.c_str())) [[unlikely]] {
 		accountData->GetAccount().SetLogin(oldLogin);
 
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ m_accountsLock };
+		const Lock::AtomicRW::ExitGuard<Lock::write> guard{ m_accountsLock };
 		m_loginHashToAccountData.emplace(oldLoginHash, accountData);
 		m_loginHashToAccountData.erase(newLoginHash);
 
@@ -1154,7 +1154,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountPassword(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::read> guard{ m_accountsLock };
+		const Lock::AtomicRW::ExitGuard<Lock::read> guard{ m_accountsLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1163,7 +1163,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountPassword(
 		accountData = accountDataIt->second;
 	}
 
-	const Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ accountData->GetRWLock() };
+	const Lock::AtomicRW::ExitGuard<Lock::write> guard{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	if (!accountData->GetAccount().IsInitialized()) [[unlikely]] {
 		error = "Account is not initialized";
@@ -1206,7 +1206,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountGrade(const std::stri
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::read> guard{ m_accountsLock };
+		const Lock::AtomicRW::ExitGuard<Lock::read> guard{ m_accountsLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1215,7 +1215,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountGrade(const std::stri
 		accountData = accountDataIt->second;
 	}
 
-	const Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ accountData->GetRWLock() };
+	const Lock::AtomicRW::ExitGuard<Lock::write> guard{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	const auto oldGrade{ accountData->GetAccount().GetGrade() };
 	if (oldGrade == newGrade) {
@@ -1244,7 +1244,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::SetAccountActivatedState(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::read> guard{ m_accountsLock };
+		const Lock::AtomicRW::ExitGuard<Lock::read> guard{ m_accountsLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1253,7 +1253,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::SetAccountActivatedState(
 		accountData = accountDataIt->second;
 	}
 
-	const Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ accountData->GetRWLock() };
+	const Lock::AtomicRW::ExitGuard<Lock::write> guard{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	if (accountData->GetAccount().IsActive() == isActivated) {
 		OnAccountActivity(*accountData, timestamp,
@@ -1262,7 +1262,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::SetAccountActivatedState(
 	}
 
 	if (const auto connection{ accountData->GetConnection() }; !isActivated && connection != -1) {
-		Pthread::AtomicRWLock::ExitGuard<Pthread::write> connectionsGuard{ m_connectionsLock };
+		Lock::AtomicRW::ExitGuard<Lock::write> connectionsGuard{ m_connectionsLock };
 		m_logonConnectionToAccountData.erase(connection);
 		accountData->SetConnection(-1);
 		OnAccountActivity(*accountData, timestamp,
@@ -1290,7 +1290,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::LogonConnection(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		Pthread::AtomicRWLock::ExitGuard<Pthread::read> guard{ m_accountsLock };
+		Lock::AtomicRW::ExitGuard<Lock::read> guard{ m_accountsLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			error = "Invalid login or password";
@@ -1300,7 +1300,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::LogonConnection(
 		accountData = accountDataIt->second;
 	}
 
-	Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ accountData->GetRWLock() };
+	Lock::AtomicRW::ExitGuard<Lock::write> guard{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	if (!accountData->GetAccount().IsLogonAllowed(password, error)) {
 		OnAccountActivity(*accountData, timestamp,
@@ -1326,7 +1326,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::LogonConnection(
 	}
 
 	{
-		Pthread::AtomicRWLock::ExitGuard<Pthread::write> connectionsGuard{ m_connectionsLock };
+		Lock::AtomicRW::ExitGuard<Lock::write> connectionsGuard{ m_connectionsLock };
 		if (m_logonConnectionToAccountData.find(connection) != m_logonConnectionToAccountData.end()) {
 			error = "Connection is already logged-on with another account";
 			OnAccountActivity(*accountData, timestamp,
@@ -1347,7 +1347,7 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::LogoutConne
 {
 	std::shared_ptr<AccountData> accountData;
 	{
-		Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ m_connectionsLock };
+		Lock::AtomicRW::ExitGuard<Lock::write> guard{ m_connectionsLock };
 		auto it{ m_logonConnectionToAccountData.find(connection) };
 		if (it == m_logonConnectionToAccountData.end()) {
 			LOG_DEBUG_NEW("Connection {} is not logged-on, cannot logout", connection);
@@ -1358,7 +1358,7 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::LogoutConne
 		m_logonConnectionToAccountData.erase(it);
 	}
 
-	Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ accountData->GetRWLock() };
+	Lock::AtomicRW::ExitGuard<Lock::write> guard{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	accountData->SetConnection(-1);
 	OnAccountActivity(
@@ -1370,7 +1370,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const int32_t conn
 {
 	std::shared_ptr<AccountData> accountData;
 	{
-		Pthread::AtomicRWLock::ExitGuard<Pthread::read> guard{ m_connectionsLock };
+		Lock::AtomicRW::ExitGuard<Lock::read> guard{ m_connectionsLock };
 		auto it{ m_logonConnectionToAccountData.find(connection) };
 		if (it == m_logonConnectionToAccountData.end()) {
 			return false;
@@ -1379,7 +1379,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const int32_t conn
 		accountData = it->second;
 	}
 
-	Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ accountData->GetRWLock() };
+	Lock::AtomicRW::ExitGuard<Lock::write> guard{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	// Checking of account states is not needed here, as only logged-on accounts are stored in
 	// m_logonConnectionToAccountData
@@ -1393,13 +1393,13 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const int32_t conn
 template <Accountable A, Gradable G>
 FORCE_INLINE [[nodiscard]] size_t Module<A, G>::GetRegisteredAccountsSize() noexcept
 {
-	Pthread::AtomicRWLock::ExitGuard<Pthread::read> guard{ m_accountsLock };
+	Lock::AtomicRW::ExitGuard<Lock::read> guard{ m_accountsLock };
 	return m_loginHashToAccountData.size();
 }
 
 template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] size_t Module<A, G>::GetLogonConnectionsSize() noexcept
 {
-	Pthread::AtomicRWLock::ExitGuard<Pthread::read> guard{ m_connectionsLock };
+	Lock::AtomicRW::ExitGuard<Lock::read> guard{ m_connectionsLock };
 	return m_logonConnectionToAccountData.size();
 }
 
@@ -1410,7 +1410,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::BlockAccountTill(const std::string
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::read> guard{ m_accountsLock };
+		const Lock::AtomicRW::ExitGuard<Lock::read> guard{ m_accountsLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1421,7 +1421,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::BlockAccountTill(const std::string
 
 	const bool block{ blockedTill > now };
 
-	const Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ accountData->GetRWLock() };
+	const Lock::AtomicRW::ExitGuard<Lock::write> guard{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	auto& account{ accountData->GetAccount() };
 	const auto oldBlockedTill{ account.GetBlockedTill() };
@@ -1440,7 +1440,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::BlockAccountTill(const std::string
 
 		if (oldBlockedTill <= now) {
 			if (const auto connection{ accountData->GetConnection() }; connection != -1) {
-				Pthread::AtomicRWLock::ExitGuard<Pthread::write> guard{ m_connectionsLock };
+				Lock::AtomicRW::ExitGuard<Lock::write> guard{ m_connectionsLock };
 				if (auto it{ m_logonConnectionToAccountData.find(connection) };
 					it != m_logonConnectionToAccountData.end()) {
 					m_logonConnectionToAccountData.erase(it);
@@ -1613,7 +1613,7 @@ FORCE_INLINE void Module<A, G>::HandleEvent([[maybe_unused]] const Timer::Event&
 	const Timer now{};
 	std::vector<int32_t> connectionsToLogout;
 	{
-		Pthread::AtomicRWLock::ExitGuard<Pthread::read> guard{ m_connectionsLock };
+		Lock::AtomicRW::ExitGuard<Lock::read> guard{ m_connectionsLock };
 		for (auto it{ m_logonConnectionToAccountData.begin() }; it != m_logonConnectionToAccountData.end(); it++) {
 			if (it->second->GetLastActivity() + m_logoutTimeout < now) {
 				connectionsToLogout.push_back(it->first);

@@ -59,7 +59,7 @@ public:
 		 * @param bufferSize Final size of the buffer.
 		 * @param isDataDropped Flag is data was dropped.
 		 *
-		 * @test Add unit test.
+		 * @todo Add unit test.
 		 */
 		FORCE_INLINE Result(const uint64_t bufferSize, const bool isDataDropped) noexcept
 			: bufferSize{ bufferSize }
@@ -95,7 +95,7 @@ public:
 	 * @param connection Connection descriptor.
 	 * @param id Connection id.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE RecvBuffer(const uint64_t* capacityLimit, uint64_t toProcessSize, int32_t connection, int32_t id);
 
@@ -112,7 +112,7 @@ public:
 	 *
 	 * @param toProcessSize New value.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE void SetToProcessSize(uint64_t toProcessSize);
 
@@ -122,14 +122,14 @@ public:
 	 *
 	 * @param dataType Data type.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE void SetDataType(uint64_t dataType) noexcept;
 
 	/**************************
 	 * @return Minimum required size to be read on socket to allow execution unit move forward.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t GetToProcessSize() const noexcept;
 
@@ -138,7 +138,7 @@ public:
 	 *
 	 * @attention Can be invalidated on capacity change.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] std::span<const uint8_t> GetBuffer() const noexcept;
 
@@ -147,35 +147,35 @@ public:
 	 *
 	 * @attention Can be invalidated on capacity change.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] const uint8_t* GetData() const noexcept;
 
 	/**************************
 	 * @return Size of data stored in buffer, include peeked.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t GetBufferSize() const noexcept;
 
 	/**************************
 	 * @return Connection.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] int32_t GetConnection() const noexcept;
 
 	/**************************
 	 * @return Connection id.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] int32_t GetConnectionId() const noexcept;
 
 	/**************************
 	 * @return Data type.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t GetDataType() const noexcept;
 
@@ -188,7 +188,7 @@ public:
 	 *
 	 * @return Buffer size (include peeked) on success, zero with flag if data was dropped otherwise.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] Result Recv();
 
@@ -202,7 +202,7 @@ public:
 	 *
 	 * @return True if data was read successfully, false otherwise.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool RecvAdditional(uint64_t requiredSize);
 
@@ -216,7 +216,7 @@ public:
 	 *
 	 * @return Buffer size (include peeked) on success, zero otherwise.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t RecvAdditionalPeek(uint64_t requiredSize);
 
@@ -231,7 +231,7 @@ private:
 	 *
 	 * @return True on success, false otherwise.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool CheckCapacity(uint64_t requiredSize);
 
@@ -254,7 +254,7 @@ private:
 	 *
 	 * @return Buffer size (include peeked) on success, zero with flag if data was dropped otherwise.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	template <int32_t Flags, bool IsRegular> FORCE_INLINE [[nodiscard]] Result RecvImpl(uint64_t requiredSize);
 
@@ -265,7 +265,7 @@ private:
 	 *
 	 * @return True of success, false otherwise.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool Drop(uint64_t toDrop) const;
 };

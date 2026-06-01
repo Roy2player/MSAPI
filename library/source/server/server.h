@@ -20,7 +20,7 @@
 #ifndef MSAPI_SERVER_H
 #define MSAPI_SERVER_H
 
-#include "../help/pthread.hpp"
+#include "../help/lock.inl"
 #include "application.h"
 #include "recvBuffer.inl"
 #include <list>
@@ -131,9 +131,9 @@ private:
 	enum class RecvProcessingType : short { Outcome, Income, Manager };
 
 private:
-	Pthread::AtomicLock m_closingConnectionLocks;
-	Pthread::AtomicLock m_serverAcceptingLoop;
-	Pthread::AtomicRWLock m_alivePthreadsRWLock;
+	Lock::Atomic m_closingConnectionLocks;
+	Lock::Atomic m_serverAcceptingLoop;
+	Lock::AtomicRW m_alivePthreadsRWLock;
 	State m_state{ State::Initialization };
 	sockaddr_in m_addr{ 0, 0, 0, 0 };
 	in_port_t m_listeningPort{};
@@ -344,7 +344,7 @@ public:
 			return;
 		}
 
-		MSAPI::Pthread::AtomicLock::ExitGuard exitGuard{ m_closingConnectionLocks };
+		MSAPI::Lock::Atomic::ExitGuard exitGuard{ m_closingConnectionLocks };
 		Close(id, connection);
 	}
 
@@ -490,9 +490,9 @@ private:
 			"Unknown recv processing type");
 
 		struct PthreadLockGuard {
-			Pthread::AtomicRWLock& rwLock;
+			Lock::AtomicRW& rwLock;
 
-			FORCE_INLINE PthreadLockGuard(Pthread::AtomicRWLock& rwLock) noexcept
+			FORCE_INLINE PthreadLockGuard(Lock::AtomicRW& rwLock) noexcept
 				: rwLock{ rwLock }
 			{
 			}

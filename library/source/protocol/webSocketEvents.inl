@@ -489,7 +489,7 @@ public:
 	class Events {
 	private:
 		std::map<Timer, std::shared_ptr<EventType>> m_events;
-		Pthread::AtomicRWLock m_eventsLock;
+		Lock::AtomicRW m_eventsLock;
 		EventsData& m_data;
 
 	public:
@@ -524,7 +524,7 @@ public:
 			requires std::is_same_v<std::decay_t<Universal>, std::shared_ptr<EventType>>
 		FORCE_INLINE void AddEvent(Universal&& event) noexcept
 		{
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_eventsLock };
+			const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_eventsLock };
 			const Timer timestamp{};
 			const auto result{ m_events.emplace(timestamp, std::forward<Universal>(event)) };
 			if (!result.second) [[unlikely]] {
@@ -550,7 +550,7 @@ public:
 		 */
 		FORCE_INLINE void FailEvents(const std::string_view error)
 		{
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_eventsLock };
+			const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_eventsLock };
 			const auto size{ m_events.size() };
 			if (size == 0) {
 				return;
@@ -573,7 +573,7 @@ public:
 		 */
 		FORCE_INLINE void EraseEvents()
 		{
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_eventsLock };
+			const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_eventsLock };
 			const auto size{ m_events.size() };
 			if (size == 0) {
 				return;
@@ -596,7 +596,7 @@ public:
 		 */
 		FORCE_INLINE void EraseEvent(const Timer timestamp) noexcept
 		{
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_eventsLock };
+			const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_eventsLock };
 			if (m_events.erase(timestamp) == 0) [[unlikely]] {
 				LOG_WARNING_NEW("Events with timestamp {} is not erased, connection {}", timestamp.ToString(),
 					m_data.GetConnection());
@@ -623,7 +623,7 @@ public:
 		FORCE_INLINE void EraseEventsByTimestamps(const Container<Timer>& timestamps)
 		{
 			int32_t erased{};
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_eventsLock };
+			const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_eventsLock };
 			for (const auto timestamp : timestamps) {
 				if (m_events.erase(timestamp) == 0) [[unlikely]] {
 					LOG_WARNING_NEW("Events with timestamp {} is not erased, connection {}", timestamp.ToString(),
@@ -644,7 +644,7 @@ public:
 		 *
 		 * @todo Add unit test.
 		 */
-		FORCE_INLINE [[nodiscard]] Pthread::AtomicRWLock& GetLock() noexcept { return m_eventsLock; }
+		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() noexcept { return m_eventsLock; }
 
 		/**
 		 * @attention Is assumed to be used under structure locking.
@@ -666,7 +666,7 @@ public:
 	class EventsData {
 	private:
 		std::map<filter_t, std::shared_ptr<Events>> m_filterToEvents;
-		Pthread::AtomicRWLock m_filterToEventsLock;
+		Lock::AtomicRW m_filterToEventsLock;
 		std::atomic<int32_t> m_limit{ 1024 };
 		std::atomic<float> m_purgingCoefficient{ 0.3f };
 		std::atomic<int32_t> m_eventsSize{};
@@ -719,7 +719,7 @@ public:
 		FORCE_INLINE [[nodiscard]] std::shared_ptr<Events> GetEvents(const filter_t& filter) noexcept
 		{
 			{
-				const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_filterToEventsLock };
+				const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_filterToEventsLock };
 				auto it{ m_filterToEvents.find(filter) };
 				if (it != m_filterToEvents.end()) {
 					return it->second;
@@ -727,7 +727,7 @@ public:
 			}
 
 			if constexpr (!Lookup) {
-				const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_filterToEventsLock };
+				const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_filterToEventsLock };
 				return m_filterToEvents.emplace(filter, std::make_shared<Events>(*this)).first->second;
 			}
 			else {
@@ -749,7 +749,7 @@ public:
 		{
 			std::shared_ptr<Events> events;
 			{
-				const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_filterToEventsLock };
+				const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_filterToEventsLock };
 				auto it{ m_filterToEvents.find(filter) };
 				if (it == m_filterToEvents.end()) {
 					return;
@@ -773,7 +773,7 @@ public:
 		{
 			std::shared_ptr<Events> events;
 			{
-				const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_filterToEventsLock };
+				const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_filterToEventsLock };
 				auto it{ m_filterToEvents.find(filter) };
 				if (it == m_filterToEvents.end()) {
 					return;
@@ -797,10 +797,10 @@ public:
 		FORCE_INLINE [[nodiscard]] bool EraseEvent(const uint64_t uid) noexcept
 		{
 			Timer targetTimestamp{ 0 };
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_filterToEventsLock };
+			const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_filterToEventsLock };
 			for (auto& [filter, events] : m_filterToEvents) {
 				{
-					const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ events->GetLock() };
+					const Lock::AtomicRW::ExitGuard<Lock::read> _{ events->GetLock() };
 					const auto& items{ events->Get() };
 					for (const auto& [timestamp, event] : items) {
 						if (event->GetUid() == uid) {
@@ -831,12 +831,12 @@ public:
 		 */
 		FORCE_INLINE void FailActiveEvents(const std::string_view error)
 		{
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_filterToEventsLock };
+			const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_filterToEventsLock };
 			auto eventsBegin{ m_filterToEvents.begin() };
 			auto eventsEnd{ m_filterToEvents.end() };
 
 			for (; eventsBegin != eventsEnd;) {
-				const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ eventsBegin->second->GetLock() };
+				const Lock::AtomicRW::ExitGuard<Lock::write> _{ eventsBegin->second->GetLock() };
 				const auto& events{ eventsBegin->second->Get() };
 				for (const auto& [timestamp, event] : events) {
 					SendFailed(event->GetUid(), event->GetConnection(), error);
@@ -972,9 +972,9 @@ public:
 
 			std::map<Timer, std::shared_ptr<Events>> sortedEvents;
 			{
-				const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_filterToEventsLock };
+				const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_filterToEventsLock };
 				for (auto& [filter, events] : m_filterToEvents) {
-					const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ events->GetLock() };
+					const Lock::AtomicRW::ExitGuard<Lock::read> _{ events->GetLock() };
 					for (auto& [timestamp, event] : events->Get()) {
 						sortedEvents.emplace(timestamp, events);
 					}
@@ -998,7 +998,7 @@ public:
 				--toBePurged;
 			}
 
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_filterToEventsLock };
+			const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_filterToEventsLock };
 			for (auto& [events, timestamps] : sortedTimestamps) {
 				events->EraseEventsByTimestamps(timestamps);
 			}
@@ -1008,9 +1008,9 @@ public:
 private:
 	Module& m_authorization;
 	std::map<uint64_t, std::shared_ptr<typename EventType::base_t::handlerData_t>> m_hashToHandlerData;
-	Pthread::AtomicRWLock m_hashToHandlerDataLock;
+	Lock::AtomicRW m_hashToHandlerDataLock;
 	std::map<int32_t, std::shared_ptr<EventsData>> m_connectionToEventsData;
-	Pthread::AtomicRWLock m_connectionToEventsDataLock;
+	Lock::AtomicRW m_connectionToEventsDataLock;
 
 public:
 	/**
@@ -1056,7 +1056,7 @@ public:
 
 		std::shared_ptr<typename EventType::base_t::handlerData_t> handlerData;
 		{
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_hashToHandlerDataLock };
+			const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_hashToHandlerDataLock };
 			const auto it{ m_hashToHandlerData.find(hash) };
 			if (it == m_hashToHandlerData.end()) {
 				SendFailed(uid, connection, "Unknown hash of the event");
@@ -1105,7 +1105,7 @@ public:
 			std::is_integral_v<int16_t> && std::is_integral_v<std::underlying_type_t<typename Module::grade_t>>,
 			"Grade type category is expected");
 
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_hashToHandlerDataLock };
+		const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_hashToHandlerDataLock };
 		m_hashToHandlerData.emplace(hash,
 			std::make_shared<typename EventType::base_t::handlerData_t>(
 				std::move(handler), static_cast<int16_t>(grade)));
@@ -1127,7 +1127,7 @@ public:
 		requires std::is_convertible_v<Handler, typename EventType::base_t::handler_t>
 	FORCE_INLINE void SetHandlerWithoutPermissions(const uint64_t hash, Handler&& handler)
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_hashToHandlerDataLock };
+		const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_hashToHandlerDataLock };
 		m_hashToHandlerData.emplace(
 			hash, std::make_shared<typename EventType::base_t::handlerData_t>(std::move(handler)));
 	}
@@ -1143,7 +1143,7 @@ public:
 	 */
 	FORCE_INLINE void FailActiveEvents(const std::string_view error)
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_connectionToEventsDataLock };
+		const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_connectionToEventsDataLock };
 		auto eventsDataBegin{ m_connectionToEventsData.begin() };
 		auto eventsDataEnd{ m_connectionToEventsData.end() };
 
@@ -1164,7 +1164,7 @@ public:
 	 */
 	FORCE_INLINE void ClearActiveEventsForConnection(const int32_t connection)
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_connectionToEventsDataLock };
+		const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_connectionToEventsDataLock };
 		m_connectionToEventsData.erase(connection);
 	}
 
@@ -1204,7 +1204,7 @@ public:
 		size_t maxUidsSize{};
 		std::vector<Destination> destinations;
 		for (auto& events : eventsArray) {
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ events->GetLock() };
+			const Lock::AtomicRW::ExitGuard<Lock::read> _{ events->GetLock() };
 			const auto& items{ events->Get() };
 			auto begin{ items.begin() };
 			const auto end{ items.end() };
@@ -1279,14 +1279,14 @@ public:
 	FORCE_INLINE [[nodiscard]] std::shared_ptr<EventsData> GetEventsData(const int32_t connection) noexcept
 	{
 		{
-			const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_connectionToEventsDataLock };
+			const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_connectionToEventsDataLock };
 			auto it{ m_connectionToEventsData.find(connection) };
 			if (it != m_connectionToEventsData.end()) {
 				return it->second;
 			}
 		}
 
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::write> _{ m_connectionToEventsDataLock };
+		const Lock::AtomicRW::ExitGuard<Lock::write> _{ m_connectionToEventsDataLock };
 		return m_connectionToEventsData.emplace(connection, std::make_shared<EventsData>(connection)).first->second;
 	}
 
@@ -1303,7 +1303,7 @@ public:
 	{
 		std::shared_ptr<Events> events;
 		std::vector<std::shared_ptr<Events>> eventsArray;
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_connectionToEventsDataLock };
+		const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_connectionToEventsDataLock };
 		for (const auto& [connection, eventsData] : m_connectionToEventsData) {
 			events = eventsData->template GetEvents<EventsData::lookup>(filter);
 			if (events.get()) {
@@ -1328,7 +1328,7 @@ public:
 	 */
 	FORCE_INLINE void FailEventsOnConnectionsByFilter(const filter_t& filter, std::string_view error)
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_connectionToEventsDataLock };
+		const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_connectionToEventsDataLock };
 		for (const auto& [connection, eventsData] : m_connectionToEventsData) {
 			eventsData->FailEventsByFilter(filter, error);
 		}
@@ -1345,7 +1345,7 @@ public:
 	 */
 	FORCE_INLINE void EraseEventsOnConnectionsByFilter(const filter_t& filter)
 	{
-		const Pthread::AtomicRWLock::ExitGuard<Pthread::read> _{ m_connectionToEventsDataLock };
+		const Lock::AtomicRW::ExitGuard<Lock::read> _{ m_connectionToEventsDataLock };
 		for (const auto& [connection, eventsData] : m_connectionToEventsData) {
 			eventsData->EraseEventsByFilter(filter);
 		}
