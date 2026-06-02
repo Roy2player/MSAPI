@@ -86,7 +86,7 @@ FORCE_INLINE [[nodiscard]] std::string_view EnumToString(SendResult result);
  *
  * @todo Add unit test.
  */
-FORCE_INLINE static void SendFailed(uint64_t uid, int32_t connection, std::string_view error);
+FORCE_INLINE void SendFailed(uint64_t uid, int32_t connection, std::string_view error);
 
 /**************************
  * @brief Event holder, contains common data and handler function.
@@ -1108,7 +1108,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::AddEvent
 	const Timer timestamp{};
 	const auto result{ m_events.emplace(timestamp, std::forward<Universal>(event)) };
 	if (!result.second) [[unlikely]] {
-		LOG_WARNING_NEW("Events with uid {} is not emplaced, connection ", event->GetUid(), m_data.GetConnection());
+		LOG_WARNING_NEW("Events with uid {} is not emplaced, connection {}", event->GetUid(), m_data.GetConnection());
 		return;
 	}
 
@@ -1773,7 +1773,7 @@ FORCE_INLINE void StreamsDistributor<Module>::Handle(const uint64_t uid, const u
 		SendFailed(uid, connection, payload);
 		return;
 	default:
-		LOG_WARNING_NEW("Unexpected result of single event handling: {}", EnumToString(result));
+		LOG_WARNING_NEW("Unexpected result of stream event handling: {}", EnumToString(result));
 		return;
 	}
 }

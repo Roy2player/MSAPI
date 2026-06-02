@@ -650,7 +650,7 @@ AtomicRW
 
 FORCE_INLINE void AtomicRW::ReadLock() noexcept
 {
-	if (!m_writeLock.m_lock.test()) {
+	if (m_writeLock.m_lock.test()) {
 		m_writeLock.m_lock.wait(true, std::memory_order_relaxed);
 	}
 
