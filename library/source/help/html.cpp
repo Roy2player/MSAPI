@@ -24,7 +24,7 @@
 namespace MSAPI {
 
 /*---------------------------------------------------------------------------------
-Tag
+HTML::Tag
 ---------------------------------------------------------------------------------*/
 
 HTML::Tag::operator std::string() const { return ToString(); }
@@ -57,10 +57,6 @@ bool HTML::Tag::IsStarted() const { return m_started; }
 
 void HTML::Tag::SetStartedTrue() { m_started = true; }
 
-/*---------------------------------------------------------------------------------
-HTML
----------------------------------------------------------------------------------*/
-
 std::string HTML::Tag::ToString() const noexcept
 {
 	std::stringstream stream;
@@ -78,6 +74,10 @@ std::string HTML::Tag::ToString() const noexcept
 
 	return stream.str();
 }
+
+/*---------------------------------------------------------------------------------
+HTML
+---------------------------------------------------------------------------------*/
 
 HTML::HTML(const std::string_view buffer)
 {

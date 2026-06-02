@@ -491,6 +491,10 @@ FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, S pathOrDir);
 Definitions
 ---------------------------------------------------------------------------------*/
 
+/*---------------------------------------------------------------------------------
+FileGuard
+---------------------------------------------------------------------------------*/
+
 template <typename T>
 	requires StringableView<T>
 FORCE_INLINE FileGuard::FileGuard(const T path, const int32_t flags, const int32_t mode) noexcept
@@ -517,6 +521,10 @@ FORCE_INLINE void FileGuard::Clear()
 		value = -1;
 	}
 }
+
+/*---------------------------------------------------------------------------------
+DirGuard
+---------------------------------------------------------------------------------*/
 
 template <typename T>
 	requires StringableView<T>
@@ -545,6 +553,10 @@ FORCE_INLINE void DirGuard::Clear()
 		value = nullptr;
 	}
 }
+
+/*---------------------------------------------------------------------------------
+Global
+---------------------------------------------------------------------------------*/
 
 template <typename T, typename S>
 	requires StringableView<T> && StringableView<S>

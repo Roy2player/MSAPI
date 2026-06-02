@@ -623,6 +623,10 @@ private:
 Definitions
 ---------------------------------------------------------------------------------*/
 
+/*---------------------------------------------------------------------------------
+Data
+---------------------------------------------------------------------------------*/
+
 FORCE_INLINE Data::Data(const std::span<const uint8_t> payload, const Opcode opcode, uint32_t mask, const bool isFinal,
 	const bool rsv1, const bool rsv2, const bool rsv3) noexcept
 {
@@ -1160,6 +1164,49 @@ FORCE_INLINE [[nodiscard]] constexpr int8_t Data::GetExpectedHeaderSize(
 	return result + 10;
 }
 
+FORCE_INLINE void Data::CheckAndAddMaskForEmptyData(const uint32_t mask) noexcept
+{
+	if (mask != 0) {
+		m_buffer[1] |= 0b10000000;
+		m_headerSize += int8_t{ sizeof(int32_t) };
+		m_buffer.resize(static_cast<size_t>(m_headerSize));
+		*reinterpret_cast<uint32_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = mask;
+	}
+}
+
+FORCE_INLINE void Data::ReverseMaskingInDataWithSmallPayload() noexcept
+{
+	const auto payloadSize{ GetPayloadSize() };
+	if (IsMasked()) {
+		m_headerSize = REQUIRED_HEADER_SIZE;
+		m_buffer[1] &= 0b01111111;
+		if (payloadSize != 0) {
+			memmove(m_buffer.data() + REQUIRED_HEADER_SIZE, m_buffer.data() + REQUIRED_HEADER_SIZE + sizeof(uint32_t),
+				payloadSize);
+			m_buffer.resize(REQUIRED_HEADER_SIZE + payloadSize);
+			return;
+		}
+
+		m_buffer.resize(REQUIRED_HEADER_SIZE);
+		return;
+	}
+
+	m_headerSize += int8_t{ sizeof(uint32_t) };
+	m_buffer[1] |= 0b10000000;
+	const auto mask{ Data::GenerateMaskingKey() };
+	m_buffer.resize(static_cast<size_t>(m_headerSize) + payloadSize);
+	if (payloadSize != 0) {
+		memmove(
+			m_buffer.data() + static_cast<size_t>(m_headerSize), m_buffer.data() + REQUIRED_HEADER_SIZE, payloadSize);
+		Data::ApplyMask(m_buffer.data() + static_cast<size_t>(m_headerSize), payloadSize, mask);
+	}
+	*reinterpret_cast<uint32_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = mask;
+}
+
+/*---------------------------------------------------------------------------------
+Data::SplitGenerator
+---------------------------------------------------------------------------------*/
+
 template <typename T>
 	requires(sizeof(T) == 1)
 FORCE_INLINE Data::SplitGenerator<T>::SplitGenerator(
@@ -1347,44 +1394,9 @@ FORCE_INLINE [[nodiscard]] bool Data::SplitGenerator<T>::Get()
 	return true;
 }
 
-FORCE_INLINE void Data::CheckAndAddMaskForEmptyData(const uint32_t mask) noexcept
-{
-	if (mask != 0) {
-		m_buffer[1] |= 0b10000000;
-		m_headerSize += int8_t{ sizeof(int32_t) };
-		m_buffer.resize(static_cast<size_t>(m_headerSize));
-		*reinterpret_cast<uint32_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = mask;
-	}
-}
-
-FORCE_INLINE void Data::ReverseMaskingInDataWithSmallPayload() noexcept
-{
-	const auto payloadSize{ GetPayloadSize() };
-	if (IsMasked()) {
-		m_headerSize = REQUIRED_HEADER_SIZE;
-		m_buffer[1] &= 0b01111111;
-		if (payloadSize != 0) {
-			memmove(m_buffer.data() + REQUIRED_HEADER_SIZE, m_buffer.data() + REQUIRED_HEADER_SIZE + sizeof(uint32_t),
-				payloadSize);
-			m_buffer.resize(REQUIRED_HEADER_SIZE + payloadSize);
-			return;
-		}
-
-		m_buffer.resize(REQUIRED_HEADER_SIZE);
-		return;
-	}
-
-	m_headerSize += int8_t{ sizeof(uint32_t) };
-	m_buffer[1] |= 0b10000000;
-	const auto mask{ Data::GenerateMaskingKey() };
-	m_buffer.resize(static_cast<size_t>(m_headerSize) + payloadSize);
-	if (payloadSize != 0) {
-		memmove(
-			m_buffer.data() + static_cast<size_t>(m_headerSize), m_buffer.data() + REQUIRED_HEADER_SIZE, payloadSize);
-		Data::ApplyMask(m_buffer.data() + static_cast<size_t>(m_headerSize), payloadSize, mask);
-	}
-	*reinterpret_cast<uint32_t*>(m_buffer.data() + REQUIRED_HEADER_SIZE) = mask;
-}
+/*---------------------------------------------------------------------------------
+Global
+---------------------------------------------------------------------------------*/
 
 FORCE_INLINE void Send(const int connection, const Data& data)
 {
@@ -1401,11 +1413,19 @@ FORCE_INLINE void Send(const int connection, const Data& data)
 	}
 }
 
+/*---------------------------------------------------------------------------------
+IHandler::FragmentedData
+---------------------------------------------------------------------------------*/
+
 FORCE_INLINE IHandler::FragmentedData::FragmentedData(Data&& data, const int connection) noexcept
 	: data{ std::move(data) }
 	, connection{ connection }
 {
 }
+
+/*---------------------------------------------------------------------------------
+IHandler
+---------------------------------------------------------------------------------*/
 
 FORCE_INLINE IHandler::IHandler(const MSAPI::Application* const application) noexcept
 	: m_application{ application }

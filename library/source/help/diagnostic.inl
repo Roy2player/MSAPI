@@ -29,6 +29,10 @@ namespace MSAPI {
 
 namespace Diagnostic {
 
+/*---------------------------------------------------------------------------------
+Declarations
+---------------------------------------------------------------------------------*/
+
 constexpr inline bool hex{ true };
 constexpr inline bool binary{ false };
 
@@ -52,6 +56,12 @@ constexpr inline bool binary{ false };
  * 8	2f 45 aa 89 bc 93 31 99
  * 16	2f 45 aa 89 bc 93 31 99
  */
+template <bool Notation> FORCE_INLINE void PrintBinaryDescriptor(const void* data, size_t size, std::string_view title);
+
+/*---------------------------------------------------------------------------------
+Definitions
+---------------------------------------------------------------------------------*/
+
 template <bool Notation>
 FORCE_INLINE void PrintBinaryDescriptor(const void* data, const size_t size, const std::string_view title)
 {

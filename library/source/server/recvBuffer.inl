@@ -61,11 +61,7 @@ public:
 		 *
 		 * @todo Add unit test.
 		 */
-		FORCE_INLINE Result(const uint64_t bufferSize, const bool isDataDropped) noexcept
-			: bufferSize{ bufferSize }
-			, isDataDropped{ isDataDropped }
-		{
-		}
+		FORCE_INLINE Result(uint64_t bufferSize, bool isDataDropped) noexcept;
 
 		Result(const Result& other) = delete;
 		Result(Result&& other) = default;
@@ -272,6 +268,20 @@ private:
 
 /*---------------------------------------------------------------------------------
 Definitions
+---------------------------------------------------------------------------------*/
+
+/*---------------------------------------------------------------------------------
+RecvBuffer::Result
+---------------------------------------------------------------------------------*/
+
+FORCE_INLINE RecvBuffer::Result::Result(const uint64_t bufferSize, const bool isDataDropped) noexcept
+	: bufferSize{ bufferSize }
+	, isDataDropped{ isDataDropped }
+{
+}
+
+/*---------------------------------------------------------------------------------
+RecvBuffer
 ---------------------------------------------------------------------------------*/
 
 FORCE_INLINE RecvBuffer::RecvBuffer(

@@ -76,6 +76,19 @@ enum class SendResult : int8_t { Undefined, Success, Fail, Nothing, Max };
 FORCE_INLINE [[nodiscard]] std::string_view EnumToString(SendResult result);
 
 /**************************
+ * @brief Send failed event state with error.
+ *
+ * @attention Error must not contain quotes/backslashes/control characters.
+ *
+ * @param uid Event uid.
+ * @param connection Request connection.
+ * @param error Description of the failure.
+ *
+ * @todo Add unit test.
+ */
+FORCE_INLINE static void SendFailed(uint64_t uid, int32_t connection, std::string_view error);
+
+/**************************
  * @brief Event holder, contains common data and handler function.
  *
  * @tparam EventType Type of an event.
@@ -305,19 +318,6 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] static std::string_view EnumToString(State state);
 };
-
-/**************************
- * @brief Send failed event state with error.
- *
- * @attention Error must not contain quotes/backslashes/control characters.
- *
- * @param uid Event uid.
- * @param connection Request connection.
- * @param error Description of the failure.
- *
- * @todo Add unit test.
- */
-FORCE_INLINE static void SendFailed(uint64_t uid, int32_t connection, std::string_view error);
 
 template <typename T, typename S>
 concept EventTypePtrT = std::is_same_v<std::decay_t<T>, std::shared_ptr<S>>;
@@ -867,6 +867,10 @@ private:
 Definitions
 ---------------------------------------------------------------------------------*/
 
+/*---------------------------------------------------------------------------------
+Global
+---------------------------------------------------------------------------------*/
+
 FORCE_INLINE [[nodiscard]] std::string_view EnumToString(const Type type)
 {
 	// Must generate a jump table when the case labels are not dense, but short, and fill empty with default case.
@@ -925,6 +929,20 @@ FORCE_INLINE [[nodiscard]] std::string_view EnumToString(const SendResult result
 	}
 }
 
+FORCE_INLINE void SendFailed(const uint64_t uid, const int32_t connection, const std::string_view error)
+{
+	static_assert(static_cast<int32_t>(Stream::State::Failed) == 4, "Stream failed state is expected");
+	LOG_PROTOCOL_NEW("Send stream event failed state, uid {} error {} connection {}", uid, error, connection);
+	std::string payload{ std::format("{{\"uids\":[{}],\"state\":4,\"error\":\"{}\"}}", uid, error) };
+	Data data{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
+		Data::Opcode::Text };
+	Send(connection, data);
+}
+
+/*---------------------------------------------------------------------------------
+Event::HandlerData
+---------------------------------------------------------------------------------*/
+
 template <typename EventType>
 FORCE_INLINE Event<EventType>::HandlerData::HandlerData(handler_t&& handler, const int16_t grade) noexcept
 	: handler{ std::move(handler) }
@@ -940,6 +958,10 @@ FORCE_INLINE Event<EventType>::HandlerData::HandlerData(handler_t&& handler) noe
 	, isPermissionRequired{ false }
 {
 }
+
+/*---------------------------------------------------------------------------------
+Event
+---------------------------------------------------------------------------------*/
 
 template <typename EventType>
 FORCE_INLINE Event<EventType>::Event(
@@ -970,6 +992,10 @@ template <typename EventType> FORCE_INLINE [[nodiscard]] HandleResult Event<Even
 {
 	return m_handlerData->handler(payload, *static_cast<const EventType*>(this));
 }
+
+/*---------------------------------------------------------------------------------
+IdentityFilter
+---------------------------------------------------------------------------------*/
 
 FORCE_INLINE IdentityFilter::IdentityFilter() noexcept
 	: identity{}
@@ -1006,11 +1032,19 @@ FORCE_INLINE [[nodiscard]] bool IdentityFilter::operator>(const IdentityFilter o
 	return identity > other.identity;
 }
 
+/*---------------------------------------------------------------------------------
+Single
+---------------------------------------------------------------------------------*/
+
 FORCE_INLINE Single::Single(
 	const uint64_t uid, std::shared_ptr<HandlerData>&& handlerData, Json&& json, const int32_t connection) noexcept
 	: base_t{ uid, std::move(handlerData), std::move(json), connection }
 {
 }
+
+/*---------------------------------------------------------------------------------
+Stream
+---------------------------------------------------------------------------------*/
 
 FORCE_INLINE Stream::Stream(
 	const uint64_t uid, std::shared_ptr<HandlerData>&& handlerData, Json&& json, const int32_t connection) noexcept
@@ -1055,15 +1089,9 @@ FORCE_INLINE [[nodiscard]] std::string_view Stream::EnumToString(const State sta
 	}
 }
 
-FORCE_INLINE void SendFailed(const uint64_t uid, const int32_t connection, const std::string_view error)
-{
-	static_assert(static_cast<int32_t>(Stream::State::Failed) == 4, "Stream failed state is expected");
-	LOG_PROTOCOL_NEW("Send stream event failed state, uid {} error {} connection {}", uid, error, connection);
-	std::string payload{ std::format("{{\"uids\":[{}],\"state\":4,\"error\":\"{}\"}}", uid, error) };
-	Data data{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
-		Data::Opcode::Text };
-	Send(connection, data);
-}
+/*---------------------------------------------------------------------------------
+Distributor::Events
+---------------------------------------------------------------------------------*/
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE Distributor<Module, EventType, Filter, Impl>::Events::Events(EventsData& data) noexcept
@@ -1168,6 +1196,10 @@ Distributor<Module, EventType, Filter, Impl>::Events::Get() const noexcept
 {
 	return m_events;
 }
+
+/*---------------------------------------------------------------------------------
+Distributor::EventsData
+---------------------------------------------------------------------------------*/
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE Distributor<Module, EventType, Filter, Impl>::EventsData::EventsData(const int32_t connection) noexcept
@@ -1408,6 +1440,10 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EventsData::Chec
 	}
 }
 
+/*---------------------------------------------------------------------------------
+Distributor
+---------------------------------------------------------------------------------*/
+
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE Distributor<Module, EventType, Filter, Impl>::Distributor(Module& authorization) noexcept
 	: m_authorization{ authorization }
@@ -1642,6 +1678,10 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EraseEventsOnCon
 	}
 }
 
+/*---------------------------------------------------------------------------------
+SinglesDistributor
+---------------------------------------------------------------------------------*/
+
 template <typename Module>
 FORCE_INLINE SinglesDistributor<Module>::SinglesDistributor(Module& authorization) noexcept
 	: base_t{ authorization }
@@ -1692,6 +1732,10 @@ FORCE_INLINE void SinglesDistributor<Module>::Handle(const uint64_t uid, const u
 		return;
 	}
 }
+
+/*---------------------------------------------------------------------------------
+StreamsDistributor
+---------------------------------------------------------------------------------*/
 
 template <typename Module>
 FORCE_INLINE StreamsDistributor<Module>::StreamsDistributor(Module& authorization) noexcept

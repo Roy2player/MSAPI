@@ -22,6 +22,10 @@
 #include <algorithm>
 #include <sys/wait.h>
 
+/*---------------------------------------------------------------------------------
+Manager
+---------------------------------------------------------------------------------*/
+
 Manager::Manager()
 	: MSAPI::Protocol::HTTP::IHandler(this)
 	, MSAPI::Protocol::WebSocket::IHandler(this)
@@ -946,7 +950,7 @@ void Manager::CheckVforkedApps()
 }
 
 /*---------------------------------------------------------------------------------
-CreatedAppData
+Manager::InstalledAppData
 ---------------------------------------------------------------------------------*/
 
 Manager::InstalledAppData::InstalledAppData(const std::string& type, const std::string& bin)
@@ -958,7 +962,7 @@ Manager::InstalledAppData::InstalledAppData(const std::string& type, const std::
 }
 
 /*---------------------------------------------------------------------------------
-CreatedAppData
+Manager::CreatedAppData
 ---------------------------------------------------------------------------------*/
 
 Manager::CreatedAppData::CreatedAppData(

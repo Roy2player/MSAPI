@@ -630,7 +630,7 @@ std::string_view Server::EnumToString(const State state)
 }
 
 /*---------------------------------------------------------------------------------
-AutoFreeSocket
+Server::AutoFreeSocket
 ---------------------------------------------------------------------------------*/
 
 Server::AutoFreeSocket::AutoFreeSocket(const int socket, bool* socketCheck)
@@ -655,7 +655,7 @@ Server::AutoFreeSocket::~AutoFreeSocket()
 }
 
 /*---------------------------------------------------------------------------------
-ConnectionInfo
+Server::ConnectionInfo
 ---------------------------------------------------------------------------------*/
 
 Server::ConnectionInfo::ConnectionInfo(const int id, const in_addr_t& ip, const in_port_t& port, const int connection,

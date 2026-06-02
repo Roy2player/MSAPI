@@ -630,13 +630,9 @@ private:
 	FORCE_INLINE void HandleEvent([[maybe_unused]] const Timer::Event& event) final;
 };
 
-} // namespace Base
-
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
-
-namespace Base {
 
 /*---------------------------------------------------------------------------------
 Account
@@ -763,7 +759,7 @@ template <Gradable G> FORCE_INLINE void Account<G>::SetInitialized(const bool is
 }
 
 /*---------------------------------------------------------------------------------
-AccountData
+Module::AccountData
 ---------------------------------------------------------------------------------*/
 
 template <Accountable A, Gradable G>

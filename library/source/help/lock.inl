@@ -361,6 +361,10 @@ public:
 Definitions
 ---------------------------------------------------------------------------------*/
 
+/*---------------------------------------------------------------------------------
+NamedMutex
+---------------------------------------------------------------------------------*/
+
 template <MutexT T>
 FORCE_INLINE NamedMutex<T>::NamedMutex(std::string&& name) noexcept
 	: name{ std::move(name) }
@@ -558,6 +562,10 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>&
 	return true;
 }
 
+/*---------------------------------------------------------------------------------
+NamedMutex::Guard
+---------------------------------------------------------------------------------*/
+
 FORCE_INLINE Guard::Guard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept
 	: m_namedMutex{ namedMutex }
 {
@@ -565,6 +573,10 @@ FORCE_INLINE Guard::Guard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept
 }
 
 FORCE_INLINE Guard::~Guard() noexcept { (void)MutexUnlock(m_namedMutex); }
+
+/*---------------------------------------------------------------------------------
+NamedMutex::GuardRW
+---------------------------------------------------------------------------------*/
 
 template <bool Wr>
 FORCE_INLINE GuardRW<Wr>::GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept
@@ -575,6 +587,10 @@ FORCE_INLINE GuardRW<Wr>::GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noex
 
 template <bool Wr> FORCE_INLINE GuardRW<Wr>::~GuardRW() noexcept { (void)MutexUnlock(m_namedMutex); }
 
+/*---------------------------------------------------------------------------------
+Atomic::Guard
+---------------------------------------------------------------------------------*/
+
 FORCE_INLINE Atomic::Guard::Guard(Atomic& atomicLock) noexcept
 	: m_atomicLock{ atomicLock }
 {
@@ -582,6 +598,10 @@ FORCE_INLINE Atomic::Guard::Guard(Atomic& atomicLock) noexcept
 }
 
 FORCE_INLINE Atomic::Guard::~Guard() noexcept { m_atomicLock.Unlock(); }
+
+/*---------------------------------------------------------------------------------
+Atomic
+---------------------------------------------------------------------------------*/
 
 FORCE_INLINE void Atomic::Lock() noexcept
 {
@@ -597,6 +617,10 @@ FORCE_INLINE void Atomic::Unlock() noexcept
 	m_lock.clear(std::memory_order_release);
 	m_lock.notify_one();
 }
+
+/*---------------------------------------------------------------------------------
+AtomicRW::Guard
+---------------------------------------------------------------------------------*/
 
 template <bool Wr>
 FORCE_INLINE AtomicRW::Guard<Wr>::Guard(AtomicRW& atomicRWLock) noexcept
@@ -619,6 +643,10 @@ template <bool Wr> FORCE_INLINE AtomicRW::Guard<Wr>::~Guard() noexcept
 		m_atomicRWLock.ReadUnlock();
 	}
 }
+
+/*---------------------------------------------------------------------------------
+AtomicRW
+---------------------------------------------------------------------------------*/
 
 FORCE_INLINE void AtomicRW::ReadLock() noexcept
 {
