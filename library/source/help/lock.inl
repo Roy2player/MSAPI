@@ -350,7 +350,7 @@ public:
 	FORCE_INLINE void WriteLock() noexcept;
 
 	/**************************
-	 * @brief Unlock for write and notify all writers.
+	 * @brief Unlock for write and notify all threads.
 	 *
 	 * @todo Add unit test.
 	 */
