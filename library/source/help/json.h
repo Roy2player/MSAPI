@@ -96,7 +96,7 @@ public:
 	 */
 	const JsonNode* GetValue(std::string_view key) const noexcept;
 
-	/**
+	/**************************
 	 * @brief Get the Value Type object
 	 *
 	 * @tparam T Json node type.

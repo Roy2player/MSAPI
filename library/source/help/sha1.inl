@@ -39,7 +39,7 @@ namespace MSAPI {
 Declarations
 ---------------------------------------------------------------------------------*/
 
-/**
+/**************************
  * @brief SHA-1 hashing class.
  */
 class Sha1 {
@@ -55,7 +55,7 @@ private:
 	std::array<uint32_t, 80> m_processBuffer{};
 
 public:
-	/**
+	/**************************
 	 * @brief Update the hash with a chunk of data, this method can be called multiple times to hash data in chunks.
 	 *
 	 * @param data The input data to be hashed.
@@ -67,7 +67,7 @@ public:
 	static constexpr inline bool reset{ true };
 	static constexpr inline bool doNotReset{ false };
 
-	/**
+	/**************************
 	 * @brief Finalize the hash and return the resulting 20-byte digest.
 	 *
 	 * @attention The returned span points to internal buffer data that will be overwritten by subsequent calls to
@@ -82,7 +82,7 @@ public:
 	template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Final() noexcept;
 
 private:
-	/**
+	/**************************
 	 * @brief Rotate left operation for 32-bit unsigned integers.
 	 *
 	 * @param x The value to rotate.
@@ -94,7 +94,7 @@ private:
 	 */
 	FORCE_INLINE [[nodiscard]] static uint32_t Rol(uint32_t x, uint32_t n) noexcept;
 
-	/**
+	/**************************
 	 * @brief Write a 32-bit unsigned integer to a byte array in big-endian order.
 	 *
 	 * @param dst The destination byte array where the integer will be written (must have at least 4 bytes).
@@ -104,7 +104,7 @@ private:
 	 */
 	FORCE_INLINE static void WriteBe32(uint8_t* const dst, uint32_t x) noexcept;
 
-	/**
+	/**************************
 	 * @brief Read a 32-bit unsigned integer from a byte array in big-endian order.
 	 *
 	 * @param p The source byte array from which the integer will be read (must have at least 4 bytes).
@@ -115,7 +115,7 @@ private:
 	 */
 	FORCE_INLINE [[nodiscard]] static uint32_t ReadBe32(const uint8_t* const p) noexcept;
 
-	/**
+	/**************************
 	 * @brief Process a single 512-bit block of input data and update the hash state.
 	 *
 	 * @param block A pointer to a 64-byte block of input data to be processed.

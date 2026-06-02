@@ -63,7 +63,7 @@ global.document.dispatchEvent(event);
 
 const Helper = require("../help/helper");
 
-/**
+/**************************
  * @brief Test execution controller, assertions result tracker.
  */
 class TestRunner {

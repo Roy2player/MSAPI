@@ -127,7 +127,7 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 	pthread_attr_setschedpolicy(&attr, SCHED_RR);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	MSAPI::Pthread::AtomicLock::ExitGuard exitGuard{ m_serverAcceptingLoop };
+	MSAPI::Lock::Atomic::Guard _{ m_serverAcceptingLoop };
 
 	for (const auto& [id, info] : m_infoToConnection) {
 		Protocol::Standard::SendActionHello(info.connection);
@@ -140,7 +140,7 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 			newConnection = Accept(socketListen.socket, &clientAddr);
 			if (m_state == State::Stopped) [[unlikely]] {
 				LOG_DEBUG("Server state is Stopped, wait for pthreads to be finished");
-				MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> pthreadsGuard{ m_alivePthreadsRWLock };
+				MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_alivePthreadsRWLock };
 				LOG_DEBUG("Server state is Stopped, all pthreads are finished, return");
 				pthread_attr_destroy(&attr);
 				return;
@@ -153,7 +153,7 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 				continue;
 			}
 
-			MSAPI::Pthread::AtomicLock::ExitGuard guard{ m_closingConnectionLocks };
+			MSAPI::Lock::Atomic::Guard guard{ m_closingConnectionLocks };
 
 			std::string ip{ Helper::GetStringIp(clientAddr) };
 			const auto& connection = newConnection.value();
@@ -210,7 +210,7 @@ void Server::Start(const in_addr_t ip, const in_port_t port)
 		if (m_state == State::Stopped) {
 			pthread_attr_destroy(&attr);
 			LOG_DEBUG("Server state is Stopped, wait for pthreads to be finished");
-			MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> pthreadsGuard{ m_alivePthreadsRWLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_alivePthreadsRWLock };
 			LOG_DEBUG("Server state is Stopped, all pthreads are finished, return");
 			return;
 		}
@@ -234,7 +234,7 @@ void Server::Stop()
 	LOG_INFO("Server is stopping");
 	m_state = State::Stopped;
 
-	MSAPI::Pthread::AtomicLock::ExitGuard _{ m_closingConnectionLocks };
+	MSAPI::Lock::Atomic::Guard _{ m_closingConnectionLocks };
 
 	if (m_socketListen != nullptr && m_socketListen->socketCheck != nullptr && *m_socketListen->socketCheck) {
 		m_socketListen->socketCheck = nullptr;
@@ -630,7 +630,7 @@ std::string_view Server::EnumToString(const State state)
 }
 
 /*---------------------------------------------------------------------------------
-AutoFreeSocket
+Server::AutoFreeSocket
 ---------------------------------------------------------------------------------*/
 
 Server::AutoFreeSocket::AutoFreeSocket(const int socket, bool* socketCheck)
@@ -655,7 +655,7 @@ Server::AutoFreeSocket::~AutoFreeSocket()
 }
 
 /*---------------------------------------------------------------------------------
-ConnectionInfo
+Server::ConnectionInfo
 ---------------------------------------------------------------------------------*/
 
 Server::ConnectionInfo::ConnectionInfo(const int id, const in_addr_t& ip, const in_port_t& port, const int connection,

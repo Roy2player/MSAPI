@@ -39,7 +39,7 @@ namespace MSAPI {
 Declarations
 ---------------------------------------------------------------------------------*/
 
-/**
+/**************************
  * @brief SHA-256 hashing class.
  */
 class Sha256 {
@@ -51,7 +51,7 @@ private:
 	std::array<uint8_t, 64> m_buffer{};
 
 public:
-	/**
+	/**************************
 	 * @brief Update the hash with new data.
 	 *
 	 * @param data The input data to be hashed.
@@ -63,7 +63,7 @@ public:
 	static constexpr inline bool reset{ true };
 	static constexpr inline bool doNotReset{ false };
 
-	/**
+	/**************************
 	 * @brief Finalize the hash and return the 32-byte digest.
 	 *
 	 * @attention The returned span points to internal buffer data that will be overwritten by subsequent calls to
@@ -96,7 +96,7 @@ private:
 	FORCE_INLINE [[nodiscard]] static uint32_t Ssig0(uint32_t x) noexcept;
 	FORCE_INLINE [[nodiscard]] static uint32_t Ssig1(uint32_t x) noexcept;
 
-	/**
+	/**************************
 	 * @brief Process a single 512-bit block of input data and update the hash state.
 	 *
 	 * @test Has unit tests.

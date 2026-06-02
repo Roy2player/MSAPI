@@ -704,7 +704,7 @@ void IHandler::Collect(const int connection, const Data& data)
 }
 
 /*---------------------------------------------------------------------------------
-Another
+Global
 ---------------------------------------------------------------------------------*/
 
 void SendRequest(const int connection, const std::string& HTTP)

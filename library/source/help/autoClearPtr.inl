@@ -46,7 +46,7 @@ public:
 	 *
 	 * @attention On bad allocation pointer will be nullptr.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE AutoClearPtr();
 
@@ -57,7 +57,7 @@ public:
 	 *
 	 * @param size Number of bytes for allocating, default is size of template class object.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE AutoClearPtr(uint64_t size);
 
@@ -66,7 +66,7 @@ public:
 	 *
 	 * @param ptr Pointer to already allocated memory.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE AutoClearPtr(T* ptr) noexcept;
 
@@ -76,21 +76,21 @@ public:
 	/**************************
 	 * @brief Move ptr from object and set nullptr back.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE AutoClearPtr(AutoClearPtr&& other) noexcept;
 
 	/**************************
 	 * @brief Free memory if allocated, move pointer from object and set nullptr back.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE AutoClearPtr& operator=(AutoClearPtr&& other) noexcept;
 
 	/**************************
 	 * @brief Destroy the Auto Clear Ptr object and free memory.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE ~AutoClearPtr() noexcept;
 
@@ -101,21 +101,21 @@ public:
 	 *
 	 * @return Pointer to reallocated memory or nullptr.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] T* Realloc(uint64_t newSize);
 
 	/**************************
 	 * @return Pointer to memory.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] T* Get() noexcept;
 
 	/**************************
 	 * @return Const pointer to memory.
 	 *
-	 * @test Add unit test.
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] const T* Get() const noexcept;
 };

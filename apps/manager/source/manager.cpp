@@ -22,6 +22,10 @@
 #include <algorithm>
 #include <sys/wait.h>
 
+/*---------------------------------------------------------------------------------
+Manager
+---------------------------------------------------------------------------------*/
+
 Manager::Manager()
 	: MSAPI::Protocol::HTTP::IHandler(this)
 	, MSAPI::Protocol::WebSocket::IHandler(this)
@@ -254,7 +258,7 @@ void Manager::HandleRunRequest()
 			return viewValue;
 		}() };
 
-		MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> _{ m_hashToInstalledAppDataLock };
+		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_hashToInstalledAppDataLock };
 		appId = MSAPI::Helper::StringHash32Uint(*appValue);
 		auto it{ m_hashToInstalledAppData.find(appId) };
 		if (it == m_hashToInstalledAppData.end()) {
@@ -287,7 +291,7 @@ void Manager::HandleRunRequest()
 	}
 
 	{
-		MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::read> _{ m_hashToInstalledAppDataLock };
+		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
 		if (m_hashToInstalledAppData.empty()) {
 			LOG_ERROR("No apps registered, manager is going to end its work");
 			HandlePauseRequest();
@@ -310,7 +314,7 @@ void Manager::HandlePauseRequest()
 	m_streamsDistributor.FailActiveEvents("Manager is paused");
 
 	{
-		MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> _{ m_portToCreatedAppLock };
+		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_portToCreatedAppLock };
 		for (const auto& [port, createdAppData] : m_portToCreatedApp) {
 			if (createdAppData->connection == 0) [[unlikely]] {
 				LOG_WARNING_NEW("Created app on port {} still did not connect and cannot be deleted", port);
@@ -323,12 +327,12 @@ void Manager::HandlePauseRequest()
 	}
 
 	{
-		MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> _{ m_hashToInstalledAppDataLock };
+		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_hashToInstalledAppDataLock };
 		m_hashToInstalledAppData.clear();
 	}
 
 	{
-		MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> _{ m_tableIdToColumnsLock };
+		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_tableIdToColumnsLock };
 		m_tableIdToColumns.clear();
 	}
 
@@ -371,7 +375,7 @@ void Manager::HandleParameters(const int connection, const std::map<size_t, std:
 
 	std::shared_ptr<CreatedAppData> createdAppData;
 	{
-		MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::read> _{ m_portToCreatedAppLock };
+		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 		auto createdAppDataIt{ m_portToCreatedApp.find(*port) };
 		if (createdAppDataIt == m_portToCreatedApp.end()) {
 			LOG_ERROR("App with port: " + _S(port) + " is not found");
@@ -457,7 +461,7 @@ void Manager::HandleParameters(const int connection, const std::map<size_t, std:
 					else if constexpr (std::is_same_v<T, MSAPI::TableData>) {
 						std::shared_ptr<std::vector<MSAPI::StandardType::Type>> tableColumns;
 						{
-							MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::read> _{ m_tableIdToColumnsLock };
+							MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_tableIdToColumnsLock };
 							const auto it{ m_tableIdToColumns.find(id) };
 							if (it == m_tableIdToColumns.end()) [[unlikely]] {
 								LOG_DEBUG("Columns for table with id: " + _S(id) + " are not found");
@@ -501,7 +505,7 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 {
 	std::shared_ptr<CreatedAppData> createdAppData;
 	{
-		MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::read> _{ m_portToCreatedAppLock };
+		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 		if (std::ranges::none_of(m_portToCreatedApp, [connection, &createdAppData](const auto& data) {
 				if (data.second->connection == connection) {
 					createdAppData = data.second;
@@ -554,7 +558,7 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 			}
 
 			{
-				MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::read> _{ m_tableIdToColumnsLock };
+				MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_tableIdToColumnsLock };
 				if (m_tableIdToColumns.find(tableId) != m_tableIdToColumns.end()) {
 					continue;
 				}
@@ -664,7 +668,7 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 				continue;
 			}
 
-			MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> _{ m_tableIdToColumnsLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_tableIdToColumnsLock };
 			m_tableIdToColumns.emplace(tableId, std::move(columnTypes));
 			LOG_DEBUG("Columns for table with id: " + _S(tableId) + " are found, connection: " + _S(connection));
 		}
@@ -705,7 +709,7 @@ uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, 
 {
 	std::shared_ptr<InstalledAppData> installedAppData;
 	{
-		MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::read> _{ m_hashToInstalledAppDataLock };
+		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
 		auto it{ m_hashToInstalledAppData.find(hash) };
 		if (it == m_hashToInstalledAppData.end()) {
 			error = std::format("Unknow app type hash {}", hash);
@@ -832,7 +836,7 @@ uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, 
 		LOG_INFO("App: " + installedAppData->type + ", id: " + _S(hash) + " created with pid: " + _S(pid));
 		auto createdAppData{ std::make_shared<CreatedAppData>(hash, pid, installedAppData) };
 		{
-			MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> _{ m_portToCreatedAppLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_portToCreatedAppLock };
 			m_portToCreatedApp.emplace(port, createdAppData);
 		}
 		const auto serialize{ [&installedAppData, &createdAppData, port, pid](std::string& data) {
@@ -904,7 +908,7 @@ void Manager::CheckVforkedApps()
 		}
 
 		{
-			MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::read> _{ m_portToCreatedAppLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			if (std::ranges::none_of(m_portToCreatedApp, [pid, &port, &createdAppData](const auto& data) {
 					if (data.second->pid == pid) {
 						port = data.first;
@@ -930,7 +934,7 @@ void Manager::CheckVforkedApps()
 		}
 
 		{
-			MSAPI::Pthread::AtomicRWLock::ExitGuard<MSAPI::Pthread::write> _{ m_portToCreatedAppLock };
+			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_portToCreatedAppLock };
 			m_portToCreatedApp.erase(port);
 			m_portGenerator.Erase(port);
 		}
@@ -946,7 +950,7 @@ void Manager::CheckVforkedApps()
 }
 
 /*---------------------------------------------------------------------------------
-CreatedAppData
+Manager::InstalledAppData
 ---------------------------------------------------------------------------------*/
 
 Manager::InstalledAppData::InstalledAppData(const std::string& type, const std::string& bin)
@@ -958,7 +962,7 @@ Manager::InstalledAppData::InstalledAppData(const std::string& type, const std::
 }
 
 /*---------------------------------------------------------------------------------
-CreatedAppData
+Manager::CreatedAppData
 ---------------------------------------------------------------------------------*/
 
 Manager::CreatedAppData::CreatedAppData(

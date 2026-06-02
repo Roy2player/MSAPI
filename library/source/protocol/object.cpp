@@ -218,7 +218,7 @@ ApplicationStateChecker::ApplicationStateChecker(const MSAPI::Application* appli
 bool ApplicationStateChecker::CheckApplicationState() const { return m_application->Application::IsRunning(); }
 
 /*---------------------------------------------------------------------------------
-Another
+Global
 ---------------------------------------------------------------------------------*/
 
 void Send(const int32_t connection, const Data& data, const void* object)
