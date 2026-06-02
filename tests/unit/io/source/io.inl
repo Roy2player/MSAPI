@@ -46,6 +46,40 @@ Definitions
 
 bool Io()
 {
+	static_assert(IO::append, "Append global is true");
+	static_assert(!IO::overwrite, "Overwrite global is false");
+
+	static_assert(IO::multiple, "Multiple global is true");
+	static_assert(!IO::single, "Single global is false");
+
+	static_assert(SuggestFlags(true) == (O_WRONLY | O_CREAT | O_APPEND), "SuggestFlags true failed");
+	static_assert(SuggestFlags(false) == (O_WRONLY | O_CREAT | O_TRUNC), "SuggestFlags false failed");
+
+	static_assert(SuggestPsm<int8_t, 32>() == 4, "PSM for int8");
+	static_assert(SuggestPsm<uint8_t, 32>() == 3, "PSM for uint8");
+	static_assert(SuggestPsm<int16_t, 32>() == 6, "PSM for int16");
+	static_assert(SuggestPsm<uint16_t, 32>() == 5, "PSM for uint16");
+	static_assert(SuggestPsm<int32_t, 32>() == 11, "PSM for int32");
+	static_assert(SuggestPsm<uint32_t, 32>() == 10, "PSM for uint32");
+	static_assert(SuggestPsm<int64_t, 32>() == 20, "PSM for int64");
+	static_assert(SuggestPsm<uint64_t, 32>() == 20, "PSM for uint64");
+	static_assert(SuggestPsm<float, 32>() == 14, "PSM for float");
+	static_assert(SuggestPsm<double, 31>() == 32, "PSM for double, less than minimum");
+	static_assert(SuggestPsm<double, 33>() == 33, "PSM for double, greater than minimum");
+	static_assert(SuggestPsm<long double, 31>() == 32, "PSM for long double, less than minimum");
+	static_assert(SuggestPsm<long double, 33>() == 33, "PSM for long double, greater than minimum");
+	static_assert(SuggestPsm<bool, 32>() == 4, "PSM for bool");
+	static_assert(SuggestPsm<char, 32>() == 1, "PSM for char");
+
+	static_assert(EnumToString(FileType::Unknown) == "Unknown", "EnumToString Unknown failed");
+	static_assert(EnumToString(FileType::Fifo) == "Fifo", "EnumToString Fifo failed");
+	static_assert(EnumToString(FileType::Char) == "Char", "EnumToString Char failed");
+	static_assert(EnumToString(FileType::Directory) == "Directory", "EnumToString Directory failed");
+	static_assert(EnumToString(FileType::Blk) == "Blk", "EnumToString Blk failed");
+	static_assert(EnumToString(FileType::Regular) == "Regular", "EnumToString Regular failed");
+	static_assert(EnumToString(FileType::Lnk) == "Lnk", "EnumToString Lnk failed");
+	static_assert(EnumToString(FileType::Sock) == "Sock", "EnumToString Sock failed");
+
 	LOG_INFO_UNITTEST("MSAPI IO");
 	MSAPI::Test t;
 
@@ -186,11 +220,11 @@ bool Io()
 		}
 
 		{
-			MSAPI::IO::Directory::Guard dirPathChild3{ pathChild3V };
+			MSAPI::IO::DirGuard dirPathChild3{ pathChild3V };
 			RETURN_IF_FALSE(t.Assert(dirPathChild3.value != nullptr, true, "Open directory"));
-			MSAPI::IO::Directory::Guard dirPath{ pathV };
+			MSAPI::IO::DirGuard dirPath{ pathV };
 			RETURN_IF_FALSE(t.Assert(dirPath.value != nullptr, true, "Open directory"));
-			MSAPI::IO::Directory::Guard dirPathChildDir2{ std::string_view{ path + "childDir/childDir2" } };
+			MSAPI::IO::DirGuard dirPathChildDir2{ std::string_view{ path + "childDir/childDir2" } };
 			RETURN_IF_FALSE(t.Assert(dirPathChildDir2.value != nullptr, true, "Open directory"));
 			RETURN_IF_FALSE(t.Assert(testList(dirPathChild3.value, dirPath.value, dirPathChildDir2.value), true,
 				"Test listing files and dirs with dirs"));
@@ -481,18 +515,18 @@ bool Io()
 		const std::string_view pathFd3V{ pathFd3 };
 		const auto& pathVecFd{ path + "vecFd" };
 		const std::string_view pathVecFdV{ pathVecFd };
-		IO::File::Guard fd1;
+		IO::FileGuard fd1;
 		RETURN_IF_FALSE(t.Assert(fd1.value, -1, "Open empty file descriptor for o1Fd"));
-		fd1 = IO::File::Guard{ pathFd1V, O_RDWR | O_CREAT, 0644 };
+		fd1 = IO::FileGuard{ pathFd1V, O_RDWR | O_CREAT, 0644 };
 		RETURN_IF_FALSE(t.Assert(fd1.value != -1, true, "Open initialized file descriptor for o1Fd"));
 
 		int32_t fd;
 		{
-			IO::File::Guard fd3{ pathFd3V, O_RDWR | O_CREAT, 0644 };
+			IO::FileGuard fd3{ pathFd3V, O_RDWR | O_CREAT, 0644 };
 			fd = fd3.value;
 			RETURN_IF_FALSE(t.Assert(fd3.value != -1, true, "Open file descriptor for o3Fd"));
-			IO::File::Guard fdVec{ pathVecFdV, O_RDWR | O_CREAT, 0644 };
-			IO::File::Guard fdVec2{ std::move(fdVec) };
+			IO::FileGuard fdVec{ pathVecFdV, O_RDWR | O_CREAT, 0644 };
+			IO::FileGuard fdVec2{ std::move(fdVec) };
 			RETURN_IF_FALSE(t.Assert(fdVec.value, -1, "Open file descriptor for vecFd"));
 			RETURN_IF_FALSE(t.Assert(fdVec2.value != -1, true, "Open file descriptor for fdVec2"));
 
@@ -575,18 +609,18 @@ bool Io()
 	}
 
 	{
-		IO::Directory::Guard dir{ pathV };
+		IO::DirGuard dir{ pathV };
 		auto* const dirPtr{ dir.value };
 		RETURN_IF_FALSE(t.Assert(dirPtr != nullptr, true, "Open directory"));
 
 		const int fd{ dirfd(dirPtr) };
 		RETURN_IF_FALSE(t.Assert(fd != -1, true, "Get directory fd"));
 
-		IO::Directory::Guard dir1{ std::move(dir) };
+		IO::DirGuard dir1{ std::move(dir) };
 		RETURN_IF_FALSE(t.Assert(dir.value, nullptr, "Moved directory should be null"));
 		RETURN_IF_FALSE(t.Assert(dir1.value, dirPtr, "Moved directory should be valid"));
 
-		IO::Directory::Guard dir2;
+		IO::DirGuard dir2;
 		dir2 = std::move(dir1);
 
 		RETURN_IF_FALSE(t.Assert(dir1.value, nullptr, "Moved directory should be null"));

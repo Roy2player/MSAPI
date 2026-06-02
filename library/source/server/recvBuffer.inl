@@ -466,7 +466,7 @@ FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::RecvImpl(const uint64_
 
 FORCE_INLINE [[nodiscard]] bool RecvBuffer::Drop(const uint64_t toDrop) const
 {
-	IO::File::Guard fd{ "/dev/null", O_WRONLY, 644 };
+	IO::FileGuard fd{ "/dev/null", O_WRONLY, 644 };
 	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR("Failed to open /dev/null");
 		return false;

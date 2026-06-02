@@ -877,7 +877,7 @@ template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G
 	}
 
 	if (IO::HasPath(m_dataPath.c_str())) {
-		IO::Directory::Guard dd{ m_dataPath.c_str() };
+		IO::DirGuard dd{ m_dataPath.c_str() };
 		if (dd.value == nullptr) [[unlikely]] {
 			LOG_ERROR_NEW(
 				"Cannot open accounts data directory: {}. Error №{}: {}", m_dataPath, errno, std::strerror(errno));

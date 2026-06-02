@@ -134,7 +134,6 @@ public:
 
 	Data(const Data& other) = delete;
 	Data& operator=(const Data& other) = delete;
-
 	FORCE_INLINE Data(Data&& other) noexcept = default;
 	FORCE_INLINE Data& operator=(Data&& other) noexcept = default;
 
@@ -459,7 +458,6 @@ public:
 
 		FragmentedData(FragmentedData&& other) = default;
 		FragmentedData(const FragmentedData& other) = delete;
-
 		FragmentedData& operator=(const FragmentedData& other) = delete;
 		FragmentedData& operator=(FragmentedData&& other) = delete;
 	};

@@ -159,8 +159,8 @@ public:
 	FORCE_INLINE Guard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept;
 
 	Guard(const Guard&) = delete;
-	const Guard& operator=(const Guard&) = delete;
 	Guard(Guard&&) = delete;
+	const Guard& operator=(const Guard&) = delete;
 	const Guard& operator=(Guard&&) = delete;
 
 	/**************************
@@ -194,8 +194,8 @@ public:
 	FORCE_INLINE GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept;
 
 	GuardRW(const GuardRW&) = delete;
-	const GuardRW& operator=(const GuardRW&) = delete;
 	GuardRW(GuardRW&&) = delete;
+	const GuardRW& operator=(const GuardRW&) = delete;
 	const GuardRW& operator=(GuardRW&&) = delete;
 
 	/**************************
@@ -229,8 +229,8 @@ public:
 		FORCE_INLINE Guard(Atomic& atomicLock) noexcept;
 
 		Guard(const Guard&) = delete;
-		const Guard& operator=(const Guard&) = delete;
 		Guard(Guard&&) = delete;
+		const Guard& operator=(const Guard&) = delete;
 		const Guard& operator=(Guard&&) = delete;
 
 		/**************************
@@ -248,8 +248,8 @@ public:
 	FORCE_INLINE Atomic() noexcept = default;
 
 	Atomic(const Atomic&) = delete;
-	const Atomic& operator=(const Atomic&) = delete;
 	Atomic(Atomic&&) = delete;
+	const Atomic& operator=(const Atomic&) = delete;
 	const Atomic& operator=(Atomic&&) = delete;
 
 	/**************************
@@ -304,8 +304,8 @@ public:
 		FORCE_INLINE Guard(AtomicRW& atomicRWLock) noexcept;
 
 		Guard(const Guard&) = delete;
-		const Guard& operator=(const Guard&) = delete;
 		Guard(Guard&&) = delete;
+		const Guard& operator=(const Guard&) = delete;
 		const Guard& operator=(Guard&&) = delete;
 
 		/**************************
@@ -324,8 +324,8 @@ public:
 	FORCE_INLINE AtomicRW() noexcept = default;
 
 	AtomicRW(const AtomicRW&) = delete;
-	const AtomicRW& operator=(const AtomicRW&) = delete;
 	AtomicRW(AtomicRW&&) = delete;
+	const AtomicRW& operator=(const AtomicRW&) = delete;
 	const AtomicRW& operator=(AtomicRW&&) = delete;
 
 	/**************************
