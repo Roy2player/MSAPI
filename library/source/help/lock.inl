@@ -317,7 +317,7 @@ public:
 	};
 
 private:
-	std::atomic<int> m_lock{};
+	std::atomic<int32_t> m_lock{};
 	Atomic m_writeLock;
 
 public:
@@ -345,7 +345,10 @@ public:
 	/**************************
 	 * @brief Lock for write, wait if write lock is not set and then wait for all read locks to be released.
 	 *
+	 * @attention Hot spin-lock.
+	 *
 	 * @todo Add unit test.
+	 * @todo Measure performance of another write lock approaches. Provide different methods if make sense.
 	 */
 	FORCE_INLINE void WriteLock() noexcept;
 
@@ -375,7 +378,7 @@ template <typename T, typename S>
 	requires MutexAndParams<T, S>
 FORCE_INLINE [[nodiscard]] bool MutexInit(NamedMutex<T>& namedMutex, const S mutexattr)
 {
-	int ret{ -1 };
+	int32_t ret{ -1 };
 	if constexpr (std::is_same_v<T, pthread_mutex_t>) {
 		ret = pthread_mutex_init(&namedMutex.mutex, mutexattr);
 	}
@@ -420,8 +423,7 @@ FORCE_INLINE [[nodiscard]] bool MutexInit(NamedMutex<T>& namedMutex, const S mut
 
 template <typename T> FORCE_INLINE [[nodiscard]] bool MutexDestroy(NamedMutex<T>& namedMutex)
 {
-	int ret{ -1 };
-
+	int32_t ret{ -1 };
 	if constexpr (std::is_same_v<T, pthread_mutex_t>) {
 		ret = pthread_mutex_destroy(&namedMutex.mutex);
 	}
@@ -481,8 +483,7 @@ FORCE_INLINE [[nodiscard]] bool MutexLock(NamedMutex<pthread_mutex_t>& namedMute
 
 template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMutex<pthread_rwlock_t>& namedMutex)
 {
-	int ret{ -1 };
-
+	int32_t ret{ -1 };
 	if constexpr (Try) {
 		if constexpr (Wr) {
 			ret = pthread_rwlock_trywrlock(&namedMutex.mutex);
@@ -529,7 +530,7 @@ template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMu
 
 template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>& namedMutex)
 {
-	int ret{ -1 };
+	int32_t ret{ -1 };
 	if constexpr (std::is_same_v<T, pthread_mutex_t>) {
 		ret = pthread_mutex_unlock(&namedMutex.mutex);
 	}
