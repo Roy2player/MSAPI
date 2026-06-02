@@ -52,33 +52,33 @@ bool Io()
 	static_assert(IO::multiple, "Multiple global is true");
 	static_assert(!IO::single, "Single global is false");
 
-	static_assert(SuggestFlags(true) == (O_WRONLY | O_CREAT | O_APPEND), "SuggestFlags true failed");
-	static_assert(SuggestFlags(false) == (O_WRONLY | O_CREAT | O_TRUNC), "SuggestFlags false failed");
+	static_assert(IO::SuggestFlags(true) == (O_WRONLY | O_CREAT | O_APPEND), "SuggestFlags true failed");
+	static_assert(IO::SuggestFlags(false) == (O_WRONLY | O_CREAT | O_TRUNC), "SuggestFlags false failed");
 
-	static_assert(SuggestPsm<int8_t, 32>() == 4, "PSM for int8");
-	static_assert(SuggestPsm<uint8_t, 32>() == 3, "PSM for uint8");
-	static_assert(SuggestPsm<int16_t, 32>() == 6, "PSM for int16");
-	static_assert(SuggestPsm<uint16_t, 32>() == 5, "PSM for uint16");
-	static_assert(SuggestPsm<int32_t, 32>() == 11, "PSM for int32");
-	static_assert(SuggestPsm<uint32_t, 32>() == 10, "PSM for uint32");
-	static_assert(SuggestPsm<int64_t, 32>() == 20, "PSM for int64");
-	static_assert(SuggestPsm<uint64_t, 32>() == 20, "PSM for uint64");
-	static_assert(SuggestPsm<float, 32>() == 14, "PSM for float");
-	static_assert(SuggestPsm<double, 31>() == 32, "PSM for double, less than minimum");
-	static_assert(SuggestPsm<double, 33>() == 33, "PSM for double, greater than minimum");
-	static_assert(SuggestPsm<long double, 31>() == 32, "PSM for long double, less than minimum");
-	static_assert(SuggestPsm<long double, 33>() == 33, "PSM for long double, greater than minimum");
-	static_assert(SuggestPsm<bool, 32>() == 4, "PSM for bool");
-	static_assert(SuggestPsm<char, 32>() == 1, "PSM for char");
+	static_assert(IO::SuggestPsm<int8_t, 32>() == 4, "PSM for int8");
+	static_assert(IO::SuggestPsm<uint8_t, 32>() == 3, "PSM for uint8");
+	static_assert(IO::SuggestPsm<int16_t, 32>() == 6, "PSM for int16");
+	static_assert(IO::SuggestPsm<uint16_t, 32>() == 5, "PSM for uint16");
+	static_assert(IO::SuggestPsm<int32_t, 32>() == 11, "PSM for int32");
+	static_assert(IO::SuggestPsm<uint32_t, 32>() == 10, "PSM for uint32");
+	static_assert(IO::SuggestPsm<int64_t, 32>() == 20, "PSM for int64");
+	static_assert(IO::SuggestPsm<uint64_t, 32>() == 20, "PSM for uint64");
+	static_assert(IO::SuggestPsm<float, 32>() == 14, "PSM for float");
+	static_assert(IO::SuggestPsm<double, 31>() == 32, "PSM for double, less than minimum");
+	static_assert(IO::SuggestPsm<double, 33>() == 33, "PSM for double, greater than minimum");
+	static_assert(IO::SuggestPsm<long double, 31>() == 32, "PSM for long double, less than minimum");
+	static_assert(IO::SuggestPsm<long double, 33>() == 33, "PSM for long double, greater than minimum");
+	static_assert(IO::SuggestPsm<bool, 32>() == 4, "PSM for bool");
+	static_assert(IO::SuggestPsm<char, 32>() == 1, "PSM for char");
 
-	static_assert(EnumToString(FileType::Unknown) == "Unknown", "EnumToString Unknown failed");
-	static_assert(EnumToString(FileType::Fifo) == "Fifo", "EnumToString Fifo failed");
-	static_assert(EnumToString(FileType::Char) == "Char", "EnumToString Char failed");
-	static_assert(EnumToString(FileType::Directory) == "Directory", "EnumToString Directory failed");
-	static_assert(EnumToString(FileType::Blk) == "Blk", "EnumToString Blk failed");
-	static_assert(EnumToString(FileType::Regular) == "Regular", "EnumToString Regular failed");
-	static_assert(EnumToString(FileType::Lnk) == "Lnk", "EnumToString Lnk failed");
-	static_assert(EnumToString(FileType::Sock) == "Sock", "EnumToString Sock failed");
+	static_assert(IO::EnumToString(IO::FileType::Unknown) == "Unknown", "EnumToString Unknown failed");
+	static_assert(IO::EnumToString(IO::FileType::Fifo) == "Fifo", "EnumToString Fifo failed");
+	static_assert(IO::EnumToString(IO::FileType::Char) == "Char", "EnumToString Char failed");
+	static_assert(IO::EnumToString(IO::FileType::Directory) == "Directory", "EnumToString Directory failed");
+	static_assert(IO::EnumToString(IO::FileType::Blk) == "Blk", "EnumToString Blk failed");
+	static_assert(IO::EnumToString(IO::FileType::Regular) == "Regular", "EnumToString Regular failed");
+	static_assert(IO::EnumToString(IO::FileType::Lnk) == "Lnk", "EnumToString Lnk failed");
+	static_assert(IO::EnumToString(IO::FileType::Sock) == "Sock", "EnumToString Sock failed");
 
 	LOG_INFO_UNITTEST("MSAPI IO");
 	MSAPI::Test t;
