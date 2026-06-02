@@ -336,7 +336,7 @@ public:
 	FORCE_INLINE void ReadLock() noexcept;
 
 	/**************************
-	 * @brief Unlock for read.
+	 * @brief Unlock for read and notify one thread.
 	 *
 	 * @todo Add unit test.
 	 */
@@ -350,7 +350,7 @@ public:
 	FORCE_INLINE void WriteLock() noexcept;
 
 	/**************************
-	 * @brief Unlock for write.
+	 * @brief Unlock for write and notify all writers.
 	 *
 	 * @todo Add unit test.
 	 */
@@ -658,7 +658,7 @@ FORCE_INLINE void AtomicRW::ReadLock() noexcept
 FORCE_INLINE void AtomicRW::ReadUnlock() noexcept
 {
 	m_lock.fetch_sub(1, std::memory_order_release);
-	m_lock.notify_all();
+	m_lock.notify_one();
 }
 
 FORCE_INLINE void AtomicRW::WriteLock() noexcept
@@ -674,8 +674,8 @@ FORCE_INLINE void AtomicRW::WriteLock() noexcept
 
 FORCE_INLINE void AtomicRW::WriteUnlock() noexcept
 {
-	m_writeLock.Unlock();
-	m_lock.notify_all();
+	m_writeLock.m_lock.clear(std::memory_order_release);
+	m_writeLock.m_lock.notify_all();
 }
 
 } // namespace Lock
