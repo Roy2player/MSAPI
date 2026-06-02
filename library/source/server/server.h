@@ -489,6 +489,7 @@ private:
 				|| Type == RecvProcessingType::Income,
 			"Unknown recv processing type");
 
+		// Read lock is incremented before attempting to create pthread and decremented on failure
 		struct PthreadLockGuard {
 			Lock::AtomicRW& rwLock;
 

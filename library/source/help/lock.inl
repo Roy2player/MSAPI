@@ -329,7 +329,7 @@ public:
 	const AtomicRW& operator=(AtomicRW&&) = delete;
 
 	/**************************
-	 * @brief Lock for read, wait if write lock is not set.
+	 * @brief Lock for read, wait if write lock is set.
 	 *
 	 * @todo Add unit test.
 	 */
@@ -345,10 +345,7 @@ public:
 	/**************************
 	 * @brief Lock for write, wait if write lock is not set and then wait for all read locks to be released.
 	 *
-	 * @attention Hot spin-lock.
-	 *
 	 * @todo Add unit test.
-	 * @todo Measure performance of another write lock approaches. Provide different methods if make sense.
 	 */
 	FORCE_INLINE void WriteLock() noexcept;
 
@@ -667,8 +664,11 @@ FORCE_INLINE void AtomicRW::ReadUnlock() noexcept
 FORCE_INLINE void AtomicRW::WriteLock() noexcept
 {
 	m_writeLock.Lock();
-	while (m_lock.load(std::memory_order_acquire) != 0) {
-		m_lock.wait(1, std::memory_order_relaxed);
+	auto readers{ m_lock.load(std::memory_order_acquire) };
+
+	while (readers != 0) {
+		m_lock.wait(readers, std::memory_order_relaxed);
+		readers = m_lock.load(std::memory_order_acquire);
 	}
 }
 
