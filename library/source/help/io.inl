@@ -47,7 +47,7 @@ namespace File {
 struct Guard {
 	int32_t value{ -1 };
 
-	/**
+	/**************************
 	 * @brief Open POSIX file descriptor.
 	 *
 	 * @attention Check value member for success after calling.
@@ -77,14 +77,14 @@ struct Guard {
 	const Guard& operator=(const Guard&) = delete;
 	Guard(const Guard&) = delete;
 
-	/**
+	/**************************
 	 * @brief Exchange file descriptor ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE const Guard& operator=(Guard&& other) noexcept;
 
-	/**
+	/**************************
 	 * @brief Exchange file descriptor ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
@@ -116,7 +116,7 @@ namespace Directory {
 struct Guard {
 	DIR* value{};
 
-	/**
+	/**************************
 	 * @brief Open directory.
 	 *
 	 * @attention Check value member for success after calling.
@@ -144,21 +144,21 @@ struct Guard {
 	const Guard& operator=(const Guard&) = delete;
 	Guard(const Guard&) = delete;
 
-	/**
+	/**************************
 	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE const Guard& operator=(Guard&& other) noexcept;
 
-	/**
+	/**************************
 	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE Guard(Guard&& other) noexcept;
 
-	/**
+	/**************************
 	 * @brief Call Clear on destruction.
 	 *
 	 * @test Has unit tests.

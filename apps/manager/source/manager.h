@@ -69,7 +69,7 @@
  */
 class Manager : public MSAPI::Server, MSAPI::Protocol::HTTP::IHandler, MSAPI::Protocol::WebSocket::IHandler {
 private:
-	/**
+	/**************************
 	 * @brief Synched generator of unique ports.
 	 */
 	class PortGenerator {
@@ -80,7 +80,7 @@ private:
 		const int32_t m_limit{ 50000 };
 
 	public:
-		/**
+		/**************************
 		 * @return Unique port.
 		 *
 		 * @todo Add unit test.
@@ -103,7 +103,7 @@ private:
 			return 0;
 		}
 
-		/**
+		/**************************
 		 * @brief Erase port from range of used.
 		 *
 		 * @param port Port to be erased.
@@ -116,7 +116,7 @@ private:
 			m_ports.erase(port);
 		}
 
-		/**
+		/**************************
 		 * @brief Clear range of used ports.
 		 *
 		 * @todo Add unit test.

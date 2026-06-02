@@ -115,7 +115,7 @@ public:
 	 */
 	FORCE_INLINE Data() noexcept = default;
 
-	/**
+	/**************************
 	 * @brief Construct a new Data object to be sent, create header and payload base on provided parameters. For
 	 * close/ping and pong types maximum payload size is 125, if more is provided - no payload will be loaded.
 	 *
@@ -149,7 +149,7 @@ public:
 	 */
 	FORCE_INLINE Data(RecvBuffer& recvBuffer);
 
-	/**
+	/**************************
 	 * @return String interpretation of WebSocket data message.
 	 *
 	 * @example WebSocket data:
@@ -169,49 +169,49 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] std::string ToString() const;
 
-	/**
+	/**************************
 	 * @return True if data is final, false otherwise.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsFinal() const noexcept;
 
-	/**
+	/**************************
 	 * @return True if RVS1 is set, false otherwise.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsRsv1() const noexcept;
 
-	/**
+	/**************************
 	 * @return True if RVS2 is set, false otherwise.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsRsv2() const noexcept;
 
-	/**
+	/**************************
 	 * @return True if RVS3 is set, false otherwise.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsRsv3() const noexcept;
 
-	/**
+	/**************************
 	 * @return Opcode of data.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] Opcode GetOpcode() const noexcept;
 
-	/**
+	/**************************
 	 * @return True if data is masked, false otherwise.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsMasked() const noexcept;
 
-	/**
+	/**************************
 	 * @return Return masking key or 0 if message is not masked. In terms of web socket 0 masking key produces no masked
 	 * payload "x XOR 0 = x".
 	 *
@@ -219,49 +219,49 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] uint32_t GetMaskingKey() const noexcept;
 
-	/**
+	/**************************
 	 * @return Size of header in bytes.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] int8_t GetHeaderSize() const noexcept;
 
-	/**
+	/**************************
 	 * @return Const view on header part of buffer.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] std::span<const uint8_t> GetHeader() const noexcept;
 
-	/**
+	/**************************
 	 * @return Size of payload in bytes.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] size_t GetPayloadSize() const noexcept;
 
-	/**
+	/**************************
 	 * @return Const view on payload part of buffer.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] std::span<const uint8_t> GetPayload() const noexcept;
 
-	/**
+	/**************************
 	 * @return Size of buffer in bytes.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] size_t GetBufferSize() const noexcept;
 
-	/**
+	/**************************
 	 * @return Const view on buffer.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] std::span<const uint8_t> GetBuffer() const noexcept;
 
-	/**
+	/**************************
 	 * @brief Append payload from other data and update own header accordingly.
 	 *
 	 * @attention Payload must be already unmasked.
@@ -273,42 +273,42 @@ public:
 	 */
 	FORCE_INLINE void MergePayload(const Data& other) noexcept;
 
-	/**
+	/**************************
 	 * @return Check opcode and verify header size based on masking and payload size.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsValid() const noexcept;
 
-	/**
+	/**************************
 	 * @return True if buffers are equal.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool operator==(const Data& other) const noexcept;
 
-	/**
+	/**************************
 	 * @return String interpretation of Opcode enum.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] static std::string_view EnumToString(Opcode value);
 
-	/**
+	/**************************
 	 * @return String interpretation of CloseStatusCode enum.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] static std::string_view EnumToString(CloseStatusCode value);
 
-	/**
+	/**************************
 	 * @return Generated 4 bytes long masking key.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] static uint32_t GenerateMaskingKey();
 
-	/**
+	/**************************
 	 * @brief Apply mask. Works for masking and unmasking: "x XOR y XOR y = x".
 	 *
 	 * @param payload Begin of payload to be masked. Must not be a nullptr.
@@ -319,7 +319,7 @@ public:
 	 */
 	FORCE_INLINE static void ApplyMask(uint8_t* payload, size_t size, uint32_t mask) noexcept;
 
-	/**
+	/**************************
 	 * @brief Create close WebSocket message with specific status code and reason if provided. Reason will be added only
 	 * for status code not equal to -1. Masking, if set, will be in message anyway.
 	 *
@@ -337,7 +337,7 @@ public:
 	FORCE_INLINE [[nodiscard]] static Data CreateClose(
 		T statusCode = static_cast<T>(-1), std::span<S> reason = {}, uint32_t mask = 0);
 
-	/**
+	/**************************
 	 * @param payloadSize Payload size.
 	 * @param isMasked Is masked flag.
 	 *
@@ -348,7 +348,7 @@ public:
 	FORCE_INLINE [[nodiscard]] static constexpr int8_t GetExpectedHeaderSize(
 		size_t payloadSize, bool isMasked) noexcept;
 
-	/**
+	/**************************
 	 * @brief One-usage non-owning abstraction to manage the process of splitting one payload into several parts one by
 	 * one.
 	 *
@@ -365,7 +365,7 @@ public:
 		bool m_masking;
 
 	public:
-		/**
+		/**************************
 		 * @brief Construct non-owning split generator data structure for Binary and Text web socket data types. The
 		 * minimum payload size in constant 4, the minimum step is 1. If zero step or step greater than payload size is
 		 * provided, then step will be equal to min(buffer size / 4, 65535).
@@ -379,7 +379,7 @@ public:
 		 */
 		FORCE_INLINE SplitGenerator(Data& data, std::span<T> buffer, size_t step, bool masking = false);
 
-		/**
+		/**************************
 		 * @brief Prepare next websocket data. In case of enabled masking each message has unique masking key.
 		 *
 		 * @return False if all buffer were already prepared, true otherwise.
@@ -390,7 +390,7 @@ public:
 	};
 
 private:
-	/**
+	/**************************
 	 * @brief Check if mask is not zero and set masking parameters in buffer.
 	 *
 	 * @attention Suppose to be applied only on empty data.
@@ -401,7 +401,7 @@ private:
 	 */
 	FORCE_INLINE void CheckAndAddMaskForEmptyData(uint32_t mask) noexcept;
 
-	/**
+	/**************************
 	 * @brief Remove masking from masked and add to unmasked data.
 	 *
 	 * @attention Suppose to be applied only for data with payload less than 126 bytes (small frames).
@@ -439,7 +439,7 @@ FORCE_INLINE void Send(int connection, const Data& data);
  */
 class IHandler {
 public:
-	/**
+	/**************************
 	 * @brief Data structure to accumulate fragments.
 	 */
 	struct FragmentedData {
@@ -447,7 +447,7 @@ public:
 		const int connection;
 		Timer timestamp{};
 
-		/**
+		/**************************
 		 * @brief Create fragmented data object with creation timestamp.
 		 *
 		 * @param data WebSocket data.
@@ -497,7 +497,7 @@ public:
 	 */
 	virtual void HandleWebSocket(int connection, Data&& data) = 0;
 
-	/**
+	/**************************
 	 * @brief Handler function for WebSocket pong message. Default implementation is empty.
 	 *
 	 * @param connection Socket connection from which reserved message.
@@ -530,14 +530,14 @@ public:
 	 */
 	FORCE_INLINE void Collect(int connection, Data&& data);
 
-	/**
+	/**************************
 	 * @return Fragmented data limit.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE double GetFragmentedDataLimit() const noexcept;
 
-	/**
+	/**************************
 	 * @brief Set new fragmented data limit. Limit cannot be less than zero. If limit is zero, then fragmented messages
 	 * will not be stored at all. If limit is redused and is less than already occupied memory, then fragmented data
 	 * will be purged in FIFO order.
@@ -553,14 +553,14 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] bool SetFragmentedDataLimit(double limitMb);
 
-	/**
+	/**************************
 	 * @brief Clear stored fragmented data storage and counters.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE void Clear() noexcept;
 
-	/**
+	/**************************
 	 * @brief Clear stored fragmented data for connection.
 	 *
 	 * @param connection Connection to be cleared.
@@ -573,7 +573,7 @@ private:
 	static inline constexpr bool CHECK_BEFORE{ true };
 	static inline constexpr bool CHECK_USUAL{ false };
 
-	/**
+	/**************************
 	 * @brief Purge stored fragmented data for connections in FIFO order.
 	 *
 	 * @tparam T If should be limit checked before first iteration or after.
@@ -584,7 +584,7 @@ private:
 	 */
 	template <bool T> FORCE_INLINE [[nodiscard]] bool PurgeStoredData();
 
-	/**
+	/**************************
 	 * @brief Check if additional fragmented data can be stored accordingly to the limits.
 	 * - If income fragment and its already stored part is greater than limit, it all will be dropped away;
 	 * - If income fragment cannot be stored because of limit, already stored fragments will be dropped away in FIFO
@@ -601,7 +601,7 @@ private:
 	FORCE_INLINE [[nodiscard]] bool CheckLimitsForStored(
 		double additionalSizeMb, FragmentedData* fragmentedDataPtr, int connection);
 
-	/**
+	/**************************
 	 * @brief Check if new fragmented data can be stored accordingly to the limits.
 	 * - If income fragment itself greater than limit, it will be skipped;
 	 * - If income fragment cannot be stored because of limit, already stored fragments will be dropped away in FIFO

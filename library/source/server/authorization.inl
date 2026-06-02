@@ -54,7 +54,7 @@ Declarations
 
 namespace Base {
 
-/**
+/**************************
  * @brief Enumeration of user grades/roles.
  */
 enum class Grade : int16_t { Guest = 0, Observer = 16, User = 32, Moderator = 64, Admin = 128 };
@@ -66,7 +66,7 @@ constexpr size_t PASSWORD_HASH_SIZE = 32;
 template <typename T>
 concept Gradable = std::is_enum_v<T> && sizeof(T) == 2;
 
-/**
+/**************************
  * @brief Account class representing a user account, can be used as a base to extended functionality.
  * - Deactivated by default. Deactivated accounts cannot logon.
  * - Not initialized by default. Initialized on first password set. Uninitialized account cannot logon.
@@ -88,47 +88,47 @@ private:
 	// int8_t padding[4]
 
 public:
-	/**
+	/**************************
 	 * @brief Default destructor.
 	 */
 	virtual ~Account() = default;
 
-	/**
+	/**************************
 	 * @return Timer object representing the blocked till time.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] Timer GetBlockedTill() const noexcept;
 
-	/**
+	/**************************
 	 * @return C-string representing the login of the account.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] const char* GetLogin() const noexcept;
 
-	/**
+	/**************************
 	 * @return Grade of the account.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] G GetGrade() const noexcept;
 
-	/**
+	/**************************
 	 * @return True if the account is activated, false otherwise.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsActive() const noexcept;
 
-	/**
+	/**************************
 	 * @return True if the account is initialized, false otherwise.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsInitialized() const noexcept;
 
-	/**
+	/**************************
 	 * @brief Verify that password is valid, check initialization and activation states for the account.
 	 *
 	 * @param password The password to verify.
@@ -140,7 +140,7 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsLogonAllowed(const std::string_view password, std::string& error) const noexcept;
 
-	/**
+	/**************************
 	 * @brief Set a new login for the account.
 	 *
 	 * @param newLogin The new login to set.
@@ -149,7 +149,7 @@ public:
 	 */
 	FORCE_INLINE void SetLogin(const std::string_view newLogin) noexcept;
 
-	/**
+	/**************************
 	 * @brief Set a new password for the account. Initializes the account if not already initialized.
 	 *
 	 * @param newPassword The new password to set.
@@ -160,21 +160,21 @@ public:
 	 */
 	[[nodiscard]] FORCE_INLINE bool SetPassword(const std::string_view newPassword) noexcept;
 
-	/**
+	/**************************
 	 * @brief Backup the password hash into the provided buffer.
 	 *
 	 * @param buffer The buffer to store the password hash.
 	 */
 	FORCE_INLINE void BackupPassword(std::array<uint8_t, PASSWORD_HASH_SIZE>& buffer) const noexcept;
 
-	/**
+	/**************************
 	 * @brief Restore the password hash from the provided buffer.
 	 *
 	 * @param buffer The buffer containing the password hash.
 	 */
 	FORCE_INLINE void RestorePassword(const std::array<uint8_t, PASSWORD_HASH_SIZE>& buffer) noexcept;
 
-	/**
+	/**************************
 	 * @brief Set a new grade for the account.
 	 *
 	 * @param newGrade The new grade to set.
@@ -183,7 +183,7 @@ public:
 	 */
 	FORCE_INLINE void SetGrade(const G newGrade) noexcept;
 
-	/**
+	/**************************
 	 * @brief Activate or deactivate the account.
 	 *
 	 * @param isActivated True to activate the account, false to deactivate.
@@ -192,7 +192,7 @@ public:
 	 */
 	FORCE_INLINE void SetActivated(const bool isActivated) noexcept;
 
-	/**
+	/**************************
 	 * @brief Block the account till the specified time.
 	 *
 	 * @param blockedTill The time till which the account is blocked.
@@ -201,7 +201,7 @@ public:
 	 */
 	FORCE_INLINE void SetBlockedTill(const Timer blockedTill) noexcept;
 
-	/**
+	/**************************
 	 * @brief Initialize or deinitialize the account.
 	 *
 	 * @param isInitialized True to set the account as initialized, false otherwise.
@@ -214,7 +214,7 @@ public:
 template <typename T>
 concept Accountable = std::is_base_of_v<Account<>, T>;
 
-/**
+/**************************
  * @brief Generic authorization module class, provides thread-safe account management and authentication. Can be used as
  * a base to extended functionality.
  * - Supports automatic logout of inactive accounts after a specified timeout.
@@ -235,7 +235,7 @@ public:
 	using grade_t = G;
 
 private:
-	/**
+	/**************************
 	 * @brief Contains account data along with additional control information.
 	 */
 	class AccountData {
@@ -247,7 +247,7 @@ private:
 		Timer m_lastActivity{ 0 };
 
 	public:
-		/**
+		/**************************
 		 * @brief Construct a new AccountData object.
 		 *
 		 * @param account The account object.
@@ -255,7 +255,7 @@ private:
 		 */
 		FORCE_INLINE explicit AccountData(A&& account, std::string&& dataPath) noexcept;
 
-		/**
+		/**************************
 		 * @brief Default constructor for AccountData.
 		 */
 		FORCE_INLINE AccountData() noexcept = default;
@@ -263,14 +263,14 @@ private:
 		AccountData(const AccountData&) = delete;
 		AccountData& operator=(const AccountData&) = delete;
 
-		/**
+		/**************************
 		 * @brief Move constructor for AccountData.
 		 *
 		 * @param other The other AccountData object to move from.
 		 */
 		FORCE_INLINE AccountData(AccountData&& other) noexcept;
 
-		/**
+		/**************************
 		 * @brief Move assignment operator for AccountData.
 		 *
 		 * @param other The other AccountData object to move from.
@@ -279,28 +279,28 @@ private:
 		 */
 		FORCE_INLINE AccountData& operator=(AccountData&& other) noexcept;
 
-		/**
+		/**************************
 		 * @brief Destroy the AccountData object, acquiring a write lock to ensure all operations are completed.
 		 *
 		 * @test Has unit tests.
 		 */
 		FORCE_INLINE ~AccountData() noexcept;
 
-		/**
+		/**************************
 		 * @return Reference to the account object.
 		 *
 		 * @test Has unit tests.
 		 */
 		FORCE_INLINE A& GetAccount() noexcept;
 
-		/**
+		/**************************
 		 * @return Const reference to the file path where the account data is stored.
 		 *
 		 * @test Has unit tests.
 		 */
 		FORCE_INLINE const std::string& GetDataPath() const noexcept;
 
-		/**
+		/**************************
 		 * @brief Set a new data path for the account data file.
 		 *
 		 * @param newDataPath The new file path.
@@ -309,7 +309,7 @@ private:
 		 */
 		FORCE_INLINE void SetDataPath(std::string&& newDataPath) noexcept;
 
-		/**
+		/**************************
 		 * @brief Update the last activity timestamp to the current time.
 		 *
 		 * @param timer The new last activity timestamp.
@@ -318,21 +318,21 @@ private:
 		 */
 		FORCE_INLINE void UpdateLastActivity(Timer timer) noexcept;
 
-		/**
+		/**************************
 		 * @return The last activity timestamp.
 		 *
 		 * @test Has unit tests.
 		 */
 		FORCE_INLINE Timer GetLastActivity() const noexcept;
 
-		/**
+		/**************************
 		 * @return Reference to the read-write lock for this account data.
 		 *
 		 * @test Has unit tests.
 		 */
 		FORCE_INLINE Lock::AtomicRW& GetRWLock() noexcept;
 
-		/**
+		/**************************
 		 * @brief Save the account data to its associated file.
 		 *
 		 * @return True if the save operation was successful, false otherwise.
@@ -341,14 +341,14 @@ private:
 		 */
 		FORCE_INLINE [[nodiscard]] bool Save() const;
 
-		/**
+		/**************************
 		 * @brief Set the connection associated with this account.
 		 *
 		 * @param connection The connection identifier.
 		 */
 		FORCE_INLINE void SetConnection(const int32_t connection) noexcept;
 
-		/**
+		/**************************
 		 * @return The connection identifier associated with this account.
 		 */
 		FORCE_INLINE int32_t GetConnection() const noexcept;
@@ -366,19 +366,19 @@ private:
 	bool m_isStarted{};
 
 public:
-	/**
+	/**************************
 	 * @brief Construct a new Module object.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE Module() noexcept = default;
 
-	/**
+	/**************************
 	 * @brief Destroy the Module object.
 	 */
 	FORCE_INLINE ~Module() noexcept override = default;
 
-	/**
+	/**************************
 	 * @brief Loading existing accounts from the {executable}/../data/accounts/ directory.
 	 * - Uninitialized accounts are not loaded.
 	 * - If the accounts data directory does not exist, it will be created with permissions 0750.
@@ -390,7 +390,7 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] bool Start();
 
-	/**
+	/**************************
 	 * @brief Stop the module, stopping the logout event and acquiring write locks, logout all connections and set
 	 * started flag to false, reset start time.
 	 *
@@ -398,14 +398,14 @@ public:
 	 */
 	FORCE_INLINE void Stop();
 
-	/**
+	/**************************
 	 * @return True if the module is started, false otherwise.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsStarted() const noexcept;
 
-	/**
+	/**************************
 	 * @brief Set the logout timeout duration. Accounts inactive for longer than this duration will logout
 	 * automatically.
 	 *
@@ -413,12 +413,12 @@ public:
 	 */
 	FORCE_INLINE void SetLogoutTimeout(const Timer::Duration duration);
 
-	/**
+	/**************************
 	 * @return The current logout timeout duration.
 	 */
 	FORCE_INLINE [[nodiscard]] Timer::Duration GetLogoutTimeout() const noexcept;
 
-	/**
+	/**************************
 	 * @brief Register a new account with the provided login and password, check their requirements. Newly registered
 	 * accounts are deactivated by default.
 	 *
@@ -433,7 +433,7 @@ public:
 	FORCE_INLINE [[nodiscard]] bool RegisterAccount(
 		const std::string_view login, const std::string_view password, std::string& error);
 
-	/**
+	/**************************
 	 * @brief Delete the account with the specified login. Marks the account as uninitialized and deactivated, logouts
 	 * any active connection.
 	 *
@@ -443,7 +443,7 @@ public:
 	 */
 	FORCE_INLINE void DeleteAccount(const std::string_view login);
 
-	/**
+	/**************************
 	 * @brief Modify the login of an existing account, check login requirements and ensure uniqueness.
 	 *
 	 * @attention On failure, the account data is reverted to its original state.
@@ -459,7 +459,7 @@ public:
 	FORCE_INLINE [[nodiscard]] bool ModifyAccountLogin(
 		const std::string_view oldLogin, const std::string_view newLogin, std::string& error);
 
-	/**
+	/**************************
 	 * @brief Modify the password of an existing account if it was initialized, check password requirements.
 	 *
 	 * @attention On failure, the account password is reverted to its original state.
@@ -475,7 +475,7 @@ public:
 	FORCE_INLINE [[nodiscard]] bool ModifyAccountPassword(
 		const std::string_view login, const std::string_view newPassword, std::string& error);
 
-	/**
+	/**************************
 	 * @brief Modify the grade of an existing account.
 	 *
 	 * @attention On failure, the account grade is reverted to its original state.
@@ -489,7 +489,7 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] bool ModifyAccountGrade(const std::string_view login, const G newGrade);
 
-	/**
+	/**************************
 	 * @brief Set the activation state of an existing account and logout any active connection if deactivating.
 	 *
 	 * @attention On failure, the account activation state is reverted to its original state, but any logged-out
@@ -504,7 +504,7 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] bool SetAccountActivatedState(const std::string_view login, const bool isActivated);
 
-	/**
+	/**************************
 	 * @brief Logon a connection using the provided login and password. Only initialized and activated account
 	 * can logon. Multiple logon is not allowed.
 	 *
@@ -520,7 +520,7 @@ public:
 	FORCE_INLINE [[nodiscard]] bool LogonConnection(
 		const int32_t connection, const std::string_view login, const std::string_view password, std::string& error);
 
-	/**
+	/**************************
 	 * @brief Logout the connection, disassociating it from any logged-on account.
 	 *
 	 * @param connection Connection descriptor.
@@ -529,7 +529,7 @@ public:
 	 */
 	FORCE_INLINE void LogoutConnection(const int32_t connection);
 
-	/**
+	/**************************
 	 * @brief Check if the connection has the required access grade.
 	 *
 	 * @param connection Connection descriptor.
@@ -541,21 +541,21 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] bool IsAccessGranted(const int32_t connection, const G requiredGrade);
 
-	/**
+	/**************************
 	 * @return The number of registered accounts.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] size_t GetRegisteredAccountsSize() noexcept;
 
-	/**
+	/**************************
 	 * @return The number of active logon connections.
 	 *
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] size_t GetLogonConnectionsSize() noexcept;
 
-	/**
+	/**************************
 	 * @brief Block or unblock the account till the specified time. If block an active account, it logouts from its
 	 * active connection. If unblock, blockedTill is set to zero timestamp. If already blocked, then blocked till time
 	 * is updated. If already unblocked or blocked till the same time, then action fails.
@@ -573,7 +573,7 @@ public:
 	FORCE_INLINE [[nodiscard]] bool BlockAccountTill(const std::string_view login, const Timer blockedTill);
 
 protected:
-	/**
+	/**************************
 	 * @brief Check if provided login meets the account login requirements. By default, checks for non-empty login and
 	 * maximum length.
 	 *
@@ -587,7 +587,7 @@ protected:
 	FORCE_INLINE [[nodiscard]] virtual bool CheckLoginRequirements(
 		const std::string_view login, std::string& error) const;
 
-	/**
+	/**************************
 	 * @brief Check if provided password meets the account password requirements. By default, checks for length between
 	 * 8 and 28 characters, and presence of at least one lowercase letter, one uppercase letter, one digit, and one
 	 * special character.
@@ -602,7 +602,7 @@ protected:
 	FORCE_INLINE [[nodiscard]] virtual bool CheckPasswordRequirements(
 		const std::string_view password, std::string& error) const;
 
-	/**
+	/**************************
 	 * @brief Check if the login string is safe to use as a file path.
 	 *
 	 * @param login The login string to check.
@@ -614,7 +614,7 @@ protected:
 	 */
 	FORCE_INLINE bool CheckLoginAsPath(const std::string_view login, std::string& error) const noexcept;
 
-	/**
+	/**************************
 	 * @brief Handle account activity by updating the last activity timestamp and saving a log entry.
 	 *
 	 * @param accountData The account data object.

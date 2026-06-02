@@ -11,12 +11,12 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-/**
+/**************************
  * @brief Helpers to add interface dynamic.
  */
 class Dynamic {
 
-	/**
+	/**************************
 	 * @brief Add clicking to data-form-item='button' by pressing enter in any data-form-item='input' inside provided
 	 * node.
 	 */
@@ -50,7 +50,7 @@ class Dynamic {
 		});
 	}
 
-	/**
+	/**************************
 	 * @brief Clear value for all data-form-item='input' inside provided node.
 	 */
 	static ClearForm(node)
@@ -64,7 +64,7 @@ class Dynamic {
 		inputs.forEach(element => { element.value = ""; });
 	}
 
-	/**
+	/**************************
 	 * @brief Add data-trigger-[toggle|remove|add]='id1,id2' action to each mentioned id and invoke with "active" class
 	 * to each data-trigger-id='id' inside provided node.
 	 */

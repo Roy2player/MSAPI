@@ -80,7 +80,7 @@ Declarations
  */
 [[nodiscard]] bool Authorization();
 
-/**
+/**************************
  * @brief Structure for holding account test data.
  */
 struct AccountTestData {
@@ -98,7 +98,7 @@ struct AccountTestData {
 	bool isDeleted{};
 	bool reLogon{};
 
-	/**
+	/**************************
 	 * @brief Construct a new AccountTestData object. Connection IDs start from 10 and increment for each new instance.
 	 *
 	 * @param login The account login.
