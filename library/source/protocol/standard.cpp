@@ -312,7 +312,7 @@ const std::map<size_t, std::variant<standardTypes>>& Data::GetData() const noexc
 const std::map<size_t, StandardType::Type>& Data::GetDataTypes() const noexcept { return m_dataTypes; }
 
 /*---------------------------------------------------------------------------------
-Another
+Global
 ---------------------------------------------------------------------------------*/
 
 void Send(const int connection, const Data& data)

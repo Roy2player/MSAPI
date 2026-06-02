@@ -19,8 +19,8 @@
  * @brief Common functions for working with files and directories.
  */
 
-#ifndef MSAPI_IO_H
-#define MSAPI_IO_H
+#ifndef MSAPI_IO_INL
+#define MSAPI_IO_INL
 
 #include "../help/log.h"
 #include <cstring>
@@ -39,15 +39,13 @@ namespace IO {
 Declarations
 ---------------------------------------------------------------------------------*/
 
-namespace FileDescriptor {
-
 /**************************
  * @brief RAII wrapper for POSIX file descriptor.
  */
-struct ExitGuard {
+struct FileGuard {
 	int32_t value{ -1 };
 
-	/**
+	/**************************
 	 * @brief Open POSIX file descriptor.
 	 *
 	 * @attention Check value member for success after calling.
@@ -62,41 +60,38 @@ struct ExitGuard {
 	 */
 	template <typename T>
 		requires StringableView<T>
-	FORCE_INLINE ExitGuard(const T path, const int32_t flags, const int32_t mode) noexcept
-		: value{ open(CString(path), flags, mode) }
-	{
-	}
+	FORCE_INLINE FileGuard(T path, int32_t flags, int32_t mode) noexcept;
 
 	/**************************
 	 * @brief Default constructor.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ExitGuard() noexcept = default;
+	FORCE_INLINE FileGuard() noexcept = default;
 
-	const ExitGuard& operator=(const ExitGuard&) = delete;
-	ExitGuard(const ExitGuard&) = delete;
+	const FileGuard& operator=(const FileGuard&) = delete;
+	FileGuard(const FileGuard&) = delete;
 
-	/**
+	/**************************
 	 * @brief Exchange file descriptor ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE const ExitGuard& operator=(ExitGuard&& other) noexcept;
+	FORCE_INLINE const FileGuard& operator=(FileGuard&& other) noexcept;
 
-	/**
+	/**************************
 	 * @brief Exchange file descriptor ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ExitGuard(ExitGuard&& other) noexcept;
+	FORCE_INLINE FileGuard(FileGuard&& other) noexcept;
 
 	/**************************
 	 * @brief Call Clear on destruction.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ~ExitGuard();
+	FORCE_INLINE ~FileGuard();
 
 	/**************************
 	 * @brief Close file descriptor if it's valid and set value to -1.
@@ -106,17 +101,13 @@ struct ExitGuard {
 	FORCE_INLINE void Clear();
 };
 
-} // namespace FileDescriptor
-
-namespace Directory {
-
 /**************************
  * @brief RAII wrapper for POSIX directory.
  */
-struct ExitGuard {
+struct DirGuard {
 	DIR* value{};
 
-	/**
+	/**************************
 	 * @brief Open directory.
 	 *
 	 * @attention Check value member for success after calling.
@@ -129,41 +120,38 @@ struct ExitGuard {
 	 */
 	template <typename T>
 		requires StringableView<T>
-	FORCE_INLINE ExitGuard(const T path) noexcept
-		: value{ opendir(CString(path)) }
-	{
-	}
+	FORCE_INLINE DirGuard(T path) noexcept;
 
 	/**************************
 	 * @brief Default constructor.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ExitGuard() noexcept = default;
+	FORCE_INLINE DirGuard() noexcept = default;
 
-	const ExitGuard& operator=(const ExitGuard&) = delete;
-	ExitGuard(const ExitGuard&) = delete;
+	const DirGuard& operator=(const DirGuard&) = delete;
+	DirGuard(const DirGuard&) = delete;
 
-	/**
+	/**************************
 	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE const ExitGuard& operator=(ExitGuard&& other) noexcept;
+	FORCE_INLINE const DirGuard& operator=(DirGuard&& other) noexcept;
 
-	/**
+	/**************************
 	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ExitGuard(ExitGuard&& other) noexcept;
+	FORCE_INLINE DirGuard(DirGuard&& other) noexcept;
 
-	/**
+	/**************************
 	 * @brief Call Clear on destruction.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE ~ExitGuard();
+	FORCE_INLINE ~DirGuard();
 
 	/**************************
 	 * @brief Close directory if it's opened and set value to nullptr.
@@ -172,8 +160,6 @@ struct ExitGuard {
 	 */
 	FORCE_INLINE void Clear();
 };
-
-} // namespace Directory
 
 /**************************
  * @brief Rename file or directory.
@@ -192,16 +178,7 @@ struct ExitGuard {
  */
 template <typename T, typename S>
 	requires StringableView<T> && StringableView<S>
-FORCE_INLINE [[nodiscard]] bool Rename(const T currentName, const S newName)
-{
-	if (rename(CString(currentName), CString(newName)) == 0) [[likely]] {
-		LOG_DEBUG_NEW("Renaming from {} to {} is successful", currentName, newName);
-		return true;
-	}
-
-	LOG_ERROR_NEW("Renaming from {} to {} is failed. Error №{}: {}", currentName, newName, errno, std::strerror(errno));
-	return false;
-}
+FORCE_INLINE [[nodiscard]] bool Rename(T currentName, S newName);
 
 /**************************
  * @brief Check if file or directory exists by access function.
@@ -216,18 +193,7 @@ FORCE_INLINE [[nodiscard]] bool Rename(const T currentName, const S newName)
  */
 template <typename T>
 	requires StringableView<T>
-FORCE_INLINE [[nodiscard]] bool HasPath(const T path)
-{
-	if (access(CString(path), F_OK) == 0) [[likely]] {
-		return true;
-	}
-
-	if (errno != ENOENT) [[unlikely]] {
-		LOG_ERROR_NEW("Cannot access path: {}. Error №{}: {}", path, errno, std::strerror(errno));
-	}
-
-	return false;
-}
+FORCE_INLINE [[nodiscard]] bool HasPath(T path);
 
 /**************************
  * @brief Suggest flags for open() function. Default flags are O_WRONLY and O_CREAT.
@@ -261,13 +227,389 @@ consteval int32_t SuggestFlags(const bool append);
 template <bool Append = false, int32_t Mode = 0644, bool Multiple = false, typename T, typename S>
 	requires((std::is_pointer_v<std::remove_cvref_t<T>> || std::is_reference_v<T>)
 		&& (std::is_same_v<S, int32_t> || StringableView<S>))
+FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, S pathOrFd);
+
+constexpr bool append = true;
+constexpr bool overwrite = false;
+
+constexpr bool multiple = true;
+constexpr bool single = false;
+
+/**************************
+ * @brief Save array of binary data in file.
+ *
+ * @attention Directories in path must exist. If file descriptor is passed, it must be valid.
+ *
+ * @tparam Append If true, data will be appended to the file and overwritten otherwise, default is false.
+ * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam T Type of forward container.
+ * @tparam S Type of path or file descriptor.
+ *
+ * @param objects Forward container of objects for saving.
+ * @param pathOrFd Full path to file or file descriptor.
+ *
+ * @return True if saves were successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <bool Append = false, int32_t Mode = 0644, typename T, typename S>
+	requires(std::forward_iterator<typename T::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>))
+FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, S pathOrFd);
+
+/**************************
+ * @brief Save binary data in file at specific offset.
+ *
+ * @attention Directories in path must exist. If file descriptor is passed, it must be valid. Offset must be valid.
+ *
+ * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam T Type of object.
+ * @tparam S Type of path or file descriptor.
+ *
+ * @param object Object for saving.
+ * @param pathOrFd Full path to file or file descriptor.
+ * @param offset Offset in bytes from the beginning of the file.
+ *
+ * @return True if save was successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <int32_t Mode = 0644, typename T, typename S>
+	requires(std::is_same_v<S, int32_t> || StringableView<S>)
+FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, S pathOrFd, int64_t offset);
+
+/**************************
+ * @brief Suggest maximum size of primitive string representation for SavePrimitives function.
+ *
+ * @tparam T Type of primitive object.
+ * @tparam PSM Provided maximum size of primitive string representation.
+ *
+ * @return Suggested maximum size of primitive string representation. For FP > 4 bytes and integer types > 8 bytes it is
+ * maximum between provided PSM and 32.
+ *
+ * @test Has unit tests.
+ */
+template <typename T, uint64_t PSM>
+	requires(std::is_integral_v<T> || std::is_floating_point_v<T>)
+consteval uint64_t SuggestPsm();
+
+/**************************
+ * @brief Save primitive type objects in file with specific separator.
+ *
+ * @attention Directories in path must exist. If file descriptor is passed, it must be valid.
+ *
+ * @tparam Append If true, data will be appended to the file with new line separator, and overwritten otherwise. Default
+ * is false.
+ * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam Buffer Size of internal buffer, default is 512.
+ * @tparam PSM Maximum size of primitive string representation, default and minimum is 32. Used for FP > 4 bytes and
+ * integer types > 8 bytes, for another types this value is calculated automatically.
+ * @tparam T Type of forward container.
+ * @tparam TT Type of primitive object.
+ * @tparam S Type of path or file descriptor.
+ *
+ * @param objects Forward container of primitive types for saving.
+ * @param pathOrFd Full path to file or file descriptor.
+ * @param separator Separator character.
+ *
+ * @return True if saves were successful or empty container, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint64_t PSM = 32,
+	template <typename> typename T, typename TT, typename S>
+	requires(std::forward_iterator<typename T<TT>::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>)
+		&& (std::is_integral_v<TT> || std::is_floating_point_v<TT>))
+[[nodiscard]] bool SavePrimitives(const T<TT>& objects, S pathOrFd, char separator);
+
+/**************************
+ * @brief Save string in file.
+ *
+ * @attention Directories in path must exist.
+ *
+ * @tparam Append If true, data will be appended to the file with new line separator, and overwritten otherwise. Default
+ * is false.
+ * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam T Type of path.
+ *
+ * @param str String for saving.
+ * @param path Full path to file.
+ *
+ * @return True if save was successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <bool Append = false, int32_t Mode = 0644, typename T>
+	requires StringableView<T>
+FORCE_INLINE [[nodiscard]] bool SaveStr(std::string_view str, T path);
+
+/**************************
+ * @brief Read binary data from file.
+ *
+ * @tparam T Type of object.
+ * @tparam S Type of path.
+ *
+ * @param ptr Pointer to buffer.
+ * @param path Full path to file.
+ *
+ * @return True if read was successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <typename T, typename S>
+	requires StringableView<S>
+[[nodiscard]] bool ReadBinary(T* object, S path);
+
+/**************************
+ * @brief Read array of binary data from file.
+ *
+ * @param container Container for reading data.
+ * @param path Full path to file.
+ *
+ * @tparam T Type of forward container.
+ * @tparam S Type of object.
+ * @tparam N Type of path.
+ *
+ * @return True if read was successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <template <typename> typename T, typename S, typename N>
+	requires StringableView<N>
+[[nodiscard]] bool ReadBinaries(T<S>& container, N path);
+
+/**************************
+ * @brief Read string until end of the file.
+ *
+ * @param str String for reading.
+ * @param path Full path to file.
+ *
+ * @tparam T Type of path.
+ *
+ * @return True if read was successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <typename T>
+	requires StringableView<T>
+FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, T path);
+
+/**************************
+ * @brief Remove file or directory with all its content.
+ *
+ * @param path Full path.
+ *
+ * @tparam Buffer Size of internal buffer, default is 512.
+ *
+ * @return True if removing was successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(std::string_view path);
+
+/**************************
+ * @brief Copy file.
+ *
+ * @attention Directories in path must exist.
+ *
+ * @param from Full path to source file.
+ * @param to Full path to file to copy.
+ *
+ * @tparam T Type of source path.
+ * @tparam S Type of destination path.
+ *
+ * @return True if copying was successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <typename T, typename S>
+	requires StringableView<T> && StringableView<S>
+[[nodiscard]] bool CopyFile(T from, S to);
+
+/**************************
+ * @brief Create directory with all parent directories.
+ *
+ * @param path Full path to directory.
+ *
+ * @tparam Mode Directory access mode in octal format, default is 0755.
+ * @tparam T Type of path.
+ * @tparam Buffer Size of internal buffer, default is 512.
+ *
+ * @return True if directory was created, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <int32_t Mode = 0755, typename T, uint64_t Buffer = 512>
+	requires StringableView<T>
+FORCE_INLINE [[nodiscard]] bool CreateDir(T path);
+
+/**************************
+ * @brief Linux file types enumeration.
+ */
+enum class FileType : int16_t {
+	Unknown = DT_UNKNOWN,
+	Fifo = DT_FIFO,
+	Char = DT_CHR,
+	Directory = DT_DIR,
+	Blk = DT_BLK,
+	Regular = DT_REG,
+	Lnk = DT_LNK,
+	Sock = DT_SOCK
+};
+
+/**************************
+ * @return Reinterpretation of FileType enum to string.
+ *
+ * @param type FileType enum value.
+ *
+ * @test Has unit tests.
+ */
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileType type);
+
+/**************************
+ * @brief List directory content with specific type and append to provided container. "." and ".." are excluded from
+ * results for tables.
+ *
+ * @attention Content sorting is filesystem dependent. If opened directory is provided, it must be valid.
+ * @attention If opened directory is provided, its position will be rewound to the beginning after reading.
+ *
+ * @tparam FT Type of file to search.
+ * @tparam T Type of container with strings.
+ * @tparam S Type of path or opened directory.
+ *
+ * @param container Container to store results.
+ * @param pathOrDir Full path for parsing file names or opened directory.
+ *
+ * @return True if read was successful, false otherwise.
+ *
+ * @test Has unit tests.
+ */
+template <FileType FT, template <typename> typename T, typename S>
+	requires(StringableView<S> || std::is_same_v<S, DIR*>)
+FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, S pathOrDir);
+
+/*---------------------------------------------------------------------------------
+Definitions
+---------------------------------------------------------------------------------*/
+
+/*---------------------------------------------------------------------------------
+FileGuard
+---------------------------------------------------------------------------------*/
+
+template <typename T>
+	requires StringableView<T>
+FORCE_INLINE FileGuard::FileGuard(const T path, const int32_t flags, const int32_t mode) noexcept
+	: value{ open(CString(path), flags, mode) }
+{
+}
+
+FORCE_INLINE const FileGuard& FileGuard::operator=(FileGuard&& other) noexcept
+{
+	std::swap(value, other.value);
+	return *this;
+}
+
+FORCE_INLINE FileGuard::FileGuard(FileGuard&& other) noexcept { std::swap(value, other.value); }
+
+FORCE_INLINE FileGuard::~FileGuard() { Clear(); }
+
+FORCE_INLINE void FileGuard::Clear()
+{
+	if (value != -1) {
+		if (close(value) == -1) [[unlikely]] {
+			LOG_ERROR_NEW("File descriptor close fail. Error №{}: {}", errno, std::strerror(errno));
+		}
+		value = -1;
+	}
+}
+
+/*---------------------------------------------------------------------------------
+DirGuard
+---------------------------------------------------------------------------------*/
+
+template <typename T>
+	requires StringableView<T>
+FORCE_INLINE DirGuard::DirGuard(const T path) noexcept
+	: value{ opendir(CString(path)) }
+{
+}
+
+FORCE_INLINE const DirGuard& DirGuard::operator=(DirGuard&& other) noexcept
+{
+	std::swap(value, other.value);
+	return *this;
+}
+
+FORCE_INLINE DirGuard::DirGuard(DirGuard&& other) noexcept { std::swap(value, other.value); }
+
+FORCE_INLINE DirGuard::~DirGuard() { Clear(); }
+
+FORCE_INLINE void DirGuard::Clear()
+{
+	if (value != nullptr) {
+		if (closedir(value) != 0) [[unlikely]] {
+			LOG_ERROR_NEW("Failed to close directory. Error №{}: {}", errno, std::strerror(errno));
+		}
+
+		value = nullptr;
+	}
+}
+
+/*---------------------------------------------------------------------------------
+Global
+---------------------------------------------------------------------------------*/
+
+template <typename T, typename S>
+	requires StringableView<T> && StringableView<S>
+FORCE_INLINE [[nodiscard]] bool Rename(const T currentName, const S newName)
+{
+	if (rename(CString(currentName), CString(newName)) == 0) [[likely]] {
+		LOG_DEBUG_NEW("Renaming from {} to {} is successful", currentName, newName);
+		return true;
+	}
+
+	LOG_ERROR_NEW("Renaming from {} to {} is failed. Error №{}: {}", currentName, newName, errno, std::strerror(errno));
+	return false;
+}
+
+template <typename T>
+	requires StringableView<T>
+FORCE_INLINE [[nodiscard]] bool HasPath(const T path)
+{
+	if (access(CString(path), F_OK) == 0) [[likely]] {
+		return true;
+	}
+
+	if (errno != ENOENT) [[unlikely]] {
+		LOG_ERROR_NEW("Cannot access path: {}. Error №{}: {}", path, errno, std::strerror(errno));
+	}
+
+	return false;
+}
+
+consteval int32_t SuggestFlags(const bool append)
+{
+	int32_t flags{ O_WRONLY | O_CREAT };
+
+	if (append) {
+		flags |= O_APPEND;
+	}
+	else {
+		flags |= O_TRUNC;
+	}
+
+	return flags;
+}
+
+template <bool Append, int32_t Mode, bool Multiple, typename T, typename S>
+	requires((std::is_pointer_v<std::remove_cvref_t<T>> || std::is_reference_v<T>)
+		&& (std::is_same_v<S, int32_t> || StringableView<S>))
 FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, const S pathOrFd)
 {
-	FileDescriptor::ExitGuard fd{};
+	FileGuard fd{};
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, SuggestFlags(Append), Mode };
+		fd = FileGuard{ pathOrFd, SuggestFlags(Append), Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -336,38 +678,15 @@ FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, const S pathOrFd)
 	return true;
 }
 
-constexpr bool append = true;
-constexpr bool overwrite = false;
-
-constexpr bool multiple = true;
-constexpr bool single = false;
-
-/**************************
- * @brief Save array of binary data in file.
- *
- * @attention Directories in path must exist. If file descriptor is passed, it must be valid.
- *
- * @tparam Append If true, data will be appended to the file and overwritten otherwise, default is false.
- * @tparam Mode File access mode in octal format, default is 0644.
- * @tparam T Type of forward container.
- * @tparam S Type of path or file descriptor.
- *
- * @param objects Forward container of objects for saving.
- * @param pathOrFd Full path to file or file descriptor.
- *
- * @return True if saves were successful, false otherwise.
- *
- * @test Has unit tests.
- */
-template <bool Append = false, int32_t Mode = 0644, typename T, typename S>
+template <bool Append, int32_t Mode, typename T, typename S>
 	requires(std::forward_iterator<typename T::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>))
 FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const S pathOrFd)
 {
-	FileDescriptor::ExitGuard fd{};
+	FileGuard fd{};
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, SuggestFlags(Append), Mode };
+		fd = FileGuard{ pathOrFd, SuggestFlags(Append), Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -416,32 +735,15 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const S pathOrFd)
 	return true;
 }
 
-/**************************
- * @brief Save binary data in file at specific offset.
- *
- * @attention Directories in path must exist. If file descriptor is passed, it must be valid. Offset must be valid.
- *
- * @tparam Mode File access mode in octal format, default is 0644.
- * @tparam T Type of object.
- * @tparam S Type of path or file descriptor.
- *
- * @param object Object for saving.
- * @param pathOrFd Full path to file or file descriptor.
- * @param offset Offset in bytes from the beginning of the file.
- *
- * @return True if save was successful, false otherwise.
- *
- * @test Has unit tests.
- */
-template <int32_t Mode = 0644, typename T, typename S>
+template <int32_t Mode, typename T, typename S>
 	requires(std::is_same_v<S, int32_t> || StringableView<S>)
 FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd, const int64_t offset)
 {
-	FileDescriptor::ExitGuard fd{};
+	FileGuard fd{};
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, O_RDWR | O_CREAT, Mode };
+		fd = FileGuard{ pathOrFd, O_RDWR | O_CREAT, Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -462,17 +764,6 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd,
 	return SaveBinary<overwrite, Mode, multiple>(std::forward<T>(object), file);
 }
 
-/**************************
- * @brief Suggest maximum size of primitive string representation for SavePrimitives function.
- *
- * @tparam T Type of primitive object.
- * @tparam PSM Provided maximum size of primitive string representation.
- *
- * @return Suggested maximum size of primitive string representation. For FP > 4 bytes and integer types > 8 bytes it is
- * maximum between provided PSM and 32.
- *
- * @test Has unit tests.
- */
 template <typename T, uint64_t PSM>
 	requires(std::is_integral_v<T> || std::is_floating_point_v<T>)
 consteval uint64_t SuggestPsm()
@@ -524,31 +815,8 @@ consteval uint64_t SuggestPsm()
 	return std::max(PSM, 32ul);
 }
 
-/**************************
- * @brief Save primitive type objects in file with specific separator.
- *
- * @attention Directories in path must exist. If file descriptor is passed, it must be valid.
- *
- * @tparam Append If true, data will be appended to the file with new line separator, and overwritten otherwise. Default
- * is false.
- * @tparam Mode File access mode in octal format, default is 0644.
- * @tparam Buffer Size of internal buffer, default is 512.
- * @tparam PSM Maximum size of primitive string representation, default and minimum is 32. Used for FP > 4 bytes and
- * integer types > 8 bytes, for another types this value is calculated automatically.
- * @tparam T Type of forward container.
- * @tparam TT Type of primitive object.
- * @tparam S Type of path or file descriptor.
- *
- * @param objects Forward container of primitive types for saving.
- * @param pathOrFd Full path to file or file descriptor.
- * @param separator Separator character.
- *
- * @return True if saves were successful or empty container, false otherwise.
- *
- * @test Has unit tests.
- */
-template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint64_t PSM = 32,
-	template <typename> typename T, typename TT, typename S>
+template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, template <typename> typename T, typename TT,
+	typename S>
 	requires(std::forward_iterator<typename T<TT>::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>)
 		&& (std::is_integral_v<TT> || std::is_floating_point_v<TT>))
 [[nodiscard]] bool SavePrimitives(const T<TT>& objects, const S pathOrFd, const char separator)
@@ -560,11 +828,11 @@ template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint6
 		return true;
 	}
 
-	FileDescriptor::ExitGuard fd{};
+	FileGuard fd{};
 	int32_t file;
 
 	if constexpr (StringableView<S>) {
-		fd = FileDescriptor::ExitGuard{ pathOrFd, SuggestFlags(Append), Mode };
+		fd = FileGuard{ pathOrFd, SuggestFlags(Append), Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -665,28 +933,11 @@ template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint6
 	return true;
 }
 
-/**************************
- * @brief Save string in file.
- *
- * @attention Directories in path must exist.
- *
- * @tparam Append If true, data will be appended to the file with new line separator, and overwritten otherwise. Default
- * is false.
- * @tparam Mode File access mode in octal format, default is 0644.
- * @tparam T Type of path.
- *
- * @param str String for saving.
- * @param path Full path to file.
- *
- * @return True if save was successful, false otherwise.
- *
- * @test Has unit tests.
- */
-template <bool Append = false, int32_t Mode = 0644, typename T>
+template <bool Append, int32_t Mode, typename T>
 	requires StringableView<T>
 FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const T path)
 {
-	FileDescriptor::ExitGuard fd{ path, SuggestFlags(Append), Mode };
+	FileGuard fd{ path, SuggestFlags(Append), Mode };
 
 	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Failed to open file: {}. Error №{}: {}", path, errno, std::strerror(errno));
@@ -729,19 +980,6 @@ FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const T path
 	return true;
 }
 
-/**************************
- * @brief Read binary data from file.
- *
- * @tparam T Type of object.
- * @tparam S Type of path.
- *
- * @param ptr Pointer to buffer.
- * @param path Full path to file.
- *
- * @return True if read was successful, false otherwise.
- *
- * @test Has unit tests.
- */
 template <typename T, typename S>
 	requires StringableView<S>
 [[nodiscard]] bool ReadBinary(T* const object, const S path)
@@ -751,7 +989,7 @@ template <typename T, typename S>
 		return false;
 	}
 
-	FileDescriptor::ExitGuard fd{ path, O_RDONLY, 0 };
+	FileGuard fd{ path, O_RDONLY, 0 };
 	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
 		return false;
@@ -772,20 +1010,6 @@ template <typename T, typename S>
 	return true;
 }
 
-/**************************
- * @brief Read array of binary data from file.
- *
- * @param container Container for reading data.
- * @param path Full path to file.
- *
- * @tparam T Type of forward container.
- * @tparam S Type of object.
- * @tparam N Type of path.
- *
- * @return True if read was successful, false otherwise.
- *
- * @test Has unit tests.
- */
 template <template <typename> typename T, typename S, typename N>
 	requires StringableView<N>
 [[nodiscard]] bool ReadBinaries(T<S>& container, const N path)
@@ -795,7 +1019,7 @@ template <template <typename> typename T, typename S, typename N>
 		return false;
 	}
 
-	FileDescriptor::ExitGuard fd{ path, O_RDONLY, 0 };
+	FileGuard fd{ path, O_RDONLY, 0 };
 	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
 		return false;
@@ -835,18 +1059,6 @@ template <template <typename> typename T, typename S, typename N>
 	return true;
 }
 
-/**************************
- * @brief Read string until end of the file.
- *
- * @param str String for reading.
- * @param path Full path to file.
- *
- * @tparam T Type of path.
- *
- * @return True if read was successful, false otherwise.
- *
- * @test Has unit tests.
- */
 template <typename T>
 	requires StringableView<T>
 FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, const T path)
@@ -856,7 +1068,7 @@ FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, const T path)
 		return false;
 	}
 
-	FileDescriptor::ExitGuard fd{ path, O_RDONLY, 0 };
+	FileGuard fd{ path, O_RDONLY, 0 };
 	if (fd.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
 		return false;
@@ -908,18 +1120,7 @@ FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, const T path)
 	return true;
 }
 
-/**************************
- * @brief Remove file or directory with all its content.
- *
- * @param path Full path.
- *
- * @tparam Buffer Size of internal buffer, default is 512.
- *
- * @return True if removing was successful, false otherwise.
- *
- * @test Has unit tests.
- */
-template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(const std::string_view path)
+template <uint64_t Buffer> FORCE_INLINE [[nodiscard]] bool Remove(const std::string_view path)
 {
 	if (path.size() < 2) [[unlikely]] {
 		LOG_WARNING_NEW("Invalid path to be removed: {}", path);
@@ -952,8 +1153,8 @@ template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(const st
 			return true;
 		}
 
-		Directory::ExitGuard guardDir{ buffer };
-		if (guardDir.value == nullptr) [[unlikely]] {
+		DirGuard dd{ buffer };
+		if (dd.value == nullptr) [[unlikely]] {
 			LOG_ERROR_NEW(
 				"Error opening directory {} to be removed. Error №{}: {}", buffer, errno, std::strerror(errno));
 			return false;
@@ -966,7 +1167,7 @@ template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(const st
 
 		bool result{ true };
 		struct dirent* ent;
-		while ((ent = readdir(guardDir.value)) != nullptr) {
+		while ((ent = readdir(dd.value)) != nullptr) {
 			if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
 				continue;
 			}
@@ -1013,46 +1214,31 @@ template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(const st
 	return true;
 }
 
-/**************************
- * @brief Copy file.
- *
- * @attention Directories in path must exist.
- *
- * @param from Full path to source file.
- * @param to Full path to file to copy.
- *
- * @tparam T Type of source path.
- * @tparam S Type of destination path.
- *
- * @return True if copying was successful, false otherwise.
- *
- * @test Has unit tests.
- */
 template <typename T, typename S>
 	requires StringableView<T> && StringableView<S>
 [[nodiscard]] bool CopyFile(const T from, const S to)
 {
-	FileDescriptor::ExitGuard guardFdFrom{ from, O_RDONLY, 0 };
-	if (guardFdFrom.value == -1) [[unlikely]] {
+	FileGuard fdFrom{ from, O_RDONLY, 0 };
+	if (fdFrom.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", from, errno, std::strerror(errno));
 		return false;
 	}
 
-	FileDescriptor::ExitGuard guardFdTo{ to, O_WRONLY | O_CREAT | O_TRUNC, 0644 };
-	if (guardFdTo.value == -1) [[unlikely]] {
+	FileGuard fdTo{ to, O_WRONLY | O_CREAT | O_TRUNC, 0644 };
+	if (fdTo.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Can't open file to save data: {}. Error №{}: {}", to, errno, std::strerror(errno));
 		return false;
 	}
 
 	struct stat st { };
-	if (fstat(guardFdFrom.value, &st) != 0) [[unlikely]] {
+	if (fstat(fdFrom.value, &st) != 0) [[unlikely]] {
 		LOG_ERROR_NEW("Failed to get file size for {}. Error №{}: {}", from, errno, std::strerror(errno));
 		return false;
 	}
 
 	if (st.st_size == 0) {
 		LOG_DEBUG_NEW("Source file {} is empty, created empty file {}", from, to);
-		if (write(guardFdTo.value, "", 0) == -1) [[unlikely]] {
+		if (write(fdTo.value, "", 0) == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Failed to create empty file {}. Error №{}: {}", to, errno, std::strerror(errno));
 			return false;
 		}
@@ -1065,10 +1251,10 @@ template <typename T, typename S>
 		return false;
 	}
 
-	off_t offset{ 0 };
+	off_t offset{};
 	const off_t total{ st.st_size };
 	while (offset < total) {
-		const auto result{ sendfile(guardFdTo.value, guardFdFrom.value, &offset, UINT64(total - offset)) };
+		const auto result{ sendfile(fdTo.value, fdFrom.value, &offset, UINT64(total - offset)) };
 		if (result == 0) {
 			break;
 		}
@@ -1090,20 +1276,7 @@ template <typename T, typename S>
 	return true;
 }
 
-/**************************
- * @brief Create directory with all parent directories.
- *
- * @param path Full path to directory.
- *
- * @tparam Mode Directory access mode in octal format, default is 0755.
- * @tparam T Type of path.
- * @tparam Buffer Size of internal buffer, default is 512.
- *
- * @return True if directory was created, false otherwise.
- *
- * @test Has unit tests.
- */
-template <int32_t Mode = 0755, typename T, uint64_t Buffer = 512>
+template <int32_t Mode, typename T, uint64_t Buffer>
 	requires StringableView<T>
 FORCE_INLINE [[nodiscard]] bool CreateDir(const T path)
 {
@@ -1167,59 +1340,49 @@ FORCE_INLINE [[nodiscard]] bool CreateDir(const T path)
 	return true;
 }
 
-/**************************
- * @brief Linux file types enumeration.
- */
-enum class FileType : int16_t {
-	Unknown = DT_UNKNOWN,
-	Fifo = DT_FIFO,
-	Char = DT_CHR,
-	Directory = DT_DIR,
-	Blk = DT_BLK,
-	Regular = DT_REG,
-	Lnk = DT_LNK,
-	Sock = DT_SOCK
-};
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileType type)
+{
+	static_assert(U(FileType::Unknown) == 0 && U(FileType::Fifo) == 1 && U(FileType::Char) == 2
+			&& U(FileType::Directory) == 4 && U(FileType::Blk) == 6 && U(FileType::Regular) == 8
+			&& U(FileType::Lnk) == 10 && U(FileType::Sock) == 12,
+		"FileType enum values have been changed, update EnumToString");
 
-/**************************
- * @return Reinterpretation of FileType enum to string.
- *
- * @param type FileType enum value.
- *
- * @test Has unit tests.
- */
-FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileType type);
+	// Must generate a jump table when the case labels are not dense, but short, and fill empty with default case.
+	switch (type) {
+	case FileType::Unknown:
+		return "Unknown";
+	case FileType::Fifo:
+		return "Fifo";
+	case FileType::Char:
+		return "Char";
+	case FileType::Directory:
+		return "Directory";
+	case FileType::Blk:
+		return "Blk";
+	case FileType::Regular:
+		return "Regular";
+	case FileType::Lnk:
+		return "Lnk";
+	case FileType::Sock:
+		return "Sock";
+	default:
+		LOG_ERROR_NEW("Unknown type: {}", U(type));
+		return "Unknown";
+	}
+}
 
-/**************************
- * @brief List directory content with specific type and append to provided container. "." and ".." are excluded from
- * results for tables.
- *
- * @attention Content sorting is filesystem dependent. If opened directory is provided, it must be valid.
- * @attention If opened directory is provided, its position will be rewound to the beginning after reading.
- *
- * @tparam FT Type of file to search.
- * @tparam T Type of container with strings.
- * @tparam S Type of path or opened directory.
- *
- * @param container Container to store results.
- * @param pathOrDir Full path for parsing file names or opened directory.
- *
- * @return True if read was successful, false otherwise.
- *
- * @test Has unit tests.
- */
 template <FileType FT, template <typename> typename T, typename S>
 	requires(StringableView<S> || std::is_same_v<S, DIR*>)
 FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S pathOrDir)
 {
-	Directory::ExitGuard guardDir;
+	DirGuard dd;
 	DIR* dirPtr;
 
 	if constexpr (StringableView<S>) {
-		guardDir = Directory::ExitGuard{ pathOrDir };
-		dirPtr = guardDir.value;
+		dd = DirGuard{ pathOrDir };
+		dirPtr = dd.value;
 
-		if (guardDir.value == nullptr) [[unlikely]] {
+		if (dd.value == nullptr) [[unlikely]] {
 			LOG_ERROR_NEW("Error opening directory: {}. Error №{}: {}", pathOrDir, errno, std::strerror(errno));
 			return false;
 		}
@@ -1258,140 +1421,8 @@ FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S pathOrDi
 	return true;
 }
 
-/*---------------------------------------------------------------------------------
-Definitions
----------------------------------------------------------------------------------*/
+} // namespace IO
 
-namespace FileDescriptor {
+} // namespace MSAPI
 
-FORCE_INLINE const ExitGuard& ExitGuard::operator=(ExitGuard&& other) noexcept
-{
-	std::swap(value, other.value);
-	return *this;
-}
-
-FORCE_INLINE ExitGuard::ExitGuard(ExitGuard&& other) noexcept { std::swap(value, other.value); }
-
-FORCE_INLINE ExitGuard::~ExitGuard() { Clear(); }
-
-FORCE_INLINE void ExitGuard::Clear()
-{
-	if (value != -1) {
-		if (close(value) == -1) [[unlikely]] {
-			LOG_ERROR_NEW("File descriptor close fail. Error №{}: {}", errno, std::strerror(errno));
-		}
-		value = -1;
-	}
-}
-
-}; //* namespace FileDescriptor
-
-namespace Directory {
-
-FORCE_INLINE const ExitGuard& ExitGuard::operator=(ExitGuard&& other) noexcept
-{
-	std::swap(value, other.value);
-	return *this;
-}
-
-FORCE_INLINE ExitGuard::ExitGuard(ExitGuard&& other) noexcept { std::swap(value, other.value); }
-
-FORCE_INLINE ExitGuard::~ExitGuard() { Clear(); }
-
-FORCE_INLINE void ExitGuard::Clear()
-{
-	if (value != nullptr) {
-		if (closedir(value) != 0) [[unlikely]] {
-			LOG_ERROR_NEW("Failed to close directory. Error №{}: {}", errno, std::strerror(errno));
-		}
-
-		value = nullptr;
-	}
-}
-
-} //* namespace Directory
-
-static_assert(IO::append, "Append global is true");
-static_assert(!IO::overwrite, "Overwrite global is false");
-
-static_assert(IO::multiple, "Multiple global is true");
-static_assert(!IO::single, "Single global is false");
-
-consteval int32_t SuggestFlags(const bool append)
-{
-	int32_t flags{ O_WRONLY | O_CREAT };
-
-	if (append) {
-		flags |= O_APPEND;
-	}
-	else {
-		flags |= O_TRUNC;
-	}
-
-	return flags;
-}
-
-static_assert(SuggestFlags(true) == (O_WRONLY | O_CREAT | O_APPEND), "SuggestFlags true failed");
-static_assert(SuggestFlags(false) == (O_WRONLY | O_CREAT | O_TRUNC), "SuggestFlags false failed");
-
-static_assert(SuggestPsm<int8_t, 32>() == 4, "PSM for int8");
-static_assert(SuggestPsm<uint8_t, 32>() == 3, "PSM for uint8");
-static_assert(SuggestPsm<int16_t, 32>() == 6, "PSM for int16");
-static_assert(SuggestPsm<uint16_t, 32>() == 5, "PSM for uint16");
-static_assert(SuggestPsm<int32_t, 32>() == 11, "PSM for int32");
-static_assert(SuggestPsm<uint32_t, 32>() == 10, "PSM for uint32");
-static_assert(SuggestPsm<int64_t, 32>() == 20, "PSM for int64");
-static_assert(SuggestPsm<uint64_t, 32>() == 20, "PSM for uint64");
-static_assert(SuggestPsm<float, 32>() == 14, "PSM for float");
-static_assert(SuggestPsm<double, 31>() == 32, "PSM for double, less than minimum");
-static_assert(SuggestPsm<double, 33>() == 33, "PSM for double, greater than minimum");
-static_assert(SuggestPsm<long double, 31>() == 32, "PSM for long double, less than minimum");
-static_assert(SuggestPsm<long double, 33>() == 33, "PSM for long double, greater than minimum");
-static_assert(SuggestPsm<bool, 32>() == 4, "PSM for bool");
-static_assert(SuggestPsm<char, 32>() == 1, "PSM for char");
-
-FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileType type)
-{
-	static_assert(U(FileType::Unknown) == 0 && U(FileType::Fifo) == 1 && U(FileType::Char) == 2
-			&& U(FileType::Directory) == 4 && U(FileType::Blk) == 6 && U(FileType::Regular) == 8
-			&& U(FileType::Lnk) == 10 && U(FileType::Sock) == 12,
-		"FileType enum values have been changed, update EnumToString");
-
-	// Must generate a jump table when the case labels are not dense, but short, and fill empty with default case.
-	switch (type) {
-	case FileType::Unknown:
-		return "Unknown";
-	case FileType::Fifo:
-		return "Fifo";
-	case FileType::Char:
-		return "Char";
-	case FileType::Directory:
-		return "Directory";
-	case FileType::Blk:
-		return "Blk";
-	case FileType::Regular:
-		return "Regular";
-	case FileType::Lnk:
-		return "Lnk";
-	case FileType::Sock:
-		return "Sock";
-	default:
-		LOG_ERROR_NEW("Unknown type: {}", U(type));
-		return "Unknown";
-	}
-}
-
-static_assert(EnumToString(FileType::Unknown) == "Unknown", "EnumToString Unknown failed");
-static_assert(EnumToString(FileType::Fifo) == "Fifo", "EnumToString Fifo failed");
-static_assert(EnumToString(FileType::Char) == "Char", "EnumToString Char failed");
-static_assert(EnumToString(FileType::Directory) == "Directory", "EnumToString Directory failed");
-static_assert(EnumToString(FileType::Blk) == "Blk", "EnumToString Blk failed");
-static_assert(EnumToString(FileType::Regular) == "Regular", "EnumToString Regular failed");
-static_assert(EnumToString(FileType::Lnk) == "Lnk", "EnumToString Lnk failed");
-static_assert(EnumToString(FileType::Sock) == "Sock", "EnumToString Sock failed");
-
-}; //* namespace IO
-
-}; //* namespace MSAPI
-
-#endif //* MSAPI_IO_H
+#endif // MSAPI_IO_INL

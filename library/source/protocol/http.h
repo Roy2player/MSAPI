@@ -186,7 +186,7 @@ public:
 	 */
 	[[nodiscard]] bool IsWebSocketUpgradeResponse() const noexcept;
 
-	/**
+	/**************************
 	 * @brief Check validity of request and send response.
 	 *
 	 * @param connection Connection of request.

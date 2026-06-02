@@ -15,7 +15,7 @@ const { WebSocketServer } = require('ws');
 const Helper = require("../help/helper");
 const WebSocketStream = require("../core/webSocketHandler").WebSocketStream;
 
-/**
+/**************************
  * @brief Server's behavior simulator.
  */
 class ServerSimulator {

@@ -69,7 +69,7 @@ void* TableBase::Encode() const
 }
 
 /*---------------------------------------------------------------------------------
-Column
+TableBase::Column
 ---------------------------------------------------------------------------------*/
 
 TableBase::Column::Column(const size_t id, const StandardType::Type type)

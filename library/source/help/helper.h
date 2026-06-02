@@ -524,7 +524,7 @@ FORCE_INLINE T Exponent10Of(T value)
  */
 std::string GetStringIp(sockaddr_in addr);
 
-/**
+/**************************
  * @brief Encode data to Base64 format.
  *
  * @tparam T Type of the data elements.
@@ -583,7 +583,7 @@ FORCE_INLINE [[nodiscard]] std::string_view Base64Encode(const std::span<T> data
 	return std::string_view{ buffer.data(), bufferIndex };
 }
 
-/**
+/**************************
  * @brief Decode Base64 fully properly encoded string.
  *
  * @attention String to decode must be a multiple of 4 in size and buffer must have a size of at least data.size() / 4 *
@@ -685,7 +685,7 @@ FORCE_INLINE [[nodiscard]] std::span<const T> Base64Decode(const std::string_vie
 	return { reinterpret_cast<const T*>(buffer.data()), bufferIndex };
 }
 
-/**
+/**************************
  * @param str String to be hashed.
  *
  * @return Unsigned 32 bit hash for provided string.

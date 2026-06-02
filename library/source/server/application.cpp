@@ -23,7 +23,7 @@
 namespace MSAPI {
 
 /*---------------------------------------------------------------------------------
-Parameter
+Application::Parameter
 ---------------------------------------------------------------------------------*/
 
 Application::Parameter::Parameter(std::string&& name, bool* value)

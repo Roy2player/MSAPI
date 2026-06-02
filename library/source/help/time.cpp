@@ -28,7 +28,7 @@ namespace MSAPI {
 #define HOW_MUCH_DAYS_PER_MONTH(_month, isLeap) dayPerMonth[_month] + static_cast<uint8_t>((_month) == 1 ? isLeap : 0)
 
 /*---------------------------------------------------------------------------------
-Event
+Timer::Event
 ---------------------------------------------------------------------------------*/
 
 Timer::Event::Event(std::function<void(int*)> callback, int* data)
@@ -183,7 +183,7 @@ bool Timer::Event::IsRepeat() const { return m_timeToRepeatCall != 0; }
 bool Timer::Event::IsInstantCall() const { return m_instantCall; }
 
 /*---------------------------------------------------------------------------------
-Duration
+Timer::Duration
 ---------------------------------------------------------------------------------*/
 
 Timer::Duration::Duration(const std::chrono::duration<int64_t, std::nano> duration)
@@ -344,7 +344,7 @@ Timer::Duration operator+(const Timer::Duration first, const Timer::Duration sec
 }
 
 /*---------------------------------------------------------------------------------
-Date
+Timer::Date
 ---------------------------------------------------------------------------------*/
 
 Timer::Date::Date(const uint16_t year, const uint8_t month, const uint8_t day)

@@ -80,7 +80,7 @@ Declarations
  */
 [[nodiscard]] bool Authorization();
 
-/**
+/**************************
  * @brief Structure for holding account test data.
  */
 struct AccountTestData {
@@ -98,7 +98,7 @@ struct AccountTestData {
 	bool isDeleted{};
 	bool reLogon{};
 
-	/**
+	/**************************
 	 * @brief Construct a new AccountTestData object. Connection IDs start from 10 and increment for each new instance.
 	 *
 	 * @param login The account login.
@@ -310,7 +310,7 @@ bool Authorization()
 		logs.clear();
 		std::string accountPath{ accountsDataPath + "/" + account.login };
 
-		IO::FileDescriptor::ExitGuard fd{ accountPath.c_str(), O_RDONLY, 0 };
+		IO::FileGuard fd{ accountPath.c_str(), O_RDONLY, 0 };
 		RETURN_IF_FALSE(t.Assert(fd.value != -1, true, "Open account data file to read logs"));
 
 		size_t offset{};
@@ -451,7 +451,7 @@ bool Authorization()
 		T account;
 		std::string accountPath{ accountsDataPath + "/" + login };
 
-		IO::FileDescriptor::ExitGuard fd{ accountPath.c_str(), O_RDONLY, 0 };
+		IO::FileGuard fd{ accountPath.c_str(), O_RDONLY, 0 };
 		if (!t.Assert(fd.value != -1, true, "Open account data file to read last log")) {
 			return std::make_unique<T>();
 		}
