@@ -29,42 +29,41 @@ Declarations
 ---------------------------------------------------------------------------------*/
 
 /**************************
- * @brief Wrapper under pure connection with allowance to guarantee concurency safe and ability to dynamically override its recv and send behaviour in zero cost. Default behaviour methods do not perform any action under connection on failure, because the owner and the main caller suppose to handle that.
+ * @brief Wrapper under pure connection with allowance to guarantee concurency safe and ability to dynamically override
+ * its recv and send behaviour in zero cost. Default behaviour methods do not perform any action under connection on
+ * failure, because the owner and the main caller suppose to handle that.
  */
 class Connection {
 public:
-	using func_t = std::function<uint64_t(int32_t, void*, uint64_t, int32_t)>;
+	using func_t = std::function<int64_t(int32_t, void*, uint64_t, int32_t)>;
 
 private:
 	const uint64_t m_id{ m_counter.fetch_add(1, std::memory_order_relaxed) };
 	const int32_t m_connection;
-	func_t m_recvFunc{
-		[](const int32_t fd, void* const buffer, const uint64_t size, const int32_t flags) noexcept {
-			return recv(fd, buffer, size, flags);
-		}
-	};
-	func_t m_sendFunc{
-		[](const int32_t fd, void* const buffer, const uint64_t size, const int32_t flags) noexcept {
-			return send(fd, buffer, size, flags);
-		}
-	};
+	func_t m_recvFunc{ [](const int32_t fd, void* const buffer, const uint64_t size, const int32_t flags) noexcept {
+		return static_cast<int64_t>(recv(fd, buffer, size, flags));
+	} };
+	func_t m_sendFunc{ [](const int32_t fd, void* const buffer, const uint64_t size, const int32_t flags) noexcept {
+		return static_cast<int64_t>(send(fd, buffer, size, flags));
+	} };
 	Lock::Atomic m_recvLock;
 	Lock::Atomic m_sendLock;
-	std::atomic_flag m_isOpened{ true };
+	std::atomic<bool> m_isOpened{ true };
 
 	static inline std::atomic<uint64_t> m_counter{};
 
 public:
 	/**************************
 	 * @brief Construct new connection object.
-	 * 
+	 *
 	 * @param connection Socket connection.
 	 *
 	 * @todo Add unit test.
 	 */
 	FORCE_INLINE Connection(const int32_t connection) noexcept
 		: m_connection{ connection }
-	{}
+	{
+	}
 
 	Connection(const Connection& other) = delete;
 	Connection(Connection&& other) = delete;
@@ -85,7 +84,7 @@ public:
 	FORCE_INLINE [[nodiscard]] uint64_t Recv(void* const buffer, const uint64_t size, const int32_t flags)
 	{
 		Lock::Atomic::Guard _{ m_recvLock };
-		if (!m_isOpened.test()) [[unlikely]] {
+		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
 			return 0;
 		}
 
@@ -99,7 +98,7 @@ public:
 			if (result == 0) [[likely]] {
 				// Not sure if it is required
 				// pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
-				m_isOpened.clear(std::memory_order_release);
+				m_isOpened.store(false, std::memory_order_release);
 				LOG_INFO_NEW("Socket is closed by other side, connection id {}", m_id);
 				return 0;
 			}
@@ -111,8 +110,9 @@ public:
 				}
 			}
 
-			m_isOpened.clear(std::memory_order_release);
-			LOG_ERROR_NEW("Recv returned unrecoverable error №{}: {}, connection id {}", errno, std::strerror(errno), m_id);
+			m_isOpened.store(false, std::memory_order_release);
+			LOG_ERROR_NEW(
+				"Recv returned unrecoverable error №{}: {}, connection id {}", errno, std::strerror(errno), m_id);
 			return 0;
 		}
 	}
@@ -120,25 +120,28 @@ public:
 	/**************************
 	 * @brief Perform one effective send to connection. Is concurency safe and won't be called on closed connection.
 	 *
-	 * @attention In case of connection closing initiated by other side the send can be called on just closed, but not marked as is closed connection. That is the incredible rare, but still possible case. There is no connection access pattern to privent that behaviour on application side.
-	 * 
+	 * @attention In case of connection closing initiated by other side the send can be called on just closed, but not
+	 * marked as is closed connection. That is the incredible rare, but still possible case. There is no connection
+	 * access pattern to privent that behaviour on application side.
+	 *
 	 * @param buffer Pointer to buffer. It must have enough data.
 	 * @param size Number of bytes to be send.
 	 * @param flags Flags for send.
 	 *
-	 * @return Number of send bytes and 0 on any error. 
+	 * @return Number of send bytes and 0 on any error.
 	 *
 	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t Send(void* const buffer, const uint64_t size, const int32_t flags)
 	{
-		if (!m_isOpened.test()) [[unlikely]] {
+		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
 			return 0;
 		}
 
+		int64_t result [[gnu::uninitialized]];
 		{
 			Lock::Atomic::Guard _{ m_sendLock };
-			const auto result{ m_sendFunc(m_connection, buffer, size, flags) };
+			result = m_sendFunc(m_connection, buffer, size, flags);
 		}
 
 		if (result > 0) [[likely]] {
@@ -159,10 +162,10 @@ public:
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] unit64_t Splice(const int32_t fd, const uint64_t size)
+	FORCE_INLINE [[nodiscard]] uint64_t Splice(const int32_t fd, const uint64_t size)
 	{
 		Lock::Atomic::Guard _{ m_recvLock };
-		if (!m_isOpened.test()) [[unlikely]] {
+		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
 			return 0;
 		}
 
@@ -173,51 +176,50 @@ public:
 		}
 
 		if (result == 0) {
-			m_isOpened.clear(std::memory_order_release)
+			m_isOpened.store(false, std::memory_order_release);
 			LOG_WARNING_NEW("Splice returned 0 while dropping {} byte(s), connection id {}", size, m_id);
 			return 0;
 		}
 
-		LOG_ERROR_NEW("Failed to splice data. Error №{}: {}, connection id {}", errno,
-			std::strerror(errno), m_id);
+		LOG_ERROR_NEW("Failed to splice data. Error №{}: {}, connection id {}", errno, std::strerror(errno), m_id);
 		return 0;
 	}
 
 	template <typename T>
-	concept Function = std::is_convertible_t<T, func_t>;
+	concept Function = std::is_convertible_v<T, func_t>;
 
 	/**************************
 	 * @brief Override the default recv function. Is concurency safe and won't be called on closed connection.
-	 * 
+	 *
 	 * @tparam T Recv function.
 	 *
 	 * @param f New recv function.
 	 *
 	 * @todo Add unit test.
 	 */
-	template <Function T>
-	FORCE_INLINE void SetRecv(T&& f) noexcept {
+	template <Function T> FORCE_INLINE void SetRecv(T&& f) noexcept
+	{
 		Lock::Atomic::Guard _{ m_recvLock };
-		if (!m_isOpened.test()) [[unlikely]] {
+		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
 			return;
 		}
-	
+
 		m_recvFunc = std::forward<T>(f);
 	}
 
 	/**************************
 	 * @brief Override the default send function. Is concurency safe and won't be called on closed connection.
-	 * 
+	 *
 	 * @tparam T Send function.
 	 *
 	 * @param f New send function.
 	 *
 	 * @todo Add unit test.
 	 */
-	template <Function T>
-	FORCE_INLINE void SetSend(T&& f) noexcept {
+	template <Function T> FORCE_INLINE void SetSend(T&& f) noexcept
+	{
 		Lock::Atomic::Guard _{ m_sendLock };
-		if (!m_isOpened.test()) [[unlikely]] {
+		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
 			return;
 		}
 
@@ -229,32 +231,30 @@ public:
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t GetId() noexcept const
-	{
-		return m_id;
-	}
+	FORCE_INLINE [[nodiscard]] uint64_t GetId() const noexcept { return m_id; }
 
 	/**************************
 	 * @brief Shutdown and close connection.
+	 *
+	 * @todo Add unit test.
 	 */
 	FORCE_INLINE void Close()
 	{
 		if (shutdown(m_connection, SHUT_RDWR) == -1) [[unlikely]] {
 			if (errno == ENOTCONN) {
 				LOG_DEBUG_NEW("Connection {} is already closed", m_id);
-				return;
 			}
+			else {
+				LOG_WARNING_NEW("Connection {} shutdown is failed. Error №{}: {}", m_id, errno, std::strerror(errno));
+			}
+		}
 
-			LOG_ERROR_NEW("Connection {} shutdown is failed. Error №{}: {}", m_id, errno, std::strerror(errno));
+		if (close(m_connection) != -1) [[likely]] {
+			LOG_DEBUG_NEW("Connection {} is closed", m_id);
 			return;
 		}
 
-		if (close(connection) != -1) [[likely]] {
-			LOF_DEBUG_NEW("Connection {} is closed", m_id);
-			return;
-		}
-
-		LOG_ERROR_NEW("Connection {} closing is failed. Error №{}: {}", m_id, errno, std::strerror(errno));
+		LOG_WARNING_NEW("Connection {} closing is failed. Error №{}: {}", m_id, errno, std::strerror(errno));
 	}
 };
 
