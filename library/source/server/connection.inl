@@ -82,7 +82,7 @@ public:
 	 * @param size Number of bytes to be read. It must be greater than 0.
 	 * @param flags Flags for recv.
 	 *
-	 * @return Number of read bytes and 0 on connection closure.
+	 * @return Number of read bytes; returns 0 on peer shutdown or on any unrecoverable recv error.
 	 *
 	 * @todo Add unit test.
 	 */
@@ -146,7 +146,7 @@ public:
 	 * @param size Number of bytes to be send. It must be greater than 0.
 	 * @param flags Flags for send.
 	 *
-	 * @return Number of send bytes and 0 on any error.
+	 * @return Number of send bytes; returns 0 on peer shutdown or on any send error.
 	 *
 	 * @todo Add unit test.
 	 */
@@ -192,7 +192,7 @@ public:
 	 * @param fd Destination file descriptor.
 	 * @param size Number of bytes to be spliced. It must be greater than 0.
 	 *
-	 * @return Number of spliced bytes and 0 on any error.
+	 * @return Number of spliced bytes; returns 0 on on any splice error.
 	 *
 	 * @todo Add unit test.
 	 */
