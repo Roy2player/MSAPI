@@ -29,9 +29,10 @@ Declarations
 ---------------------------------------------------------------------------------*/
 
 /**************************
- * @brief Wrapper under pure connection with allowance to guarantee concurency safe and ability to dynamically override
- * its recv and send behaviour in zero cost. Default behaviour methods do not perform any action under connection on
- * failure, because the owner and the main caller suppose to handle that.
+ * @brief Thread-safe wrapper around a socket connection that allows overriding recv/send behaviour.
+ *
+ * Default recv/send implementations do not modify the connection on failure; the owner/caller is expected to
+ * handle error recovery and connection lifecycle.
  */
 class Connection {
 public:
@@ -48,7 +49,8 @@ private:
 	} };
 	Lock::Atomic m_recvLock;
 	Lock::Atomic m_sendLock;
-	std::atomic<bool> m_isOpened{ true };
+	std::atomic<bool> m_isUsable{ true };
+	bool m_isClosed{};
 
 	static inline std::atomic<uint64_t> m_counter{};
 
@@ -74,7 +76,7 @@ public:
 	 * @brief Perform one effective recv from connection. Is concurency safe and won't be called on closed connection.
 	 *
 	 * @param buffer Pointer to buffer. It must have enough space.
-	 * @param size Number of bytes to be read.
+	 * @param size Number of bytes to be read. It must be greater than 0.
 	 * @param flags Flags for recv.
 	 *
 	 * @return Number of read bytes and 0 on connection closure.
@@ -83,8 +85,11 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t Recv(void* const buffer, const uint64_t size, const int32_t flags)
 	{
+		contract_assert(buffer != nullptr);
+		contract_assert(size != 0);
+
 		Lock::Atomic::Guard _{ m_recvLock };
-		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
+		if (!m_isUsable.load(std::memory_order_relaxed)) [[unlikely]] {
 			return 0;
 		}
 
@@ -98,19 +103,29 @@ public:
 			if (result == 0) [[likely]] {
 				// Not sure if it is required
 				// pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
-				m_isOpened.store(false, std::memory_order_release);
+				m_isUsable.store(false, std::memory_order_release);
 				LOG_INFO_NEW("Socket is closed by other side, connection id {}", m_id);
 				return 0;
 			}
 
+			if (errno == EINTR) {
+				if (!m_isUsable.load(std::memory_order_relaxed)) {
+					LOG_DEBUG_NEW("Recv returned EINTR on shutdown socket, connection id {}", m_id);
+					return 0;
+				}
+
+				LOG_DEBUG_NEW("Recv returned EINTR on working socket, connection id {}", m_id);
+				continue;
+			}
+
 			if (flags & MSG_PEEK) {
 				if (errno == EAGAIN || errno == EWOULDBLOCK) {
-					LOG_PROTOCOL_NEW("Non-blocking recv returned EAGAIN or EWOULDBLOC, connection id {}", m_id);
+					LOG_DEBUG_NEW("Non-blocking recv returned EAGAIN or EWOULDBLOCK, connection id {}", m_id);
 					continue;
 				}
 			}
 
-			m_isOpened.store(false, std::memory_order_release);
+			m_isUsable.store(false, std::memory_order_release);
 			LOG_ERROR_NEW(
 				"Recv returned unrecoverable error №{}: {}, connection id {}", errno, std::strerror(errno), m_id);
 			return 0;
@@ -122,10 +137,10 @@ public:
 	 *
 	 * @attention In case of connection closing initiated by other side the send can be called on just closed, but not
 	 * marked as is closed connection. That is the incredible rare, but still possible case. There is no connection
-	 * access pattern to privent that behaviour on application side.
+	 * access pattern to prevent that behaviour on application side.
 	 *
 	 * @param buffer Pointer to buffer. It must have enough data.
-	 * @param size Number of bytes to be send.
+	 * @param size Number of bytes to be send. It must be greater than 0.
 	 * @param flags Flags for send.
 	 *
 	 * @return Number of send bytes and 0 on any error.
@@ -134,29 +149,44 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t Send(void* const buffer, const uint64_t size, const int32_t flags)
 	{
-		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
-			return 0;
-		}
+		contract_assert(buffer != nullptr);
+		contract_assert(size != 0);
 
 		int64_t result [[gnu::uninitialized]];
-		{
-			Lock::Atomic::Guard _{ m_sendLock };
-			result = m_sendFunc(m_connection, buffer, size, flags);
-		}
+		while (true) {
+			{
+				Lock::Atomic::Guard _{ m_sendLock };
+				if (!m_isUsable.load(std::memory_order_relaxed)) [[unlikely]] {
+					return 0;
+				}
+				result = m_sendFunc(m_connection, buffer, size, flags);
+			}
 
-		if (result > 0) [[likely]] {
-			return static_cast<uint64_t>(result);
-		}
+			if (result > 0) [[likely]] {
+				return static_cast<uint64_t>(result);
+			}
 
-		LOG_ERROR_NEW("Send failed with error №{}: {}, connection id {}", errno, std::strerror(errno), m_id);
-		return 0;
+			if (result == -1 && errno == EINTR) {
+				if (!m_isUsable.load(std::memory_order_relaxed)) {
+					LOG_DEBUG_NEW("Send returned EINTR on shutdown socket, connection id {}", m_id);
+					return 0;
+				}
+
+				LOG_DEBUG_NEW("Send returned EINTR, connection id {}", m_id);
+				continue;
+			}
+
+			m_isUsable.store(false, std::memory_order_release);
+			LOG_ERROR_NEW("Send failed with error №{}: {}, connection id {}", errno, std::strerror(errno), m_id);
+			return 0;
+		}
 	}
 
 	/**************************
 	 * @brief Perform one effective splice from connection. Is concurency safe and won't be called on closed connection.
 	 *
 	 * @param fd Destination file descriptor, should not be a pipe.
-	 * @param size Number of bytes to be spliced.
+	 * @param size Number of bytes to be spliced. It must be greater than 0.
 	 *
 	 * @return Number of spliced bytes and 0 on any error.
 	 *
@@ -164,8 +194,10 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t Splice(const int32_t fd, const uint64_t size)
 	{
+		contract_assert(size != 0);
+
 		Lock::Atomic::Guard _{ m_recvLock };
-		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
+		if (!m_isUsable.load(std::memory_order_relaxed)) [[unlikely]] {
 			return 0;
 		}
 
@@ -176,7 +208,7 @@ public:
 		}
 
 		if (result == 0) {
-			m_isOpened.store(false, std::memory_order_release);
+			m_isUsable.store(false, std::memory_order_release);
 			LOG_WARNING_NEW("Splice returned 0 while dropping {} byte(s), connection id {}", size, m_id);
 			return 0;
 		}
@@ -200,7 +232,7 @@ public:
 	template <Function T> FORCE_INLINE void SetRecv(T&& f) noexcept
 	{
 		Lock::Atomic::Guard _{ m_recvLock };
-		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
+		if (!m_isUsable.load(std::memory_order_relaxed)) [[unlikely]] {
 			return;
 		}
 
@@ -219,7 +251,7 @@ public:
 	template <Function T> FORCE_INLINE void SetSend(T&& f) noexcept
 	{
 		Lock::Atomic::Guard _{ m_sendLock };
-		if (!m_isOpened.load(std::memory_order_relaxed)) [[unlikely]] {
+		if (!m_isUsable.load(std::memory_order_relaxed)) [[unlikely]] {
 			return;
 		}
 
@@ -227,19 +259,25 @@ public:
 	}
 
 	/**************************
-	 * @return Id fo connection.
+	 * @return Id of connection.
 	 *
 	 * @todo Add unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t GetId() const noexcept { return m_id; }
 
 	/**************************
-	 * @brief Shutdown and close connection.
+	 * @brief Shutdown and close connection. Is not concurency safe and won't be called on closed connection.
 	 *
 	 * @todo Add unit test.
 	 */
 	FORCE_INLINE void Close()
 	{
+		if (m_isClosed) [[unlikely]] {
+			return;
+		}
+
+		m_isUsable.store(false, std::memory_order_release);
+		m_isClosed = true;
 		if (shutdown(m_connection, SHUT_RDWR) == -1) [[unlikely]] {
 			if (errno == ENOTCONN) {
 				LOG_DEBUG_NEW("Connection {} is already closed", m_id);
@@ -248,6 +286,9 @@ public:
 				LOG_WARNING_NEW("Connection {} shutdown is failed. Error №{}: {}", m_id, errno, std::strerror(errno));
 			}
 		}
+
+		Lock::Atomic::Guard recvGuard{ m_recvLock };
+		Lock::Atomic::Guard sendGuard{ m_sendLock };
 
 		if (close(m_connection) != -1) [[likely]] {
 			LOG_DEBUG_NEW("Connection {} is closed", m_id);
