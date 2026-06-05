@@ -198,7 +198,7 @@ public:
 	 * @param fd Destination file descriptor.
 	 * @param size Number of bytes to be spliced. It must be greater than 0.
 	 *
-	 * @return Number of spliced bytes; returns 0 on on any splice error.
+	 * @return Number of spliced bytes; returns 0 on any splice error.
 	 *
 	 * @todo Add unit test.
 	 */
@@ -218,7 +218,6 @@ public:
 		}
 
 		if (result == 0) {
-			m_isUsable.store(false, std::memory_order_release);
 			LOG_WARNING_NEW("Splice returned 0 while dropping {} byte(s), connection id {}", size, m_id);
 			return 0;
 		}
