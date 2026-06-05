@@ -31,7 +31,7 @@ Declarations
 /**************************
  * @brief Thread-safe wrapper around a socket connection that allows overriding recv/send behaviour.
  *
- * Default recv/send implementations do not modify the connection on failure; the owner/caller is expected to
+ * Default recv/send implementations do not close the underlying socket on failure; the owner/caller is expected to
  * handle error recovery and connection lifecycle.
  */
 class Connection {
@@ -46,7 +46,7 @@ private:
 								const int32_t flags) noexcept {
 		return static_cast<int64_t>(recv(fd, buffer, size, flags));
 	} };
-	send_func_t m_sendFunc{ [](const int32_t fd, void* const buffer, const uint64_t size,
+	send_func_t m_sendFunc{ [](const int32_t fd, const void* const buffer, const uint64_t size,
 								const int32_t flags) noexcept {
 		return static_cast<int64_t>(send(fd, buffer, size, flags));
 	} };
