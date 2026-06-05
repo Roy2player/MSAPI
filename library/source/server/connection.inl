@@ -169,7 +169,13 @@ public:
 				return static_cast<uint64_t>(result);
 			}
 
-			if (result == -1 && errno == EINTR) {
+			if (result == 0) {
+				m_isUsable.store(false, std::memory_order_release);
+				LOG_DEBUG_NEW("Send returns zero, connection id {}", m_id);
+				return 0;
+			}
+
+			if (errno == EINTR) {
 				if (!m_isUsable.load(std::memory_order_relaxed)) {
 					LOG_DEBUG_NEW("Send returned EINTR on shutdown socket, connection id {}", m_id);
 					return 0;
