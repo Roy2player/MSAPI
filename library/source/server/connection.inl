@@ -36,15 +36,18 @@ Declarations
  */
 class Connection {
 public:
-	using func_t = std::function<int64_t(int32_t, void*, uint64_t, int32_t)>;
+	using recv_func_t = std::function<int64_t(int32_t, void*, uint64_t, int32_t)>;
+	using send_func_t = std::function<int64_t(int32_t, const void*, uint64_t, int32_t)>;
 
 private:
 	const uint64_t m_id{ m_counter.fetch_add(1, std::memory_order_relaxed) };
 	const int32_t m_connection;
-	func_t m_recvFunc{ [](const int32_t fd, void* const buffer, const uint64_t size, const int32_t flags) noexcept {
+	recv_func_t m_recvFunc{ [](const int32_t fd, void* const buffer, const uint64_t size,
+								const int32_t flags) noexcept {
 		return static_cast<int64_t>(recv(fd, buffer, size, flags));
 	} };
-	func_t m_sendFunc{ [](const int32_t fd, void* const buffer, const uint64_t size, const int32_t flags) noexcept {
+	send_func_t m_sendFunc{ [](const int32_t fd, void* const buffer, const uint64_t size,
+								const int32_t flags) noexcept {
 		return static_cast<int64_t>(send(fd, buffer, size, flags));
 	} };
 	Lock::Atomic m_recvLock;
@@ -73,7 +76,7 @@ public:
 	Connection& operator=(Connection&& other) = delete;
 
 	/**************************
-	 * @brief Perform one effective recv from connection. Is concurency safe and won't be called on closed connection.
+	 * @brief Perform one effective recv from connection. Is concurrency safe and won't be called on closed connection.
 	 *
 	 * @param buffer Pointer to buffer. It must have enough space.
 	 * @param size Number of bytes to be read. It must be greater than 0.
@@ -133,10 +136,10 @@ public:
 	}
 
 	/**************************
-	 * @brief Perform one effective send to connection. Is concurency safe and won't be called on closed connection.
+	 * @brief Perform one effective send to connection. Is concurrency safe and won't be called on closed connection.
 	 *
 	 * @attention In case of connection closing initiated by other side the send can be called on just closed, but not
-	 * marked as is closed connection. That is the incredible rare, but still possible case. There is no connection
+	 * marked as is closed connection. That is an incredibly rare, but still possible case. There is no connection
 	 * access pattern to prevent that behaviour on application side.
 	 *
 	 * @param buffer Pointer to buffer. It must have enough data.
@@ -147,7 +150,7 @@ public:
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t Send(void* const buffer, const uint64_t size, const int32_t flags)
+	FORCE_INLINE [[nodiscard]] uint64_t Send(const void* const buffer, const uint64_t size, const int32_t flags)
 	{
 		contract_assert(buffer != nullptr);
 		contract_assert(size != 0);
@@ -183,9 +186,10 @@ public:
 	}
 
 	/**************************
-	 * @brief Perform one effective splice from connection. Is concurency safe and won't be called on closed connection.
+	 * @brief Perform one effective splice from connection. Is concurrency safe and won't be called on closed
+	 * connection.
 	 *
-	 * @param fd Destination file descriptor, should not be a pipe.
+	 * @param fd Destination file descriptor.
 	 * @param size Number of bytes to be spliced. It must be greater than 0.
 	 *
 	 * @return Number of spliced bytes and 0 on any error.
@@ -218,10 +222,10 @@ public:
 	}
 
 	template <typename T>
-	concept Function = std::is_convertible_v<T, func_t>;
+	concept RecvFunction = std::is_convertible_v<T, recv_func_t>;
 
 	/**************************
-	 * @brief Override the default recv function. Is concurency safe and won't be called on closed connection.
+	 * @brief Override the default recv function. Is concurrency safe and won't be called on closed connection.
 	 *
 	 * @tparam T Recv function.
 	 *
@@ -229,7 +233,7 @@ public:
 	 *
 	 * @todo Add unit test.
 	 */
-	template <Function T> FORCE_INLINE void SetRecv(T&& f) noexcept
+	template <RecvFunction T> FORCE_INLINE void SetRecv(T&& f) noexcept
 	{
 		Lock::Atomic::Guard _{ m_recvLock };
 		if (!m_isUsable.load(std::memory_order_relaxed)) [[unlikely]] {
@@ -239,8 +243,11 @@ public:
 		m_recvFunc = std::forward<T>(f);
 	}
 
+	template <typename T>
+	concept SendFunction = std::is_convertible_v<T, send_func_t>;
+
 	/**************************
-	 * @brief Override the default send function. Is concurency safe and won't be called on closed connection.
+	 * @brief Override the default send function. Is concurrency safe and won't be called on closed connection.
 	 *
 	 * @tparam T Send function.
 	 *
@@ -248,7 +255,7 @@ public:
 	 *
 	 * @todo Add unit test.
 	 */
-	template <Function T> FORCE_INLINE void SetSend(T&& f) noexcept
+	template <SendFunction T> FORCE_INLINE void SetSend(T&& f) noexcept
 	{
 		Lock::Atomic::Guard _{ m_sendLock };
 		if (!m_isUsable.load(std::memory_order_relaxed)) [[unlikely]] {
@@ -266,7 +273,7 @@ public:
 	FORCE_INLINE [[nodiscard]] uint64_t GetId() const noexcept { return m_id; }
 
 	/**************************
-	 * @brief Shutdown and close connection. Is not concurency safe and won't be called on closed connection.
+	 * @brief Shutdown and close connection. Is not concurrency safe and won't be called on closed connection.
 	 *
 	 * @todo Add unit test.
 	 */
