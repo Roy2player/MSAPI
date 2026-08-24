@@ -23,12 +23,12 @@ void Manager::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 {
 	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 	if (header.GetCipher() == helloForHelloCipher) {
-		if (m_outcomeConnection != -1) {
+		if (m_outcomeConnection != nullptr) {
 			LOG_ERROR("Outcome connection is already set");
 			m_unhandledActions.IncrementActionsNumber();
 			return;
 		}
-		m_outcomeConnection = recvBuffer.GetConnection();
+		m_outcomeConnection = recvBuffer.GetConnectionData();
 		MSAPI::ActionsCounter::IncrementActionsNumber();
 		return;
 	}
@@ -52,123 +52,123 @@ void Manager::HandleModifyRequest(
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Manager::HandleHello(const int connection)
+void Manager::HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 {
-	if (m_clientConnection == -1) {
-		m_clientConnection = connection;
+	if (m_clientConnection == nullptr) {
+		m_clientConnection = connectionData;
 	}
 
 	MSAPI::Protocol::Standard::Data data{ helloForHelloCipher };
-	MSAPI::Protocol::Standard::Send(connection, data);
+	MSAPI::Protocol::Standard::Send(connectionData->GetConnection(), data);
 
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Manager::HandleMetadata(const int connection, const std::string_view metadata)
+void Manager::HandleMetadata(const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const std::string_view metadata)
 {
-	if (connection != m_clientConnection) {
-		LOG_ERROR("Metadata update from unknown connection: " + _S(connection));
+	if (connectionData != m_clientConnection) {
+		LOG_ERROR_NEW("Metadata update from unknown connection id: {}", connectionData->GetConnectionId());
 		MSAPI::ActionsCounter::IncrementActionsNumber();
 		return;
 	}
 
-	LOG_DEBUG("Handle metadata update, connection: " + _S(connection));
+	LOG_DEBUG_NEW("Handle metadata update, connection id: {}", connectionData->GetConnectionId());
 	m_metadata = metadata;
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Manager::HandleParameters(const int connection, const std::map<size_t, std::variant<standardTypes>>& parameters)
+void Manager::HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const std::map<size_t, std::variant<standardTypes>>& parameters)
 {
-	if (connection != m_clientConnection) {
-		LOG_ERROR("Parameters response from unknown connection: " + _S(connection));
+	if (connectionData != m_clientConnection) {
+		LOG_ERROR_NEW("Parameters response from unknown connection id: {}", connectionData->GetConnectionId());
 		MSAPI::ActionsCounter::IncrementActionsNumber();
 		return;
 	}
 
-	LOG_DEBUG("Handle parameters response, connection: " + _S(connection));
+	LOG_DEBUG_NEW("Handle parameters response, connection id: {}", connectionData->GetConnectionId());
 	m_parametersResponse = parameters;
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Manager::HandleIncomeDisconnect(const int32_t id, const int32_t connection)
+void Manager::HandleIncomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 {
-	LOG_PROTOCOL_NEW("id {} connection {}", id, connection);
+	LOG_PROTOCOL_NEW("connection id {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
 void Manager::SendData(const MSAPI::Protocol::Standard::Data& data)
 {
-	if (m_activeConnection == -1) {
+	if (m_activeConnection == nullptr) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
 
-	MSAPI::Protocol::Standard::Send(m_activeConnection, data);
+	MSAPI::Protocol::Standard::Send(m_activeConnection->GetConnection(), data);
 }
 
 void Manager::SendActionRun()
 {
-	if (m_activeConnection == -1) {
+	if (m_activeConnection == nullptr) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
 
-	MSAPI::Protocol::Standard::SendActionRun(m_activeConnection);
+	MSAPI::Protocol::Standard::SendActionRun(m_activeConnection->GetConnection());
 }
 
 void Manager::SendActionPause()
 {
-	if (m_activeConnection == -1) {
+	if (m_activeConnection == nullptr) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
 
-	MSAPI::Protocol::Standard::SendActionPause(m_activeConnection);
+	MSAPI::Protocol::Standard::SendActionPause(m_activeConnection->GetConnection());
 }
 
 void Manager::SendActionDelete()
 {
-	if (m_activeConnection == -1) {
+	if (m_activeConnection == nullptr) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
 
-	MSAPI::Protocol::Standard::SendActionDelete(m_activeConnection);
+	MSAPI::Protocol::Standard::SendActionDelete(m_activeConnection->GetConnection());
 }
 
 void Manager::SendActionHello()
 {
-	if (m_activeConnection == -1) {
+	if (m_activeConnection == nullptr) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
 
-	MSAPI::Protocol::Standard::SendActionHello(m_activeConnection);
+	MSAPI::Protocol::Standard::SendActionHello(m_activeConnection->GetConnection());
 }
 
 void Manager::SendMetadataRequest()
 {
-	if (m_activeConnection == -1) {
+	if (m_activeConnection == nullptr) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
 
-	MSAPI::Protocol::Standard::SendMetadataRequest(m_activeConnection);
+	MSAPI::Protocol::Standard::SendMetadataRequest(m_activeConnection->GetConnection());
 }
 
 void Manager::SendParametersRequest()
 {
-	if (m_activeConnection == -1) {
+	if (m_activeConnection == nullptr) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
 
-	MSAPI::Protocol::Standard::SendParametersRequest(m_activeConnection);
+	MSAPI::Protocol::Standard::SendParametersRequest(m_activeConnection->GetConnection());
 }
 
 void Manager::SendMetadataResponse()
 {
-	if (m_activeConnection == -1) {
+	if (m_activeConnection == nullptr) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
@@ -177,19 +177,19 @@ void Manager::SendMetadataResponse()
 
 	MSAPI::Protocol::Standard::Data metadataData{ MSAPI::Protocol::Standard::cipherMetadataResponse };
 	metadataData.SetData(0, metadata);
-	MSAPI::Protocol::Standard::Send(m_activeConnection, metadataData);
+	MSAPI::Protocol::Standard::Send(m_activeConnection->GetConnection(), metadataData);
 }
 
 void Manager::SendParametersResponse()
 {
-	if (m_activeConnection == -1) {
+	if (m_activeConnection == nullptr) {
 		LOG_ERROR("Active connection is not set");
 		return;
 	}
 
 	MSAPI::Protocol::Standard::Data data{ MSAPI::Protocol::Standard::cipherParametersResponse };
 	data.SetData(505050, 960.960964);
-	MSAPI::Protocol::Standard::Send(m_activeConnection, data);
+	MSAPI::Protocol::Standard::Send(m_activeConnection->GetConnection(), data);
 }
 
 std::string Manager::GetParameters() const
@@ -208,13 +208,13 @@ const std::map<size_t, std::variant<standardTypes>>& Manager::GetParametersRespo
 
 void Manager::Stop()
 {
-	m_clientConnection = -1;
+	m_clientConnection.reset();
 	MSAPI::Server::Stop();
 }
 
 void Manager::UseOutcomeConnection()
 {
-	if (m_outcomeConnection == -1) {
+	if (m_outcomeConnection == nullptr) {
 		LOG_ERROR("Outcome connection is not set");
 		return;
 	}
@@ -229,7 +229,7 @@ void Manager::UseOutcomeConnection()
 
 void Manager::UseClientConnection()
 {
-	if (m_clientConnection == -1) {
+	if (m_clientConnection == nullptr) {
 		LOG_ERROR("Client connection is not set");
 		return;
 	}

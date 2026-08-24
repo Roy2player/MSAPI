@@ -613,9 +613,9 @@ Application::Application()
 
 Application::~Application() { HandlePauseRequest(); }
 
-void Application::Collect(const int connection, const Protocol::Standard::Data& data)
+void Application::Collect(const std::shared_ptr<Connection::Data>& connectionData, const Protocol::Standard::Data& data)
 {
-	LOG_PROTOCOL("Collect data from connection: " + _S(connection) + ", " + data.ToString());
+	LOG_PROTOCOL_NEW("Collect data from connection id: {}, {}", connectionData->GetConnectionId(), data.ToString());
 	switch (data.GetCipher()) {
 	case Protocol::Standard::cipherActionPause:
 		HandlePauseRequest();
@@ -630,13 +630,13 @@ void Application::Collect(const int connection, const Protocol::Standard::Data& 
 		HandleModifyRequest(data.GetData());
 		return;
 	case Protocol::Standard::cipherActionHello:
-		HandleHello(connection);
+		HandleHello(connectionData);
 		return;
 	case Protocol::Standard::cipherMetadataRequest: {
 		if (!m_metadata.empty()) {
 			Protocol::Standard::Data metadataData{ Protocol::Standard::cipherMetadataResponse };
 			metadataData.SetData(0, m_metadata);
-			Protocol::Standard::Send(connection, metadataData);
+			Protocol::Standard::Send(connectionData->GetConnection(), metadataData);
 			return;
 		}
 
@@ -947,13 +947,13 @@ void Application::Collect(const int connection, const Protocol::Standard::Data& 
 
 		Protocol::Standard::Data metadataData{ Protocol::Standard::cipherMetadataResponse };
 		metadataData.SetData(0, m_metadata);
-		Protocol::Standard::Send(connection, metadataData);
+		Protocol::Standard::Send(connectionData->GetConnection(), metadataData);
 	}
 #undef TMP_MSAPI_APPLICATION_STRING_INTERPRETATIONS_PART
 #undef TMP_MSAPI_APPLICATION_NAME_PART
 		return;
 	case Protocol::Standard::cipherParametersResponse:
-		HandleParameters(connection, data.GetData());
+		HandleParameters(connectionData, data.GetData());
 		return;
 	case Protocol::Standard::cipherParametersRequest: {
 		Protocol::Standard::Data data{ Protocol::Standard::cipherParametersResponse };
@@ -990,25 +990,27 @@ void Application::Collect(const int connection, const Protocol::Standard::Data& 
 				},
 				parameter.m_value);
 		}
-		Protocol::Standard::Send(connection, data);
+		Protocol::Standard::Send(connectionData->GetConnection(), data);
 	}
 		return;
 	case Protocol::Standard::cipherMetadataResponse: {
 		const auto it{ data.GetData().find(0) };
 		if (it == data.GetData().end()) {
-			LOG_ERROR("Metadata is empty, connection: " + _S(connection));
+			LOG_ERROR_NEW("Metadata is empty, connection id: {}", connectionData->GetConnectionId());
 			return;
 		}
 		if (!std::holds_alternative<std::string>(it->second)) {
-			LOG_ERROR("Unexpected metadata type: " + data.ToString() + ", connection: " + _S(connection));
+			LOG_ERROR_NEW(
+				"Unexpected metadata type: {}, connection id: {}", data.ToString(), connectionData->GetConnectionId());
 			return;
 		}
 
-		HandleMetadata(connection, std::get<std::string>(it->second));
+		HandleMetadata(connectionData, std::get<std::string>(it->second));
 	}
 		return;
 	default:
-		LOG_ERROR("Unexpected data for collecting: " + data.ToString() + ", connection: " + _S(connection));
+		LOG_ERROR_NEW(
+			"Unexpected data for collecting: {}, connection id: ", data.ToString(), connectionData->GetConnectionId());
 		return;
 	}
 }
@@ -1025,34 +1027,37 @@ void Application::HandleModifyRequest(const std::map<size_t, std::variant<standa
 
 void Application::HandleDeleteRequest() { LOG_PROTOCOL("Action is skipped"); }
 
-void Application::HandleHello([[maybe_unused]] const int connection) { LOG_PROTOCOL("Action is skipped"); }
+void Application::HandleHello(const std::shared_ptr<Connection::Data>& connectionData)
+{
+	LOG_PROTOCOL_NEW("Action is skipped, connection id: {}", connectionData->GetConnectionId());
+}
 
 void Application::HandleMetadata(
-	[[maybe_unused]] const int connection, [[maybe_unused]] const std::string_view metadata)
+	const std::shared_ptr<Connection::Data>& connectionData, [[maybe_unused]] const std::string_view metadata)
 {
-	LOG_PROTOCOL("Action is skipped");
+	LOG_PROTOCOL_NEW("Action is skipped, connection id: {}", connectionData->GetConnectionId());
 }
 
-void Application::HandleParameters([[maybe_unused]] const int connection,
+void Application::HandleParameters(const std::shared_ptr<Connection::Data>& connectionData,
 	[[maybe_unused]] const std::map<size_t, std::variant<standardTypes>>& parameters)
 {
-	LOG_PROTOCOL("Action is skipped");
+	LOG_PROTOCOL_NEW("Action is skipped, connection id: {}", connectionData->GetConnectionId());
 }
 
-void Application::HandleOutcomeDisconnect(const int32_t id, const int32_t connection)
+void Application::HandleOutcomeDisconnect(const std::shared_ptr<Connection::Data>& connectionData)
 {
-	LOG_PROTOCOL_NEW("Id: {} connection {}", id, connection);
+	LOG_PROTOCOL_NEW("Connection id: {}", connectionData->GetConnectionId());
 	HandlePauseRequest();
 }
 
-void Application::HandleIncomeDisconnect(const int32_t id, const int32_t connection)
+void Application::HandleIncomeDisconnect(const std::shared_ptr<Connection::Data>& connectionData)
 {
-	LOG_PROTOCOL_NEW("Id: {} connection {}", id, connection);
+	LOG_PROTOCOL_NEW("Connection id: {}", connectionData->GetConnectionId());
 }
 
-void Application::HandleReconnect(const int id)
+void Application::HandleReconnect(const std::shared_ptr<Connection::Data>& connectionData)
 {
-	LOG_PROTOCOL("Id: " + _S(id));
+	LOG_PROTOCOL_NEW("Connection id: {}", connectionData->GetConnectionId());
 	HandleRunRequest();
 }
 

@@ -48,7 +48,8 @@ void HTTPServer::HandleModifyRequest(const std::map<size_t, std::variant<standar
 	}
 }
 
-void HTTPServer::HandleHttp(const int connection, const MSAPI::Protocol::HTTP::Data& data)
+void HTTPServer::HandleHttp(
+	const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const MSAPI::Protocol::HTTP::Data& data)
 {
 	if (MSAPI::Application::GetState() != MSAPI::Application::State::Running) {
 		LOG_DEBUG("State is not Running, do nothing");

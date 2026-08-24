@@ -90,7 +90,7 @@ struct AccountTestData {
 	std::string login;
 	std::string password;
 	std::string expectedError;
-	int32_t connection;
+	uint64_t connectionId;
 	int16_t grade{};
 	bool shouldRegister;
 	bool isActivated{};
@@ -110,7 +110,7 @@ struct AccountTestData {
 		std::string login, std::string password, std::string expectedError, bool shouldRegister) noexcept;
 
 private:
-	static inline int32_t connectionsCounter = 10;
+	static inline uint64_t connectionsCounter = 10;
 };
 
 /*---------------------------------------------------------------------------------
@@ -122,7 +122,7 @@ AccountTestData::AccountTestData(
 	: login{ std::move(login) }
 	, password{ std::move(password) }
 	, expectedError{ std::move(expectedError) }
-	, connection{ connectionsCounter++ }
+	, connectionId{ connectionsCounter++ }
 	, shouldRegister{ shouldRegister }
 {
 }
@@ -384,7 +384,7 @@ bool Authorization()
 
 	const auto tryAccess{ [&t, &mod, &checkAccountLogs](
 							  auto& current, const U gradeToCheck, const bool expectedAccess) {
-		RETURN_IF_FALSE(t.Assert(mod.IsAccessGranted(current.connection, static_cast<G>(gradeToCheck)), expectedAccess,
+		RETURN_IF_FALSE(t.Assert(mod.IsAccessGranted(current.connectionId, static_cast<G>(gradeToCheck)), expectedAccess,
 			std::format("Access is granted to {}, to account {}", gradeToCheck, current.login)));
 
 		if (current.isLoggedOn) {
@@ -425,7 +425,7 @@ bool Authorization()
 			RETURN_IF_FALSE(tryAccess(accountData, static_cast<U>(gradeZero), false));
 		}
 
-		mod.LogoutConnection(accountData.connection);
+		mod.LogoutConnection(accountData.connectionId);
 		error.clear();
 	}
 
@@ -491,7 +491,7 @@ bool Authorization()
 
 	const auto checkLogonWithInvalidPassword{ [&t, &mod, &error, &checkAccountLogs](auto& current,
 												  std::string_view password, std::string_view expectedError) {
-		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current->connection, current->login, password, error), false,
+		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current->connectionId, current->login, password, error), false,
 			"Logon connection with invalid password"));
 		RETURN_IF_FALSE(t.Assert(
 			error, expectedError, "Check error message for logon attempt on connection with invalid password"));
@@ -499,9 +499,9 @@ bool Authorization()
 		current->lastActivity = Timer{};
 		++current->logsCount;
 		RETURN_IF_FALSE(checkAccountLogs(*current, current->logsCount - 1,
-			std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}, reason: Invalid login "
+			std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}, reason: Invalid login "
 						"or password",
-				current->connection)));
+				current->connectionId)));
 		return true;
 	} };
 
@@ -554,8 +554,8 @@ bool Authorization()
 					RETURN_IF_FALSE(tryAccess(current, current.grade, false));
 					RETURN_IF_FALSE(tryAccess(current, current.grade + 1, false));
 					RETURN_IF_FALSE(checkAccountLogs(current, current.logsCount - 2,
-						std::format("Logout due to blocking at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}",
-							current.connection)));
+						std::format("Logout due to blocking at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}",
+							current.connectionId)));
 					--activeConnections;
 					RETURN_IF_FALSE(t.Assert(mod.GetLogonConnectionsSize(), activeConnections,
 						"Expected number of active connections in module"));
@@ -694,8 +694,8 @@ bool Authorization()
 		for (auto current{ begin }; current != end; ++current) {
 			if (!current->shouldRegister || current->isDeleted) {
 				RETURN_IF_FALSE(t.Assert(
-					mod.LogonConnection(current->connection, current->login, current->password, error), false,
-					std::format("Logon connection {} with account login: '{}'", current->connection, current->login)));
+					mod.LogonConnection(current->connectionId, current->login, current->password, error), false,
+					std::format("Logon connection id {} with account login: '{}'", current->connectionId, current->login)));
 				RETURN_IF_FALSE(t.Assert(error, "Invalid login or password", "Check error message for logon attempt"));
 				error.clear();
 
@@ -712,16 +712,16 @@ bool Authorization()
 
 			if (!current->isActivated) {
 				RETURN_IF_FALSE(
-					t.Assert(mod.LogonConnection(current->connection, current->login, current->password, error), false,
-						std::format("Logon connection {}", current->connection)));
+					t.Assert(mod.LogonConnection(current->connectionId, current->login, current->password, error), false,
+						std::format("Logon connection id {}", current->connectionId)));
 				RETURN_IF_FALSE(t.Assert(error, "Account is not activated", "Check error message for logon attempt"));
 
 				current->lastActivity = Timer{};
 				++current->logsCount;
 				RETURN_IF_FALSE(checkAccountLogs(*current, current->logsCount - 1,
-					std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}, reason: Account "
+					std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}, reason: Account "
 								"is not activated",
-						current->connection)));
+						current->connectionId)));
 			}
 			error.clear();
 
@@ -772,8 +772,8 @@ bool Authorization()
 		for (auto current{ begin }; current != end; ++current) {
 			if (!current->shouldRegister || current->isDeleted) {
 				RETURN_IF_FALSE(t.Assert(
-					mod.LogonConnection(current->connection, current->login, current->password, error), false,
-					std::format("Logon connection {} with account login: '{}'", current->connection, current->login)));
+					mod.LogonConnection(current->connectionId, current->login, current->password, error), false,
+					std::format("Logon connection id {} with account login: '{}'", current->connectionId, current->login)));
 				RETURN_IF_FALSE(t.Assert(error, "Invalid login or password", "Check error message"));
 				error.clear();
 
@@ -784,8 +784,8 @@ bool Authorization()
 			}
 
 			RETURN_IF_FALSE(
-				t.Assert(mod.LogonConnection(current->connection, current->login, current->password, error), false,
-					std::format("Logon connection {} with account login: '{}'", current->connection, current->login)));
+				t.Assert(mod.LogonConnection(current->connectionId, current->login, current->password, error), false,
+					std::format("Logon connection id {} with account login: '{}'", current->connectionId, current->login)));
 			const auto& blockedTillError{ std::format("Account is blocked till {}", blockedTill.ToString()) };
 			RETURN_IF_FALSE(t.Assert(error, blockedTillError, "Check error message"));
 			error.clear();
@@ -793,8 +793,8 @@ bool Authorization()
 			current->lastActivity = Timer{};
 			++current->logsCount;
 			RETURN_IF_FALSE(checkAccountLogs(*current, current->logsCount - 1,
-				std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}, reason: {}",
-					current->connection, blockedTillError)));
+				std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}, reason: {}",
+					current->connectionId, blockedTillError)));
 		}
 
 #define TMP_MSAPI_UNIT_TEST_AUTHORIZATION_CHANGE_NEW_GRADE_COUNTER                                                     \
@@ -833,15 +833,15 @@ bool Authorization()
 
 			if (current->reLogon) {
 				RETURN_IF_FALSE(t.Assert(
-					mod.LogonConnection(current->connection, current->login, current->password, error), true,
-					std::format("Logon connection {} with account login: '{}'", current->connection, current->login)));
+					mod.LogonConnection(current->connectionId, current->login, current->password, error), true,
+					std::format("Logon connection id {} with account login: '{}'", current->connectionId, current->login)));
 				RETURN_IF_FALSE(t.Assert(error, "", "Check empty error message for successful logon"));
 				current->isLoggedOn = true;
 				current->reLogon = false;
 				current->lastActivity = Timer{};
 				++current->logsCount;
 				RETURN_IF_FALSE(checkAccountLogs(*current, current->logsCount - 1,
-					std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}", current->connection)));
+					std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}", current->connectionId)));
 				++activeConnections;
 				RETURN_IF_FALSE(t.Assert(mod.GetLogonConnectionsSize(), activeConnections,
 					"Expected number of active connections in module"));
@@ -1040,8 +1040,8 @@ bool Authorization()
 				current->reLogon = true;
 				current->logsCount += 2;
 				RETURN_IF_FALSE(checkAccountLogs(*current, current->logsCount - 2,
-					std::format("Logout due to deactivation at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}",
-						current->connection)));
+					std::format("Logout due to deactivation at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}",
+						current->connectionId)));
 				--activeConnections;
 				RETURN_IF_FALSE(t.Assert(mod.GetLogonConnectionsSize(), activeConnections,
 					"Expected number of active connections in module"));
@@ -1099,15 +1099,15 @@ bool Authorization()
 
 			if (current->reLogon) {
 				RETURN_IF_FALSE(t.Assert(
-					mod.LogonConnection(current->connection, current->login, current->password, error), true,
-					std::format("Logon connection {} with account login: '{}'", current->connection, current->login)));
+					mod.LogonConnection(current->connectionId, current->login, current->password, error), true,
+					std::format("Logon connection id {} with account login: '{}'", current->connectionId, current->login)));
 				RETURN_IF_FALSE(t.Assert(error, "", "Check empty error message for successful logon"));
 				current->isLoggedOn = true;
 				current->reLogon = false;
 				current->lastActivity = Timer{};
 				++current->logsCount;
 				RETURN_IF_FALSE(checkAccountLogs(*current, current->logsCount - 1,
-					std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}", current->connection)));
+					std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}", current->connectionId)));
 				++activeConnections;
 				RETURN_IF_FALSE(t.Assert(mod.GetLogonConnectionsSize(), activeConnections,
 					"Expected number of active connections in module"));
@@ -1183,11 +1183,11 @@ bool Authorization()
 		RETURN_IF_FALSE(tryAccess(current, current.grade, false));
 		RETURN_IF_FALSE(tryAccess(current, current.grade + 1, false));
 
-		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connection, current.login, current.password, error), false,
-			std::format("Logon connection {} with deleted account", current.connection)));
+		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connectionId, current.login, current.password, error), false,
+			std::format("Logon connection id {} with deleted account", current.connectionId)));
 		RETURN_IF_FALSE(t.Assert(error, "Invalid login or password",
 			std::format(
-				"Check error message for logon attempt on connection {} with deleted account", current.connection)));
+				"Check error message for logon attempt on connection id {} with deleted account", current.connectionId)));
 		error.clear();
 
 		{
@@ -1204,8 +1204,8 @@ bool Authorization()
 	// 8. Logon connections
 	for (auto& current : testAccounts) {
 		if (!current.shouldRegister || current.isDeleted) {
-			RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connection, current.login, current.password, error),
-				false, std::format("Logon connection {} with account login: '{}'", current.connection, current.login)));
+			RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connectionId, current.login, current.password, error),
+				false, std::format("Logon connection id {} with account login: '{}'", current.connectionId, current.login)));
 			RETURN_IF_FALSE(t.Assert(error, "Invalid login or password", "Check error message"));
 			error.clear();
 
@@ -1224,14 +1224,14 @@ bool Authorization()
 			continue;
 		}
 
-		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connection, current.login, current.password, error), true,
-			std::format("Logon connection {}", current.connection)));
+		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connectionId, current.login, current.password, error), true,
+			std::format("Logon connection id {}", current.connectionId)));
 		RETURN_IF_FALSE(t.Assert(error, "", "Check error message for login modification"));
 		current.lastActivity = Timer{};
 		current.isLoggedOn = true;
 		++current.logsCount;
 		RETURN_IF_FALSE(checkAccountLogs(current, current.logsCount - 1,
-			std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}", current.connection)));
+			std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}", current.connectionId)));
 		++activeConnections;
 		RETURN_IF_FALSE(t.Assert(
 			mod.GetLogonConnectionsSize(), activeConnections, "Expected number of active connections in module"));
@@ -1255,23 +1255,23 @@ bool Authorization()
 			continue;
 		}
 
-		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connection, current.login, current.password, error), false,
-			std::format("Logon already logged-on connection {}", current.connection)));
+		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connectionId, current.login, current.password, error), false,
+			std::format("Logon already logged-on connection id {}", current.connectionId)));
 		RETURN_IF_FALSE(t.Assert(error, "", "Check empty error message for successful logon"));
 		current.lastActivity = Timer{};
 		++current.logsCount;
 		RETURN_IF_FALSE(checkAccountLogs(current, current.logsCount - 1,
-			std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX to already logged-on connection {}",
-				current.connection)));
+			std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX to already logged-on connection id {}",
+				current.connectionId)));
 
-		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connection + 1, current.login, current.password, error),
-			false, std::format("Logon one more connection {}", current.connection + 1)));
+		RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connectionId + 1, current.login, current.password, error),
+			false, std::format("Logon one more connection id {}", current.connectionId + 1)));
 		RETURN_IF_FALSE(t.Assert(error, "Multiple logon is not allowed", "Check error message"));
 		current.lastActivity = Timer{};
 		++current.logsCount;
 		RETURN_IF_FALSE(checkAccountLogs(current, current.logsCount - 1,
-			std::format("Multiple logon is not allowed, attempting connection {} at XXXX-XX-XX XX:XX:XX.XXXXXXXXX",
-				current.connection + 1)));
+			std::format("Multiple logon is not allowed, attempting connection id {} at XXXX-XX-XX XX:XX:XX.XXXXXXXXX",
+				current.connectionId + 1)));
 		error.clear();
 
 		auto account{ getSavedAccount.operator()<A>(current.login) };
@@ -1327,19 +1327,19 @@ bool Authorization()
 		auto& secondAccount{ *secondAccountIt };
 
 		// Logout first account
-		mod.LogoutConnection(firstAccount.connection);
+		mod.LogoutConnection(firstAccount.connectionId);
 		firstAccount.isLoggedOn = false;
 		firstAccount.lastActivity = Timer{};
 		++firstAccount.logsCount;
 		RETURN_IF_FALSE(t.Assert(
 			checkAccountLogs(firstAccount, firstAccount.logsCount - 1,
-				std::format("Logout at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}", firstAccount.connection)),
-			true, std::format("Account {} logout from connection {}", firstAccount.login, firstAccount.connection)));
+				std::format("Logout at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}", firstAccount.connectionId)),
+			true, std::format("Account {} logout from connection id {}", firstAccount.login, firstAccount.connectionId)));
 		--activeConnections;
 		RETURN_IF_FALSE(t.Assert(
 			mod.GetLogonConnectionsSize(), activeConnections, "Expected number of active connections in module"));
 
-		mod.LogoutConnection(firstAccount.connection);
+		mod.LogoutConnection(firstAccount.connectionId);
 
 		{
 			auto account{ getSavedAccount.operator()<A>(firstAccount.login) };
@@ -1353,18 +1353,18 @@ bool Authorization()
 
 		// Try to logon first account's connection with first account
 		RETURN_IF_FALSE(
-			t.Assert(mod.LogonConnection(secondAccount.connection, firstAccount.login, firstAccount.password, error),
+			t.Assert(mod.LogonConnection(secondAccount.connectionId, firstAccount.login, firstAccount.password, error),
 				false, "Logon already logged-on connection"));
 		RETURN_IF_FALSE(t.Assert(error,
-			std::format("Connection is already logged-on with another account", secondAccount.connection),
+			std::format("Connection is already logged-on with another account", secondAccount.connectionId),
 			"Check error message"));
 		error.clear();
 		firstAccount.lastActivity = Timer{};
 		++firstAccount.logsCount;
 		RETURN_IF_FALSE(checkAccountLogs(firstAccount, firstAccount.logsCount - 1,
 			std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX to already logged-on by another account "
-						"connection {}",
-				secondAccount.connection)));
+						"connection id {}",
+				secondAccount.connectionId)));
 
 		// Check access
 		RETURN_IF_FALSE(tryAccess(firstAccount, firstAccount.grade - 1, false));
@@ -1377,14 +1377,14 @@ bool Authorization()
 
 		// Logon back
 		RETURN_IF_FALSE(
-			t.Assert(mod.LogonConnection(firstAccount.connection, firstAccount.login, firstAccount.password, error),
-				true, std::format("Logon connection {} back", firstAccount.connection)));
+			t.Assert(mod.LogonConnection(firstAccount.connectionId, firstAccount.login, firstAccount.password, error),
+				true, std::format("Logon connection id {} back", firstAccount.connectionId)));
 		RETURN_IF_FALSE(t.Assert(error, "", "Check empty error message for successful logon"));
 		firstAccount.isLoggedOn = true;
 		firstAccount.lastActivity = Timer{};
 		++firstAccount.logsCount;
 		RETURN_IF_FALSE(checkAccountLogs(firstAccount, firstAccount.logsCount - 1,
-			std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}", firstAccount.connection)));
+			std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}", firstAccount.connectionId)));
 		++activeConnections;
 		RETURN_IF_FALSE(t.Assert(
 			mod.GetLogonConnectionsSize(), activeConnections, "Expected number of active connections in module"));
@@ -1405,7 +1405,7 @@ bool Authorization()
 			mod.GetRegisteredAccountsSize(), registeredAccounts, "Check registered accounts size after deletion"));
 		RETURN_IF_FALSE(checkAccountLogs(firstAccount, firstAccount.logsCount - 2,
 			std::format(
-				"Logout due to deletion at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}", firstAccount.connection)));
+				"Logout due to deletion at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}", firstAccount.connectionId)));
 		RETURN_IF_FALSE(checkAccountLogs(firstAccount, firstAccount.logsCount - 1,
 			"Marked as uninitialized and deactivated at XXXX-XX-XX XX:XX:XX.XXXXXXXXX"));
 		--activeConnections;
@@ -1423,34 +1423,34 @@ bool Authorization()
 		}
 
 		// Logout second account
-		mod.LogoutConnection(secondAccount.connection);
+		mod.LogoutConnection(secondAccount.connectionId);
 		secondAccount.isLoggedOn = false;
 		secondAccount.lastActivity = Timer{};
 		++secondAccount.logsCount;
 		RETURN_IF_FALSE(t.Assert(
 			checkAccountLogs(secondAccount, secondAccount.logsCount - 1,
-				std::format("Logout at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}", secondAccount.connection)),
-			true, std::format("Account {} logout from connection {}", secondAccount.login, secondAccount.connection)));
+				std::format("Logout at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}", secondAccount.connectionId)),
+			true, std::format("Account {} logout from connection id {}", secondAccount.login, secondAccount.connectionId)));
 		--activeConnections;
 		RETURN_IF_FALSE(t.Assert(
 			mod.GetLogonConnectionsSize(), activeConnections, "Expected number of active connections in module"));
 
 		// Logon first account's connection with second account login
 		RETURN_IF_FALSE(t.Assert(
-			mod.LogonConnection(firstAccount.connection, secondAccount.login, secondAccount.password, error), true,
-			std::format("Logon connection {} with account login: '{}'", firstAccount.connection, secondAccount.login)));
+			mod.LogonConnection(firstAccount.connectionId, secondAccount.login, secondAccount.password, error), true,
+			std::format("Logon connection id {} with account login: '{}'", firstAccount.connectionId, secondAccount.login)));
 		RETURN_IF_FALSE(t.Assert(error, "", "Check empty error message for successful logon"));
 		secondAccount.isLoggedOn = true;
 		secondAccount.lastActivity = Timer{};
 		++secondAccount.logsCount;
 		RETURN_IF_FALSE(checkAccountLogs(secondAccount, secondAccount.logsCount - 1,
-			std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}", firstAccount.connection)));
+			std::format("Logon at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}", firstAccount.connectionId)));
 		++activeConnections;
 		RETURN_IF_FALSE(t.Assert(
 			mod.GetLogonConnectionsSize(), activeConnections, "Expected number of active connections in module"));
 
 		// Check access
-		std::swap(firstAccount.connection, secondAccount.connection);
+		std::swap(firstAccount.connectionId, secondAccount.connectionId);
 		RETURN_IF_FALSE(tryAccess(secondAccount, secondAccount.grade - 1, true));
 		RETURN_IF_FALSE(tryAccess(secondAccount, secondAccount.grade, true));
 		RETURN_IF_FALSE(tryAccess(secondAccount, secondAccount.grade + 1, false));
@@ -1462,8 +1462,8 @@ bool Authorization()
 		secondAccount.lastActivity = Timer{};
 		secondAccount.logsCount += 2;
 		RETURN_IF_FALSE(checkAccountLogs(secondAccount, secondAccount.logsCount - 2,
-			std::format("Logout due to deactivation at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}",
-				secondAccount.connection)));
+			std::format("Logout due to deactivation at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}",
+				secondAccount.connectionId)));
 		RETURN_IF_FALSE(checkAccountLogs(secondAccount, secondAccount.logsCount - 1,
 			"Activation state is changed to false at XXXX-XX-XX XX:XX:XX.XXXXXXXXX"));
 		--activeConnections;
@@ -1555,7 +1555,7 @@ bool Authorization()
 			++current.logsCount;
 			RETURN_IF_FALSE(checkAccountLogs(current, current.logsCount - 1,
 				std::format(
-					"Logout due to module stop at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}", current.connection)));
+					"Logout due to module stop at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}", current.connectionId)));
 			--activeConnections;
 
 			// Check access
@@ -1600,8 +1600,8 @@ bool Authorization()
 
 		// Try to logon blocked accounts
 		if (!current.blockedTill.Empty()) {
-			RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connection, current.login, current.password, error),
-				false, std::format("Logon connection {}", current.connection)));
+			RETURN_IF_FALSE(t.Assert(mod.LogonConnection(current.connectionId, current.login, current.password, error),
+				false, std::format("Logon connection id {}", current.connectionId)));
 			RETURN_IF_FALSE(t.Assert(
 				error, std::format("Account is blocked till {}", blockedTill.ToString()), "Check error message"));
 			error.clear();
@@ -1609,9 +1609,9 @@ bool Authorization()
 			current.lastActivity = Timer{};
 			++current.logsCount;
 			RETURN_IF_FALSE(checkAccountLogs(current, current.logsCount - 1,
-				std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection {}, reason: Account is "
+				std::format("Failed logon attempt at XXXX-XX-XX XX:XX:XX.XXXXXXXXX, connection id {}, reason: Account is "
 							"blocked till {}",
-					current.connection, current.blockedTill.ToString())));
+					current.connectionId, current.blockedTill.ToString())));
 		}
 	}
 	RETURN_IF_FALSE(

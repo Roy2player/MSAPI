@@ -1,4 +1,31 @@
 {
     "Apps": [
+        {
+            "App": "Gateway T-Bank",
+            "Bin": "/home/flameskin/workspace/AT/apps/gateway/build/ATGateway"
+        },
+        {
+            "App": "Strategy",
+            "Bin": "/home/flameskin/workspace/AT/apps/strategy/build/ATStrategy"
+        },
+        {
+            "App": "Storage",
+            "Bin": "/home/flameskin/workspace/AT/apps/storage/build/ATStorage"
+        },
+        {
+            "App": "Strategy theory checker",
+            "Bin": "/home/flameskin/workspace/AT/apps/strategyTheoryChecker/build/ATStrategyTheoryChecker",
+            "View": 1000009
+        },
+        {
+            "App": "Web panel",
+            "Bin": "/home/flameskin/workspace/AT/apps/webPanel/build/ATWebPanel",
+            "View": 1000009
+        },
+        {
+            "App": "Bonds",
+            "Bin": "/home/flameskin/workspace/AT/apps/bonds/build/ATBonds",
+            "View": 1000009
+        }
     ]
 }

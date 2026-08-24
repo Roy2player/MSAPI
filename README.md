@@ -9,7 +9,8 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
 ## 🔧 Building
 
 To build library follow next simple steps:
-```
+
+```bash
 cd library/build
 cmake -DCMAKE_BUILD_TYPE=Release .
 cmake --build . -j $(nproc)
@@ -28,6 +29,7 @@ Number of bash scripts are available in the [bash/](bash/) folder to simplify bu
 ## 🧩 Features & structure:
 
 ### [Server Framework](library/source/server/)
+
 - [**Server:**](library/source/server/server.h) Provides communication ability via TCP sockets and current-state model to manage server lifetime;
 - [**Application:**](library/source/server/application.h) Provides customization ability via parameters and current-state model to manage application behavior.
 - [**Authorization:**](library/source/server/authorization.inl) Generic thread-safe account management and authentication.
@@ -35,13 +37,15 @@ Number of bash scripts are available in the [bash/](bash/) folder to simplify bu
 Server provides data to be handled by calling a callback in case if this data is not a part of internal Application protocol.
 
 ### [Custom and another protocols](library/source/protocol/)
-- [**Object protocol:**](library/source/protocol/object.h) Transfers simple copyable objects using stream and filter models.
+
+- [**Object protocol:**](library/source/protocol/object.inl) Transfers simple copyable objects using stream and filter models.
 - [**Standard protocol:**](library/source/protocol/standard.h) Handles dynamic-size messages as arrays of key-value pairs.
 - [**HTTP protocol:**](library/source/protocol/http.h) Basic HTTP message parsing and handling.
 - [**WebSocket protocol:**](library/source/protocol/webSocket.inl) Implementation of data and parallel execution safe functional abstractions for 13 version (RFC 6455) WebSocket protocol.
 - [**WebSocket events protocol:**](library/source/protocol/webSocketEvents.inl) Parallel execution distributing model which works on top of web socket protocol with json payload, supports single and stream events with filters. Uses [Authorization](library/source/server/authorization.inl) to control data access rights.
 
 ### [Utility Modules](library/source/help/)
+
 - [**Log:**](library/source/help/log.h) Multiple log levels and console/file outputs.
 - [**Time:**](library/source/help/time.h) Time utilities and event scheduling.
 - [**HTML:**](library/source/help/html.h) Parser module.
@@ -82,6 +86,7 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
  **Scenario:** Load page -> open created apps view (some apps were created before) -> attempt to create app -> login -> create app -> search for app by type filter -> create app view -> run app -> interact with run app.
 
 ### [JS Core](/apps/manager/web/js/core)
+
 - [**View:**](apps/manager/web/js/core/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling.
 - [**Table:**](apps/manager/web/js/core/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types.
 - [**Grid:**](apps/manager/web/js/core/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations.
@@ -91,14 +96,17 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 - [**WebSocket handler:**](apps/manager/web/js/core/webSocketHandler.js) Client implementation of events protocol to interact with [server](library/source/protocol/webSocketEvents.inl).
 
 ### [JS Help](/apps/manager/web/js/help)
+
 - [**Helper:**](apps/manager/web/js/help/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more.
 - [**Dynamic:**](apps/manager/web/js/help/dynamic.js) Helpers to add interface dynamic.
 
 ### [JS Testing Framework](/apps/manager/web/js/test)
+
 - [**Server simulator:**](apps/manager/web/js/test/serverSimulator.js) Server's behavior simulator.
 - [**Test runner:**](apps/manager/web/js/test/testRunner.js) Test execution controller, assertions result tracker.
 
 ### [Default views](/apps/manager/web/js/views)
+
 - [**Installed apps:**](apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications.
 - [**Created apps:**](apps/manager/web/js/views/createdApps.js) Shows a grid of created/running apps with parameters and action buttons.
 - [**New app:**](apps/manager/web/js/views/newApp.js) Presents a form for creating new applications.
@@ -114,7 +122,7 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 This software is licensed under the **Polyform Noncommercial License 1.0.0**, see [LICENSE.md](LICENSE.md).  
 You may use, copy, modify, and distribute it for noncommercial purposes only.
 
-For commercial use, please contact: maks.angels@mail.ru
+For commercial use, please contact: <mailto:maks.angels@mail.ru>
 
 ## 🤝 Contributing
 

@@ -34,13 +34,14 @@ private:
 public:
 	HTTPClient();
 
-	//* MSAPI::Server
+	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
-	//* MSAPI::Protocol::HTTP::IHandler
-	void HandleHttp(int connection, const MSAPI::Protocol::HTTP::Data& data) final;
+	// MSAPI::Protocol::HTTP::IHandler
+	void HandleHttp(
+		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const MSAPI::Protocol::HTTP::Data& data) final;
 
 	const std::optional<MSAPI::Protocol::HTTP::Data>& GetHTTPData() const noexcept;
-	void SendRequest(int id, const std::string& HTTP);
+	void SendRequest(uint64_t id, const std::string& HTTP);
 };
 
-#endif //* HTTP_CLIENT_H
+#endif // HTTP_CLIENT_H

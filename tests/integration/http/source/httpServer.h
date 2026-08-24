@@ -35,14 +35,15 @@ private:
 public:
 	HTTPServer();
 
-	//* MSAPI::Server
+	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
-	//* MSAPI::Application
+	// MSAPI::Application
 	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
-	//* MSAPI::Protocol::HTTP::IHandler
-	void HandleHttp(int connection, const MSAPI::Protocol::HTTP::Data& data) final;
+	// MSAPI::Protocol::HTTP::IHandler
+	void HandleHttp(
+		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const MSAPI::Protocol::HTTP::Data& data) final;
 
 	const std::optional<MSAPI::Protocol::HTTP::Data>& GetHTTPData() const noexcept;
 };
 
-#endif //* HTTP_SERVER_H
+#endif // HTTP_SERVER_H

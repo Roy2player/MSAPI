@@ -21,7 +21,6 @@
 #include "../../../../library/source/server/server.h"
 #include "../../../../library/source/test/test.h"
 #include <memory>
-#include <sys/mman.h>
 #include <sys/resource.h>
 
 struct ServerImpl : MSAPI::Server {
@@ -30,8 +29,6 @@ struct ServerImpl : MSAPI::Server {
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
-
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
@@ -55,6 +52,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetToFile(true);
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
+
+	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
+		return 1;
+	}
 
 	MSAPI::Test test;
 

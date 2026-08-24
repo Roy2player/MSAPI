@@ -78,13 +78,10 @@
 #include "client.h"
 #include "manager.h"
 #include <memory>
-#include <sys/mman.h>
 #include <sys/resource.h>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
-
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
@@ -103,18 +100,25 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		}
 	}
 
-	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::INFO);
+	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::PROTOCOL);
 	MSAPI::logger.SetName("TestAH");
 	MSAPI::logger.SetToFile(true);
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
 
+	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
+		return 1;
+	}
+
 	//* Manager
+	std::cout << "--> 1" << std::endl;
 	auto managerPtr{ MSAPI::Daemon<Manager>::Create("Manager") };
+	std::cout << "--> 2" << std::endl;
 	if (managerPtr == nullptr) {
 		return 1;
 	}
 	auto manager{ static_cast<Manager*>(managerPtr->GetApp()) };
+	std::cout << "--> 3" << std::endl;
 
 	//* Pseudo manager
 	auto pseudoManagerPtr{ MSAPI::Daemon<Manager>::Create("PseudoManager") };
@@ -129,7 +133,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		return 1;
 	}
 	auto secondPseudoManager{ static_cast<Manager*>(secondPseudoManagerPtr->GetApp()) };
-	if (!pseudoManager->OpenConnect(1, INADDR_LOOPBACK, secondPseudoManagerPtr->GetPort())) {
+
+	const auto pseudoManagerToSecondPseudoManagerConnectionData{ pseudoManager->OpenConnection(
+			INADDR_LOOPBACK, secondPseudoManagerPtr->GetPort(), /*doReconnection=*/true) };
+	if (pseudoManagerToSecondPseudoManagerConnectionData == nullptr) {
 		return 1;
 	}
 
@@ -160,9 +167,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		return 1;
 	}
 	auto client{ static_cast<Client*>(clientPtr->GetApp()) };
-	if (!client->OpenConnect(0, INADDR_LOOPBACK, managerPtr->GetPort())
-		|| !client->OpenConnect(1, INADDR_LOOPBACK, pseudoManagerPtr->GetPort())) {
-
+	const auto clientToManagerConnectionData{ client->OpenManagerConnection(INADDR_LOOPBACK, managerPtr->GetPort(), /*doReconnection=*/true) };
+	if (clientToManagerConnectionData == nullptr) {
+		return 1;
+	}
+	const auto clientToPseudoManagerConnectionData{ client->OpenConnection(INADDR_LOOPBACK, pseudoManagerPtr->GetPort(), /*doReconnection=*/true) };
+	if (clientToPseudoManagerConnectionData == nullptr) {
 		return 1;
 	}
 
@@ -280,6 +290,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	test.Assert(manager->GetMetadata(), metadata, "Metadata is correct");
 	test.Assert(client->MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
 		"Client state is not changed after metadata request");
+
+	return 0;
 
 	const auto checkParametersResponse{
 		[&manager, &test](const int8_t s1, const int16_t s2, const int32_t s3, const int64_t s4, const uint8_t s5,

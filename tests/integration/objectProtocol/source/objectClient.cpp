@@ -88,46 +88,45 @@ MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure>& ObjectClient::
 	return m_orderStream;
 }
 
-void ObjectClient::HandleObject([[maybe_unused]] const int streamId, const InstrumentStructure& object)
+void ObjectClient::HandleObject([[maybe_unused]] const uint64_t streamId, const InstrumentStructure& object)
 {
 	LOG_DEBUG("Got Instrument object");
 	m_instruments.emplace(object);
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::HandleObject([[maybe_unused]] const int streamId, const OrderStructure& object)
+void ObjectClient::HandleObject([[maybe_unused]] const uint64_t streamId, const OrderStructure& object)
 {
 	LOG_DEBUG("Got Order object");
 	m_orders.emplace(object);
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::HandleStreamOpened(const int streamId)
+void ObjectClient::HandleStreamOpened(const uint64_t streamId)
 {
 	LOG_DEBUG("Stream open, id: " + _S(streamId));
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::HandleStreamSnapshotDone(const int streamId)
+void ObjectClient::HandleStreamSnapshotDone(const uint64_t streamId)
 {
 	LOG_DEBUG("Stream done, id: " + _S(streamId));
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::HandleStreamFailed(const int streamId)
+void ObjectClient::HandleStreamFailed(const uint64_t streamId)
 {
 	LOG_DEBUG("Stream failed, id: " + _S(streamId));
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::SetConnectionForStreams(const int id)
+void ObjectClient::SetConnectionIdForStreams(const uint64_t id)
 {
-	const auto connection{ GetConnect(id) };
-	if (!connection.has_value()) {
+	const auto connectionData{ Server::GetConnectionData(id) };
+	if (connectionData == nullptr) {
 		LOG_ERROR("Din't find connection for id: " + _S(id));
 		return;
 	}
-	const auto connectionValue{ connection.value() };
-	m_instrumentStream.SetConnection(connectionValue);
-	m_orderStream.SetConnection(connectionValue);
+	m_instrumentStream.SetConnectionData(connectionData);
+	m_orderStream.SetConnectionData(connectionData);
 }

@@ -19,6 +19,7 @@ add_compile_options(
 
     -pedantic
     #-Werror
+    -fmax-errors=20
 
     -std=c++2c
     -O3 # TODO: Find a way to build with -Ofast

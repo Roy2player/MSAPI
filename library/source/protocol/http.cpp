@@ -110,8 +110,7 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 			}
 		}
 		else {
-			LOG_ERROR("Invalid HTTP message format, connection: " + _S(recvBuffer.GetConnection())
-				+ ", id: " + _S(recvBuffer.GetConnectionId()));
+			LOG_ERROR_NEW("Invalid HTTP message format, connection id {} ", recvBuffer.GetConnectionId());
 			return;
 		}
 	}
@@ -164,7 +163,8 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 					continue;
 				}
 
-				LOG_ERROR("Unexpected symbol inside request start line, connection: " + _S(recvBuffer.GetConnection()));
+				LOG_ERROR_NEW(
+					"Unexpected symbol inside request start line, connection id {}", recvBuffer.GetConnectionId());
 				return;
 			}
 
@@ -210,20 +210,20 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 			&& m_messageType != "HEAD" && m_messageType != "CONNECT" && m_messageType != "OPTIONS"
 			&& m_messageType != "TRACE" && m_messageType != "PATCH") {
 
-			LOG_ERROR(
-				"Invalid HTTP message type: " + m_messageType + ", connection: " + _S(recvBuffer.GetConnection()));
+			LOG_ERROR_NEW(
+				"Invalid HTTP message type \"{}\", connection id {}", m_messageType, recvBuffer.GetConnectionId());
 			return;
 		}
 		if (m_HTTPtype != "HTTP" && m_HTTPtype != "HTTPS") {
-			LOG_ERROR("Invalid HTTP type: " + m_HTTPtype + ", connection: " + _S(recvBuffer.GetConnection()));
+			LOG_ERROR_NEW("Invalid HTTP type \"{}\", connection id {}", m_HTTPtype, recvBuffer.GetConnectionId());
 			return;
 		}
 		if (m_version.empty()) {
-			LOG_ERROR("Empty HTTP version, connection: " + _S(recvBuffer.GetConnection()));
+			LOG_ERROR_NEW("Empty HTTP version, connection id {}", recvBuffer.GetConnectionId());
 			return;
 		}
 		if (m_url.empty()) {
-			LOG_ERROR("Empty HTTP url, connection: " + _S(recvBuffer.GetConnection()));
+			LOG_ERROR_NEW("Empty HTTP url, connection id {}", recvBuffer.GetConnectionId());
 			return;
 		}
 
@@ -297,23 +297,19 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 		}
 
 		if (m_HTTPtype != "HTTP" && m_HTTPtype != "HTTPS") {
-			LOG_ERROR("Invalid HTTP type: " + m_HTTPtype + ", connection: " + _S(recvBuffer.GetConnection())
-				+ ", id: " + _S(recvBuffer.GetConnectionId()));
+			LOG_ERROR_NEW("Invalid HTTP type: {}, connection {}", m_HTTPtype, recvBuffer.GetConnectionId());
 			return;
 		}
 		if (m_version.empty()) {
-			LOG_ERROR("Empty HTTP version, connection: " + _S(recvBuffer.GetConnection())
-				+ ", id: " + _S(recvBuffer.GetConnectionId()));
+			LOG_ERROR_NEW("Empty HTTP version, connection {}", recvBuffer.GetConnectionId());
 			return;
 		}
 		if (m_code.empty()) {
-			LOG_ERROR("Empty HTTP code, connection: " + _S(recvBuffer.GetConnection())
-				+ ", id: " + _S(recvBuffer.GetConnectionId()));
+			LOG_ERROR_NEW("Empty HTTP code, connection {}", recvBuffer.GetConnectionId());
 			return;
 		}
 		if (m_codeText.empty()) {
-			LOG_ERROR("Empty HTTP code text, connection: " + _S(recvBuffer.GetConnection())
-				+ ", id: " + _S(recvBuffer.GetConnectionId()));
+			LOG_ERROR_NEW("Empty HTTP code text, connection {}", recvBuffer.GetConnectionId());
 			return;
 		}
 		m_isValid = true;
@@ -481,7 +477,7 @@ const std::string& Data::GetCode() const noexcept { return m_code; }
 
 const std::string& Data::GetCodeText() const noexcept { return m_codeText; }
 
-bool Data::SendResponse(const int connection, const std::string& body, const std::string& contentType) const
+[[nodiscard]] bool Data::SendResponse(Connection& connection, const std::string& body, const std::string& contentType) const
 {
 	std::string response;
 	if (contentType.empty()) {
@@ -493,17 +489,11 @@ bool Data::SendResponse(const int connection, const std::string& body, const std
 			+ "; charset=utf-8\r\nConnection: keep-alive\r\nKeep-Alive: timeout=0,max=0\r\nContent-Length: "
 			+ _S(body.length()) + "\r\n\r\n" + body });
 	}
-	const auto result{ send(connection, response.c_str(), response.length(), MSG_CONFIRM) };
-	if (result == -1) {
-		if (errno == 104) {
-			LOG_DEBUG("Send returned error №104: Connection reset by peer");
-			return false;
-		}
-		LOG_ERROR("Message not be sended. Error №" + _S(errno) + ": " + std::strerror(errno));
-		return false;
-	}
-	LOG_PROTOCOL("Size of message: " + _S(result) + ", connection: " + _S(connection));
-	return true;
+
+	const auto size{ response.length() };
+	LOG_PROTOCOL_NEW("Send response size: {} to connection id: {}", size, connection.GetId());
+
+	return connection.Send(response.c_str(), size, MSG_CONFIRM) != 0;
 }
 
 const std::string& Data::GetBody() const noexcept { return m_body; }
@@ -544,13 +534,13 @@ std::string Data::ToString() const
 	return stream.str();
 }
 
-void Data::SendSource(const int connection, const std::string& path, const std::string& contentType) const
+[[nodiscard]] bool Data::SendSource(Connection& connection, const std::string& path, const std::string& contentType) const
 {
 	std::fstream file(path, std::ios::binary | std::ios::in);
 	if (!file.is_open()) {
 		LOG_WARNING("File is not opened, path: " + path);
-		Send404(connection);
-		return;
+		(void) Send404(connection);
+		return false;
 	}
 
 	file.seekg(0, file.end);
@@ -569,39 +559,25 @@ void Data::SendSource(const int connection, const std::string& path, const std::
 			+ "; charset=utf-8\r\nConnection: keep-alive\r\nKeep-Alive: timeout=0,max=0\r\nContent-Length: "
 			+ _S(source.length()) + "\r\n\r\n" + source });
 	}
-
-	const auto result{ send(connection, response.c_str(), response.length(), MSG_CONFIRM) };
-	if (result == -1) {
-		if (errno == 104) {
-			LOG_DEBUG("Send returned error №104: Connection reset by peer");
-			file.close();
-			return;
-		}
-		LOG_ERROR("Fail to send message, path: " + path + ". Error №" + _S(errno) + ": " + std::strerror(errno));
-		file.close();
-		return;
-	}
 	file.close();
-	LOG_PROTOCOL("Size of message: " + _S(result) + ", path: " + path + ", connection: " + _S(connection));
+
+	const auto size{ response.length() };
+	LOG_PROTOCOL_NEW("Send response with source path: {} size: {} to connection id: {}", path, size, connection.GetId());
+
+	return connection.Send(response.c_str(), size, MSG_CONFIRM) != 0;
 }
 
-void Data::Send404(const int connection, const std::string& body, const std::string& contentType) const
+[[nodiscard]] bool Data::Send404(Connection& connection, const std::string& body, const std::string& contentType) const
 {
 	const std::string response{ m_HTTPtype + "/" + m_version
 		+ " 404 Not Found\r\nContent-Type: " + (contentType.empty() ? "text/html" : contentType)
 		+ "; charset=utf-8\r\nConnection: keep-alive\r\nKeep-Alive: timeout=0,max=0\r\n"
 		+ (body.empty() ? "\r\n" : "Content-Length: " + _S(body.length()) + "\r\n\r\n" + body) };
 
-	const auto result{ send(connection, response.c_str(), response.length(), MSG_CONFIRM) };
-	if (result == -1) {
-		if (errno == 104) {
-			LOG_DEBUG("Send returned error №104: Connection reset by peer");
-			return;
-		}
-		LOG_ERROR("Fail to send message. Error №" + _S(errno) + ": " + std::strerror(errno));
-		return;
-	}
-	LOG_PROTOCOL("Size of message: " + _S(result) + ", connection: " + _S(connection));
+	const auto size{ response.length() };
+	LOG_PROTOCOL_NEW("Send response size: {} to connection id: {}", size, connection.GetId());
+
+	return connection.Send(response.c_str(), size, MSG_CONFIRM) != 0;
 }
 
 [[nodiscard]] bool Data::IsWebSocketUpgradeRequest() const noexcept
@@ -630,28 +606,28 @@ void Data::Send404(const int connection, const std::string& body, const std::str
 	return false;
 }
 
-bool Data::SendWebSocketUpgradeResponse(const int connection) const
+[[nodiscard]] bool Data::SendWebSocketUpgradeResponse(Connection& connection) const
 {
 	const auto* webSocketKey{ GetValue("Sec-WebSocket-Key") };
 	if (webSocketKey == nullptr) [[unlikely]] {
-		LOG_WARNING_NEW("Sec-WebSocket-Key header is missing in WebSocket upgrade request, connection: {}", connection);
-		Send404(connection);
+		LOG_WARNING_NEW("Sec-WebSocket-Key header is missing in WebSocket upgrade request, connection id: {}", connection.GetId());
+		(void) Send404(connection);
 		return false;
 	}
 
 	if (const auto* webSocketVersion{ GetValue("Sec-WebSocket-Version") };
 		webSocketVersion == nullptr || *webSocketVersion != "13") {
 		LOG_WARNING_NEW(
-			"Unsupported Sec-WebSocket-Version header in WebSocket upgrade request, connection: {}", connection);
-		Send404(connection);
+			"Unsupported Sec-WebSocket-Version header in WebSocket upgrade request, connection id: {}", connection.GetId());
+		(void) Send404(connection);
 		return false;
 	}
 
 	const auto webSocketKeySize{ webSocketKey->size() };
 	const auto acceptKeySize{ webSocketKeySize + m_webSocketGUID.size() };
 	if (acceptKeySize > 128) [[unlikely]] {
-		LOG_WARNING_NEW("Sec-WebSocket-Key header value is too long, connection: {}", connection);
-		Send404(connection);
+		LOG_WARNING_NEW("Sec-WebSocket-Key header value is too long, connection id: {}", connection.GetId());
+		(void) Send404(connection);
 		return false;
 	}
 
@@ -671,17 +647,10 @@ bool Data::SendWebSocketUpgradeResponse(const int connection) const
 											"Upgrade\r\nSec-WebSocket-Accept: {}\r\nSec-WebSocket-Version: 13\r\n\r\n",
 		m_HTTPtype, m_version, acceptKeyHash) };
 
-	const auto result{ send(connection, response.c_str(), response.length(), MSG_CONFIRM) };
-	if (result == -1) {
-		if (errno == 104) {
-			LOG_DEBUG("Send returned error №104: Connection reset by peer");
-			return false;
-		}
-		LOG_ERROR("Fail to send message. Error №" + _S(errno) + ": " + std::strerror(errno));
-		return false;
-	}
-	LOG_PROTOCOL("Size of message: " + _S(result) + ", connection: " + _S(connection));
-	return true;
+	const auto size{ response.length() };
+	LOG_PROTOCOL_NEW("Send response size: {} to connection id: {}", size, connection.GetId());
+
+	return connection.Send(response.c_str(), size, MSG_CONFIRM) != 0;
 }
 
 /*---------------------------------------------------------------------------------
@@ -693,13 +662,14 @@ IHandler::IHandler(const MSAPI::Application* application)
 {
 }
 
-void IHandler::Collect(const int connection, const Data& data)
+void IHandler::Collect(const std::shared_ptr<Connection::Data>& connectionData, const Data& data)
 {
 	if (m_application->IsRunning()) {
 		LOG_PROTOCOL(data.ToString());
-		HandleHttp(connection, data);
+		HandleHttp(connectionData, data);
 		return;
 	}
+
 	LOG_PROTOCOL("Application is not running. " + data.ToString());
 }
 
@@ -707,21 +677,14 @@ void IHandler::Collect(const int connection, const Data& data)
 Global
 ---------------------------------------------------------------------------------*/
 
-void SendRequest(const int connection, const std::string& HTTP)
+[[nodiscard]] bool SendRequest(Connection& connection, const std::string& http)
 {
-	std::stringstream request;
-	request << HTTP;
-	request << "\r\n\r\n";
-	const auto result{ send(connection, request.str().c_str(), request.str().length(), MSG_CONFIRM) };
-	if (result == -1) {
-		if (errno == 104) {
-			LOG_DEBUG("Send returned error №104: Connection reset by peer");
-			return;
-		}
-		LOG_ERROR("Fail to send message. Error №" + _S(errno) + ": " + std::strerror(errno));
-		return;
-	}
-	LOG_PROTOCOL("Size of message: " + _S(result) + ", connection: " + _S(connection));
+	const auto request{ std::format("{}\r\n\r\n", http) };
+
+	const auto size{ request.length() };
+	LOG_PROTOCOL_NEW("Send request size: {} to connection id: {}", size, connection.GetId());
+
+	return connection.Send(request.c_str(), size, MSG_CONFIRM) != 0;
 }
 
 } // namespace HTTP

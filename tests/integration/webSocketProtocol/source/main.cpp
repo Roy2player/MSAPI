@@ -73,13 +73,10 @@
 #include "node.inl"
 #include "observer.inl"
 #include <memory>
-#include <sys/mman.h>
 #include <sys/resource.h>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
-
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
@@ -103,6 +100,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetToFile(true);
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
+
+	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
+		return 1;
+	}
 
 	static_assert(std::is_same_v<std::underlying_type_t<MSAPI::Protocol::WebSocket::Data::Opcode>, int8_t>);
 	static_assert(static_cast<int8_t>(MSAPI::Protocol::WebSocket::Data::Opcode::Continuation) == 0x0);
@@ -653,7 +654,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 			return false;
 		}
 		auto client{ static_cast<Test::Node*>(clientDeamon.ptr->GetApp()) };
-		if (!client->OpenConnect(serverId, INADDR_LOOPBACK, serverPtr->GetPort(), false)) {
+		if (!client->OpenConnection(serverId, INADDR_LOOPBACK, serverPtr->GetPort(), /*doReconnection=*/false)) {
 			return false;
 		}
 		client->HandleRunRequest();
@@ -719,7 +720,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 			std::format("Server got correct WebSocket handshake request from client {}", clientPortStr)));
 		std::vector<MSAPI::Protocol::WebSocket::Data>* serverWebSocketData{};
 
-		const auto serverConnectOpt{ client->GetConnect(serverId) };
+		const auto serverConnectOpt{ client->GetConnection(serverId) };
 		RETURN_IF_FALSE(test.Assert(serverConnectOpt.has_value(), true,
 			std::format("Client {} detected connection for WebSocket handshake response", clientPortStr)));
 		const auto serverConnect{ serverConnectOpt.value() };

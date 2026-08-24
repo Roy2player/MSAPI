@@ -22,6 +22,7 @@
 
 #include "../help/helper.h"
 #include "../protocol/standard.h"
+#include "connection.inl"
 #include <string>
 #include <variant>
 
@@ -508,64 +509,63 @@ public:
 	 * @brief Handle hello message from external application. This message will be sent after opening new outcome
 	 * connection if or when server becomes running.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data structure.
 	 *
 	 * @test Has unit tests.
 	 */
-	virtual void HandleHello(int connection);
+	virtual void HandleHello(const std::shared_ptr<Connection::Data>& connectionData);
 
 	/**************************
 	 * @brief Handle metadata message from external application. Metadata contains list of all usual and const
 	 * parameters.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data structure.
 	 * @param metadata Reserved metadata.
 	 *
 	 * @test Has unit tests.
 	 */
-	virtual void HandleMetadata(int connection, std::string_view metadata);
+	virtual void HandleMetadata(const std::shared_ptr<Connection::Data>& connectionData, std::string_view metadata);
 
 	/**************************
 	 * @brief Handle parameters message from external application. Response contains list of all usual and const
 	 * parameters with values.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data structure.
 	 * @param parameters Reserved parameters.
 	 *
 	 * @test Has unit tests.
 	 */
-	virtual void HandleParameters(int connection, const std::map<size_t, std::variant<standardTypes>>& parameters);
+	virtual void HandleParameters(const std::shared_ptr<Connection::Data>& connectionData,
+		const std::map<size_t, std::variant<standardTypes>>& parameters);
 
 	/**************************
 	 * @brief Not network signal about previously opened connection by id was closed no by server. Already defined
 	 * in Application class, but can be overridden. Default behavior is to call HandlePauseRequest.
 	 *
-	 * @param id Id of connection.
-	 * @param connection Connection.
+	 * @param connectionData Connection data structure.
 	 *
 	 * @test Has unit tests.
 	 */
-	virtual void HandleOutcomeDisconnect(int32_t id, int32_t connection);
+	virtual void HandleOutcomeDisconnect(const std::shared_ptr<Connection::Data>& connectionData);
 
 	/**************************
 	 * @brief Not network signal about previously income connection was closed no by server.
 	 *
-	 * @param id Id of connection.
-	 * @param connection Connection.
+	 * @param connectionData Connection data structure.
 	 *
 	 * @test Has unit tests.
 	 */
-	virtual void HandleIncomeDisconnect(int32_t id, int32_t connection);
+	virtual void HandleIncomeDisconnect(const std::shared_ptr<Connection::Data>& connectionData);
 
 	/**************************
 	 * @brief Not network signal about previously closed connection by id was reopened. Already defined in
 	 * Application class, but can be overridden. Default behavior is to call HandleRunRequest.
 	 *
-	 * @param id Id of connection.
+	 * @param connectionData Connection data structure.
 	 *
 	 * @test Has unit tests.
 	 */
-	virtual void HandleReconnect(int id);
+	virtual void HandleReconnect(const std::shared_ptr<Connection::Data>& connectionData);
 
 	/**************************
 	 * @brief Set the Name object to application.
@@ -648,12 +648,12 @@ protected:
 	 * @brief Collect Standard message with parameters or action from socket connection and call specific Handler
 	 * function.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data structure.
 	 * @param data Reserved Standard message.
 	 *
 	 * @test Has unit tests.
 	 */
-	void Collect(int connection, const Protocol::Standard::Data& data);
+	void Collect(const std::shared_ptr<Connection::Data>& connectionData, const Protocol::Standard::Data& data);
 
 	/**************************
 	 * @brief Register parameter to application if it is not registered yet and value is consistent with

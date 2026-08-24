@@ -70,18 +70,18 @@ void ObjectDistributor::SetOrder(const OrderStructure& order)
 	m_orders.emplace(order);
 }
 
-void ObjectDistributor::HandleNewStreamOpened(const int streamId, const MSAPI::Protocol::Object::StreamData& streamData)
+void ObjectDistributor::HandleNewStreamOpened(const MSAPI::Protocol::Object::StreamData& streamData)
 {
 	if (typeid(InstrumentStructure).hash_code() == streamData.objectHash) {
-		LOG_DEBUG("Stream id: " + _S(streamId) + ", connection: " + _S(streamData.connection)
+		LOG_DEBUG("Stream id: " + _S(streamData.GetStreamId()) + ", connection: " + _S(streamData.connection)
 			+ ", hash: " + _S(streamData.objectHash) + " is open");
-		Distributor::SendOldObjects(streamId, streamData, m_instruments, m_predicateForInstrument);
+		Distributor::SendObjectsToStream(streamData, m_instruments, m_predicateForInstrument);
 		return;
 	}
 	if (typeid(OrderStructure).hash_code() == streamData.objectHash) {
-		LOG_DEBUG("Stream id: " + _S(streamId) + ", connection: " + _S(streamData.connection)
+		LOG_DEBUG("Stream id: " + _S(streamData.GetStreamId()) + ", connection: " + _S(streamData.connection)
 			+ ", hash: " + _S(streamData.objectHash) + " is open");
-		Distributor::SendOldObjects(streamId, streamData, m_orders, m_predicateForOrder);
+		Distributor::SendObjectsToStream(streamData, m_orders, m_predicateForOrder);
 		return;
 	}
 

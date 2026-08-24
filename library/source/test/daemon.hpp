@@ -173,7 +173,8 @@ public:
 	 */
 	FORCE_INLINE bool Start(const in_addr_t addr, const in_port_t port) final
 	{
-		if (static_cast<Server*>(&m_application)->GetState() == MSAPI::Server::State::Running) {
+		auto state{ static_cast<Server*>(&m_application)->GetState() };
+		if (state == Server::State::Running) {
 			LOG_ERROR("Application is in running state, port: " + _S(port));
 			return false;
 		}
@@ -186,12 +187,7 @@ public:
 
 		pthread_attr_t attr;
 		pthread_attr_init(&attr);
-		// The minimum pthread stack is only POSIX requirement, which does not takes into additional requirements, like
-		// guard page, bookkeeping/padding and god knows what else.
-		// pthread_attr_setstacksize(&attr, UINT64(2 * PTHREAD_STACK_MIN));
-		pthread_attr_setscope(&attr, PTHREAD_SCOPE_PROCESS);
-		pthread_attr_setschedpolicy(&attr, SCHED_RR);
-		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		Server::AddPthreadAttributes(&attr);
 
 		m_dataOfPthread = { &m_application, m_pthread, addr, port };
 		if (const auto result{
@@ -207,12 +203,13 @@ public:
 		LOG_DEBUG("Pthread for deamon is created successfully");
 
 		while (true) {
-			if (static_cast<Server*>(&m_application)->IsRunning()) {
+			state = static_cast<Server*>(&m_application)->GetState();
+			if (state == Server::State::Running) {
 				m_isRan = true;
 				return true;
 			}
 
-			if (static_cast<Server*>(&m_application)->GetState() == MSAPI::Server::State::Stopped) {
+			if (state == Server::State::Stopped) {
 				LOG_ERROR("Application is in Stopped state, port: " + _S(port));
 				break;
 			}
@@ -248,10 +245,10 @@ public:
 	template <typename... Args>
 	static FORCE_INLINE std::unique_ptr<DaemonBase> Create(std::string&& name, Args&&... args)
 	{
-		auto daemon{ std::make_unique<MSAPI::Daemon<T>>(std::forward<Args>(args)...) };
-		MSAPI::Server* server{ static_cast<MSAPI::Server*>(daemon->GetApp()) };
+		auto daemon{ std::make_unique<Daemon<T>>(std::forward<Args>(args)...) };
+		Server* server{ static_cast<Server*>(daemon->GetApp()) };
 		server->SetName(name);
-		std::mt19937 mersenne{ UINT64(MSAPI::Timer{}.GetNanoseconds()) };
+		std::mt19937 mersenne{ UINT64(Timer{}.GetNanoseconds()) };
 		unsigned short port{ static_cast<unsigned short>(mersenne() % (65535 - 3000) + 3000) };
 		int32_t counter{ 0 };
 		do {

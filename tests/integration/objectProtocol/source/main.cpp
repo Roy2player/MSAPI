@@ -23,13 +23,10 @@
 #include "objectClient.h"
 #include "objectDistributor.h"
 #include <memory>
-#include <sys/mman.h>
 #include <sys/resource.h>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
-
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
@@ -54,6 +51,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
 
+	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
+		return 1;
+	}
+
 	//* Distributor
 	const int distributorId{ 1 };
 	auto distributorPtr{ MSAPI::Daemon<ObjectDistributor>::Create("Distributor") };
@@ -68,12 +69,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		return 1;
 	}
 	auto client{ static_cast<ObjectClient*>(clientPtr->GetApp()) };
-	if (!client->OpenConnect(distributorId, INADDR_LOOPBACK, distributorPtr->GetPort(), false)) {
+	if (!client->OpenConnection(distributorId, INADDR_LOOPBACK, distributorPtr->GetPort(), /*doReconnection=*/false)) {
 		return 1;
 	}
 
 	//* Setup, stream state is undefined
-	client->SetConnectionForStreams(distributorId);
+	client->SetConnectionIdForStreams(distributorId);
 	MSAPI::Test test;
 	const size_t figi1{ 123456789012 };
 	InstrumentStructure instrument1{ InstrumentStructure::InstrumentStructureType::First, figi1, 7432435, 998274902,

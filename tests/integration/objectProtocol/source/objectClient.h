@@ -20,7 +20,7 @@
 #ifndef OBJECT_CLIENT_H
 #define OBJECT_CLIENT_H
 
-#include "../../../../library/source/protocol/object.h"
+#include "../../../../library/source/protocol/object.inl"
 #include "../../../../library/source/server/server.h"
 #include "../../../../library/source/test/actionsCounter.h"
 #include "commonStructures.h"
@@ -62,7 +62,7 @@ public:
 	MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure>& GetInstrumentStream();
 	MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure>& GetOrderStream();
 
-	void SetConnectionForStreams(int id);
+	void SetConnectionIdForStreams(uint64_t id);
 };
 
 #endif //* OBJECT_CLIENT_H

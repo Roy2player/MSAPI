@@ -53,13 +53,10 @@
 #include "httpClient.h"
 #include "httpServer.h"
 #include <memory>
-#include <sys/mman.h>
 #include <sys/resource.h>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
-
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
@@ -85,6 +82,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
 
+	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
+		return 1;
+	}
+
 	//* Server
 	const int serverId{ 1 };
 	auto serverPtr{ MSAPI::Daemon<HTTPServer>::Create("Server") };
@@ -105,7 +106,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		return 1;
 	}
 	auto client{ static_cast<HTTPClient*>(clientPtr->GetApp()) };
-	if (!client->OpenConnect(serverId, INADDR_LOOPBACK, serverPtr->GetPort(), false)) {
+	if (!client->OpenConnection(serverId, INADDR_LOOPBACK, serverPtr->GetPort(), /*doReconnection=*/false)) {
 		return 1;
 	}
 

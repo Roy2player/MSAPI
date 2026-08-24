@@ -113,39 +113,39 @@ void Manager::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 	LOG_ERROR("Unknown protocol: " + header.ToString());
 }
 
-void Manager::HandleHttp(const int connection, const MSAPI::Protocol::HTTP::Data& data)
+void Manager::HandleHttp(const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const MSAPI::Protocol::HTTP::Data& data)
 {
 	const std::string& url{ data.GetUrl() };
 	LOG_DEBUG("Request url: " + url + ", version: " + data.GetVersion());
 	if (data.GetTypeMessage() != "GET") {
-		data.Send404(connection);
+		(void) data.Send404(connectionData->GetConnection());
 		return;
 	}
 
 	if (url == "/") {
-		data.SendSource(connection, m_webSourcesPath + "html/index.html");
+		(void) data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "html/index.html");
 		return;
 	}
 
 	if (data.GetFormat() == "css") {
-		data.SendSource(connection, m_webSourcesPath + "css" + url);
+		(void) data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "css" + url);
 		return;
 	}
 
 	if (data.GetFormat() == "ico" || data.GetFormat() == "png" || data.GetFormat() == "jpg") {
-		data.SendSource(connection, m_webSourcesPath + "images" + url);
+		(void) data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "images" + url);
 		return;
 	}
 
 	if (data.GetFormat() == "js") {
-		data.SendSource(connection, m_webSourcesPath + "js" + url);
+		(void) data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "js" + url);
 		return;
 	}
 
-	data.Send404(connection);
+	(void) data.Send404(connectionData->GetConnection());
 }
 
-void Manager::HandleWebSocket(const int32_t connection, MSAPI::Protocol::WebSocket::Data&& data)
+void Manager::HandleWebSocket(const std::shared_ptr<MSAPI::Connection::Data>& connectionData, MSAPI::Protocol::WebSocket::Data&& data)
 {
 	auto payload{ data.GetPayload() };
 	MSAPI::Json json{ std::string_view(reinterpret_cast<const char*>(payload.data()), payload.size()) };
@@ -173,10 +173,10 @@ void Manager::HandleWebSocket(const int32_t connection, MSAPI::Protocol::WebSock
 
 	switch (static_cast<MSAPI::Protocol::WebSocket::Events::Type>(*type)) {
 	case MSAPI::Protocol::WebSocket::Events::Type::Single:
-		m_singlesDistributor.Collect(*uid, *event, connection, std::move(json));
+		m_singlesDistributor.Collect(*uid, *event, connectionData, std::move(json));
 		return;
 	case MSAPI::Protocol::WebSocket::Events::Type::Stream:
-		m_streamsDistributor.Collect(*uid, *event, connection, std::move(json));
+		m_streamsDistributor.Collect(*uid, *event, connectionData, std::move(json));
 		return;
 	default:
 		LOG_WARNING_NEW("Unexpected type event is reserved {}",
@@ -316,11 +316,11 @@ void Manager::HandlePauseRequest()
 	{
 		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_portToCreatedAppLock };
 		for (const auto& [port, createdAppData] : m_portToCreatedApp) {
-			if (createdAppData->connection == 0) [[unlikely]] {
+			if (createdAppData->connectionData == nullptr) [[unlikely]] {
 				LOG_WARNING_NEW("Created app on port {} still did not connect and cannot be deleted", port);
 				continue;
 			}
-			MSAPI::Protocol::Standard::SendActionDelete(createdAppData->connection);
+			MSAPI::Protocol::Standard::SendActionDelete(createdAppData->connectionData->GetConnection());
 		}
 		m_portToCreatedApp.clear();
 		m_portGenerator.Clear();
@@ -359,11 +359,11 @@ void Manager::HandleModifyRequest(const std::map<size_t, std::variant<standardTy
 	}
 }
 
-void Manager::HandleParameters(const int connection, const std::map<size_t, std::variant<standardTypes>>& parameters)
+void Manager::HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const std::map<size_t, std::variant<standardTypes>>& parameters)
 {
 	const auto portIt{ parameters.find(1000009) };
 	if (portIt == parameters.end()) {
-		LOG_WARNING("Parameters update without port, connection: " + _S(connection));
+		LOG_WARNING_NEW("Parameters update without port, connection id: {}", connectionData->GetConnectionId());
 		return;
 	}
 
@@ -385,12 +385,12 @@ void Manager::HandleParameters(const int connection, const std::map<size_t, std:
 		createdAppData = createdAppDataIt->second;
 	}
 
-	if (createdAppData->connection == 0) {
+	if (createdAppData->connectionData == nullptr) {
 		LOG_DEBUG("First parameters update from app: " + createdAppData->appData->type + ", port: " + _S(port));
-		createdAppData->connection = connection;
+		createdAppData->connectionData = connectionData;
 
 		if (createdAppData->appData->metadata.empty()) {
-			MSAPI::Protocol::Standard::SendMetadataRequest(connection);
+			MSAPI::Protocol::Standard::SendMetadataRequest(connectionData->GetConnection());
 		}
 	}
 	else {
@@ -499,22 +499,23 @@ void Manager::HandleParameters(const int connection, const std::map<size_t, std:
 		serialize);
 }
 
-void Manager::HandleHello(const int connection) { MSAPI::Protocol::Standard::SendParametersRequest(connection); }
+void Manager::HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) { MSAPI::Protocol::Standard::SendParametersRequest(connectionData->GetConnection()); }
 
-void Manager::HandleMetadata(const int connection, const std::string_view metadata)
+void Manager::HandleMetadata(const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const std::string_view metadata)
 {
 	std::shared_ptr<CreatedAppData> createdAppData;
 	{
 		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
-		if (std::ranges::none_of(m_portToCreatedApp, [connection, &createdAppData](const auto& data) {
-				if (data.second->connection == connection) {
+		//! That is bad design. Can be changed because of new Connection::Data approach
+		if (std::ranges::none_of(m_portToCreatedApp, [connectionData, &createdAppData](const auto& data) {
+				if (data.second->connectionData != nullptr && data.second->connectionData->GetConnectionId() == connectionData->GetConnectionId()) {
 					createdAppData = data.second;
 					return true;
 				}
 				return false;
 			})) {
 
-			LOG_ERROR("Metadata update from unknown app, connection: " + _S(connection));
+			LOG_ERROR_NEW("Metadata update from unknown app, connection id: {}", connectionData->GetConnectionId());
 			return;
 		}
 	}
@@ -532,7 +533,7 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 		return;
 	}
 
-	const auto parseTables{ [this, connection](const MSAPI::Json* const parameters) {
+	const auto parseTables{ [this, &connectionData](const MSAPI::Json* const parameters) {
 		for (const auto& [keyStr, node] : parameters->GetKeysAndValues()) {
 			const auto* nodeValue{ std::get_if<MSAPI::Json>(&node.GetValue()) };
 			if (nodeValue == nullptr) {
@@ -570,7 +571,7 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 				const auto* columnMetadata{ std::get_if<MSAPI::Json>(&columnMetadataNode.GetValue()) };
 				if (columnMetadata == nullptr) {
 					LOG_ERROR("Broken metadata, impossible to find metadata of column id " + columnId
-						+ " in table id: " + _S(tableId) + ", connection: " + _S(connection)
+						+ " in table id: " + _S(tableId) + ", connection id: " + _S(connectionData->GetConnectionId())
 						+ ", columns metadata: " + columns->ToString());
 					continue;
 				}
@@ -578,7 +579,7 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 				const auto* type{ columnMetadata->GetValueType<std::string>("type") };
 				if (type == nullptr) {
 					LOG_ERROR("Broken metadata, absent or wrong type of column id " + columnId
-						+ " in table id: " + _S(tableId) + ", connection: " + _S(connection)
+						+ " in table id: " + _S(tableId) + ", connection id: " + _S(connectionData->GetConnectionId())
 						+ ", column metadata: " + columnMetadata->ToString());
 					continue;
 				}
@@ -657,20 +658,20 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 				}
 				else {
 					LOG_ERROR("Broken metadata, unknown or unsupported type of column \"" + *type + "\" id " + columnId
-						+ " in table id: " + _S(tableId) + ", connection: " + _S(connection)
+						+ " in table id: " + _S(tableId) + ", connection id: " + _S(connectionData->GetConnectionId())
 						+ ", column metadata: " + columnMetadata->ToString());
 				}
 			}
 
 			if (columnTypes->empty()) [[unlikely]] {
 				LOG_ERROR("Broken metadata, impossible to find any column type in table id: " + _S(tableId)
-					+ ", connection: " + _S(connection) + ", JSON: " + node.ToString());
+					+ ", connection id: " + _S(connectionData->GetConnectionId()) + ", JSON: " + node.ToString());
 				continue;
 			}
 
 			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_tableIdToColumnsLock };
 			m_tableIdToColumns.emplace(tableId, std::move(columnTypes));
-			LOG_DEBUG("Columns for table with id: " + _S(tableId) + " are found, connection: " + _S(connection));
+			LOG_DEBUG("Columns for table with id: " + _S(tableId) + " are found, connection id: " + _S(connectionData->GetConnectionId()));
 		}
 	} };
 
@@ -691,18 +692,20 @@ void Manager::HandleMetadata(const int connection, const std::string_view metada
 		metadata);
 }
 
-void Manager::HandleOutcomeDisconnect([[maybe_unused]] const int32_t id, const int32_t connection)
+void Manager::HandleOutcomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 {
-	m_authorizationModule.LogoutConnection(connection);
-	m_singlesDistributor.ClearActiveEventsForConnection(connection);
-	m_streamsDistributor.ClearActiveEventsForConnection(connection);
+	const auto connectionId{ connectionData->GetConnectionId() };
+	m_authorizationModule.LogoutConnection(connectionId);
+	m_singlesDistributor.ClearActiveEventsForConnectionId(connectionId);
+	m_streamsDistributor.ClearActiveEventsForConnectionId(connectionId);
 }
 
-void Manager::HandleIncomeDisconnect([[maybe_unused]] const int32_t id, const int32_t connection)
+void Manager::HandleIncomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 {
-	m_authorizationModule.LogoutConnection(connection);
-	m_singlesDistributor.ClearActiveEventsForConnection(connection);
-	m_streamsDistributor.ClearActiveEventsForConnection(connection);
+	const auto connectionId{ connectionData->GetConnectionId() };
+	m_authorizationModule.LogoutConnection(connectionId);
+	m_singlesDistributor.ClearActiveEventsForConnectionId(connectionId);
+	m_streamsDistributor.ClearActiveEventsForConnectionId(connectionId);
 }
 
 uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, std::string& error)
@@ -818,7 +821,7 @@ uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, 
 	auto normalizedParameters{ std::format(
 		"{{\"name\":\"{}\",\"ip\":\"{}\",\"port\":\"{}\",\"managerPort\":\"{}\",\"logLevel\":\"{}\",\"logInConsole\":"
 		"\"{}\",\"logInFile\":\"{}\",\"separateDaysLogging\":\"{}\"}}",
-		name, ip, port, GetListenedPort(), logLevel, logInConsole, logInFile, separateDaysLogging) };
+		name, ip, port, GetListenPort(), logLevel, logInConsole, logInFile, separateDaysLogging) };
 
 	LOG_DEBUG("Parameters: " + normalizedParameters);
 
@@ -966,7 +969,7 @@ Manager::CreatedAppData
 ---------------------------------------------------------------------------------*/
 
 Manager::CreatedAppData::CreatedAppData(
-	const size_t hash, const int pid, const std::shared_ptr<InstalledAppData> appData)
+	const size_t hash, const int pid, const std::shared_ptr<InstalledAppData>& appData)
 	: hash{ hash }
 	, pid{ pid }
 	, appData{ appData }

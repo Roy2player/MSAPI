@@ -59,9 +59,9 @@ namespace Base {
  */
 enum class Grade : int16_t { Guest = 0, Observer = 16, User = 32, Moderator = 64, Admin = 128 };
 
-constexpr size_t MAX_LOGIN_SIZE = 47;
-constexpr size_t SALT_SIZE = 16;
-constexpr size_t PASSWORD_HASH_SIZE = 32;
+constexpr uint64_t MAX_LOGIN_SIZE = 47;
+constexpr uint64_t SALT_SIZE = 16;
+constexpr uint64_t PASSWORD_HASH_SIZE = 32;
 
 template <typename T>
 concept Gradable = std::is_enum_v<T> && sizeof(T) == 2;
@@ -138,7 +138,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE [[nodiscard]] bool IsLogonAllowed(const std::string_view password, std::string& error) const noexcept;
+	FORCE_INLINE [[nodiscard]] bool IsLogonAllowed(std::string_view password, std::string& error) const noexcept;
 
 	/**************************
 	 * @brief Set a new login for the account.
@@ -147,7 +147,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void SetLogin(const std::string_view newLogin) noexcept;
+	FORCE_INLINE void SetLogin(std::string_view newLogin) noexcept;
 
 	/**************************
 	 * @brief Set a new password for the account. Initializes the account if not already initialized.
@@ -158,7 +158,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	[[nodiscard]] FORCE_INLINE bool SetPassword(const std::string_view newPassword) noexcept;
+	[[nodiscard]] FORCE_INLINE bool SetPassword(std::string_view newPassword) noexcept;
 
 	/**************************
 	 * @brief Backup the password hash into the provided buffer.
@@ -181,7 +181,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void SetGrade(const G newGrade) noexcept;
+	FORCE_INLINE void SetGrade(G newGrade) noexcept;
 
 	/**************************
 	 * @brief Activate or deactivate the account.
@@ -190,7 +190,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void SetActivated(const bool isActivated) noexcept;
+	FORCE_INLINE void SetActivated(bool isActivated) noexcept;
 
 	/**************************
 	 * @brief Block the account till the specified time.
@@ -199,7 +199,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void SetBlockedTill(const Timer blockedTill) noexcept;
+	FORCE_INLINE void SetBlockedTill(Timer blockedTill) noexcept;
 
 	/**************************
 	 * @brief Initialize or deinitialize the account.
@@ -208,7 +208,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void SetInitialized(const bool isInitialized) noexcept;
+	FORCE_INLINE void SetInitialized(bool isInitialized) noexcept;
 };
 
 template <typename T>
@@ -223,7 +223,7 @@ concept Accountable = std::is_base_of_v<Account<>, T>;
  * in a separate file with filename as the account login. Directory and files rights are 0750 and 0640 respectively.
  * - Update account data file on each modification.
  * - Load all accounts from data directory on Start.
- * - Provide authentication to one connection per account.
+ * - Provide authentication to one connection id per account.
  * - Grade based access control.
  *
  * @tparam A Type of account class.
@@ -243,7 +243,7 @@ private:
 		A m_account;
 		std::string m_dataPath;
 		std::unique_ptr<Lock::AtomicRW> m_rwLock;
-		int32_t m_connection{ -1 };
+		std::optional<uint64_t> m_connectionId;
 		Timer m_lastActivity{ 0 };
 
 	public:
@@ -342,23 +342,28 @@ private:
 		FORCE_INLINE [[nodiscard]] bool Save() const;
 
 		/**************************
-		 * @brief Set the connection associated with this account.
+		 * @brief Set the connection id associated with this account.
 		 *
-		 * @param connection The connection identifier.
+		 * @param connectionId The connection identifier.
 		 */
-		FORCE_INLINE void SetConnection(const int32_t connection) noexcept;
+		FORCE_INLINE void SetConnectionId(uint64_t connectionId) noexcept;
 
 		/**************************
-		 * @return The connection identifier associated with this account.
+		 * @brief Clears associated connection id;
 		 */
-		FORCE_INLINE int32_t GetConnection() const noexcept;
+		FORCE_INLINE void ClearConnectionId() noexcept;
+
+		/**************************
+		 * @return The connection identifier associated with this account, empty in case if no active connection.
+		 */
+		FORCE_INLINE std::optional<uint64_t> GetConnectionId() const noexcept;
 	};
 
 private:
-	std::unordered_map<int32_t, std::shared_ptr<AccountData>> m_logonConnectionToAccountData;
-	Lock::AtomicRW m_connectionsLock;
-	std::unordered_map<size_t, std::shared_ptr<AccountData>> m_loginHashToAccountData;
-	Lock::AtomicRW m_accountsLock;
+	std::unordered_map<uint64_t, std::shared_ptr<AccountData>> m_logonConnectionIdToAccountData;
+	Lock::AtomicRW m_logonConnectionIdToAccountDataLock;
+	std::unordered_map<uint64_t, std::shared_ptr<AccountData>> m_loginHashToAccountData;
+	Lock::AtomicRW m_loginHashToAccountDataLock;
 	std::string m_dataPath;
 	Timer::Event m_logoutEvent{ this };
 	Timer::Duration m_logoutTimeout{ Timer::Duration::CreateHours(12) };
@@ -411,7 +416,7 @@ public:
 	 *
 	 * @param duration The duration to set as the logout timeout.
 	 */
-	FORCE_INLINE void SetLogoutTimeout(const Timer::Duration duration);
+	FORCE_INLINE void SetLogoutTimeout(Timer::Duration duration);
 
 	/**************************
 	 * @return The current logout timeout duration.
@@ -431,7 +436,7 @@ public:
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] bool RegisterAccount(
-		const std::string_view login, const std::string_view password, std::string& error);
+		std::string_view login, std::string_view password, std::string& error);
 
 	/**************************
 	 * @brief Delete the account with the specified login. Marks the account as uninitialized and deactivated, logouts
@@ -441,7 +446,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void DeleteAccount(const std::string_view login);
+	FORCE_INLINE void DeleteAccount(std::string_view login);
 
 	/**************************
 	 * @brief Modify the login of an existing account, check login requirements and ensure uniqueness.
@@ -457,7 +462,7 @@ public:
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] bool ModifyAccountLogin(
-		const std::string_view oldLogin, const std::string_view newLogin, std::string& error);
+		std::string_view oldLogin, std::string_view newLogin, std::string& error);
 
 	/**************************
 	 * @brief Modify the password of an existing account if it was initialized, check password requirements.
@@ -473,7 +478,7 @@ public:
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] bool ModifyAccountPassword(
-		const std::string_view login, const std::string_view newPassword, std::string& error);
+		std::string_view login, std::string_view newPassword, std::string& error);
 
 	/**************************
 	 * @brief Modify the grade of an existing account.
@@ -487,7 +492,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE [[nodiscard]] bool ModifyAccountGrade(const std::string_view login, const G newGrade);
+	FORCE_INLINE [[nodiscard]] bool ModifyAccountGrade(std::string_view login, G newGrade);
 
 	/**************************
 	 * @brief Set the activation state of an existing account and logout any active connection if deactivating.
@@ -502,13 +507,13 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE [[nodiscard]] bool SetAccountActivatedState(const std::string_view login, const bool isActivated);
+	FORCE_INLINE [[nodiscard]] bool SetAccountActivatedState(std::string_view login, bool isActivated);
 
 	/**************************
 	 * @brief Logon a connection using the provided login and password. Only initialized and activated account
 	 * can logon. Multiple logon is not allowed.
 	 *
-	 * @param connection Connection descriptor.
+	 * @param connectionId Id of connection.
 	 * @param login The login of the account.
 	 * @param password The password of the account.
 	 * @param error Reference to a string to store error message if logon fails.
@@ -518,42 +523,42 @@ public:
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] bool LogonConnection(
-		const int32_t connection, const std::string_view login, const std::string_view password, std::string& error);
+		uint64_t connectionId, std::string_view login, std::string_view password, std::string& error);
 
 	/**************************
 	 * @brief Logout the connection, disassociating it from any logged-on account.
 	 *
-	 * @param connection Connection descriptor.
+	 * @param connectionId Id of connection.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void LogoutConnection(const int32_t connection);
+	FORCE_INLINE void LogoutConnection(uint64_t connectionId);
 
 	/**************************
 	 * @brief Check if the connection has the required access grade.
 	 *
-	 * @param connection Connection descriptor.
+	 * @param connectionId connectionId Id of connection.
 	 * @param requiredGrade The required grade for access.
 	 *
 	 * @return True if the connection has the required access grade, false otherwise.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE [[nodiscard]] bool IsAccessGranted(const int32_t connection, const G requiredGrade);
+	FORCE_INLINE [[nodiscard]] bool IsAccessGranted(uint64_t connectionId, G requiredGrade);
 
 	/**************************
 	 * @return The number of registered accounts.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE [[nodiscard]] size_t GetRegisteredAccountsSize() noexcept;
+	FORCE_INLINE [[nodiscard]] uint64_t GetRegisteredAccountsSize() noexcept;
 
 	/**************************
 	 * @return The number of active logon connections.
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE [[nodiscard]] size_t GetLogonConnectionsSize() noexcept;
+	FORCE_INLINE [[nodiscard]] uint64_t GetLogonConnectionsSize() noexcept;
 
 	/**************************
 	 * @brief Block or unblock the account till the specified time. If block an active account, it logouts from its
@@ -570,7 +575,7 @@ public:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE [[nodiscard]] bool BlockAccountTill(const std::string_view login, const Timer blockedTill);
+	FORCE_INLINE [[nodiscard]] bool BlockAccountTill(std::string_view login, Timer blockedTill);
 
 protected:
 	/**************************
@@ -584,8 +589,7 @@ protected:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE [[nodiscard]] virtual bool CheckLoginRequirements(
-		const std::string_view login, std::string& error) const;
+	FORCE_INLINE [[nodiscard]] virtual bool CheckLoginRequirements(std::string_view login, std::string& error) const;
 
 	/**************************
 	 * @brief Check if provided password meets the account password requirements. By default, checks for length between
@@ -600,7 +604,7 @@ protected:
 	 * @test Has unit tests.
 	 */
 	FORCE_INLINE [[nodiscard]] virtual bool CheckPasswordRequirements(
-		const std::string_view password, std::string& error) const;
+		std::string_view password, std::string& error) const;
 
 	/**************************
 	 * @brief Check if the login string is safe to use as a file path.
@@ -612,7 +616,7 @@ protected:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE bool CheckLoginAsPath(const std::string_view login, std::string& error) const noexcept;
+	FORCE_INLINE bool CheckLoginAsPath(std::string_view login, std::string& error) const noexcept;
 
 	/**************************
 	 * @brief Handle account activity by updating the last activity timestamp and saving a log entry.
@@ -623,7 +627,7 @@ protected:
 	 *
 	 * @test Has unit tests.
 	 */
-	FORCE_INLINE void OnAccountActivity(AccountData& accountData, Timer timestamp, const std::string_view description);
+	FORCE_INLINE void OnAccountActivity(AccountData& accountData, Timer timestamp, std::string_view description);
 
 private:
 	// Timer::Event
@@ -775,7 +779,7 @@ FORCE_INLINE Module<A, G>::AccountData::AccountData(AccountData&& other) noexcep
 	: m_account{ std::move(other.m_account) }
 	, m_dataPath{ std::move(other.m_dataPath) }
 	, m_rwLock{ std::move(other.m_rwLock) }
-	, m_connection{ other.m_connection }
+	, m_connectionId{ other.m_connectionId }
 	, m_lastActivity{ other.m_lastActivity }
 {
 }
@@ -787,7 +791,7 @@ FORCE_INLINE Module<A, G>::AccountData& Module<A, G>::AccountData::operator=(Acc
 		m_account = std::move(other.m_account);
 		m_dataPath = std::move(other.m_dataPath);
 		m_rwLock = std::move(other.m_rwLock);
-		m_connection = other.m_connection;
+		m_connectionId = other.m_connectionId;
 		m_lastActivity = other.m_lastActivity;
 	}
 
@@ -838,14 +842,20 @@ template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE void Module<A, G>::AccountData::SetConnection(const int32_t connection) noexcept
+FORCE_INLINE void Module<A, G>::AccountData::SetConnectionId(const uint64_t connectionId) noexcept
 {
-	m_connection = connection;
+	m_connectionId = connectionId;
 }
 
-template <Accountable A, Gradable G> FORCE_INLINE int32_t Module<A, G>::AccountData::GetConnection() const noexcept
+template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::AccountData::ClearConnectionId() noexcept
 {
-	return m_connection;
+	m_connectionId.reset();
+}
+
+template <Accountable A, Gradable G>
+FORCE_INLINE std::optional<uint64_t> Module<A, G>::AccountData::GetConnectionId() const noexcept
+{
+	return m_connectionId;
 }
 
 /*---------------------------------------------------------------------------------
@@ -860,7 +870,7 @@ template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G
 	}
 
 	LOG_DEBUG("Starting authorization module");
-	Lock::AtomicRW::Guard<Lock::write> _{ m_accountsLock };
+	Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
 	if (m_dataPath.empty()) {
 		m_dataPath.resize(512);
 		Helper::GetExecutableDir(m_dataPath);
@@ -928,16 +938,16 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::Stop()
 	LOG_DEBUG("Stopping authorization module");
 	m_logoutEvent.Stop();
 
-	Lock::AtomicRW::Guard<Lock::write> _{ m_accountsLock };
-	Lock::AtomicRW::Guard<Lock::write> _{ m_connectionsLock };
+	Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
+	Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
 	const Timer timestamp{};
 
-	for (auto& [connection, accountData] : m_logonConnectionToAccountData) {
+	for (auto& [connectionId, accountData] : m_logonConnectionIdToAccountData) {
 		OnAccountActivity(*accountData, timestamp,
-			std::format("Logout due to module stop at {}, connection {}", timestamp.ToString(), connection));
+			std::format("Logout due to module stop at {}, connection id {}", timestamp.ToString(), connectionId));
 		accountData.reset();
 	}
-	m_logonConnectionToAccountData.clear();
+	m_logonConnectionIdToAccountData.clear();
 
 	for (auto& [hash, accountData] : m_loginHashToAccountData) {
 		accountData.reset();
@@ -1003,9 +1013,9 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::RegisterAccount(
 	}
 
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
-	typename std::unordered_map<size_t, std::shared_ptr<AccountData>>::iterator loginHashToDataIt;
+	typename std::unordered_map<uint64_t, std::shared_ptr<AccountData>>::iterator loginHashToDataIt;
 	{
-		Lock::AtomicRW::Guard<Lock::write> _{ m_accountsLock };
+		Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
 		if (m_loginHashToAccountData.find(loginHash) != m_loginHashToAccountData.end()) {
 			error = "Account with this login already exists";
 			return false;
@@ -1029,7 +1039,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::RegisterAccount(
 	if (!accountData->Save()) [[unlikely]] {
 		error = "Account registration failed";
 		accountDataLock.WriteUnlock();
-		Lock::AtomicRW::Guard<Lock::write> _{ m_accountsLock };
+		Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
 		m_loginHashToAccountData.erase(loginHashToDataIt);
 		return false;
 	}
@@ -1044,7 +1054,7 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::DeleteAccou
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		Lock::AtomicRW::Guard<Lock::write> _{ m_accountsLock };
+		Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			LOG_DEBUG_NEW("Cannot find account with login: {}", login);
@@ -1058,12 +1068,12 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::DeleteAccou
 	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 
-	if (const auto connection{ accountData->GetConnection() }; connection != -1) {
-		Lock::AtomicRW::Guard<Lock::write> _{ m_connectionsLock };
-		m_logonConnectionToAccountData.erase(connection);
-		accountData->SetConnection(-1);
+	if (const auto connectionId{ accountData->GetConnectionId() }; connectionId.has_value()) {
+		Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+		m_logonConnectionIdToAccountData.erase(connectionId.value());
+		accountData->ClearConnectionId();
 		OnAccountActivity(*accountData, timestamp,
-			std::format("Logout due to deletion at {}, connection {}", timestamp.ToString(), connection));
+			std::format("Logout due to deletion at {}, connection id {}", timestamp.ToString(), connectionId.value()));
 	}
 
 	accountData->GetAccount().SetInitialized(false);
@@ -1089,7 +1099,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountLogin(
 	const auto newLoginHash{ std::hash<std::string_view>{}(newLogin) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_accountsLock };
+		const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
 		auto oldAccountDataIt{ m_loginHashToAccountData.find(oldLoginHash) };
 		if (oldAccountDataIt == m_loginHashToAccountData.end()) {
 			LOG_DEBUG_NEW("Cannot find account with login {}", oldLogin);
@@ -1113,7 +1123,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountLogin(
 		error = "Account modification failed";
 		accountData->GetAccount().SetLogin(oldLogin);
 
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_accountsLock };
+		const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
 		m_loginHashToAccountData.emplace(oldLoginHash, accountData);
 		m_loginHashToAccountData.erase(newLoginHash);
 
@@ -1127,7 +1137,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountLogin(
 	if (!IO::Rename(accountData->GetDataPath().c_str(), newLoginPath.c_str())) [[unlikely]] {
 		accountData->GetAccount().SetLogin(oldLogin);
 
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_accountsLock };
+		const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
 		m_loginHashToAccountData.emplace(oldLoginHash, accountData);
 		m_loginHashToAccountData.erase(newLoginHash);
 
@@ -1150,7 +1160,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountPassword(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_accountsLock };
+		const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1202,7 +1212,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountGrade(const std::stri
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_accountsLock };
+		const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1240,7 +1250,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::SetAccountActivatedState(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_accountsLock };
+		const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1257,12 +1267,13 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::SetAccountActivatedState(
 		return false;
 	}
 
-	if (const auto connection{ accountData->GetConnection() }; !isActivated && connection != -1) {
-		Lock::AtomicRW::Guard<Lock::write> _{ m_connectionsLock };
-		m_logonConnectionToAccountData.erase(connection);
-		accountData->SetConnection(-1);
+	if (const auto connectionId{ accountData->GetConnectionId() }; !isActivated && connectionId.has_value()) {
+		Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+		m_logonConnectionIdToAccountData.erase(connectionId.value());
+		accountData->ClearConnectionId();
 		OnAccountActivity(*accountData, timestamp,
-			std::format("Logout due to deactivation at {}, connection {}", timestamp.ToString(), connection));
+			std::format(
+				"Logout due to deactivation at {}, connection id {}", timestamp.ToString(), connectionId.value()));
 	}
 
 	accountData->GetAccount().SetActivated(isActivated);
@@ -1281,12 +1292,12 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::SetAccountActivatedState(
 
 template <Accountable A, Gradable G>
 FORCE_INLINE [[nodiscard]] bool Module<A, G>::LogonConnection(
-	const int32_t connection, const std::string_view login, const std::string_view password, std::string& error)
+	const uint64_t connectionId, const std::string_view login, const std::string_view password, std::string& error)
 {
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		Lock::AtomicRW::Guard<Lock::read> _{ m_accountsLock };
+		Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			error = "Invalid login or password";
@@ -1301,74 +1312,73 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::LogonConnection(
 	if (!accountData->GetAccount().IsLogonAllowed(password, error)) {
 		OnAccountActivity(*accountData, timestamp,
 			std::format(
-				"Failed logon attempt at {}, connection {}, reason: {}", timestamp.ToString(), connection, error));
+				"Failed logon attempt at {}, connection id {}, reason: {}", timestamp.ToString(), connectionId, error));
 		return false;
 	}
 
-	const auto actualConnection{ accountData->GetConnection() };
-	if (actualConnection == connection) {
-		OnAccountActivity(*accountData, timestamp,
-			std::format(
-				"Failed logon attempt at {} to already logged-on connection {}", timestamp.ToString(), connection));
-		return false;
-	}
+	if (const auto actualConnectionId{ accountData->GetConnectionId() }; actualConnectionId.has_value()) {
+		if (actualConnectionId.value() == connectionId) {
+			OnAccountActivity(*accountData, timestamp,
+				std::format("Failed logon attempt at {} to already logged-on connection id {}", timestamp.ToString(),
+					connectionId));
+			return false;
+		}
 
-	if (actualConnection != -1) {
 		error = "Multiple logon is not allowed";
 		OnAccountActivity(*accountData, timestamp,
-			std::format(
-				"Multiple logon is not allowed, attempting connection {} at {}", connection, timestamp.ToString()));
+			std::format("Multiple logon is not allowed, attempting connection id {} at {}", connectionId,
+				timestamp.ToString()));
 		return false;
 	}
 
 	{
-		Lock::AtomicRW::Guard<Lock::write> _{ m_connectionsLock };
-		if (m_logonConnectionToAccountData.find(connection) != m_logonConnectionToAccountData.end()) {
+		Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+		if (m_logonConnectionIdToAccountData.find(connectionId) != m_logonConnectionIdToAccountData.end()) {
 			error = "Connection is already logged-on with another account";
 			OnAccountActivity(*accountData, timestamp,
-				std::format("Failed logon attempt at {} to already logged-on by another account connection {}",
-					timestamp.ToString(), connection));
+				std::format("Failed logon attempt at {} to already logged-on by another account connection id {}",
+					timestamp.ToString(), connectionId));
 			return false;
 		}
-		accountData->SetConnection(connection);
-		m_logonConnectionToAccountData[connection] = accountData;
+		accountData->SetConnectionId(connectionId);
+		m_logonConnectionIdToAccountData[connectionId] = accountData;
 	}
 	OnAccountActivity(
-		*accountData, timestamp, std::format("Logon at {}, connection {}", timestamp.ToString(), connection));
+		*accountData, timestamp, std::format("Logon at {}, connection id {}", timestamp.ToString(), connectionId));
 
 	return true;
 }
 
-template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::LogoutConnection(const int32_t connection)
+template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::LogoutConnection(const uint64_t connectionId)
 {
 	std::shared_ptr<AccountData> accountData;
 	{
-		Lock::AtomicRW::Guard<Lock::write> _{ m_connectionsLock };
-		auto it{ m_logonConnectionToAccountData.find(connection) };
-		if (it == m_logonConnectionToAccountData.end()) {
-			LOG_DEBUG_NEW("Connection {} is not logged-on, cannot logout", connection);
+		Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+		auto it{ m_logonConnectionIdToAccountData.find(connectionId) };
+		if (it == m_logonConnectionIdToAccountData.end()) {
+			LOG_DEBUG_NEW("Connection id {} is not logged-on, cannot logout", connectionId);
 			return;
 		}
 
 		accountData = it->second;
-		m_logonConnectionToAccountData.erase(it);
+		m_logonConnectionIdToAccountData.erase(it);
 	}
 
 	Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
-	accountData->SetConnection(-1);
+	accountData->ClearConnectionId();
 	OnAccountActivity(
-		*accountData, timestamp, std::format("Logout at {}, connection {}", timestamp.ToString(), connection));
+		*accountData, timestamp, std::format("Logout at {}, connection id {}", timestamp.ToString(), connectionId));
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const int32_t connection, const G requiredGrade)
+FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const uint64_t connectionId, const G requiredGrade)
 {
 	std::shared_ptr<AccountData> accountData;
 	{
-		Lock::AtomicRW::Guard<Lock::read> _{ m_connectionsLock };
-		auto it{ m_logonConnectionToAccountData.find(connection) };
-		if (it == m_logonConnectionToAccountData.end()) {
+		Lock::AtomicRW::Guard<Lock::read> _{ m_logonConnectionIdToAccountDataLock };
+		auto it{ m_logonConnectionIdToAccountData.find(connectionId) };
+		if (it == m_logonConnectionIdToAccountData.end()) {
 			return false;
 		}
 
@@ -1378,7 +1388,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const int32_t conn
 	Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	// Checking of account states is not needed here, as only logged-on accounts are stored in
-	// m_logonConnectionToAccountData
+	// m_logonConnectionIdToAccountData
 	const bool isAccessGranted{ accountData->GetAccount().GetGrade() >= requiredGrade };
 	OnAccountActivity(*accountData, timestamp,
 		std::format(
@@ -1387,16 +1397,17 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const int32_t conn
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE [[nodiscard]] size_t Module<A, G>::GetRegisteredAccountsSize() noexcept
+FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetRegisteredAccountsSize() noexcept
 {
-	Lock::AtomicRW::Guard<Lock::read> _{ m_accountsLock };
+	Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
 	return m_loginHashToAccountData.size();
 }
 
-template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] size_t Module<A, G>::GetLogonConnectionsSize() noexcept
+template <Accountable A, Gradable G>
+FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetLogonConnectionsSize() noexcept
 {
-	Lock::AtomicRW::Guard<Lock::read> _{ m_connectionsLock };
-	return m_logonConnectionToAccountData.size();
+	Lock::AtomicRW::Guard<Lock::read> _{ m_logonConnectionIdToAccountDataLock };
+	return m_logonConnectionIdToAccountData.size();
 }
 
 template <Accountable A, Gradable G>
@@ -1406,7 +1417,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::BlockAccountTill(const std::string
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_accountsLock };
+		const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1435,14 +1446,15 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::BlockAccountTill(const std::string
 	return true;
 
 		if (oldBlockedTill <= now) {
-			if (const auto connection{ accountData->GetConnection() }; connection != -1) {
-				Lock::AtomicRW::Guard<Lock::write> _{ m_connectionsLock };
-				if (auto it{ m_logonConnectionToAccountData.find(connection) };
-					it != m_logonConnectionToAccountData.end()) {
-					m_logonConnectionToAccountData.erase(it);
-					accountData->SetConnection(-1);
+			if (const auto connectionId{ accountData->GetConnectionId() }; connectionId.has_value()) {
+				Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+				if (auto it{ m_logonConnectionIdToAccountData.find(connectionId.value()) };
+					it != m_logonConnectionIdToAccountData.end()) {
+					m_logonConnectionIdToAccountData.erase(it);
+					accountData->ClearConnectionId();
 					OnAccountActivity(*accountData, timestamp,
-						std::format("Logout due to blocking at {}, connection {}", timestamp.ToString(), connection));
+						std::format("Logout due to blocking at {}, connection id {}", timestamp.ToString(),
+							connectionId.value()));
 				}
 			}
 
@@ -1607,18 +1619,18 @@ template <Accountable A, Gradable G>
 FORCE_INLINE void Module<A, G>::HandleEvent([[maybe_unused]] const Timer::Event& event)
 {
 	const Timer now{};
-	std::vector<int32_t> connectionsToLogout;
+	std::vector<uint64_t> connectionIdsToLogout;
 	{
-		Lock::AtomicRW::Guard<Lock::read> _{ m_connectionsLock };
-		for (auto it{ m_logonConnectionToAccountData.begin() }; it != m_logonConnectionToAccountData.end(); it++) {
+		Lock::AtomicRW::Guard<Lock::read> _{ m_logonConnectionIdToAccountDataLock };
+		for (auto it{ m_logonConnectionIdToAccountData.begin() }; it != m_logonConnectionIdToAccountData.end(); it++) {
 			if (it->second->GetLastActivity() + m_logoutTimeout < now) {
-				connectionsToLogout.push_back(it->first);
+				connectionIdsToLogout.push_back(it->first);
 			}
 		}
 	}
 
-	for (const auto connection : connectionsToLogout) {
-		LogoutConnection(connection);
+	for (const auto connectionId : connectionIdsToLogout) {
+		LogoutConnection(connectionId);
 	}
 }
 

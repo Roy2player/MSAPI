@@ -19,7 +19,6 @@
 
 #include "manager.h"
 #include <iostream>
-#include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 
@@ -29,7 +28,6 @@ void CheckVforkedApps([[maybe_unused]] const int signal) { static_cast<Manager*>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
 	MSAPI_APPLICATION_SIGNAL_ACTION
 	signal(SIGCHLD, CheckVforkedApps);
 
@@ -47,6 +45,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetToFile(true);
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
+
+	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
+		return 1;
+	}
 
 	Manager manager;
 	app = &manager;

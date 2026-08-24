@@ -91,10 +91,10 @@ public:
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;
 	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
-	void HandleHello(int connection) final;
-	void HandleMetadata(int connection, std::string_view metadata) final;
-	void HandleParameters(int connection, const std::map<size_t, std::variant<standardTypes>>& parameters) final;
-	void HandleIncomeDisconnect(int32_t id, int32_t connection) final;
+	void HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
+	void HandleMetadata(const std::shared_ptr<MSAPI::Connection::Data>& connectionData, std::string_view metadata) final;
+	void HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const std::map<size_t, std::variant<standardTypes>>& parameters) final;
+	void HandleIncomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
 
 	int8_t GetParameter1() const noexcept;
 	int16_t GetParameter2() const noexcept;
