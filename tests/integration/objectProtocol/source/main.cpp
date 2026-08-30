@@ -23,13 +23,10 @@
 #include "objectClient.h"
 #include "objectDistributor.h"
 #include <memory>
-#include <sys/mman.h>
 #include <sys/resource.h>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
-
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
@@ -48,42 +45,49 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		}
 	}
 
-	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::INFO);
+	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::PROTOCOL);
 	MSAPI::logger.SetName("TestOP");
 	MSAPI::logger.SetToFile(true);
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
 
+	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
+		return 1;
+	}
+
 	//* Distributor
-	const int distributorId{ 1 };
 	auto distributorPtr{ MSAPI::Daemon<ObjectDistributor>::Create("Distributor") };
-	if (distributorPtr == nullptr) {
+	if (distributorPtr == nullptr) [[unlikely]] {
 		return 1;
 	}
 	auto distributor{ static_cast<ObjectDistributor*>(distributorPtr->GetApp()) };
 
 	//* Client
 	auto clientPtr{ MSAPI::Daemon<ObjectClient>::Create("Client") };
-	if (clientPtr == nullptr) {
+	if (clientPtr == nullptr) [[unlikely]] {
 		return 1;
 	}
 	auto client{ static_cast<ObjectClient*>(clientPtr->GetApp()) };
-	if (!client->OpenConnect(distributorId, INADDR_LOOPBACK, distributorPtr->GetPort(), false)) {
+	const auto clientToDistributorConnectionData{ client->OpenConnection(
+		INADDR_LOOPBACK, distributorPtr->GetPort(), /*doReconnection=*/false) };
+	if (clientToDistributorConnectionData == nullptr) [[unlikely]] {
 		return 1;
 	}
 
 	//* Setup, stream state is undefined
-	client->SetConnectionForStreams(distributorId);
+	client->SetConnectionForStreams(clientToDistributorConnectionData);
 	MSAPI::Test test;
 	const size_t figi1{ 123456789012 };
 	InstrumentStructure instrument1{ InstrumentStructure::InstrumentStructureType::First, figi1, 7432435, 998274902,
 		34387675464, 1000, 133, InstrumentStructure::Nominal{ 133, 1 }, true, true, true, 133, 0.25, 555666333 };
 	distributor->SetInstrument(instrument1);
 	MSAPI::Protocol::Object::Filter<FilterStructure> filter{ MSAPI::Protocol::Object::Type::Snapshot };
-	client->GetInstrumentStream().SetFilter(filter);
+	client->GetInstrumentStream().SetFilter(std::move(filter));
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
 		static_cast<short>(MSAPI::Protocol::Object::State::Undefined), "Stream state is undefined");
-	client->GetInstrumentStream().Open();
+	if (!client->GetInstrumentStream().Open()) [[unlikely]] {
+		return -1;
+	}
 
 	//* Waiting for HandleStreamSnapshotDone
 	const auto& actions{ client->GetActionsNumber() };
@@ -110,7 +114,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	InstrumentStructure instrument2{ InstrumentStructure::InstrumentStructureType::Second, figi2, 7432435, 998274902,
 		34387675464, 1000, 133, InstrumentStructure::Nominal{ 133, 2 }, true, true, true, 133, 0.25, 555666333 };
 	distributor->SetInstrument(instrument2);
-	client->GetInstrumentStream().Open();
+	if (!client->GetInstrumentStream().Open()) [[unlikely]] {
+		return -1;
+	}
 
 	//* Waiting for HandleStreamSnapshotDone
 	client->WaitActionsNumber(test, 5000, 4 /* opened + 2 instruments + done */);
@@ -137,8 +143,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	//* Setup for next steps
 	client->Clear();
 	MSAPI::Protocol::Object::Filter<FilterStructure> filter2{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
-	client->GetInstrumentStream().SetFilter(filter2);
-	client->GetInstrumentStream().Open();
+	client->GetInstrumentStream().SetFilter(std::move(filter2));
+	if (!client->GetInstrumentStream().Open()) [[unlikely]] {
+		return -1;
+	}
 
 	//* Waiting for HandleStreamSnapshotDone
 	client->WaitActionsNumber(test, 5000, 4 /* opened + 2 instruments + done */);
@@ -194,9 +202,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	client->Clear();
 	MSAPI::Protocol::Object::Filter<FilterStructure> filter3{ MSAPI::Protocol::Object::Type::Snapshot };
 	FilterStructure figiFilter3{ figi3 };
-	filter3.SetObject(figiFilter3);
-	client->GetInstrumentStream().SetFilter(filter3);
-	client->GetInstrumentStream().Open();
+	test.Assert(filter3.SetObject(figiFilter3), uint64_t(1), "Filters count after setting");
+	client->GetInstrumentStream().SetFilter(std::move(filter3));
+	if (!client->GetInstrumentStream().Open()) [[unlikely]] {
+		return -1;
+	}
 
 	//* Waiting for HandleStreamSnapshotDone
 	client->WaitActionsNumber(test, 5000, 3 /* opened + instrument + done */);
@@ -220,10 +230,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	client->Clear();
 	MSAPI::Protocol::Object::Filter<FilterStructure> filter4{ MSAPI::Protocol::Object::Type::Snapshot };
 	FilterStructure figiFilter2{ figi2 };
-	filter4.SetObject(figiFilter2);
-	filter4.SetObject(figiFilter3);
-	client->GetInstrumentStream().SetFilter(filter4);
-	client->GetInstrumentStream().Open();
+	test.Assert(filter4.SetObject(figiFilter2), uint64_t(1), "Filters count after setting");
+	test.Assert(filter4.SetObject(figiFilter3), uint64_t(2), "Filters count after setting");
+	client->GetInstrumentStream().SetFilter(std::move(filter4));
+	if (!client->GetInstrumentStream().Open()) [[unlikely]] {
+		return -1;
+	}
 
 	//* Waiting for HandleStreamSnapshotDone
 	client->WaitActionsNumber(test, 5000, 4 /* opened + 2 instruments + done */);
@@ -258,12 +270,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		34387675464, 1000, 133, InstrumentStructure::Nominal{ 133, 5 }, true, true, true, 133, 0.25, 555666333 };
 	FilterStructure figiFilter4{ figi4 };
 	FilterStructure figiFilter5{ figi5 };
-	filter5.SetObject(figiFilter2);
-	filter5.SetObject(figiFilter3);
-	filter5.SetObject(figiFilter4);
-	filter5.SetObject(figiFilter5);
-	client->GetInstrumentStream().SetFilter(filter5);
-	client->GetInstrumentStream().Open();
+	test.Assert(filter5.SetObject(figiFilter2), uint64_t(1), "Filters count after setting");
+	test.Assert(filter5.SetObject(figiFilter3), uint64_t(2), "Filters count after setting");
+	test.Assert(filter5.SetObject(figiFilter4), uint64_t(3), "Filters count after setting");
+	test.Assert(filter5.SetObject(figiFilter5), uint64_t(4), "Filters count after setting");
+	client->GetInstrumentStream().SetFilter(std::move(filter5));
+	if (!client->GetInstrumentStream().Open()) [[unlikely]] {
+		return -1;
+	}
 
 	//* Waiting for HandleStreamSnapshotDone
 	client->WaitActionsNumber(test, 5000, 4 /* opened + 2 instruments + done */);
@@ -336,10 +350,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	client->Clear();
 	distributor->Clear();
 	MSAPI::Protocol::Object::Filter<FilterStructure> filter6{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
-	filter6.SetObject(figiFilter2);
-	filter6.SetObject(figiFilter3);
-	filter6.SetObject(figiFilter4);
-	client->GetInstrumentStream().SetFilter(filter6);
+	test.Assert(filter6.SetObject(figiFilter2), uint64_t(1), "Filters count after setting");
+	test.Assert(filter6.SetObject(figiFilter3), uint64_t(2), "Filters count after setting");
+	test.Assert(filter6.SetObject(figiFilter4), uint64_t(3), "Filters count after setting");
+	client->GetInstrumentStream().SetFilter(std::move(filter6));
 	test.Assert(static_cast<short>(client->GetInstrumentStream().GetState()),
 		static_cast<short>(MSAPI::Protocol::Object::State::Closed), "Instrument stream state is closed");
 	test.Assert(static_cast<short>(client->GetOrderStream().GetState()),
@@ -354,10 +368,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	distributor->SetOrder(order2);
 	distributor->SetInstrument(instrument2);
 
-	client->GetInstrumentStream().Open();
+	if (!client->GetInstrumentStream().Open()) [[unlikely]] {
+		return -1;
+	}
 	test.Assert(client->GetOrderStream().Open(), false, "Try open stream without filter");
-	client->GetOrderStream().SetFilter(filter6);
-	client->GetOrderStream().Open();
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter7{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
+	test.Assert(filter7.SetObject(figiFilter2), uint64_t(1), "Filters count after setting");
+	test.Assert(filter7.SetObject(figiFilter3), uint64_t(2), "Filters count after setting");
+	test.Assert(filter7.SetObject(figiFilter4), uint64_t(3), "Filters count after setting");
+	client->GetOrderStream().SetFilter(std::move(filter7));
+	if (!client->GetOrderStream().Open()) [[unlikely]] {
+		return -1;
+	}
 
 	//* Waiting instrument and order stream' HandleStreamSnapshotDone calls
 	client->WaitActionsNumber(test, 5000, 6 /* 2 opened + 1 instrument + 1 order + 2 done*/);

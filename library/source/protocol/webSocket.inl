@@ -417,10 +417,10 @@ private:
 /**************************
  * @brief Send data to connection.
  *
- * @param connection Socket to send.
+ * @param connection Connection to send.
  * @param data Data to send.
  */
-FORCE_INLINE void Send(int connection, const Data& data);
+FORCE_INLINE void Send(Connection& connection, const Data& data);
 
 /**************************
  * @brief Functional data abstraction for pthread safe reserving WebSocket messages. Has dynamic limit for storing
@@ -443,18 +443,18 @@ public:
 	 */
 	struct FragmentedData {
 		Data data;
-		const int connection;
+		const uint64_t connectionId;
 		Timer timestamp{};
 
 		/**************************
 		 * @brief Create fragmented data object with creation timestamp.
 		 *
 		 * @param data WebSocket data.
-		 * @param connection Socket connection from which reserved message.
+		 * @param connectionId Id of connection from which reserved message.
 		 *
 		 * @test Has unit test.
 		 */
-		FORCE_INLINE FragmentedData(Data&& data, int connection) noexcept;
+		FORCE_INLINE FragmentedData(Data&& data, uint64_t connectionId) noexcept;
 
 		FragmentedData(FragmentedData&& other) = default;
 		FragmentedData(const FragmentedData& other) = delete;
@@ -466,8 +466,8 @@ private:
 	const MSAPI::Application* const m_application;
 	double m_storedFragmentedDataSizeMb{};
 	double m_storedFragmentedDataLimitMb{ 10. };
-	std::unordered_map<int, FragmentedData> m_fragmentedDataToConnection;
-	std::map<Timer, FragmentedData*> m_fragmentedDataTimerToConnection;
+	std::unordered_map<uint64_t, FragmentedData> m_connectionIdToFragmentedData;
+	std::map<Timer, FragmentedData*> m_timerToFragmentedData;
 	Lock::Atomic m_fragmentedDataLock;
 
 public:
@@ -488,22 +488,23 @@ public:
 	/**************************
 	 * @brief Handler function for text and binary messages.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data from which reserved message.
 	 * @param data Reserved WebSocket message.
 	 *
 	 * @test Has unit test.
 	 */
-	virtual void HandleWebSocket(int connection, Data&& data) = 0;
+	virtual void HandleWebSocket(const std::shared_ptr<Connection::Data>& connectionData, Data&& data) = 0;
 
 	/**************************
 	 * @brief Handler function for WebSocket pong message. Default implementation is empty.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data from which reserved message.
 	 * @param data Reserved WebSocket message.
 	 *
 	 * @test Has unit test.
 	 */
-	virtual void HandleWebSocketPong([[maybe_unused]] int connection, [[maybe_unused]] Data&& data);
+	virtual void HandleWebSocketPong(
+		[[maybe_unused]] const std::shared_ptr<Connection::Data>& connectionData, [[maybe_unused]] Data&& data);
 
 	/**************************
 	 * @brief Collect WebSocket message from socket connection and call Handler function if message is final or
@@ -517,7 +518,7 @@ public:
 	 * - If income fragment is initial but some fragmented data is already stored, stored data will be purged;
 	 * - If income message if not fragmented, but fragments are stored, they will not be purged.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data from which reserved message.
 	 * @param data Reserved WebSocket message.
 	 *
 	 * @test Has unit test.
@@ -526,7 +527,7 @@ public:
 	 * @todo When Application will be a child of Sever, call Server::CloseConnection(connection) at close opcode
 	 * handling.
 	 */
-	FORCE_INLINE void Collect(int connection, Data&& data);
+	FORCE_INLINE void Collect(const std::shared_ptr<Connection::Data>& connectionData, Data&& data);
 
 	/**************************
 	 * @return Fragmented data limit.
@@ -559,13 +560,13 @@ public:
 	FORCE_INLINE void Clear() noexcept;
 
 	/**************************
-	 * @brief Clear stored fragmented data for connection.
+	 * @brief Clear stored fragmented data for connection id.
 	 *
-	 * @param connection Connection to be cleared.
+	 * @param connectionId Connection id for clearing.
 	 *
 	 * @test Has unit test.
 	 */
-	FORCE_INLINE void ClearConnection(int connection) noexcept;
+	FORCE_INLINE void ClearConnection(uint64_t connectionId) noexcept;
 
 private:
 	static inline constexpr bool CHECK_BEFORE{ true };
@@ -592,12 +593,12 @@ private:
 	 *
 	 * @param additionalSizeMb Size of new fragmented data in bytes.
 	 * @param fragmentedDataPtr Pointer to already stored fragmented data.
-	 * @param connection Connection of income fragment.
+	 * @param connectionId Connection id of income fragment.
 	 *
 	 * @test Has unit test.
 	 */
 	FORCE_INLINE [[nodiscard]] bool CheckLimitsForStored(
-		double additionalSizeMb, FragmentedData* fragmentedDataPtr, int connection);
+		double additionalSizeMb, FragmentedData* fragmentedDataPtr, uint64_t connectionId);
 
 	/**************************
 	 * @brief Check if new fragmented data can be stored accordingly to the limits.
@@ -608,13 +609,13 @@ private:
 	 * @attention This function assumes to be called under m_fragmentedDataLock lock.
 	 *
 	 * @param additionalSizeMb Size of new fragmented data in bytes.
-	 * @param connection Connection of income fragment.
+	 * @param connectionId Connection id of income fragment.
 	 *
 	 * @return True if fragment can be processed, false otherwise.
 	 *
 	 * @test Has unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] bool CheckLimitForNew(double additionalSizeMb, int connection);
+	FORCE_INLINE [[nodiscard]] bool CheckLimitForNew(double additionalSizeMb, uint64_t connectionId);
 
 	friend class MSAPI::Tests::Protocol::WebSocket::Observer;
 };
@@ -1398,28 +1399,20 @@ FORCE_INLINE [[nodiscard]] bool Data::SplitGenerator<T>::Get()
 Global
 ---------------------------------------------------------------------------------*/
 
-FORCE_INLINE void Send(const int connection, const Data& data)
+FORCE_INLINE void Send(Connection& connection, const Data& data)
 {
-	LOG_PROTOCOL_NEW("Send {} to connection: {}", data.ToString(), connection);
-
+	LOG_PROTOCOL_NEW("Send {} to connection id {}", data.ToString(), connection.GetId());
 	const std::span<const uint8_t> buffer{ data.GetBuffer() };
-	if (send(connection, buffer.data(), buffer.size(), MSG_NOSIGNAL) == -1) {
-		if (errno == 104) {
-			LOG_DEBUG("Send returned error №104: Connection reset by peer");
-			return;
-		}
-		LOG_ERROR("Send event failed, connection: " + _S(connection) + ", data: " + data.ToString() + ". Error №"
-			+ _S(errno) + ": " + std::strerror(errno));
-	}
+	(void)connection.Send(buffer.data(), buffer.size(), MSG_NOSIGNAL);
 }
 
 /*---------------------------------------------------------------------------------
 IHandler::FragmentedData
 ---------------------------------------------------------------------------------*/
 
-FORCE_INLINE IHandler::FragmentedData::FragmentedData(Data&& data, const int connection) noexcept
+FORCE_INLINE IHandler::FragmentedData::FragmentedData(Data&& data, const uint64_t connectionId) noexcept
 	: data{ std::move(data) }
-	, connection{ connection }
+	, connectionId{ connectionId }
 {
 }
 
@@ -1432,145 +1425,149 @@ FORCE_INLINE IHandler::IHandler(const MSAPI::Application* const application) noe
 {
 }
 
-FORCE_INLINE void IHandler::HandleWebSocketPong([[maybe_unused]] const int connection, [[maybe_unused]] Data&& data) { }
-
-FORCE_INLINE void IHandler::Collect(const int connection, Data&& data)
+FORCE_INLINE void IHandler::HandleWebSocketPong(
+	[[maybe_unused]] const std::shared_ptr<Connection::Data>& connectionData, [[maybe_unused]] Data&& data)
 {
-	if (m_application->IsRunning()) {
-		LOG_PROTOCOL_NEW("{}, connection: {}", data.ToString(), connection);
+}
 
-		if (!data.IsValid()) [[unlikely]] {
-			return;
-		}
+FORCE_INLINE void IHandler::Collect(const std::shared_ptr<Connection::Data>& connectionData, Data&& data)
+{
+	const auto connectionId{ connectionData->GetConnectionId() };
 
-		switch (data.GetOpcode()) {
-		case Data::Opcode::Continuation: {
-			FragmentedData* fragmentedDataPtr{ nullptr };
-			{
-				Lock::Atomic::Guard _{ m_fragmentedDataLock };
-				const auto it{ m_fragmentedDataToConnection.find(connection) };
-				if (it == m_fragmentedDataToConnection.end()) {
-					LOG_WARNING_NEW("Received continuation frame without initial fragment, message will be "
-									"ignored, connection: {}",
-						connection);
-					return;
-				}
-
-				fragmentedDataPtr = &it->second;
-
-				const auto incomeFragmentSize{ static_cast<double>(data.GetPayloadSize()) / Data::MB };
-				// Potentially the message is final, so it is removed from map and its potential purging is not
-				// possible, but the occupied memory size is not reduced yet
-				m_fragmentedDataTimerToConnection.erase(fragmentedDataPtr->timestamp);
-				if (!CheckLimitsForStored(incomeFragmentSize, fragmentedDataPtr, connection)) {
-					return;
-				}
-				fragmentedDataPtr->timestamp = Timer{};
-			}
-
-			auto& dataRef{ fragmentedDataPtr->data };
-			dataRef.MergePayload(data);
-			if (data.IsFinal()) {
-				dataRef.m_buffer[0] |= 0b10000000;
-
-				LOG_PROTOCOL_NEW("Final {}, connection: {}", dataRef.ToString(), connection);
-				const auto dataSizeMb{ static_cast<double>(dataRef.GetPayloadSize()) / Data::MB
-					+ Data::MAXIMUM_HEADER_MB };
-				HandleWebSocket(connection, std::move(fragmentedDataPtr->data));
-				Lock::Atomic::Guard _{ m_fragmentedDataLock };
-				m_fragmentedDataToConnection.erase(connection);
-				m_storedFragmentedDataSizeMb -= dataSizeMb;
-				return;
-			}
-
-			// Runtime overhead in favor of FIFO memory cleaning
-			// The design of protocol itself does not allow to have robust memory storing model without trade offs
-			Lock::Atomic::Guard _{ m_fragmentedDataLock };
-			m_fragmentedDataTimerToConnection.emplace(fragmentedDataPtr->timestamp, fragmentedDataPtr);
-			return;
-		}
-		case Data::Opcode::Text:
-		case Data::Opcode::Binary:
-			if (!data.IsFinal()) {
-				Lock::Atomic::Guard _{ m_fragmentedDataLock };
-				if (!CheckLimitForNew(static_cast<double>(data.GetPayloadSize()) / Data::MB + Data::MAXIMUM_HEADER_MB,
-						connection)) [[unlikely]] {
-					return;
-				}
-
-				if (auto it{ m_fragmentedDataToConnection.find(connection) }; it != m_fragmentedDataToConnection.end())
-					[[unlikely]] {
-					LOG_WARNING_NEW("Received new fragmented message while previous fragmented message is not "
-									"completed, message will be overwritten, connection: {}",
-						connection);
-					m_storedFragmentedDataSizeMb
-						-= static_cast<double>(it->second.data.GetPayloadSize()) / Data::MB + Data::MAXIMUM_HEADER_MB;
-					it->second.data = std::move(data);
-					m_fragmentedDataTimerToConnection.erase(it->second.timestamp);
-					it->second.timestamp = Timer{};
-					m_fragmentedDataTimerToConnection.emplace(it->second.timestamp, &it->second);
-					return;
-				}
-
-				const auto it{ m_fragmentedDataToConnection
-								   .emplace(connection, FragmentedData{ std::move(data), connection })
-								   .first };
-				m_fragmentedDataTimerToConnection.emplace(it->second.timestamp, &it->second);
-				return;
-			}
-			HandleWebSocket(connection, std::move(data));
-			return;
-		case Data::Opcode::Close: {
-			// RSV3 is used as a signal that it is a response to close message
-			if (data.IsRsv3()) {
-				return;
-			}
-			const auto payloadSize{ data.GetPayloadSize() };
-			if (payloadSize >= 2) {
-				const auto* payloadPtr{ data.GetPayload().data() };
-				const auto statusCode{ static_cast<Data::CloseStatusCode>(
-					be16toh(*reinterpret_cast<const uint16_t*>(payloadPtr))) };
-				if (payloadSize > 2) {
-					const auto reason{ std::string_view(
-						reinterpret_cast<const char*>(payloadPtr + 2), payloadSize - 2) };
-					LOG_PROTOCOL_NEW("Close frame received, status code: {} {}, reason: {}, connection: {}",
-						static_cast<uint16_t>(statusCode), Data::EnumToString(statusCode), reason, connection);
-				}
-				else {
-					LOG_PROTOCOL_NEW("Close frame received, status code: {} {}, connection: {}",
-						static_cast<uint16_t>(statusCode), Data::EnumToString(statusCode), connection);
-				}
-			}
-			else {
-				LOG_PROTOCOL_NEW("Close frame received without status code, connection: {}", connection);
-			}
-
-			data.m_buffer[0] |= 0b00010000; // Set RSV3 to signal that it is a response to close message
-			data.ReverseMaskingInDataWithSmallPayload();
-			Send(connection, data);
-			// TODO: When Application will be a child of Sever, call Server::CloseConnection(connection) here
-			return;
-		}
-		case Data::Opcode::Ping: {
-			data.m_buffer[0] ^= static_cast<uint8_t>(Data::Opcode::Ping);
-			data.m_buffer[0] |= static_cast<uint8_t>(Data::Opcode::Pong);
-			data.ReverseMaskingInDataWithSmallPayload();
-			Send(connection, data);
-			return;
-		}
-		case Data::Opcode::Pong:
-			HandleWebSocketPong(connection, std::move(data));
-			return;
-		default:
-			LOG_WARNING_NEW("Unknown WebSocket opcode {}, connection: {}", U(data.GetOpcode()), connection);
-			return;
-		}
-
-		HandleWebSocket(connection, std::move(data));
+	if (!m_application->IsRunning()) [[unlikely]] {
+		LOG_PROTOCOL_NEW(
+			"Application is not running. Collecting is rejected {}, connection id {}", data.ToString(), connectionId);
 		return;
 	}
 
-	LOG_PROTOCOL_NEW("Application is not running. {}, connection: {}", data.ToString(), connection);
+	LOG_PROTOCOL_NEW("Collecting {}, connection id {}", data.ToString(), connectionId);
+
+	if (!data.IsValid()) [[unlikely]] {
+		return;
+	}
+
+	switch (data.GetOpcode()) {
+	case Data::Opcode::Continuation: {
+		FragmentedData* fragmentedDataPtr{ nullptr };
+		{
+			Lock::Atomic::Guard _{ m_fragmentedDataLock };
+			const auto it{ m_connectionIdToFragmentedData.find(connectionId) };
+			if (it == m_connectionIdToFragmentedData.end()) {
+				LOG_WARNING_NEW("Received continuation frame without initial fragment, message will be "
+								"ignored, connection id {}",
+					connectionId);
+				return;
+			}
+
+			fragmentedDataPtr = &it->second;
+
+			const auto incomeFragmentSize{ static_cast<double>(data.GetPayloadSize()) / Data::MB };
+			// Potentially the message is final, so it is removed from map and its potential purging is not
+			// possible, but the occupied memory size is not reduced yet
+			m_timerToFragmentedData.erase(fragmentedDataPtr->timestamp);
+			if (!CheckLimitsForStored(incomeFragmentSize, fragmentedDataPtr, connectionId)) {
+				return;
+			}
+			fragmentedDataPtr->timestamp = Timer{};
+		}
+
+		auto& dataRef{ fragmentedDataPtr->data };
+		dataRef.MergePayload(data);
+		if (data.IsFinal()) {
+			dataRef.m_buffer[0] |= 0b10000000;
+
+			LOG_PROTOCOL_NEW("Final {}, connection id {}", dataRef.ToString(), connectionId);
+			const auto dataSizeMb{ static_cast<double>(dataRef.GetPayloadSize()) / Data::MB + Data::MAXIMUM_HEADER_MB };
+			HandleWebSocket(connectionData, std::move(fragmentedDataPtr->data));
+			Lock::Atomic::Guard _{ m_fragmentedDataLock };
+			m_connectionIdToFragmentedData.erase(connectionId);
+			m_storedFragmentedDataSizeMb -= dataSizeMb;
+			return;
+		}
+
+		// Runtime overhead in favor of FIFO memory cleaning
+		// The design of protocol itself does not allow to have robust memory storing model without trade offs
+		Lock::Atomic::Guard _{ m_fragmentedDataLock };
+		m_timerToFragmentedData.emplace(fragmentedDataPtr->timestamp, fragmentedDataPtr);
+		return;
+	}
+	case Data::Opcode::Text:
+	case Data::Opcode::Binary:
+		if (!data.IsFinal()) {
+			Lock::Atomic::Guard _{ m_fragmentedDataLock };
+			if (!CheckLimitForNew(static_cast<double>(data.GetPayloadSize()) / Data::MB + Data::MAXIMUM_HEADER_MB,
+					connectionId)) [[unlikely]] {
+				return;
+			}
+
+			if (auto it{ m_connectionIdToFragmentedData.find(connectionId) };
+				it != m_connectionIdToFragmentedData.end()) [[unlikely]] {
+				LOG_WARNING_NEW("Received new fragmented message while previous fragmented message is not "
+								"completed, message will be overwritten, connection id {}",
+					connectionId);
+				m_storedFragmentedDataSizeMb
+					-= static_cast<double>(it->second.data.GetPayloadSize()) / Data::MB + Data::MAXIMUM_HEADER_MB;
+				it->second.data = std::move(data);
+				m_timerToFragmentedData.erase(it->second.timestamp);
+				it->second.timestamp = Timer{};
+				m_timerToFragmentedData.emplace(it->second.timestamp, &it->second);
+				return;
+			}
+
+			const auto it{ m_connectionIdToFragmentedData
+							   .emplace(connectionId, FragmentedData{ std::move(data), connectionId })
+							   .first };
+			m_timerToFragmentedData.emplace(it->second.timestamp, &it->second);
+			return;
+		}
+		HandleWebSocket(connectionData, std::move(data));
+		return;
+	case Data::Opcode::Close: {
+		// RSV3 is used as a signal that it is a response to close message
+		if (data.IsRsv3()) {
+			return;
+		}
+		const auto payloadSize{ data.GetPayloadSize() };
+		if (payloadSize >= 2) {
+			const auto* payloadPtr{ data.GetPayload().data() };
+			const auto statusCode{ static_cast<Data::CloseStatusCode>(
+				be16toh(*reinterpret_cast<const uint16_t*>(payloadPtr))) };
+			if (payloadSize > 2) {
+				const auto reason{ std::string_view(reinterpret_cast<const char*>(payloadPtr + 2), payloadSize - 2) };
+				LOG_PROTOCOL_NEW("Close frame received, status code: {} {}, reason: {}, connection id {}",
+					static_cast<uint16_t>(statusCode), Data::EnumToString(statusCode), reason, connectionId);
+			}
+			else {
+				LOG_PROTOCOL_NEW("Close frame received, status code: {} {}, connection id {}",
+					static_cast<uint16_t>(statusCode), Data::EnumToString(statusCode), connectionId);
+			}
+		}
+		else {
+			LOG_PROTOCOL_NEW("Close frame received without status code, connection id {}", connectionId);
+		}
+
+		data.m_buffer[0] |= 0b00010000; // Set RSV3 to signal that it is a response to close message
+		data.ReverseMaskingInDataWithSmallPayload();
+		Send(connectionData->GetConnection(), data);
+		// TODO: When Application will be a child of Sever, call Server::CloseConnection(connection) here
+		return;
+	}
+	case Data::Opcode::Ping: {
+		data.m_buffer[0] ^= static_cast<uint8_t>(Data::Opcode::Ping);
+		data.m_buffer[0] |= static_cast<uint8_t>(Data::Opcode::Pong);
+		data.ReverseMaskingInDataWithSmallPayload();
+		Send(connectionData->GetConnection(), data);
+		return;
+	}
+	case Data::Opcode::Pong:
+		HandleWebSocketPong(connectionData, std::move(data));
+		return;
+	default:
+		LOG_WARNING_NEW("Unknown WebSocket opcode {}, connection id {}", U(data.GetOpcode()), connectionId);
+		return;
+	}
+
+	HandleWebSocket(connectionData, std::move(data));
 }
 
 FORCE_INLINE double IHandler::GetFragmentedDataLimit() const noexcept { return m_storedFragmentedDataLimitMb; }
@@ -1601,20 +1598,20 @@ FORCE_INLINE [[nodiscard]] bool IHandler::SetFragmentedDataLimit(const double li
 FORCE_INLINE void IHandler::Clear() noexcept
 {
 	Lock::Atomic::Guard _{ m_fragmentedDataLock };
-	m_fragmentedDataToConnection.clear();
-	m_fragmentedDataTimerToConnection.clear();
+	m_connectionIdToFragmentedData.clear();
+	m_timerToFragmentedData.clear();
 	m_storedFragmentedDataSizeMb = 0.;
 }
 
-FORCE_INLINE void IHandler::ClearConnection(const int connection) noexcept
+FORCE_INLINE void IHandler::ClearConnection(const uint64_t connectionId) noexcept
 {
 	Lock::Atomic::Guard _{ m_fragmentedDataLock };
-	const auto it{ m_fragmentedDataToConnection.find(connection) };
-	if (it != m_fragmentedDataToConnection.end()) {
+	const auto it{ m_connectionIdToFragmentedData.find(connectionId) };
+	if (it != m_connectionIdToFragmentedData.end()) {
 		m_storedFragmentedDataSizeMb
 			-= static_cast<double>(it->second.data.GetPayloadSize()) / Data::MB + Data::MAXIMUM_HEADER_MB;
-		m_fragmentedDataTimerToConnection.erase(it->second.timestamp);
-		m_fragmentedDataToConnection.erase(it);
+		m_timerToFragmentedData.erase(it->second.timestamp);
+		m_connectionIdToFragmentedData.erase(it);
 	}
 }
 
@@ -1626,14 +1623,14 @@ template <bool T> FORCE_INLINE [[nodiscard]] bool IHandler::PurgeStoredData()
 		}
 	}
 
-	auto it{ m_fragmentedDataTimerToConnection.begin() };
-	while (it != m_fragmentedDataTimerToConnection.end()) {
+	auto it{ m_timerToFragmentedData.begin() };
+	while (it != m_timerToFragmentedData.end()) {
 		m_storedFragmentedDataSizeMb
 			-= static_cast<double>(it->second->data.GetPayloadSize()) / Data::MB + Data::MAXIMUM_HEADER_MB;
 		LOG_WARNING_NEW(
-			"WebSocket fragmented data purged for connection {} due to limit exceed", it->second->connection);
-		m_fragmentedDataToConnection.erase(it->second->connection);
-		it = m_fragmentedDataTimerToConnection.erase(it);
+			"WebSocket fragmented data purged for connection id {} due to limit exceed", it->second->connectionId);
+		m_connectionIdToFragmentedData.erase(it->second->connectionId);
+		it = m_timerToFragmentedData.erase(it);
 
 		if (!Helper::FloatGreater(m_storedFragmentedDataSizeMb, m_storedFragmentedDataLimitMb)) {
 			return true;
@@ -1644,16 +1641,16 @@ template <bool T> FORCE_INLINE [[nodiscard]] bool IHandler::PurgeStoredData()
 }
 
 FORCE_INLINE [[nodiscard]] bool IHandler::CheckLimitsForStored(
-	const double additionalSizeMb, FragmentedData* const fragmentedDataPtr, const int connection)
+	const double additionalSizeMb, FragmentedData* const fragmentedDataPtr, const uint64_t connectionId)
 {
 	const auto storedFragmentSize{ static_cast<double>(fragmentedDataPtr->data.GetPayloadSize()) / Data::MB
 		+ Data::MAXIMUM_HEADER_MB };
 	// If fragment cannot be stored for sure, do not purge anything
 	if (Helper::FloatGreater(additionalSizeMb + storedFragmentSize, m_storedFragmentedDataLimitMb)) {
 		LOG_WARNING_NEW(
-			"WebSocket income data is dropped and stored data is purged for connection {} due to limit exceed",
-			connection);
-		m_fragmentedDataToConnection.erase(connection);
+			"WebSocket income data is dropped and stored data is purged for connection id {} due to limit exceed",
+			connectionId);
+		m_connectionIdToFragmentedData.erase(connectionId);
 		m_storedFragmentedDataSizeMb -= storedFragmentSize;
 		return false;
 	}
@@ -1661,7 +1658,7 @@ FORCE_INLINE [[nodiscard]] bool IHandler::CheckLimitsForStored(
 	m_storedFragmentedDataSizeMb += additionalSizeMb;
 	if (Helper::FloatGreater(m_storedFragmentedDataSizeMb, m_storedFragmentedDataLimitMb)) {
 		if (!PurgeStoredData<CHECK_USUAL>()) {
-			m_fragmentedDataToConnection.erase(connection);
+			m_connectionIdToFragmentedData.erase(connectionId);
 			m_storedFragmentedDataSizeMb -= storedFragmentSize + additionalSizeMb;
 			return false;
 		}
@@ -1670,17 +1667,17 @@ FORCE_INLINE [[nodiscard]] bool IHandler::CheckLimitsForStored(
 	return true;
 }
 
-FORCE_INLINE [[nodiscard]] bool IHandler::CheckLimitForNew(const double additionalSizeMb, const int connection)
+FORCE_INLINE [[nodiscard]] bool IHandler::CheckLimitForNew(const double additionalSizeMb, const uint64_t connectionId)
 {
 	if (Helper::FloatGreater(additionalSizeMb, m_storedFragmentedDataLimitMb)) [[unlikely]] {
-		LOG_WARNING_NEW("WebSocket fragment from connection {} is skipped due to limit exceed", connection);
+		LOG_WARNING_NEW("WebSocket fragment from connection id {} is skipped due to limit exceed", connectionId);
 		return false;
 	}
 
 	m_storedFragmentedDataSizeMb += additionalSizeMb;
 	if (Helper::FloatGreater(m_storedFragmentedDataSizeMb, m_storedFragmentedDataLimitMb)) {
 		if (!PurgeStoredData<CHECK_USUAL>()) {
-			m_fragmentedDataToConnection.erase(connection);
+			m_connectionIdToFragmentedData.erase(connectionId);
 			m_storedFragmentedDataSizeMb -= additionalSizeMb;
 			return false;
 		}

@@ -53,13 +53,10 @@
 #include "httpClient.h"
 #include "httpServer.h"
 #include <memory>
-#include <sys/mman.h>
 #include <sys/resource.h>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
-
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
@@ -85,8 +82,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
 
+	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
+		return 1;
+	}
+
 	//* Server
-	const int serverId{ 1 };
 	auto serverPtr{ MSAPI::Daemon<HTTPServer>::Create("Server") };
 	if (serverPtr == nullptr) {
 		return 1;
@@ -105,9 +105,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		return 1;
 	}
 	auto client{ static_cast<HTTPClient*>(clientPtr->GetApp()) };
-	if (!client->OpenConnect(serverId, INADDR_LOOPBACK, serverPtr->GetPort(), false)) {
-		return 1;
+	const auto clientToServerConnectionData{ client->OpenConnection(
+		INADDR_LOOPBACK, serverPtr->GetPort(), /*doReconnection=*/false) };
+	if (clientToServerConnectionData == nullptr) {
+		return -1;
 	}
+	auto& clientToServerConnection{ clientToServerConnectionData->GetConnection() };
 
 	std::string indexPage;
 	if (!MSAPI::IO::ReadStr<std::string_view>(indexPage, serverWebPath + "html/index.html")) {
@@ -162,7 +165,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		  };
 
 	//* 1) Send request to load index page with relative url
-	client->SendRequest(serverId, "GET /index.html HTTP/1.1");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /index.html HTTP/1.1"), true,
+		"Request is sent");
 	server->WaitActionsNumber(test, 3000, 2);
 	const auto& serverCounter{ server->GetActionsNumber() };
 	auto& serverHTTPData{ server->GetHTTPData() };
@@ -184,7 +188,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}");
 
 	//* 3) Send request to load index page with relative url withput page format specification
-	client->SendRequest(serverId, "GET /index HTTP/1.1");
+	test.Assert(
+		MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /index HTTP/1.1"), true, "Request is sent");
 	server->WaitActionsNumber(test, 3000, 4);
 	checkAll(serverHTTPData, serverCounter, 4, true, "GET", "/index", "HTTP", "1.1", 23, "html", "", "", "", {},
 		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Request\n\tmessage type : GET\n\turl          : "
@@ -202,7 +207,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}");
 
 	//* 5) Send request to load unkown page
-	client->SendRequest(serverId, "GET /info HTTP/1.1");
+	test.Assert(
+		MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /info HTTP/1.1"), true, "Request is sent");
 	server->WaitActionsNumber(test, 3000, 6);
 	checkAll(serverHTTPData, serverCounter, 6, true, "GET", "/info", "HTTP", "1.1", 22, "html", "", "", "", {},
 		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Request\n\tmessage type : GET\n\turl          : "
@@ -222,7 +228,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"timeout=0,max=0\n}\n}");
 
 	//* 7) Send request to unkown file with specific header
-	client->SendRequest(serverId, "GET /archive.zip HTTP/1.1\r\nSome header: Hello for everybody 777!");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(
+					clientToServerConnection, "GET /archive.zip HTTP/1.1\r\nSome header: Hello for everybody 777!"),
+		true, "Request is sent");
 	server->WaitActionsNumber(test, 3000, 8);
 	checkAll(serverHTTPData, serverCounter, 8, true, "GET", "/archive.zip", "HTTP", "1.1", 68, "zip", "", "", "",
 		{ { "Some header", "Hello for everybody 777!" } },
@@ -243,7 +251,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"timeout=0,max=0\n}\n}");
 
 	//* 9) Send request to load index page by slash
-	client->SendRequest(serverId, "GET / HTTP/1.1");
+	test.Assert(
+		MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET / HTTP/1.1"), true, "Request is sent");
 	server->WaitActionsNumber(test, 3000, 10);
 	checkAll(serverHTTPData, serverCounter, 10, true, "GET", "/", "HTTP", "1.1", 18, "html", "", "", "", {},
 		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Request\n\tmessage type : GET\n\turl          : "
@@ -261,7 +270,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}");
 
 	//* 11) Send request to load unknown page
-	client->SendRequest(serverId, "GET /unknown.html HTTP/1.1");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /unknown.html HTTP/1.1"), true,
+		"Request is sent");
 	server->WaitActionsNumber(test, 3000, 12);
 	checkAll(serverHTTPData, serverCounter, 12, true, "GET", "/unknown.html", "HTTP", "1.1", 30, "html", "", "", "", {},
 		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Request\n\tmessage type : GET\n\turl          : "
@@ -279,7 +289,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"charset=utf-8\n\tKeep-Alive   : timeout=0,max=0\n}\n}");
 
 	//* 13) Send request to load favicon
-	client->SendRequest(serverId, "GET /favicon.ico HTTP/1.1");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /favicon.ico HTTP/1.1"), true,
+		"Request is sent");
 	server->WaitActionsNumber(test, 3000, 14);
 	checkAll(serverHTTPData, serverCounter, 14, true, "GET", "/favicon.ico", "HTTP", "1.1", 29, "ico", "", "", "", {},
 		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Request\n\tmessage type : GET\n\turl          : "
@@ -297,7 +308,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"15406\n\tContent-Type   : image/x-icon; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}");
 
 	//* 15) Send request to load css
-	client->SendRequest(serverId, "GET /style.css HTTP/1.1");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /style.css HTTP/1.1"), true,
+		"Request is sent");
 	server->WaitActionsNumber(test, 3000, 16);
 	checkAll(serverHTTPData, serverCounter, 16, true, "GET", "/style.css", "HTTP", "1.1", 27, "css", "", "", "", {},
 		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Request\n\tmessage type : GET\n\turl          : "
@@ -315,7 +327,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"4233\n\tContent-Type   : text/css; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}");
 
 	//* 17) Send request to load js
-	client->SendRequest(serverId, "GET /index.js HTTP/1.1");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /index.js HTTP/1.1"), true,
+		"Request is sent");
 	server->WaitActionsNumber(test, 3000, 18);
 	checkAll(serverHTTPData, serverCounter, 18, true, "GET", "/index.js", "HTTP", "1.1", 26, "js", "", "", "", {},
 		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Request\n\tmessage type : GET\n\turl          : "
@@ -333,7 +346,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"5114\n\tContent-Type   : application/javascript; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}");
 
 	//* 19) Send request with specific header
-	client->SendRequest(serverId, "GET /api HTTP/1.1\r\nIdentifier: 369\nAction: Send me some JSON, please");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection,
+					"GET /api HTTP/1.1\r\nIdentifier: 369\nAction: Send me some JSON, please"),
+		true, "Request is sent");
 	server->WaitActionsNumber(test, 3000, 20);
 	checkAll(serverHTTPData, serverCounter, 20, true, "GET", "/api", "HTTP", "1.1", 72, "html", "", "", "",
 		{ { "Identifier", "369" }, { "Action", "Send me some JSON, please" } },
@@ -354,7 +369,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"31\n\tContent-Type   : application/json; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}");
 
 	//* 21) Send request with wrong specific header
-	client->SendRequest(serverId, "GET /api HTTP/1.1\r\nIdentifier: 368\nAction: Send me some JSON, please");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection,
+					"GET /api HTTP/1.1\r\nIdentifier: 368\nAction: Send me some JSON, please"),
+		true, "Request is sent");
 	server->WaitActionsNumber(test, 3000, 22);
 	checkAll(serverHTTPData, serverCounter, 22, true, "GET", "/api", "HTTP", "1.1", 72, "html", "", "", "",
 		{ { "Identifier", "368" }, { "Action", "Send me some JSON, please" } },
@@ -376,7 +393,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"timeout=0,max=0\n}\n}");
 
 	//* 23) Send request with wrong HTTP type
-	client->SendRequest(serverId, "POST /api HTTP/1.1\r\nIdentifier: 369\nAction: Send me some JSON, please");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection,
+					"POST /api HTTP/1.1\r\nIdentifier: 369\nAction: Send me some JSON, please"),
+		true, "Request is sent");
 	server->WaitActionsNumber(test, 3000, 24);
 	checkAll(serverHTTPData, serverCounter, 24, true, "POST", "/api", "HTTP", "1.1", 73, "html", "", "", "",
 		{ { "Identifier", "369" }, { "Action", "Send me some JSON, please" } },
@@ -398,7 +417,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"timeout=0,max=0\n}\n}");
 
 	//* 25) Send request to load index page with symbol "?" in URL and following data
-	client->SendRequest(serverId, "GET /index?parameter=83648&additionalData=GTP HTTP/1.1");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(
+					clientToServerConnection, "GET /index?parameter=83648&additionalData=GTP HTTP/1.1"),
+		true, "Request is sent");
 	server->WaitActionsNumber(test, 3000, 26);
 	checkAll(serverHTTPData, serverCounter, 26, true, "GET", "/index", "HTTP", "1.1", 58, "html", "", "", "", {},
 		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Request\n\tmessage type : GET\n\turl          : "
@@ -416,7 +437,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}");
 
 	//* 27) Send request to load index page with symbol "#" in URL and following data
-	client->SendRequest(serverId, "GET /index.html#section HTTP/1.1");
+	test.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /index.html#section HTTP/1.1"), true,
+		"Request is sent");
 	server->WaitActionsNumber(test, 3000, 28);
 	checkAll(serverHTTPData, serverCounter, 28, true, "GET", "/index.html", "HTTP", "1.1", 36, "html", "", "", "", {},
 		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Request\n\tmessage type : GET\n\turl          : "

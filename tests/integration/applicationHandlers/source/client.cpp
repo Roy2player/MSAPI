@@ -119,28 +119,29 @@ void Client::HandleModifyRequest(const std::map<size_t, std::variant<standardTyp
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Client::HandleHello(const int connection)
+void Client::HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 {
-	LOG_ERROR("Unexpected hello received from connection: " + _S(connection));
+	LOG_ERROR_NEW("Unexpected hello received from connection id: {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Client::HandleMetadata(const int connection, [[maybe_unused]] const std::string_view metadata)
+void Client::HandleMetadata(
+	const std::shared_ptr<MSAPI::Connection::Data>& connectionData, [[maybe_unused]] const std::string_view metadata)
 {
-	LOG_ERROR("Unexpected metadata received from connection: " + _S(connection));
+	LOG_ERROR_NEW("Unexpected metadata received from connection id: {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Client::HandleParameters(
-	const int connection, [[maybe_unused]] const std::map<size_t, std::variant<standardTypes>>& parameters)
+void Client::HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
+	[[maybe_unused]] const std::map<size_t, std::variant<standardTypes>>& parameters)
 {
-	LOG_ERROR("Unexpected parameters received from connection: " + _S(connection));
+	LOG_ERROR_NEW("Unexpected parameters received from connection id: {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Client::HandleIncomeDisconnect(const int32_t id, const int32_t connection)
+void Client::HandleIncomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 {
-	LOG_PROTOCOL_NEW("id {} connection {}", id, connection);
+	LOG_PROTOCOL_NEW("connection id: {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 

@@ -48,7 +48,8 @@ void HTTPServer::HandleModifyRequest(const std::map<size_t, std::variant<standar
 	}
 }
 
-void HTTPServer::HandleHttp(const int connection, const MSAPI::Protocol::HTTP::Data& data)
+void HTTPServer::HandleHttp(
+	const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const MSAPI::Protocol::HTTP::Data& data)
 {
 	if (MSAPI::Application::GetState() != MSAPI::Application::State::Running) {
 		LOG_DEBUG("State is not Running, do nothing");
@@ -68,7 +69,8 @@ void HTTPServer::HandleHttp(const int connection, const MSAPI::Protocol::HTTP::D
 	const std::string& url{ data.GetUrl() };
 	LOG_DEBUG("Request url: " + url + ", version: " + data.GetVersion());
 	if (const auto& type{ data.GetTypeMessage() }; type != "GET") {
-		data.Send404(connection, "{\"Error\":\"Method \"" + type + "\" not allowed\"}", "application/json");
+		(void)data.Send404(
+			connectionData->GetConnection(), "{\"Error\":\"Method \"" + type + "\" not allowed\"}", "application/json");
 		return;
 	}
 
@@ -77,63 +79,70 @@ void HTTPServer::HandleHttp(const int connection, const MSAPI::Protocol::HTTP::D
 		if (url == "/index.html" || url == "/index" || url == "/") {
 			std::string indexPage;
 			if (MSAPI::IO::ReadStr<std::string_view>(indexPage, m_webSourcesPath + "html/index.html")) {
-				data.SendResponse(connection, indexPage, "text/html");
+				(void)data.SendResponse(connectionData->GetConnection(), indexPage, "text/html");
 				return;
 			}
 
-			data.Send404(connection, "{\"Error\":\"Internal error\"}", "application/json");
+			(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Internal error\"}", "application/json");
 			return;
 		}
 
 		if (url == "/api") {
 			const std::string* identifier{ data.GetValue("Identifier") };
 			if (identifier == nullptr) {
-				data.Send404(connection, "{\"Error\":\"Identifier not found\"}", "application/json");
+				(void)data.Send404(
+					connectionData->GetConnection(), "{\"Error\":\"Identifier not found\"}", "application/json");
 				return;
 			}
 			const std::string* value{ data.GetValue("Action") };
 			if (value == nullptr) {
-				data.Send404(connection, "{\"Error\":\"Action not found\"}", "application/json");
+				(void)data.Send404(
+					connectionData->GetConnection(), "{\"Error\":\"Action not found\"}", "application/json");
 				return;
 			}
 			if (*identifier != "369") {
-				data.Send404(connection, "{\"Error\":\"Identifier is not valid\"}", "application/json");
+				(void)data.Send404(
+					connectionData->GetConnection(), "{\"Error\":\"Identifier is not valid\"}", "application/json");
 				return;
 			}
 			if (*value != "Send me some JSON, please") {
-				data.Send404(connection, "{\"Error\":\"Action is not valid\"}", "application/json");
+				(void)data.Send404(
+					connectionData->GetConnection(), "{\"Error\":\"Action is not valid\"}", "application/json");
 				return;
 			}
 
-			data.SendResponse(connection, "{\"Message\":\"Here is your JSON\"}", "application/json");
+			(void)data.SendResponse(
+				connectionData->GetConnection(), "{\"Message\":\"Here is your JSON\"}", "application/json");
 			return;
 		}
 
 		if (url == "/unknown.html") {
-			data.Send404(connection);
+			(void)data.Send404(connectionData->GetConnection());
 			return;
 		}
 
-		data.Send404(connection, "{\"Error\":\"Page \"" + url + "\" not found\"}", "application/json");
+		(void)data.Send404(
+			connectionData->GetConnection(), "{\"Error\":\"Page \"" + url + "\" not found\"}", "application/json");
 		return;
 	}
 
 	if (format == "css") {
-		data.SendSource(connection, m_webSourcesPath + "css" + url);
+		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "css" + url);
 		return;
 	}
 
 	if (format == "ico") {
-		data.SendSource(connection, m_webSourcesPath + "images" + url);
+		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "images" + url);
 		return;
 	}
 
 	if (format == "js") {
-		data.SendSource(connection, m_webSourcesPath + "js" + url);
+		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "js" + url);
 		return;
 	}
 
-	data.Send404(connection, "{\"Error\":\"Source \"" + url + "\" not found\"}", "application/json");
+	(void)data.Send404(
+		connectionData->GetConnection(), "{\"Error\":\"Source \"" + url + "\" not found\"}", "application/json");
 }
 
 const std::optional<MSAPI::Protocol::HTTP::Data>& HTTPServer::GetHTTPData() const noexcept { return m_HTTPData; }

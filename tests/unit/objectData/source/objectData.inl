@@ -20,7 +20,7 @@
 #ifndef MSAPI_UNIT_TEST_OBJECT_DATA_INL
 #define MSAPI_UNIT_TEST_OBJECT_DATA_INL
 
-#include "../../../../library/source/protocol/object.h"
+#include "../../../../library/source/protocol/object.inl"
 #include "../../../../library/source/test/test.h"
 
 namespace MSAPI {
@@ -82,7 +82,7 @@ bool ObjectData()
 	MSAPI::Protocol::Object::Data data{ 1, hashCode, objectSize };
 	AutoClearPtr<void> packData{ data.PackData(&first) };
 
-	RETURN_IF_FALSE(t.Assert(data.GetHash(), hashCode, "CustomObject hash code"));
+	RETURN_IF_FALSE(t.Assert(data.GetObjectHash(), hashCode, "CustomObject hash code"));
 	RETURN_IF_FALSE(t.Assert(data.IsValid(), true, "CustomObject data is valid"));
 	RETURN_IF_FALSE(t.Assert(data.GetStreamId(), 1, "CustomObject data stream id"));
 
@@ -105,12 +105,12 @@ bool ObjectData()
 		"Object protocol:\n{"
 		"\n\tcipher      : 2666999999"
 		"\n\tbuffer size : "
-			+ _S(28 + objectSize) + "\n\thash        : " + _S(hashCode)
+			+ _S(32 + objectSize) + "\n\tobject hash : " + _S(hashCode)
 			+ "\n\tstream id   : 1"
 			  "\n}",
 		"Data to string is correct"));
 
-	const std::span<const uint8_t> dataSpan{ static_cast<const uint8_t*>(packData.Get()), 28 + objectSize };
+	const std::span<const uint8_t> dataSpan{ static_cast<const uint8_t*>(packData.Get()), 32 + objectSize };
 	MSAPI::DataHeader header(dataSpan);
 	MSAPI::Protocol::Object::Data dataUnpacked{ header, dataSpan };
 
@@ -122,20 +122,20 @@ bool ObjectData()
 
 	RETURN_IF_FALSE(CustomObject::AreEqual(*reinterpret_cast<const CustomObject*>(unpackObject), first, t));
 
-	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.GetHash(), 0,
+	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.GetObjectHash(), 0,
 		"Hash of empty data is expected"));
 	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.GetStreamId(), 0,
 		"Stream id of empty data is expected"));
 	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.GetCipher(), 2666999999,
 		"Cipher is expected"));
 	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.GetBufferSize(),
-		28 + objectSize, "Buffer size is expected"));
+		32 + objectSize, "Buffer size is expected"));
 	RETURN_IF_FALSE(t.Assert(
 		MSAPI::Protocol::Object::Data{ header, dataSpan.subspan(0, 27) }.IsValid(), false, "Empty data is invalid"));
 
 	RETURN_IF_FALSE(t.Assert(
 		MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ std::span<const uint8_t>{} }, std::span<const uint8_t>{} }
-			.GetHash(),
+			.GetObjectHash(),
 		0, "Hash of empty data is expected"));
 	RETURN_IF_FALSE(t.Assert(
 		MSAPI::Protocol::Object::Data{ MSAPI::DataHeader{ std::span<const uint8_t>{} }, std::span<const uint8_t>{} }

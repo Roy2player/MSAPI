@@ -24,10 +24,8 @@ set(SOURCE_CPP
         ../source/help/table.cpp
         ../source/protocol/http.cpp
         ../source/protocol/dataHeader.cpp
-        ../source/protocol/object.cpp
         ../source/protocol/standard.cpp
         ../source/server/application.cpp
-        ../source/server/server.cpp
         ../source/test/test.cpp
         ../source/test/actionsCounter.cpp
 )

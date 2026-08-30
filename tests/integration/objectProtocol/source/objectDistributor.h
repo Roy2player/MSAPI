@@ -20,7 +20,7 @@
 #ifndef OBJECT_DISTRIBUTOR_H
 #define OBJECT_DISTRIBUTOR_H
 
-#include "../../../../library/source/protocol/object.h"
+#include "../../../../library/source/protocol/object.inl"
 #include "../../../../library/source/server/server.h"
 #include "commonStructures.h"
 
@@ -40,7 +40,7 @@ public:
 	//* MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
 	//* MSAPI::Protocol::Object::Distributor
-	void HandleNewStreamOpened(int streamId, const MSAPI::Protocol::Object::StreamData& streamData) final;
+	void HandleNewStreamOpened(MSAPI::Protocol::Object::Distributor<FilterStructure>::StreamData& streamData) final;
 
 	void SetInstrument(const InstrumentStructure& instrument);
 	void SetOrder(const OrderStructure& order);

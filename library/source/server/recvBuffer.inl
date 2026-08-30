@@ -22,6 +22,7 @@
 
 #include "../help/autoClearPtr.inl"
 #include "../help/io.inl"
+#include "connection.inl"
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -34,10 +35,6 @@ Declarations
 
 /**************************
  * @brief Abstraction to access the data from socket for particular connection.
- *
- * @todo Probably this structure can be merged into ConnectionInfo structure. But that structure works only with
- * outcome connections, but not with income. Maybe when secure protocol will be implemented this situation will be
- * changed.
  */
 class RecvBuffer {
 public:
@@ -70,6 +67,7 @@ public:
 	};
 
 private:
+	const std::shared_ptr<Connection::Data> m_connectionData;
 	const uint64_t* m_capacityLimit;
 	AutoClearPtr<uint8_t> m_buffer;
 	uint64_t m_size{};
@@ -77,8 +75,6 @@ private:
 	uint64_t m_toProcessSize;
 	uint64_t m_capacity;
 	uint64_t m_dataType{};
-	const int32_t m_connection;
-	const int32_t m_connectionId;
 
 public:
 	/**************************
@@ -86,14 +82,14 @@ public:
 	 *
 	 * @attention On construction, the internal buffer can be nullptr due to malloc error.
 	 *
+	 * @param connectionData Connection data structure.
 	 * @param capacityLimit Pointer to capacity limit.
 	 * @param toProcessSize Minimum required size to be read on socket to allow execution unit move forward.
-	 * @param connection Connection descriptor.
-	 * @param id Connection id.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE RecvBuffer(const uint64_t* capacityLimit, uint64_t toProcessSize, int32_t connection, int32_t id);
+	FORCE_INLINE RecvBuffer(std::shared_ptr<Connection::Data> connectionData /* by value as moved */,
+		const uint64_t* capacityLimit, uint64_t toProcessSize);
 
 	RecvBuffer(const RecvBuffer& other) = delete;
 	RecvBuffer(RecvBuffer&& other) = delete;
@@ -155,18 +151,18 @@ public:
 	FORCE_INLINE [[nodiscard]] uint64_t GetBufferSize() const noexcept;
 
 	/**************************
-	 * @return Connection.
+	 * @return Connection data.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] int32_t GetConnection() const noexcept;
+	FORCE_INLINE [[nodiscard]] const std::shared_ptr<Connection::Data>& GetConnectionData() noexcept;
 
 	/**************************
 	 * @return Connection id.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] int32_t GetConnectionId() const noexcept;
+	FORCE_INLINE [[nodiscard]] uint64_t GetConnectionId() const noexcept;
 
 	/**************************
 	 * @return Data type.
@@ -285,10 +281,9 @@ RecvBuffer
 ---------------------------------------------------------------------------------*/
 
 FORCE_INLINE RecvBuffer::RecvBuffer(
-	const uint64_t* const capacityLimit, const uint64_t toProcessSize, const int32_t connection, const int32_t id)
-	: m_capacityLimit{ capacityLimit }
-	, m_connection{ connection }
-	, m_connectionId{ id }
+	std::shared_ptr<Connection::Data> connectionData, const uint64_t* const capacityLimit, const uint64_t toProcessSize)
+	: m_connectionData{ std::move(connectionData) }
+	, m_capacityLimit{ capacityLimit }
 {
 	if (toProcessSize > *capacityLimit) [[unlikely]] {
 		LOG_WARNING_NEW("Initial to process size is greater that capacity limit {} > {}, limit is used instead",
@@ -320,7 +315,7 @@ FORCE_INLINE void RecvBuffer::SetToProcessSize(const uint64_t toProcessSize)
 	}
 
 	LOG_PROTOCOL_NEW("Change to process size from {} to {} bytes, connection id: {}", m_toProcessSize, toProcessSize,
-		m_connectionId);
+		m_connectionData->GetConnectionId());
 	m_toProcessSize = toProcessSize;
 }
 
@@ -337,9 +332,15 @@ FORCE_INLINE [[nodiscard]] const uint8_t* RecvBuffer::GetData() const noexcept {
 
 FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::GetBufferSize() const noexcept { return m_size + m_peekedSize; }
 
-FORCE_INLINE [[nodiscard]] int32_t RecvBuffer::GetConnection() const noexcept { return m_connection; }
+FORCE_INLINE [[nodiscard]] const std::shared_ptr<Connection::Data>& RecvBuffer::GetConnectionData() noexcept
+{
+	return m_connectionData;
+}
 
-FORCE_INLINE [[nodiscard]] int32_t RecvBuffer::GetConnectionId() const noexcept { return m_connectionId; }
+FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::GetConnectionId() const noexcept
+{
+	return m_connectionData->GetConnectionId();
+}
 
 FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::GetDataType() const noexcept { return m_dataType; }
 
@@ -363,17 +364,19 @@ FORCE_INLINE [[nodiscard]] bool RecvBuffer::CheckCapacity(const uint64_t require
 
 	if (requiredSize > *m_capacityLimit) [[unlikely]] {
 		LOG_ERROR_NEW("Required size of recv buffer ({}) is greater than limit ({}), connection id: {}", requiredSize,
-			*m_capacityLimit, m_connectionId);
+			*m_capacityLimit, m_connectionData->GetConnectionId());
 		return false;
 	}
 
 	if (m_buffer.Realloc(requiredSize) == nullptr) [[unlikely]] {
-		LOG_ERROR_NEW("Failed to reallocate recv buffer to {} bytes, connection id: {}", requiredSize, m_connectionId);
+		LOG_ERROR_NEW("Failed to reallocate recv buffer to {} bytes, connection id: {}", requiredSize,
+			m_connectionData->GetConnectionId());
 		return false;
 	}
 
 	m_capacity = requiredSize;
-	LOG_PROTOCOL_NEW("Reallocate recv buffer to {} bytes successfully, connection id: {}", m_capacity, m_connectionId);
+	LOG_PROTOCOL_NEW("Reallocate recv buffer to {} bytes successfully, connection id: {}", m_capacity,
+		m_connectionData->GetConnectionId());
 	return true;
 }
 
@@ -390,7 +393,7 @@ FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::RecvImpl(const uint64_
 		if (requiredSize <= m_size) [[unlikely]] {
 			LOG_WARNING_NEW(
 				"Attempt to recv invalid amount of data. Required size {} <= buffer size {}, connection id: {}",
-				requiredSize, m_size, m_connectionId);
+				requiredSize, m_size, m_connectionData->GetConnectionId());
 			return { 0, false };
 		}
 
@@ -405,52 +408,25 @@ FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::RecvImpl(const uint64_
 	}
 
 	while (true) {
-		const auto result{ recv(m_connection, m_buffer.Get() + m_size, rest, Flags) };
+		const auto result{ m_connectionData->GetConnection().Recv(m_buffer.Get() + m_size, rest, Flags) };
 
 		if (result == 0) [[unlikely]] {
 			// Not sure if it is required
 			// pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
-			LOG_INFO_NEW("Socket is closed by other side, connection id {}", m_connectionId);
-			return { 0, false };
-		}
-
-		if (result == -1) [[unlikely]] {
-			if constexpr (Flags & MSG_PEEK) {
-				if (errno == EAGAIN || errno == EWOULDBLOCK) {
-					LOG_PROTOCOL_NEW(
-						"Non-blocking recv returned EAGAIN or EWOULDBLOC, connection id {}", m_connectionId);
-					continue;
-				}
-			}
-
-			if (errno == 104) {
-				LOG_PROTOCOL_NEW("Recv returned unrecoverable error №104: Connection reset by peer, connection id {}",
-					m_connectionId);
-				return { 0, false };
-			}
-
-			if (errno == 9) {
-				LOG_PROTOCOL_NEW(
-					"Recv returned unrecoverable error №9: Bad file descriptor, connection id {}", m_connectionId);
-				return { 0, false };
-			}
-
-			LOG_ERROR_NEW("Recv returned unrecoverable error №{}: {}, connection id {}", errno, std::strerror(errno),
-				m_connectionId);
 			return { 0, false };
 		}
 
 		if constexpr (Flags & MSG_PEEK) {
 			LOG_PROTOCOL_NEW("Recv look up {} out of {} in buffer with offset {}, connection id {}", result, rest,
-				m_size, m_connectionId);
-			m_peekedSize += static_cast<uint64_t>(result);
+				m_size, m_connectionData->GetConnectionId());
+			m_peekedSize += result;
 			break;
 		}
 
-		LOG_PROTOCOL_NEW(
-			"Recv {} out of {} in buffer with offset {}, connection id {}", result, rest, m_size, m_connectionId);
-		m_size += static_cast<uint64_t>(result);
-		rest -= static_cast<uint64_t>(result);
+		LOG_PROTOCOL_NEW("Recv {} out of {} in buffer with offset {}, connection id {}", result, rest, m_size,
+			m_connectionData->GetConnectionId());
+		m_size += result;
+		rest -= result;
 
 		if (rest != 0) [[unlikely]] {
 			continue;
@@ -484,29 +460,23 @@ FORCE_INLINE [[nodiscard]] bool RecvBuffer::Drop(const uint64_t toDrop) const
 
 	uint64_t rest{ toDrop };
 	while (true) {
-		const auto result{ splice(m_connection, nullptr, fd.value, nullptr, rest, SPLICE_F_MOVE) };
-		if (result == -1) [[unlikely]] {
-			LOG_ERROR_NEW("Failed to splice data to /dev/null error №{}: {}, connection id {}", errno,
-				std::strerror(errno), m_connectionId);
-			return false;
-		}
-
+		const auto result{ m_connectionData->GetConnection().Splice(fd.value, rest) };
 		if (result == 0) [[unlikely]] {
-			LOG_WARNING_NEW("Splice returned 0 while dropping {} byte(s), connection id {}", rest, m_connectionId);
 			return false;
 		}
 
-		rest -= static_cast<uint64_t>(result);
+		rest -= result;
 		if (rest != 0) [[unlikely]] {
 			LOG_PROTOCOL_NEW("Partially spliced {} out of {} bytes from socket to /dev/null, connection id {}", result,
-				toDrop, m_connectionId);
+				toDrop, m_connectionData->GetConnectionId());
 			continue;
 		}
 
 		break;
 	}
 
-	LOG_PROTOCOL_NEW("Spliced {} bytes from socket to /dev/null, connection id {}", toDrop, m_connectionId);
+	LOG_PROTOCOL_NEW(
+		"Spliced {} bytes from socket to /dev/null, connection id {}", toDrop, m_connectionData->GetConnectionId());
 	return true;
 }
 

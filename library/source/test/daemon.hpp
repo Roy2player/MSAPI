@@ -28,28 +28,6 @@
 namespace MSAPI {
 
 /**************************
- * @brief Function to start main Server process in new separated pthread.
- *
- * @tparam T Application class.
- *
- * @param dataOfPthreads Tuple with server, pthread, addr and port.
- *
- * @return nullptr.
- */
-template <typename T> void* StartingRequest(void* dataOfPthreads)
-{
-	LOG_DEBUG("Pthread function is called, PID: " + _S(gettid()));
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
-	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, nullptr);
-	std::tuple<T*, pthread_t, in_addr_t, in_port_t> serverParameters
-		= *static_cast<std::tuple<T*, pthread_t, in_addr_t, in_port_t>*>(dataOfPthreads);
-	T* server{ std::get<0>(serverParameters) };
-	server->Start(std::get<2>(serverParameters), std::get<3>(serverParameters));
-	LOG_DEBUG("Pthread function is finished, PID: " + _S(gettid()));
-	return nullptr;
-}
-
-/**************************
  * @brief Base class for Daemon.
  */
 class DaemonBase {
@@ -83,7 +61,7 @@ public:
 	/**************************
 	 * @return Port of server.
 	 */
-	virtual unsigned short GetPort() const
+	virtual in_port_t GetPort() const
 	{
 		LOG_ERROR("Called method from pure Daemon Base interface class, data is casted wrongly");
 		return 0;
@@ -93,7 +71,10 @@ protected:
 	/**************************
 	 * @brief Set server state as Initialization.
 	 */
-	void SetInitializationState(Server* server) { server->m_state = Server::State::Initialization; }
+	void SetInitializationState(Server* server)
+	{
+		server->m_state.store(Server::State::Initialization, std::memory_order_release);
+	}
 };
 
 /**************************
@@ -104,16 +85,24 @@ protected:
  */
 template <typename T> class Daemon : public DaemonBase {
 private:
+	struct AppData {
+		T* app;
+		Lock::Atomic* lock;
+		in_addr_t addr;
+		in_port_t port;
+	};
+
+private:
 	T m_application;
 	pthread_t m_pthread;
+	Lock::Atomic m_pthreadLock;
 	//* { port, domain }
 	std::map<int, std::pair<in_port_t, std::string>> m_connectionsDataToId;
-	//* { App, ... }
-	std::tuple<T*, pthread_t, in_addr_t, in_port_t> m_dataOfPthread;
+	AppData m_appData;
 	std::atomic<int32_t> m_connectionIdGenerator{};
 	bool m_isRan{ false };
 
-	static inline std::set<unsigned short> m_ports;
+	static inline std::set<in_port_t> m_ports;
 
 public:
 	/**************************
@@ -133,7 +122,7 @@ public:
 		if (m_isRan) {
 			m_application.HandlePauseRequest();
 			m_application.Server::Stop();
-			m_ports.erase(std::get<3>(m_dataOfPthread));
+			m_ports.erase(m_appData.port);
 		}
 	}
 
@@ -166,16 +155,25 @@ public:
 	 * @brief Start main Server process in new separated pthread, waiting until it is running or stopped. Port will be
 	 * free only when Deamon is destroyed.
 	 *
-	 * @param addr Pthread addr struct.
-	 * @param port Pthread port struct.
+	 * @param addr Pthread addr.
+	 * @param port Pthread port.
 	 *
 	 * @return True if server started, false in another way.
 	 */
 	FORCE_INLINE bool Start(const in_addr_t addr, const in_port_t port) final
 	{
-		if (static_cast<Server*>(&m_application)->GetState() == MSAPI::Server::State::Running) {
+		auto state{ static_cast<Server*>(&m_application)->GetState() };
+		if (state == Server::State::Running) {
 			LOG_ERROR("Application is in running state, port: " + _S(port));
 			return false;
+		}
+
+		if (m_isRan) {
+			{
+				Lock::Atomic::Guard _{ m_pthreadLock };
+			}
+			m_ports.erase(m_appData.port);
+			m_isRan = false;
 		}
 
 		//* Because function can be used directly
@@ -186,16 +184,10 @@ public:
 
 		pthread_attr_t attr;
 		pthread_attr_init(&attr);
-		// The minimum pthread stack is only POSIX requirement, which does not takes into additional requirements, like
-		// guard page, bookkeeping/padding and god knows what else.
-		// pthread_attr_setstacksize(&attr, UINT64(2 * PTHREAD_STACK_MIN));
-		pthread_attr_setscope(&attr, PTHREAD_SCOPE_PROCESS);
-		pthread_attr_setschedpolicy(&attr, SCHED_RR);
-		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		Server::AddPthreadAttributes(&attr);
 
-		m_dataOfPthread = { &m_application, m_pthread, addr, port };
-		if (const auto result{
-				pthread_create(&m_pthread, &attr, StartingRequest<T>, static_cast<void*>(&m_dataOfPthread)) };
+		m_appData = { &m_application, &m_pthreadLock, addr, port };
+		if (const auto result{ pthread_create(&m_pthread, &attr, StartingRequest, static_cast<void*>(&m_appData)) };
 			result != 0) {
 
 			LOG_ERROR("Pthread for deamon is not created. Error №" + _S(result) + ": " + std::strerror(result));
@@ -207,12 +199,13 @@ public:
 		LOG_DEBUG("Pthread for deamon is created successfully");
 
 		while (true) {
-			if (static_cast<Server*>(&m_application)->IsRunning()) {
+			state = static_cast<Server*>(&m_application)->GetState();
+			if (state == Server::State::Running) {
 				m_isRan = true;
 				return true;
 			}
 
-			if (static_cast<Server*>(&m_application)->GetState() == MSAPI::Server::State::Stopped) {
+			if (state == Server::State::Stopped) {
 				LOG_ERROR("Application is in Stopped state, port: " + _S(port));
 				break;
 			}
@@ -232,7 +225,7 @@ public:
 	/**************************
 	 * @return Port of application.
 	 */
-	FORCE_INLINE unsigned short GetPort() const final { return std::get<3>(m_dataOfPthread); }
+	FORCE_INLINE in_port_t GetPort() const final { return m_appData.port; }
 
 	/**************************
 	 * @brief Create a new Daemon and start it with listened generated port on any address. Port will be free only when
@@ -248,17 +241,17 @@ public:
 	template <typename... Args>
 	static FORCE_INLINE std::unique_ptr<DaemonBase> Create(std::string&& name, Args&&... args)
 	{
-		auto daemon{ std::make_unique<MSAPI::Daemon<T>>(std::forward<Args>(args)...) };
-		MSAPI::Server* server{ static_cast<MSAPI::Server*>(daemon->GetApp()) };
+		auto daemon{ std::make_unique<Daemon<T>>(std::forward<Args>(args)...) };
+		Server* server{ static_cast<Server*>(daemon->GetApp()) };
 		server->SetName(name);
-		std::mt19937 mersenne{ UINT64(MSAPI::Timer{}.GetNanoseconds()) };
-		unsigned short port{ static_cast<unsigned short>(mersenne() % (65535 - 3000) + 3000) };
+		std::mt19937 mersenne{ UINT64(Timer{}.GetNanoseconds()) };
+		auto port{ static_cast<in_port_t>(mersenne() % (65535 - 3000) + 3000) };
 		int32_t counter{ 0 };
 		do {
 			if (m_ports.insert(port).second) {
 				break;
 			}
-			port = static_cast<unsigned short>(mersenne() % (65535 - 3000) + 3000);
+			port = static_cast<in_port_t>(mersenne() % (65535 - 3000) + 3000);
 
 			if (++counter >= 50000) {
 				LOG_ERROR("Cannot generate a unique port for app: " + name);
@@ -272,6 +265,26 @@ public:
 		}
 
 		return daemon;
+	}
+
+	/**************************
+	 * @brief Function to start main Server process in new separated pthread.
+	 *
+	 * @param appData Info to manage application.
+	 *
+	 * @return nullptr.
+	 */
+	static void* StartingRequest(void* appData)
+	{
+		LOG_DEBUG("Pthread function is called, PID: " + _S(gettid()));
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
+		pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, nullptr);
+		const auto serverParameters{ static_cast<AppData*>(appData) };
+		T* server{ serverParameters->app };
+		Lock::Atomic::Guard _{ *serverParameters->lock };
+		server->Start(serverParameters->addr, serverParameters->port);
+		LOG_DEBUG("Pthread function is finished, PID: " + _S(gettid()));
+		return nullptr;
 	}
 };
 

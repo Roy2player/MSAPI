@@ -80,13 +80,13 @@ FORCE_INLINE [[nodiscard]] std::string_view EnumToString(SendResult result);
  *
  * @attention Error must not contain quotes/backslashes/control characters.
  *
- * @param uid Event uid.
- * @param connection Request connection.
+ * @param id Event id.
+ * @param connection Connection of request.
  * @param error Description of the failure.
  *
  * @todo Add unit test.
  */
-FORCE_INLINE void SendFailed(uint64_t uid, int32_t connection, std::string_view error);
+FORCE_INLINE void SendFailed(uint64_t id, Connection& connection, std::string_view error);
 
 /**************************
  * @brief Event holder, contains common data and handler function.
@@ -133,24 +133,24 @@ public:
 	using handlerData_t = HandlerData;
 
 private:
-	const uint64_t m_uid;
+	const uint64_t m_id;
 	std::shared_ptr<HandlerData> m_handlerData;
 	const Json m_json;
-	const int32_t m_connection;
+	std::shared_ptr<Connection::Data> m_connectionData;
 
 public:
 	/**************************
 	 * @brief Construct event holder.
 	 *
-	 * @param uid Event uid.
+	 * @param id Event id.
 	 * @param handlerData Specific handler and access requirements holder.
 	 * @param json Request json.
-	 * @param connection Request connection.
+	 * @param connectionData Connection data of request.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE Event(
-		uint64_t uid, std::shared_ptr<HandlerData>&& handlerData, Json&& json, int32_t connection) noexcept;
+	FORCE_INLINE Event(uint64_t id, std::shared_ptr<HandlerData>&& handlerData, Json&& json,
+		const std::shared_ptr<Connection::Data>& connectionData) noexcept;
 
 	Event(const Event& other) = delete;
 	Event(Event&& other) = default;
@@ -158,11 +158,11 @@ public:
 	Event& operator=(Event&& other) = default;
 
 	/**************************
-	 * @return Uid of event.
+	 * @return Id of event.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t GetUid() const noexcept;
+	FORCE_INLINE [[nodiscard]] uint64_t GetId() const noexcept;
 
 	/**************************
 	 * @return Request json.
@@ -172,11 +172,11 @@ public:
 	FORCE_INLINE [[nodiscard]] const Json& GetJson() const noexcept;
 
 	/**************************
-	 * @return Request connection.
+	 * @return Connection data of request.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] int32_t GetConnection() const noexcept;
+	FORCE_INLINE [[nodiscard]] const std::shared_ptr<Connection::Data>& GetConnectionData() const noexcept;
 
 	/**************************
 	 * @brief Handle event by the specific handler.
@@ -261,15 +261,15 @@ public:
 	/**************************
 	 * @brief Construct single event holder.
 	 *
-	 * @param uid Event uid.
+	 * @param id Event id.
 	 * @param handlerData Specific handler and access requirements holder.
 	 * @param json Request json.
-	 * @param connection Request connection.
+	 * @param connectionData Connection data of request.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE Single(
-		uint64_t uid, std::shared_ptr<HandlerData>&& handlerData, Json&& json, int32_t connection) noexcept;
+	FORCE_INLINE Single(uint64_t id, std::shared_ptr<HandlerData>&& handlerData, Json&& json,
+		const std::shared_ptr<Connection::Data>& connectionData) noexcept;
 };
 
 /**************************
@@ -292,15 +292,15 @@ public:
 	/**************************
 	 * @brief Construct stream event holder.
 	 *
-	 * @param uid Event uid.
+	 * @param id Event id.
 	 * @param handlerData Specific handler and access requirements holder.
 	 * @param json Request json.
-	 * @param connection Request connection.
+	 * @param connectionData Connection data of request.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE Stream(
-		uint64_t uid, std::shared_ptr<HandlerData>&& handlerData, Json&& json, int32_t connection) noexcept;
+	FORCE_INLINE Stream(uint64_t id, std::shared_ptr<HandlerData>&& handlerData, Json&& json,
+		const std::shared_ptr<Connection::Data>& connectionData) noexcept;
 
 	/**************************
 	 * @brief Send new stream state.
@@ -453,27 +453,27 @@ public:
 	};
 
 	/**************************
-	 * @brief Collection of events by their filter under same connection, controls events limit Default events size
+	 * @brief Collection of events by their filter under same connection id, controls events limit Default events size
 	 * limit is 1024 and purging coefficient is 30%.
 	 */
 	class EventsData {
 	private:
+		const uint64_t m_connectionId;
 		std::map<filter_t, std::shared_ptr<Events>> m_filterToEvents;
 		Lock::AtomicRW m_filterToEventsLock;
 		std::atomic<int32_t> m_limit{ 1024 };
 		std::atomic<float> m_purgingCoefficient{ 0.3f };
 		std::atomic<int32_t> m_eventsSize{};
-		const int32_t m_connection;
 
 	public:
 		/**************************
 		 * @brief Construct new events data object.
 		 *
-		 * @param connection Related connection.
+		 * @param connectionId Id of connection.
 		 *
 		 * @todo Add unit test.
 		 */
-		FORCE_INLINE EventsData(int32_t connection) noexcept;
+		FORCE_INLINE EventsData(uint64_t connectionId) noexcept;
 
 		EventsData(const EventsData& other) = delete;
 		EventsData(EventsData&& other) = delete;
@@ -481,11 +481,11 @@ public:
 		EventsData& operator=(EventsData&& other) = delete;
 
 		/**************************
-		 * @return Related connection.
+		 * @return Connection identifier.
 		 *
 		 * @todo Add unit test.
 		 */
-		FORCE_INLINE [[nodiscard]] int32_t GetConnection() const noexcept;
+		FORCE_INLINE [[nodiscard]] uint64_t GetConnectionId() const noexcept;
 
 		/**************************
 		 * @todo Add static asserts in future test.
@@ -532,16 +532,16 @@ public:
 		FORCE_INLINE void EraseEventsByFilter(const filter_t& filter);
 
 		/**************************
-		 * @brief Erase event by its uid. Expensive operation as requires O(n) searching.
+		 * @brief Erase event by its id. Expensive operation as requires O(n) searching.
 		 *
 		 * @attention Read locks structure. Read locks events structures one by one during searching and write lock
 		 * during erasing.
 		 *
-		 * @param uid Event uid to be erased.
+		 * @param id Event id to be erased.
 		 *
 		 * @todo Add unit test.
 		 */
-		FORCE_INLINE [[nodiscard]] bool EraseEvent(uint64_t uid) noexcept;
+		FORCE_INLINE [[nodiscard]] bool EraseEvent(uint64_t id) noexcept;
 
 		/**************************
 		 * @brief Fail all stored events with error message and decrease stored events size.
@@ -622,9 +622,9 @@ public:
 
 private:
 	Module& m_authorization;
-	std::map<uint64_t, std::shared_ptr<typename EventType::base_t::handlerData_t>> m_hashToHandlerData;
+	std::unordered_map<uint64_t, std::shared_ptr<typename EventType::base_t::handlerData_t>> m_hashToHandlerData;
 	Lock::AtomicRW m_hashToHandlerDataLock;
-	std::map<int32_t, std::shared_ptr<EventsData>> m_connectionToEventsData;
+	std::unordered_map<uint64_t, std::shared_ptr<EventsData>> m_connectionIdToEventsData;
 	Lock::AtomicRW m_connectionToEventsDataLock;
 
 public:
@@ -646,14 +646,15 @@ public:
 	 * @brief Collect newly received event, check if it an interruption, look for specific handler and verify access
 	 * right to the data and call handler on success. Erase on interruption.
 	 *
-	 * @param uid Event uid.
+	 * @param id Event id.
 	 * @param hash Event type hash.
-	 * @param connection Request connection.
+	 * @param connectionData Connection data of request.
 	 * @param json Request json.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE void Collect(uint64_t uid, uint64_t hash, int32_t connection, Json&& json);
+	FORCE_INLINE void Collect(
+		uint64_t id, uint64_t hash, const std::shared_ptr<Connection::Data>& connectionData, Json&& json);
 
 	/**************************
 	 * @brief Set handler with permission requirements to specific event type hash.
@@ -700,15 +701,15 @@ public:
 	FORCE_INLINE void FailActiveEvents(std::string_view error);
 
 	/**************************
-	 * @brief Clear all stored events for specific connection.
+	 * @brief Clear all stored events for specific connection id.
 	 *
 	 * @attention Write locks structure.
 	 *
-	 * @param connection Related connection.
+	 * @param connectionId Connection id of request.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE void ClearActiveEventsForConnection(int32_t connection);
+	FORCE_INLINE void ClearActiveEventsForConnectionId(uint64_t connectionId);
 
 	/**************************
 	 * @brief Send data to bunch of events by filter for each connection.
@@ -729,13 +730,13 @@ public:
 	 * @attention Read locks structure. Write locks structure and create new events data structure for filter if does
 	 * not exist.
 	 *
-	 * @param connection Related connection.
+	 * @param connectionId Related connection id.
 	 *
-	 * @return Events data by connection.
+	 * @return Events data by connection id.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE [[nodiscard]] std::shared_ptr<EventsData> GetEventsData(int32_t connection) noexcept;
+	FORCE_INLINE [[nodiscard]] std::shared_ptr<EventsData> GetEventsData(uint64_t connectionId) noexcept;
 
 	/**************************
 	 * @attention Read locks structure.
@@ -808,16 +809,17 @@ private:
 	/**************************
 	 * @brief Handle newly collected event.
 	 *
-	 * @param uid Event uid.
+	 * @param id Event id.
 	 * @param hash Event type hash.
 	 * @param filter Event filter.
-	 * @param connection Related connection.
+	 * @param connectionData Related connection data.
 	 * @param json Request json.
 	 * @param handlerData Related handler and access data.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE void Handle(uint64_t uid, uint64_t hash, IdentityFilter&& filter, int32_t connection, Json&& json,
+	FORCE_INLINE void Handle(uint64_t id, uint64_t hash, IdentityFilter&& filter,
+		const std::shared_ptr<Connection::Data>& connectionData, Json&& json,
 		std::shared_ptr<typename Single::base_t::handlerData_t>&& handlerData);
 
 	// Access to Handle
@@ -847,16 +849,17 @@ private:
 	/**************************
 	 * @brief Handle newly collected event.
 	 *
-	 * @param uid Event uid.
+	 * @param id Event id.
 	 * @param hash Event type hash.
 	 * @param filter Event filter.
-	 * @param connection Related connection.
+	 * @param connectionData Related connection data.
 	 * @param json Request json.
 	 * @param handlerData Related handler and access data.
 	 *
 	 * @todo Add unit test.
 	 */
-	FORCE_INLINE void Handle(uint64_t uid, uint64_t hash, IdentityFilter&& filter, int32_t connection, Json&& json,
+	FORCE_INLINE void Handle(uint64_t id, uint64_t hash, IdentityFilter&& filter,
+		const std::shared_ptr<Connection::Data>& connectionData, Json&& json,
 		std::shared_ptr<typename Stream::base_t::handlerData_t>&& handlerData);
 
 	// Access to Handle
@@ -929,11 +932,11 @@ FORCE_INLINE [[nodiscard]] std::string_view EnumToString(const SendResult result
 	}
 }
 
-FORCE_INLINE void SendFailed(const uint64_t uid, const int32_t connection, const std::string_view error)
+FORCE_INLINE void SendFailed(const uint64_t id, Connection& connection, const std::string_view error)
 {
 	static_assert(static_cast<int32_t>(Stream::State::Failed) == 4, "Stream failed state is expected");
-	LOG_PROTOCOL_NEW("Send stream event failed state, uid {} error {} connection {}", uid, error, connection);
-	std::string payload{ std::format("{{\"uids\":[{}],\"state\":4,\"error\":\"{}\"}}", uid, error) };
+	LOG_PROTOCOL_NEW("Send stream event failed state, id {} error {} connection id {}", id, error, connection.GetId());
+	std::string payload{ std::format("{{\"uids\":[{}],\"state\":4,\"error\":\"{}\"}}", id, error) };
 	Data data{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
 		Data::Opcode::Text };
 	Send(connection, data);
@@ -964,18 +967,18 @@ Event
 ---------------------------------------------------------------------------------*/
 
 template <typename EventType>
-FORCE_INLINE Event<EventType>::Event(
-	const uint64_t uid, std::shared_ptr<HandlerData>&& handlerData, Json&& json, const int32_t connection) noexcept
-	: m_uid{ uid }
+FORCE_INLINE Event<EventType>::Event(const uint64_t id, std::shared_ptr<HandlerData>&& handlerData, Json&& json,
+	const std::shared_ptr<Connection::Data>& connectionData) noexcept
+	: m_id{ id }
 	, m_handlerData(std::move(handlerData))
 	, m_json{ std::move(json) }
-	, m_connection{ connection }
+	, m_connectionData{ connectionData }
 {
 }
 
-template <typename EventType> FORCE_INLINE [[nodiscard]] uint64_t Event<EventType>::GetUid() const noexcept
+template <typename EventType> FORCE_INLINE [[nodiscard]] uint64_t Event<EventType>::GetId() const noexcept
 {
-	return m_uid;
+	return m_id;
 }
 
 template <typename EventType> FORCE_INLINE [[nodiscard]] const Json& Event<EventType>::GetJson() const noexcept
@@ -983,9 +986,10 @@ template <typename EventType> FORCE_INLINE [[nodiscard]] const Json& Event<Event
 	return m_json;
 }
 
-template <typename EventType> FORCE_INLINE [[nodiscard]] int32_t Event<EventType>::GetConnection() const noexcept
+template <typename EventType>
+FORCE_INLINE [[nodiscard]] const std::shared_ptr<Connection::Data>& Event<EventType>::GetConnectionData() const noexcept
 {
-	return m_connection;
+	return m_connectionData;
 }
 
 template <typename EventType> FORCE_INLINE [[nodiscard]] HandleResult Event<EventType>::Handle(std::string& payload)
@@ -1036,9 +1040,9 @@ FORCE_INLINE [[nodiscard]] bool IdentityFilter::operator>(const IdentityFilter o
 Single
 ---------------------------------------------------------------------------------*/
 
-FORCE_INLINE Single::Single(
-	const uint64_t uid, std::shared_ptr<HandlerData>&& handlerData, Json&& json, const int32_t connection) noexcept
-	: base_t{ uid, std::move(handlerData), std::move(json), connection }
+FORCE_INLINE Single::Single(const uint64_t id, std::shared_ptr<HandlerData>&& handlerData, Json&& json,
+	const std::shared_ptr<Connection::Data>& connectionData) noexcept
+	: base_t{ id, std::move(handlerData), std::move(json), connectionData }
 {
 }
 
@@ -1046,20 +1050,21 @@ FORCE_INLINE Single::Single(
 Stream
 ---------------------------------------------------------------------------------*/
 
-FORCE_INLINE Stream::Stream(
-	const uint64_t uid, std::shared_ptr<HandlerData>&& handlerData, Json&& json, const int32_t connection) noexcept
-	: base_t{ uid, std::move(handlerData), std::move(json), connection }
+FORCE_INLINE Stream::Stream(const uint64_t id, std::shared_ptr<HandlerData>&& handlerData, Json&& json,
+	const std::shared_ptr<Connection::Data>& connectionData) noexcept
+	: base_t{ id, std::move(handlerData), std::move(json), connectionData }
 {
 }
 
 FORCE_INLINE void Stream::SendState(const State state) const
 {
+	auto& connection{ GetConnectionData()->GetConnection() };
 	LOG_PROTOCOL_NEW(
-		"Send stream event {} state, uid {} connection {}", EnumToString(state), GetUid(), GetConnection());
-	std::string payload{ std::format("{{\"uids\":[{}],\"state\":{}}}", GetUid(), U(state)) };
+		"Send stream event {} state, id {} connection id {}", EnumToString(state), GetId(), connection.GetId());
+	std::string payload{ std::format("{{\"uids\":[{}],\"state\":{}}}", GetId(), U(state)) };
 	Data data{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
 		Data::Opcode::Text };
-	Send(GetConnection(), data);
+	Send(connection, data);
 }
 
 FORCE_INLINE [[nodiscard]] std::string_view Stream::EnumToString(const State state)
@@ -1108,12 +1113,13 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::AddEvent
 	const Timer timestamp{};
 	const auto result{ m_events.emplace(timestamp, std::forward<Universal>(event)) };
 	if (!result.second) [[unlikely]] {
-		LOG_WARNING_NEW("Events with uid {} is not emplaced, connection {}", event->GetUid(), m_data.GetConnection());
+		LOG_WARNING_NEW(
+			"Events with id {} is not emplaced, connection id {}", event->GetId(), m_data.GetConnectionId());
 		return;
 	}
 
-	LOG_PROTOCOL_NEW("Event uid {} is added at {}, connection {}", result.first->second->GetUid(), timestamp.ToString(),
-		m_data.GetConnection());
+	LOG_PROTOCOL_NEW("Event id {} is added at {}, connection id {}", result.first->second->GetId(),
+		timestamp.ToString(), m_data.GetConnectionId());
 	m_data.IncreaseEventsSize(1);
 }
 
@@ -1127,7 +1133,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::FailEven
 	}
 
 	for (const auto& event : m_events) {
-		SendFailed(event.second->GetUid(), event.second->GetConnection(), error);
+		SendFailed(event.second->GetId(), event.second->GetConnectionData()->GetConnection(), error);
 	}
 
 	m_events.clear();
@@ -1143,7 +1149,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::EraseEve
 		return;
 	}
 
-	LOG_PROTOCOL_NEW("{} Events are removed, connection {}", size, m_data.GetConnection());
+	LOG_PROTOCOL_NEW("{} Events are removed, connection id {}", size, m_data.GetConnectionId());
 
 	m_events.clear();
 	m_data.DecreaseEventsSize(static_cast<int32_t>(size));
@@ -1155,11 +1161,11 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::EraseEve
 	const Lock::AtomicRW::Guard<Lock::write> _{ m_eventsLock };
 	if (m_events.erase(timestamp) == 0) [[unlikely]] {
 		LOG_WARNING_NEW(
-			"Events with timestamp {} is not erased, connection {}", timestamp.ToString(), m_data.GetConnection());
+			"Events with timestamp {} is not erased, connection id {}", timestamp.ToString(), m_data.GetConnectionId());
 		return;
 	}
 
-	LOG_PROTOCOL_NEW("Event is removed, timestamp {} connection {}", timestamp.ToString(), m_data.GetConnection());
+	LOG_PROTOCOL_NEW("Event is removed, timestamp {} connection id {}", timestamp.ToString(), m_data.GetConnectionId());
 	m_data.DecreaseEventsSize(1);
 }
 
@@ -1172,12 +1178,13 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::EraseEve
 	const Lock::AtomicRW::Guard<Lock::write> _{ m_eventsLock };
 	for (const auto timestamp : timestamps) {
 		if (m_events.erase(timestamp) == 0) [[unlikely]] {
-			LOG_WARNING_NEW(
-				"Events with timestamp {} is not erased, connection {}", timestamp.ToString(), m_data.GetConnection());
+			LOG_WARNING_NEW("Events with timestamp {} is not erased, connection id {}", timestamp.ToString(),
+				m_data.GetConnectionId());
 			continue;
 		}
 
-		LOG_PROTOCOL_NEW("Event is removed, timestamp {} connection {}", timestamp.ToString(), m_data.GetConnection());
+		LOG_PROTOCOL_NEW(
+			"Event is removed, timestamp {} connection id {}", timestamp.ToString(), m_data.GetConnectionId());
 		++erased;
 	}
 
@@ -1202,16 +1209,16 @@ Distributor::EventsData
 ---------------------------------------------------------------------------------*/
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
-FORCE_INLINE Distributor<Module, EventType, Filter, Impl>::EventsData::EventsData(const int32_t connection) noexcept
-	: m_connection{ connection }
+FORCE_INLINE Distributor<Module, EventType, Filter, Impl>::EventsData::EventsData(const uint64_t connectionId) noexcept
+	: m_connectionId{ connectionId }
 {
 }
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
-FORCE_INLINE [[nodiscard]] int32_t
-Distributor<Module, EventType, Filter, Impl>::EventsData::GetConnection() const noexcept
+FORCE_INLINE [[nodiscard]] uint64_t
+Distributor<Module, EventType, Filter, Impl>::EventsData::GetConnectionId() const noexcept
 {
-	return m_connection;
+	return m_connectionId;
 }
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
@@ -1271,7 +1278,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EventsData::Eras
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE [[nodiscard]] bool Distributor<Module, EventType, Filter, Impl>::EventsData::EraseEvent(
-	const uint64_t uid) noexcept
+	const uint64_t id) noexcept
 {
 	Timer targetTimestamp{ 0 };
 	const Lock::AtomicRW::Guard<Lock::read> _{ m_filterToEventsLock };
@@ -1280,7 +1287,7 @@ FORCE_INLINE [[nodiscard]] bool Distributor<Module, EventType, Filter, Impl>::Ev
 			const Lock::AtomicRW::Guard<Lock::read> _{ events->GetLock() };
 			const auto& items{ events->Get() };
 			for (const auto& [timestamp, event] : items) {
-				if (event->GetUid() == uid) {
+				if (event->GetId() == id) {
 					targetTimestamp = timestamp;
 					break;
 				}
@@ -1308,7 +1315,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EventsData::Fail
 		const Lock::AtomicRW::Guard<Lock::write> _{ eventsBegin->second->GetLock() };
 		const auto& events{ eventsBegin->second->Get() };
 		for (const auto& [timestamp, event] : events) {
-			SendFailed(event->GetUid(), event->GetConnection(), error);
+			SendFailed(event->GetId(), event->GetConnectionData()->GetConnection(), error);
 		}
 
 		DecreaseEventsSize(static_cast<int32_t>(events.size()));
@@ -1340,7 +1347,8 @@ template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE [[nodiscard]] bool Distributor<Module, EventType, Filter, Impl>::EventsData::SetLimit(const int32_t value)
 {
 	if (value < 64) [[unlikely]] {
-		LOG_WARNING_NEW("Events purging limit cannot be less than 64, provided {}, connection {}", value, m_connection);
+		LOG_WARNING_NEW(
+			"Events purging limit cannot be less than 64, provided {}, connection id {}", value, m_connectionId);
 		return false;
 	}
 
@@ -1350,7 +1358,7 @@ FORCE_INLINE [[nodiscard]] bool Distributor<Module, EventType, Filter, Impl>::Ev
 		return false;
 	}
 
-	LOG_PROTOCOL_NEW("Events purging limit is changed from {} to {}, connection {}", old, value, m_connection);
+	LOG_PROTOCOL_NEW("Events purging limit is changed from {} to {}, connection id {}", old, value, m_connectionId);
 	m_limit.store(value);
 	if (ratio > 0) {
 		CheckLimitAndPurge();
@@ -1370,14 +1378,14 @@ FORCE_INLINE [[nodiscard]] bool Distributor<Module, EventType, Filter, Impl>::Ev
 	const float value)
 {
 	if (Helper::FloatLess(value, 0.05f)) [[unlikely]] {
-		LOG_WARNING_NEW(
-			"Events purging coefficient cannot be less than 0.05, provided {:.9f}, connection {}", value, m_connection);
+		LOG_WARNING_NEW("Events purging coefficient cannot be less than 0.05, provided {:.9f}, connection id {}", value,
+			m_connectionId);
 		return false;
 	}
 
 	if (Helper::FloatGreater(value, 0.99f)) [[unlikely]] {
-		LOG_WARNING_NEW("Events purging coefficient cannot be greater than 0.99, provided {:.9f}, connection {}", value,
-			m_connection);
+		LOG_WARNING_NEW("Events purging coefficient cannot be greater than 0.99, provided {:.9f}, connection id {}",
+			value, m_connectionId);
 		return false;
 	}
 
@@ -1386,8 +1394,8 @@ FORCE_INLINE [[nodiscard]] bool Distributor<Module, EventType, Filter, Impl>::Ev
 		return false;
 	}
 
-	LOG_PROTOCOL_NEW(
-		"Events purging coefficient is changed from {:.9f} to {:.9f}, connection {}", current, value, m_connection);
+	LOG_PROTOCOL_NEW("Events purging coefficient is changed from {:.9f} to {:.9f}, connection id {}", current, value,
+		m_connectionId);
 	m_purgingCoefficient.store(value);
 	return true;
 }
@@ -1419,14 +1427,14 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EventsData::Chec
 
 	if (const auto size{ sortedEvents.size() }; size < static_cast<size_t>(toBePurged)) [[unlikely]] {
 		LOG_WARNING_NEW("Unexpectedly size of sorted events {} is less that should be purged {}, purging "
-						"coefficient {:.9f}, connection {}. Purging all.",
-			size, toBePurged, purgingCoefficient, m_connection);
+						"coefficient {:.9f}, connection id {}. Purging all.",
+			size, toBePurged, purgingCoefficient, m_connectionId);
 		FailActiveEvents("All events are purged due to unexpected processing");
 		return;
 	}
 
-	LOG_PROTOCOL_NEW("Events limit {} is exceeded and {} events are going to be purged, connection {}", limit,
-		toBePurged, m_connection);
+	LOG_PROTOCOL_NEW("Events limit {} is exceeded and {} events are going to be purged, connection id {}", limit,
+		toBePurged, m_connectionId);
 	std::map<std::shared_ptr<Events>, std::vector<Timer>> sortedTimestamps;
 	for (auto begin{ sortedEvents.begin() }, end{ sortedEvents.end() }; toBePurged > 0;) {
 		sortedTimestamps[begin->second].emplace_back(begin->first);
@@ -1452,16 +1460,17 @@ FORCE_INLINE Distributor<Module, EventType, Filter, Impl>::Distributor(Module& a
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Collect(
-	const uint64_t uid, const uint64_t hash, const int32_t connection, Json&& json)
+	const uint64_t id, const uint64_t hash, const std::shared_ptr<Connection::Data>& connectionData, Json&& json)
 {
 	if (json.GetValueType<bool>("interrupt") != nullptr) {
-		std::shared_ptr<EventsData> eventsData{ GetEventsData(connection) };
-		if (eventsData->EraseEvent(uid)) {
-			LOG_PROTOCOL_NEW("Event for connection {} with uid {} hash {} is interrupted", connection, uid, hash);
+		const auto connectionId{ connectionData->GetConnectionId() };
+		std::shared_ptr<EventsData> eventsData{ GetEventsData(connectionId) };
+		if (eventsData->EraseEvent(id)) {
+			LOG_PROTOCOL_NEW("Event for connection id {} with id {} hash {} is interrupted", connectionId, id, hash);
 			return;
 		}
 
-		LOG_PROTOCOL_NEW("Event for connection {} with uid {} hash {} is not found", connection, uid, hash);
+		LOG_PROTOCOL_NEW("Event for connection id {} with id {} hash {} is not found", connectionId, id, hash);
 		return;
 	}
 
@@ -1470,7 +1479,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Collect(
 		const Lock::AtomicRW::Guard<Lock::read> _{ m_hashToHandlerDataLock };
 		const auto it{ m_hashToHandlerData.find(hash) };
 		if (it == m_hashToHandlerData.end()) {
-			SendFailed(uid, connection, "Unknown hash of the event");
+			SendFailed(id, connectionData->GetConnection(), "Unknown hash of the event");
 			return;
 		}
 
@@ -1480,17 +1489,19 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Collect(
 	if (!handlerData->isPermissionRequired) {
 		Filter filter{ json };
 		static_cast<Impl*>(this)->Handle(
-			uid, hash, std::move(filter), connection, std::move(json), std::move(handlerData));
+			id, hash, std::move(filter), connectionData, std::move(json), std::move(handlerData));
 		return;
 	}
 
-	if (!m_authorization.IsAccessGranted(connection, static_cast<Module::grade_t>(handlerData->grade))) {
-		SendFailed(uid, connection, "Access is not granted");
+	if (!m_authorization.IsAccessGranted(
+			connectionData->GetConnectionId(), static_cast<Module::grade_t>(handlerData->grade))) {
+		SendFailed(id, connectionData->GetConnection(), "Access is not granted");
 		return;
 	}
 
 	Filter filter{ json };
-	static_cast<Impl*>(this)->Handle(uid, hash, std::move(filter), connection, std::move(json), std::move(handlerData));
+	static_cast<Impl*>(this)->Handle(
+		id, hash, std::move(filter), connectionData, std::move(json), std::move(handlerData));
 }
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
@@ -1522,20 +1533,21 @@ template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::FailActiveEvents(const std::string_view error)
 {
 	const Lock::AtomicRW::Guard<Lock::write> _{ m_connectionToEventsDataLock };
-	auto eventsDataBegin{ m_connectionToEventsData.begin() };
-	auto eventsDataEnd{ m_connectionToEventsData.end() };
+	auto eventsDataBegin{ m_connectionIdToEventsData.begin() };
+	auto eventsDataEnd{ m_connectionIdToEventsData.end() };
 
 	for (; eventsDataBegin != eventsDataEnd;) {
 		eventsDataBegin->second->FailActiveEvents(error);
-		eventsDataBegin = m_connectionToEventsData.erase(eventsDataBegin);
+		eventsDataBegin = m_connectionIdToEventsData.erase(eventsDataBegin);
 	}
 }
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
-FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::ClearActiveEventsForConnection(const int32_t connection)
+FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::ClearActiveEventsForConnectionId(
+	const uint64_t connectionId)
 {
 	const Lock::AtomicRW::Guard<Lock::write> _{ m_connectionToEventsDataLock };
-	m_connectionToEventsData.erase(connection);
+	m_connectionIdToEventsData.erase(connectionId);
 }
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
@@ -1550,10 +1562,10 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 
 	// Trade of from locking while sending to once locking but string allocating
 	struct Destination {
-		const int32_t connection;
+		Connection& connection;
 		std::string uids;
 
-		FORCE_INLINE Destination(const int32_t connection) noexcept
+		FORCE_INLINE Destination(Connection& connection) noexcept
 			: connection{ connection }
 		{
 		}
@@ -1568,12 +1580,12 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 		const auto end{ items.end() };
 
 		if (begin != end) {
-			Destination destination{ begin->second->GetConnection() };
+			Destination destination{ begin->second->GetConnectionData()->GetConnection() };
 			auto backIt{ std::back_inserter(destination.uids) };
-			std::format_to(backIt, "{}", begin->second->GetUid());
+			std::format_to(backIt, "{}", begin->second->GetId());
 
 			while (++begin != end) {
-				std::format_to(backIt, ",{}", begin->second->GetUid());
+				std::format_to(backIt, ",{}", begin->second->GetId());
 			}
 
 			const auto size{ destination.uids.size() };
@@ -1610,7 +1622,8 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 
 	const auto payloadTotalSize{ payload.size() };
 	for (const auto& destination : destinations) {
-		LOG_PROTOCOL_NEW("Send data to events, uids [{}] connection {}", destination.uids, destination.connection);
+		LOG_PROTOCOL_NEW(
+			"Send data to events, uids [{}] connection id {}", destination.uids, destination.connection.GetId());
 		const auto headerSize{ destination.uids.size() + 9 };
 		const auto headerShift{ maxUidsSize - headerSize };
 		std::format_to_n(
@@ -1626,18 +1639,18 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE [[nodiscard]] std::shared_ptr<typename Distributor<Module, EventType, Filter, Impl>::EventsData>
-Distributor<Module, EventType, Filter, Impl>::GetEventsData(const int32_t connection) noexcept
+Distributor<Module, EventType, Filter, Impl>::GetEventsData(const uint64_t connectionId) noexcept
 {
 	{
 		const Lock::AtomicRW::Guard<Lock::read> _{ m_connectionToEventsDataLock };
-		auto it{ m_connectionToEventsData.find(connection) };
-		if (it != m_connectionToEventsData.end()) {
+		auto it{ m_connectionIdToEventsData.find(connectionId) };
+		if (it != m_connectionIdToEventsData.end()) {
 			return it->second;
 		}
 	}
 
 	const Lock::AtomicRW::Guard<Lock::write> _{ m_connectionToEventsDataLock };
-	return m_connectionToEventsData.emplace(connection, std::make_shared<EventsData>(connection)).first->second;
+	return m_connectionIdToEventsData.emplace(connectionId, std::make_shared<EventsData>(connectionId)).first->second;
 }
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
@@ -1647,7 +1660,7 @@ Distributor<Module, EventType, Filter, Impl>::GetEventsArray(const filter_t& fil
 	std::shared_ptr<Events> events;
 	std::vector<std::shared_ptr<Events>> eventsArray;
 	const Lock::AtomicRW::Guard<Lock::read> _{ m_connectionToEventsDataLock };
-	for (const auto& [connection, eventsData] : m_connectionToEventsData) {
+	for (const auto& [connectionId, eventsData] : m_connectionIdToEventsData) {
 		events = eventsData->template GetEvents<EventsData::lookup>(filter);
 		if (events.get()) {
 			// Interraction with events is required locking, same as for checking on empty
@@ -1664,7 +1677,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::FailEventsOnConn
 	const filter_t& filter, const std::string_view error)
 {
 	const Lock::AtomicRW::Guard<Lock::read> _{ m_connectionToEventsDataLock };
-	for (const auto& [connection, eventsData] : m_connectionToEventsData) {
+	for (const auto& [connectionId, eventsData] : m_connectionIdToEventsData) {
 		eventsData->FailEventsByFilter(filter, error);
 	}
 }
@@ -1673,7 +1686,7 @@ template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EraseEventsOnConnectionsByFilter(const filter_t& filter)
 {
 	const Lock::AtomicRW::Guard<Lock::read> _{ m_connectionToEventsDataLock };
-	for (const auto& [connection, eventsData] : m_connectionToEventsData) {
+	for (const auto& [connectionId, eventsData] : m_connectionIdToEventsData) {
 		eventsData->EraseEventsByFilter(filter);
 	}
 }
@@ -1698,32 +1711,36 @@ FORCE_INLINE void SinglesDistributor<Module>::CheckDelayed(const base_t::filter_
 }
 
 template <typename Module>
-FORCE_INLINE void SinglesDistributor<Module>::Handle(const uint64_t uid, const uint64_t hash, IdentityFilter&& filter,
-	const int32_t connection, Json&& json, std::shared_ptr<typename Single::base_t::handlerData_t>&& handlerData)
+FORCE_INLINE void SinglesDistributor<Module>::Handle(const uint64_t id, const uint64_t hash, IdentityFilter&& filter,
+	const std::shared_ptr<Connection::Data>& connectionData, Json&& json,
+	std::shared_ptr<typename Single::base_t::handlerData_t>&& handlerData)
 {
-	LOG_PROTOCOL_NEW("New single event, uid {} event type hash {} connection {}", uid, hash, connection);
+	const auto connectionId{ connectionData->GetConnectionId() };
+	LOG_PROTOCOL_NEW("New single event, id {} event type hash {} connection id {}", id, hash, connectionId);
 
-	std::string payload{ std::format("{{\"uids\":[{}],\"data\":", uid) };
-	Single single{ uid, std::move(handlerData), std::move(json), connection };
+	std::string payload{ std::format("{{\"uids\":[{}],\"data\":", id) };
+	Single single{ id, std::move(handlerData), std::move(json), connectionData };
 
 	const auto result{ single.Handle(payload) };
 	switch (result) {
 	case HandleResult::Success:
 		payload += '}';
-		LOG_PROTOCOL_NEW("Send single event success response, uid {} connection {}", uid, connection);
-		Send(connection,
+		LOG_PROTOCOL_NEW("Send single event success response, id {} connection id {}", id, connectionId);
+		Send(connectionData->GetConnection(),
 			{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
 				Data::Opcode::Text });
 		return;
 	case HandleResult::Fail:
-		SendFailed(uid, connection, payload);
+		SendFailed(id, connectionData->GetConnection(), payload);
 		return;
 	case HandleResult::Delay: {
-		std::shared_ptr<typename base_t::EventsData> eventsData{ this->GetEventsData(connection) };
-		std::shared_ptr<typename base_t::Events> events{ eventsData->template GetEvents<base_t::EventsData::create>(
-			typename base_t::filter_t{ hash, std::move(filter) }) };
+		const std::shared_ptr<typename base_t::EventsData> eventsData{ this->GetEventsData(connectionId) };
+		const std::shared_ptr<typename base_t::Events> events{
+			eventsData->template GetEvents<base_t::EventsData::create>(
+				typename base_t::filter_t{ hash, std::move(filter) })
+		};
 
-		LOG_PROTOCOL_NEW("New single event is delayed, uid {} connection {}", uid, connection);
+		LOG_PROTOCOL_NEW("New single event is delayed, id {} connection id {}", id, connectionId);
 		events->AddEvent(std::make_shared<Single>(std::move(single)));
 		return;
 	}
@@ -1744,33 +1761,37 @@ FORCE_INLINE StreamsDistributor<Module>::StreamsDistributor(Module& authorizatio
 }
 
 template <typename Module>
-FORCE_INLINE void StreamsDistributor<Module>::Handle(const uint64_t uid, const uint64_t hash, IdentityFilter&& filter,
-	const int32_t connection, Json&& json, std::shared_ptr<typename Stream::base_t::handlerData_t>&& handlerData)
+FORCE_INLINE void StreamsDistributor<Module>::Handle(const uint64_t id, const uint64_t hash, IdentityFilter&& filter,
+	const std::shared_ptr<Connection::Data>& connectionData, Json&& json,
+	std::shared_ptr<typename Stream::base_t::handlerData_t>&& handlerData)
 {
-	LOG_PROTOCOL_NEW("New stream event, uid {} event type hash {} connection {}", uid, hash, connection);
+	const auto connectionId{ connectionData->GetConnectionId() };
+	LOG_PROTOCOL_NEW("New stream event, id {} event type hash {} connection id {}", id, hash, connectionId);
 
-	std::string payload{ std::format("{{\"uids\":[{}],\"data\":", uid) };
-	auto stream{ std::make_shared<Stream>(uid, std::move(handlerData), std::move(json), connection) };
+	std::string payload{ std::format("{{\"uids\":[{}],\"data\":", id) };
+	auto stream{ std::make_shared<Stream>(id, std::move(handlerData), std::move(json), connectionData) };
 
 	const auto result{ stream->Handle(payload) };
 	switch (result) {
 	case HandleResult::Success: {
 		stream->SendState(Stream::State::Opened);
-		std::shared_ptr<typename base_t::EventsData> eventsData{ this->GetEventsData(connection) };
-		std::shared_ptr<typename base_t::Events> events{ eventsData->template GetEvents<base_t::EventsData::create>(
-			typename base_t::filter_t{ hash, std::move(filter) }) };
+		const std::shared_ptr<typename base_t::EventsData> eventsData{ this->GetEventsData(connectionId) };
+		const std::shared_ptr<typename base_t::Events> events{
+			eventsData->template GetEvents<base_t::EventsData::create>(
+				typename base_t::filter_t{ hash, std::move(filter) })
+		};
 		events->AddEvent(stream);
 
 		payload += '}';
-		LOG_PROTOCOL_NEW("Send stream event success response, uid {} connection {}", uid, connection);
-		Send(connection,
+		LOG_PROTOCOL_NEW("Send stream event success response, id {} connection id {}", id, connectionId);
+		Send(connectionData->GetConnection(),
 			{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
 				Data::Opcode::Text });
 		stream->SendState(Stream::State::Done);
 		return;
 	}
 	case HandleResult::Fail:
-		SendFailed(uid, connection, payload);
+		SendFailed(id, connectionData->GetConnection(), payload);
 		return;
 	default:
 		LOG_WARNING_NEW("Unexpected result of stream event handling: {}", EnumToString(result));

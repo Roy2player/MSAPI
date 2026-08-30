@@ -18,6 +18,7 @@
  */
 
 #include "standard.h"
+#include "../server/connection.inl"
 #include <cstring>
 #include <memory.h>
 #include <sys/socket.h>
@@ -315,101 +316,82 @@ const std::map<size_t, StandardType::Type>& Data::GetDataTypes() const noexcept 
 Global
 ---------------------------------------------------------------------------------*/
 
-void Send(const int connection, const Data& data)
+void Send(Connection& connection, const Data& data)
 {
-	LOG_PROTOCOL("Send " + data.ToString() + " to connection: " + _S(connection));
+	LOG_PROTOCOL_NEW("Send {} to connection id {}", data.ToString(), connection.GetId());
 	AutoClearPtr<void> ptr{ data.Encode() };
 	if (ptr.Get() == nullptr) [[unlikely]] {
 		return;
 	}
 
-	if (send(connection, ptr.Get(), data.GetBufferSize(), MSG_NOSIGNAL) == -1) {
-		if (errno == 104) {
-			LOG_DEBUG("Send returned error №104: Connection reset by peer");
-			return;
-		}
-		LOG_ERROR("Send event failed, connection: " + _S(connection) + ", data: " + data.ToString() + ". Error №"
-			+ _S(errno) + ": " + std::strerror(errno));
-	}
+	(void)connection.Send(ptr.Get(), data.GetBufferSize(), MSG_NOSIGNAL);
 }
 
-#define __STANDARD_PROTOCOL_SEND                                                                                       \
-	if (send(connection, &buffer, sizeof(size_t) * 2, MSG_NOSIGNAL) == -1) {                                           \
-		if (errno == 104) {                                                                                            \
-			LOG_DEBUG("Send returned error №104: Connection reset by peer");                                           \
-			return;                                                                                                    \
-		}                                                                                                              \
-		LOG_ERROR("Send event failed, connection: " + _S(connection) + ". Error №" + _S(errno) + ": "                  \
-			+ std::strerror(errno));                                                                                   \
-	}
-
-void SendActionPause(const int connection)
+void SendActionPause(Connection& connection)
 {
 	static const struct Buffer {
 		size_t cipher{ cipherActionPause };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
-	LOG_PROTOCOL("Send action pause to connection: " + _S(connection));
+	LOG_PROTOCOL_NEW("Send action pause to connection id {}", connection.GetId());
 
-	__STANDARD_PROTOCOL_SEND
+	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
 }
 
-void SendActionRun(const int connection)
+void SendActionRun(Connection& connection)
 {
 	static const struct Buffer {
 		size_t cipher{ cipherActionRun };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
-	LOG_PROTOCOL("Send action run to connection: " + _S(connection));
+	LOG_PROTOCOL_NEW("Send action run to connection id {}", connection.GetId());
 
-	__STANDARD_PROTOCOL_SEND
+	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
 }
 
-void SendActionDelete(const int connection)
+void SendActionDelete(Connection& connection)
 {
 	static const struct Buffer {
 		size_t cipher{ cipherActionDelete };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
-	LOG_PROTOCOL("Send action delete to connection: " + _S(connection));
+	LOG_PROTOCOL_NEW("Send action delete to connection id {}", connection.GetId());
 
-	__STANDARD_PROTOCOL_SEND
+	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
 }
 
-void SendActionHello(const int connection)
+void SendActionHello(Connection& connection)
 {
 	static const struct Buffer {
 		size_t cipher{ cipherActionHello };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
-	LOG_PROTOCOL("Send action hello to connection: " + _S(connection));
+	LOG_PROTOCOL_NEW("Send action hello to connection id {}", connection.GetId());
 
-	__STANDARD_PROTOCOL_SEND
+	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
 }
 
-void SendMetadataRequest(const int connection)
+void SendMetadataRequest(Connection& connection)
 {
 	static const struct Buffer {
 		size_t cipher{ cipherMetadataRequest };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
-	LOG_PROTOCOL("Send metadata request to connection: " + _S(connection));
+	LOG_PROTOCOL_NEW("Send metadata request to connection id {}", connection.GetId());
 
-	__STANDARD_PROTOCOL_SEND
+	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
 }
 
-void SendParametersRequest(const int connection)
+void SendParametersRequest(Connection& connection)
 {
 	static const struct Buffer {
 		size_t cipher{ cipherParametersRequest };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
-	LOG_PROTOCOL("Send parameters request to connection: " + _S(connection));
+	LOG_PROTOCOL_NEW("Send parameters request to connection id {}", connection.GetId());
 
-	__STANDARD_PROTOCOL_SEND
+	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
 }
-
-#undef __STANDARD_PROTOCOL_SEND
 
 } // namespace Standard
 

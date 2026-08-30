@@ -20,7 +20,7 @@
 #ifndef OBJECT_CLIENT_H
 #define OBJECT_CLIENT_H
 
-#include "../../../../library/source/protocol/object.h"
+#include "../../../../library/source/protocol/object.inl"
 #include "../../../../library/source/server/server.h"
 #include "../../../../library/source/test/actionsCounter.h"
 #include "commonStructures.h"
@@ -33,8 +33,8 @@ class ObjectClient : public MSAPI::Server,
 					 MSAPI::Protocol::Object::IHandler<InstrumentStructure>,
 					 MSAPI::Protocol::Object::IHandler<OrderStructure> {
 private:
-	MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure> m_instrumentStream{ this };
-	MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure> m_orderStream{ this };
+	MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure> m_instrumentStream{ *this };
+	MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure> m_orderStream{ *this };
 
 	std::set<InstrumentStructure> m_instruments;
 	std::set<OrderStructure> m_orders;
@@ -45,11 +45,11 @@ public:
 	//* MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
 	//* MSAPI::Protocol::Object::IHandler
-	void HandleStreamOpened(int streamId) final;
-	void HandleStreamSnapshotDone(int streamId) final;
-	void HandleStreamFailed(int streamId) final;
-	void HandleObject(int streamId, const InstrumentStructure& object) final;
-	void HandleObject(int streamId, const OrderStructure& object) final;
+	void HandleStreamOpened(uint64_t streamId) noexcept final;
+	void HandleStreamSnapshotDone(uint64_t streamId) noexcept final;
+	void HandleStreamFailed(uint64_t streamId, MSAPI::Protocol::Object::Issue issue) noexcept final;
+	void HandleObject(uint64_t streamId, const InstrumentStructure& object) noexcept final;
+	void HandleObject(uint64_t streamId, const OrderStructure& object) noexcept final;
 
 	void Clear();
 
@@ -62,7 +62,7 @@ public:
 	MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure>& GetInstrumentStream();
 	MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure>& GetOrderStream();
 
-	void SetConnectionForStreams(int id);
+	void SetConnectionForStreams(const std::shared_ptr<MSAPI::Connection::Data>& connectionData);
 };
 
 #endif //* OBJECT_CLIENT_H

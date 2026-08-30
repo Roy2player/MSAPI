@@ -34,20 +34,11 @@ void HTTPClient::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 	LOG_ERROR("Unknown protocol: " + header.ToString());
 }
 
-void HTTPClient::HandleHttp([[maybe_unused]] const int connection, const MSAPI::Protocol::HTTP::Data& data)
+void HTTPClient::HandleHttp([[maybe_unused]] const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
+	const MSAPI::Protocol::HTTP::Data& data)
 {
 	m_HTTPData = data;
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
 const std::optional<MSAPI::Protocol::HTTP::Data>& HTTPClient::GetHTTPData() const noexcept { return m_HTTPData; }
-
-void HTTPClient::SendRequest(const int id, const std::string& HTTP)
-{
-	if (const auto connect{ GetConnect(id) }; connect.has_value()) {
-		MSAPI::Protocol::HTTP::SendRequest(connect.value(), HTTP);
-		return;
-	}
-
-	LOG_ERROR("Connection not found for id: " + _S(id));
-}

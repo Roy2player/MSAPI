@@ -78,13 +78,10 @@
 #include "client.h"
 #include "manager.h"
 #include <memory>
-#include <sys/mman.h>
 #include <sys/resource.h>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
-
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
@@ -103,18 +100,25 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		}
 	}
 
-	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::INFO);
+	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::PROTOCOL);
 	MSAPI::logger.SetName("TestAH");
 	MSAPI::logger.SetToFile(true);
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
 
+	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
+		return 1;
+	}
+
 	//* Manager
+	std::cout << "--> 1" << std::endl;
 	auto managerPtr{ MSAPI::Daemon<Manager>::Create("Manager") };
+	std::cout << "--> 2" << std::endl;
 	if (managerPtr == nullptr) {
 		return 1;
 	}
 	auto manager{ static_cast<Manager*>(managerPtr->GetApp()) };
+	std::cout << "--> 3" << std::endl;
 
 	//* Pseudo manager
 	auto pseudoManagerPtr{ MSAPI::Daemon<Manager>::Create("PseudoManager") };
@@ -129,7 +133,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		return 1;
 	}
 	auto secondPseudoManager{ static_cast<Manager*>(secondPseudoManagerPtr->GetApp()) };
-	if (!pseudoManager->OpenConnect(1, INADDR_LOOPBACK, secondPseudoManagerPtr->GetPort())) {
+
+	const auto pseudoManagerToSecondPseudoManagerConnectionData{ pseudoManager->OpenConnection(
+		INADDR_LOOPBACK, secondPseudoManagerPtr->GetPort(), /*doReconnection=*/true) };
+	if (pseudoManagerToSecondPseudoManagerConnectionData == nullptr) {
 		return 1;
 	}
 
@@ -160,9 +167,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		return 1;
 	}
 	auto client{ static_cast<Client*>(clientPtr->GetApp()) };
-	if (!client->OpenConnect(0, INADDR_LOOPBACK, managerPtr->GetPort())
-		|| !client->OpenConnect(1, INADDR_LOOPBACK, pseudoManagerPtr->GetPort())) {
-
+	const auto clientToManagerConnectionData{ client->OpenManagerConnection(
+		INADDR_LOOPBACK, managerPtr->GetPort(), /*doReconnection=*/true) };
+	if (clientToManagerConnectionData == nullptr) {
+		return 1;
+	}
+	const auto clientToPseudoManagerConnectionData{ client->OpenConnection(
+		INADDR_LOOPBACK, pseudoManagerPtr->GetPort(), /*doReconnection=*/true) };
+	if (clientToPseudoManagerConnectionData == nullptr) {
 		return 1;
 	}
 
@@ -173,9 +185,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	//* 4) Check manager default parameters
 	test.Assert(manager->Manager::GetParameters(),
 		"Parameters:\n{\n\tSeconds between try to connect(1000001) : 1\n\tLimit of attempts to connection(1000002) : "
-		"1000\n\tLimit of connections from one IP(1000003) : 5\n\tRecv buffer size(1000004) : 1024\n\tRecv buffer "
-		"size limit(1000005) : 10485760\n\tServer state(1000006) const : Running\n\tMax connections(1000007) const "
-		": 4096\n\tListening IP(1000008) const : 127.0.0.1\n\tListening port(1000009) const : "
+		"1000\n\tLimit of connections from one IP(1000003) : 5\n\tRecv buffer "
+		"size limit(1000004) : 10485760\n\tServer state(1000005) const : Running\n\tMax connections(1000006) const "
+		": 4096\n\tListen IP(1000007) const : 127.0.0.1\n\tListen port(1000008) const : "
 			+ _S(managerPtr->GetPort())
 			+ "\n\tName(2000001) const : Manager\n\tApplication state(2000002) const : Paused\n}",
 		"Server default parameters");
@@ -260,13 +272,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 		"Table\",\"type\":\"TableData\",\"canBeEmpty\":false,\"columns\":{\"1\":{\"type\":\"Int32\"}}},\"1000001\":{"
 		"\"name\":\"Seconds between try to connect\",\"type\":\"Uint32\",\"min\":1},\"1000002\":{\"name\":\"Limit of "
 		"attempts to connection\",\"type\":\"Uint64\",\"min\":1},\"1000003\":{\"name\":\"Limit of connections from one "
-		"IP\",\"type\":\"Uint64\",\"min\":1},\"1000004\":{\"name\":\"Recv buffer "
-		"size\",\"type\":\"Uint64\",\"min\":3},\"1000005\":{\"name\":\"Recv buffer size "
-		"limit\",\"type\":\"Uint64\",\"min\":1024}},\"const\":{\"1000006\":{\"name\":\"Server "
-		"state\",\"type\":\"Int16\",\"stringInterpretations\":{\"0\":\"Undefined\",\"1\":\"Initialization\",\"2\":"
-		"\"Running\",\"3\":\"Stopped\"}},\"1000007\":{\"name\":\"Max "
-		"connections\",\"type\":\"Int32\"},\"1000008\":{\"name\":\"Listening "
-		"IP\",\"type\":\"String\"},\"1000009\":{\"name\":\"Listening "
+		"IP\",\"type\":\"Uint64\",\"min\":1},\"1000004\":{\"name\":\"Recv buffer size "
+		"limit\",\"type\":\"Uint64\",\"min\":1024}},\"const\":{\"1000005\":{\"name\":\"Server "
+		"state\",\"type\":\"Int8\",\"stringInterpretations\":{\"0\":\"Undefined\",\"1\":\"Initialization\",\"2\":"
+		"\"Running\",\"3\":\"Stopped\"}},\"1000006\":{\"name\":\"Max "
+		"connections\",\"type\":\"Int32\"},\"1000007\":{\"name\":\"Listen "
+		"IP\",\"type\":\"String\"},\"1000008\":{\"name\":\"Listen "
 		"port\",\"type\":\"Uint16\"},\"2000001\":{\"name\":\"Name\",\"type\":\"String\"},\"2000002\":{\"name\":"
 		"\"Application "
 		"state\",\"type\":\"Int16\",\"stringInterpretations\":{\"0\":\"Undefined\",\"1\":\"Paused\",\"2\":\"Running\"}}"
@@ -402,13 +413,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 			test.Assert(
 				parametersResponse.find(1000008) != parametersResponse.end(), true, "Parameter 1000008 is in response");
 			test.Assert(
-				parametersResponse.find(1000009) != parametersResponse.end(), true, "Parameter 1000009 is in response");
-			test.Assert(
 				parametersResponse.find(2000001) != parametersResponse.end(), true, "Parameter 2000001 is in response");
 			test.Assert(
 				parametersResponse.find(2000002) != parametersResponse.end(), true, "Parameter 2000002 is in response");
 
-			test.Assert(parametersResponse.size(), 55, "Correct number of parameters in response");
+			test.Assert(parametersResponse.size(), 54, "Correct number of parameters in response");
 		}
 	};
 
@@ -884,6 +893,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	test.Assert(actions, 19, "Correct number of actions 19");
 	test.Assert(client->MSAPI::Application::GetState(), MSAPI::Application::State::Running,
 		"Client with valid parameters in running state after reconnect to manager");
+	manager->UseClientConnection();
 
 	//* 43) Manager sends delete request to the client, state is changed
 	manager->SendActionDelete();

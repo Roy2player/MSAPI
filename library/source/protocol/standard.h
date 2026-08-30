@@ -30,6 +30,7 @@
 #include "../help/log.h"
 #include "../help/standardType.hpp"
 #include "../help/table.h"
+#include "../server/connection.inl"
 #include "dataHeader.h"
 
 namespace MSAPI {
@@ -298,71 +299,71 @@ public:
 /**************************
  * @brief Send data to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  * @param data Data to send.
  *
  * @test Has unit test.
  */
-void Send(int connection, const Data& data);
+void Send(Connection& connection, const Data& data);
 
 /**************************
  * @brief Send pause message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
  * @test Has unit test.
  */
-void SendActionPause(int connection);
+void SendActionPause(Connection& connection);
 
 /**************************
  * @brief Send run message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
  * @test Has unit test.
  */
-void SendActionRun(int connection);
+void SendActionRun(Connection& connection);
 
 /**************************
  * @brief Send delete message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
  * @test Has unit test.
  */
-void SendActionDelete(int connection);
+void SendActionDelete(Connection& connection);
 
 /**************************
  * @brief Send hello message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
  * @test Has unit test.
  */
-void SendActionHello(int connection);
+void SendActionHello(Connection& connection);
 
 /**************************
  * @brief Send metadata request message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
  * @test Has unit test.
  */
-void SendMetadataRequest(int connection);
+void SendMetadataRequest(Connection& connection);
 
 /**************************
  * @brief Send parameters request message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
  * @test Has unit test.
  */
-void SendParametersRequest(int connection);
+void SendParametersRequest(Connection& connection);
 
-}; // namespace Standard
+} // namespace Standard
 
-}; // namespace Protocol
+} // namespace Protocol
 
-}; // namespace MSAPI
+} // namespace MSAPI
 
 #endif // MSAPI_PROTOCOL_STANDARD_H

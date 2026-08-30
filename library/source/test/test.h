@@ -32,7 +32,7 @@
 		return false;                                                                                                  \
 	}
 
-#define LOG_INFO_UNITTEST(name) LOG_INFO_NEW("UNITTEST  : {}", name);
+#define LOG_INFO_UNITTEST(name) LOG_INFO_NEW("UNITTEST: {}", name);
 
 template <typename T, typename S>
 	requires std::is_same_v<std::decay_t<T>, std::decay_t<S>>
