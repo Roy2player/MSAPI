@@ -27,10 +27,10 @@
 class Node : public MSAPI::Server, MSAPI::Protocol::HTTP::IHandler, public MSAPI::Protocol::WebSocket::IHandler {
 private:
 	std::unordered_map<std::shared_ptr<MSAPI::Connection::Data>, std::vector<MSAPI::Protocol::WebSocket::Data>>
-		m_connectionDataTowebSocketData;
+		m_connectionDataToWebSocketData;
 	MSAPI::Lock::Atomic m_webSocketDataLock;
 	std::unordered_map<std::shared_ptr<MSAPI::Connection::Data>, std::vector<MSAPI::Protocol::HTTP::Data>>
-		m_connectionDataTohttpData;
+		m_connectionDataToHttpData;
 	MSAPI::Lock::Atomic m_httpDataLock;
 
 public:
@@ -50,7 +50,7 @@ public:
 		if (MSAPI::Protocol::HTTP::Data http(recvBuffer); http.IsValid()) {
 			{
 				MSAPI::Lock::Atomic::Guard _{ m_httpDataLock };
-				m_connectionDataTohttpData[recvBuffer.GetConnectionData()].emplace_back(http);
+				m_connectionDataToHttpData[recvBuffer.GetConnectionData()].emplace_back(http);
 			}
 
 			MSAPI_HANDLER_HTTP_PRESET_INTERNAL_PART;
@@ -77,7 +77,7 @@ public:
 		case MSAPI::Protocol::WebSocket::Data::Opcode::Close:
 		case MSAPI::Protocol::WebSocket::Data::Opcode::Continuation: {
 			MSAPI::Lock::Atomic::Guard _{ m_webSocketDataLock };
-			m_connectionDataTowebSocketData[connectionData].emplace_back(std::move(data));
+			m_connectionDataToWebSocketData[connectionData].emplace_back(std::move(data));
 		} break;
 		default:
 			LOG_WARNING_NEW("Unexpected WebSocket opcode {}, connection id: {}", U(data.GetOpcode()),
@@ -90,7 +90,7 @@ public:
 		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, MSAPI::Protocol::WebSocket::Data&& data) final
 	{
 		MSAPI::Lock::Atomic::Guard _{ m_webSocketDataLock };
-		m_connectionDataTowebSocketData[connectionData].emplace_back(std::move(data));
+		m_connectionDataToWebSocketData[connectionData].emplace_back(std::move(data));
 	}
 
 	// Non const output as test have to modify websocket data in some case
@@ -98,8 +98,8 @@ public:
 		const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 	{
 		MSAPI::Lock::Atomic::Guard _{ m_webSocketDataLock };
-		if (const auto it{ m_connectionDataTowebSocketData.find(connectionData) };
-			it != m_connectionDataTowebSocketData.end()) {
+		if (const auto it{ m_connectionDataToWebSocketData.find(connectionData) };
+			it != m_connectionDataToWebSocketData.end()) {
 			return &it->second;
 		}
 
@@ -110,7 +110,7 @@ public:
 		const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 	{
 		MSAPI::Lock::Atomic::Guard _{ m_httpDataLock };
-		if (const auto it{ m_connectionDataTohttpData.find(connectionData) }; it != m_connectionDataTohttpData.end()) {
+		if (const auto it{ m_connectionDataToHttpData.find(connectionData) }; it != m_connectionDataToHttpData.end()) {
 			return &it->second;
 		}
 
@@ -120,7 +120,7 @@ public:
 	FORCE_INLINE [[nodiscard]] std::shared_ptr<MSAPI::Connection::Data> DetectConnection(const std::string& key)
 	{
 		MSAPI::Lock::Atomic::Guard _{ m_httpDataLock };
-		for (const auto& [connectionData, dataVector] : m_connectionDataTohttpData) {
+		for (const auto& [connectionData, dataVector] : m_connectionDataToHttpData) {
 			for (const auto& data : dataVector) {
 				if (const auto* value{ data.GetValue(key) }; value != nullptr) {
 					return connectionData;

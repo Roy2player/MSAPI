@@ -16,9 +16,9 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief HTTP message parsing and producing.
- * @brief Request can recognized and response be prepared for messages with correct content type formats: js, dat, ogg,
- * pdf, xhtml, json, ldjson, xml, zip, mp3, wma, wav, gif, jpeg, jpg, png, tiff, ico, djvu, svg, bmp, webp, css, csv,
- * html, txt, mpeg, mp4, mov, wmv, avi, webm.
+ * @brief Request can be recognized and response be prepared for messages with correct content type formats: js, dat,
+ * ogg, pdf, xhtml, json, ldjson, xml, zip, mp3, wma, wav, gif, jpeg, jpg, png, tiff, ico, djvu, svg, bmp, webp, css,
+ * csv, html, txt, mpeg, mp4, mov, wmv, avi, webm.
  * @brief Response can be 200 OK or 404 Not Found only.
  *
  * MSAPI_HANDLER_HTTP_PRESET macro is used to reserve and collect HTTP message.

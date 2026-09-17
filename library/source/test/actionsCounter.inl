@@ -33,8 +33,6 @@ Declarations
  * @brief Actions counter for tests.
  *
  * @concurrency Yes.
- *
- * @todo Make parallel execution safe.
  */
 class ActionsCounter {
 private:
