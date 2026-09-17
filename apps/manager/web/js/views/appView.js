@@ -23,17 +23,17 @@ class AppView extends View {
 	Constructor(parameters)
 	{
 		if (!this.m_port) {
-			console.error("Listening port is not provided");
+			console.error("Listen port is not provided");
 			return false;
 		}
 
-		this.m_listeningIp = parameters.ip;
-		if (!this.m_listeningIp) {
-			console.error("Listening IP is not provided");
+		this.m_listenIp = parameters.ip;
+		if (!this.m_listenIp) {
+			console.error("Listen IP is not provided");
 			return false;
 		}
 
-		const url = parameters.url || `http://${this.m_listeningIp}:${this.m_port}/`;
+		const url = parameters.url || `http://${this.m_listenIp}:${this.m_port}/`;
 		const iframe = document.createElement("iframe");
 		iframe.src = url;
 		iframe.style.width = "100%";

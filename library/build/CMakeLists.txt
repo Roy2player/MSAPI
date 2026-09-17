@@ -17,19 +17,14 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 set(SOURCE_CPP 
         ../source/help/helper.cpp
         ../source/help/html.cpp
-        ../source/help/identifier.cpp
         ../source/help/json.cpp
         ../source/help/log.cpp
         ../source/help/time.cpp
         ../source/help/table.cpp
         ../source/protocol/http.cpp
         ../source/protocol/dataHeader.cpp
-        ../source/protocol/object.cpp
         ../source/protocol/standard.cpp
         ../source/server/application.cpp
-        ../source/server/server.cpp
-        ../source/test/test.cpp
-        ../source/test/actionsCounter.cpp
 )
 
 include(./CMakeListsCommonOptions.txt)

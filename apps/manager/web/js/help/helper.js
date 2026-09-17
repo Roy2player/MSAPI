@@ -12,7 +12,7 @@
  *
  * @brief Helper static class is a namespace for helper functions.
  *
- * @todo Add unit tests.
+ * @todo Add tests coverage.
  */
 class Helper {
 	static TYPES_LIMITS = Object.freeze({

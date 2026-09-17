@@ -201,19 +201,18 @@ class ServerSimulator {
 						"1000001" : { "name" : "Seconds between try to connect", "type" : "Uint32", "min" : 1 },
 						"1000002" : { "name" : "Limit of attempts to connection", "type" : "Uint64", "min" : 1 },
 						"1000003" : { "name" : "Limit of connections from one IP", "type" : "Uint64", "min" : 1 },
-						"1000004" : { "name" : "Recv buffer size", "type" : "Uint64", "min" : 3 },
-						"1000005" : { "name" : "Recv buffer size limit", "type" : "Uint64", "min" : 1024 }
+						"1000004" : { "name" : "Recv buffer size limit", "type" : "Uint64", "min" : 1024 }
 					},
 					"const" : {
-						"1000006" : {
+						"1000005" : {
 							"name" : "Server state",
 							"type" : "Int16",
 							"stringInterpretations" :
 								{ "0" : "Undefined", "1" : "Initialization", "2" : "Running", "3" : "Stopped" }
 						},
-						"1000007" : { "name" : "Max connections", "type" : "Int32" },
-						"1000008" : { "name" : "Listening IP", "type" : "Uint32" },
-						"1000009" : { "name" : "Listening port", "type" : "Uint16" },
+						"1000006" : { "name" : "Max connections", "type" : "Int32" },
+						"1000007" : { "name" : "Listen IP", "type" : "Uint32" },
+						"1000008" : { "name" : "Listen port", "type" : "Uint16" },
 						"2000001" : { "name" : "Name", "type" : "String" },
 						"2000002" : {
 							"name" : "Application state",

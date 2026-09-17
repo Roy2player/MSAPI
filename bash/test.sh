@@ -9,8 +9,8 @@ echo -e "${VIOLET}START:${ENDCOLOR} ${taskName}"
 CheckGlobalVariables MSAPI_PATH
 ExitIfError $?
 
-if [ -z "${BUILD_PROFILE}" ]; then
-	BUILD_PROFILE="Debug"
+if [ -z "${MSAPI_BUILD_PROFILE}" ]; then
+	MSAPI_BUILD_PROFILE="Debug"
 fi
 
 bash $(dirname ${BASH_SOURCE})/buildLib.sh

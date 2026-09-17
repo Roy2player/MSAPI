@@ -17,7 +17,6 @@ apps/manager/build/MSAPIManager
 tests/integration/applicationHandlers/build/TestApplicationHandlers
 tests/integration/objectProtocol/build/TestObjectProtocol
 tests/integration/http/build/TestHttp
-tests/integration/server/build/TestServer
 tests/integration/webSocketProtocol/build/TestWebSocketProtocol
 tests/unit/application/build/UnitTestApplication
 tests/unit/dataHeader/build/UnitTestDataHeader
@@ -32,3 +31,4 @@ tests/unit/io/build/UnitTestIo
 tests/unit/sha256/build/UnitTestSha256
 tests/unit/authorization/build/UnitTestAuthorization
 tests/unit/sha1/build/UnitTestSha1
+tests/unit/basicSString/build/UnitTestBasicSString

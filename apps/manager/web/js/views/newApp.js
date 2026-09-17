@@ -62,8 +62,8 @@ View.AddParametersTemplate("New app", "default", [
 View.AddViewTemplate("New app", `<div class="customView">
         <div class="items vertical">
 			<div class="item"><input name="name" type="text" placeholder="Name"/></div>
-			<div class="item"><input value="127.0.0.1" name="ip" type="text" placeholder="Listening IP" canBeEmpty="false" /></div>
-            <div class="item"><input name="port" type="number" placeholder="Listening Port" /></div>
+			<div class="item"><input value="127.0.0.1" name="ip" type="text" placeholder="Listen IP" canBeEmpty="false" /></div>
+            <div class="item"><input name="port" type="number" placeholder="Listen Port" /></div>
             <div class="item">
 				<label>
 					<input name="logInConsole" type="checkbox" />

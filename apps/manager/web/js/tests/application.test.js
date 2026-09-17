@@ -179,10 +179,10 @@ testRunner.Test('Add view to CreatedApps panel', () => {
 		'Column name is unexpected');
 	testRunner.Assert(view.m_grid.m_columnByOrder.get(5).headerCell.querySelector("span.text").innerHTML, 'Type',
 		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(6).headerCell.querySelector("span.text").innerHTML,
-		'Listening IP', 'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(7).headerCell.querySelector("span.text").innerHTML,
-		'Listening port', 'Column name is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(6).headerCell.querySelector("span.text").innerHTML, 'Listen IP',
+		'Column name is unexpected');
+	testRunner.Assert(view.m_grid.m_columnByOrder.get(7).headerCell.querySelector("span.text").innerHTML, 'Listen port',
+		'Column name is unexpected');
 });
 
 testRunner.Run();

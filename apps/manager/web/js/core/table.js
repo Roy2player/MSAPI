@@ -35,7 +35,7 @@
  * 		]
  * }
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 class Table {
 	static #template = `

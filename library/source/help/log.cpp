@@ -1,6 +1,5 @@
 /**************************
  * @file        log.cpp
- * @version     6.0
  * @date        2023-09-24
  * @author      msapi.info@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov

@@ -19,8 +19,10 @@ add_compile_options(
 
     -pedantic
     #-Werror
+    -fmax-errors=20
 
-    -std=c++2c
+    -std=c++26
+
     -O3 # TODO: Find a way to build with -Ofast
     -march=native
     -flto=auto
@@ -97,7 +99,6 @@ endif()
 # Function to set common properties to MSAPI application target
 function(msapi_set_target_properties target)
     set_target_properties(${target} PROPERTIES
-        CXX_STANDARD 23
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS NO
     )

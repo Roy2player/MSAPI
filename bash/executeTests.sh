@@ -9,19 +9,25 @@ echo -e "${VIOLET}START:${ENDCOLOR} ${taskName}"
 CheckGlobalVariables MSAPI_PATH
 ExitIfError $?
 
-if [ -z "${BUILD_PROFILE}" ]; then
-	BUILD_PROFILE="Debug"
+if [ -z "${MSAPI_BUILD_PROFILE}" ]; then
+	MSAPI_BUILD_PROFILE="Debug"
+fi
+
+options=""
+
+if [ -n "${MSAPI_GCC}" ]; then
+	options=$options" -DCMAKE_CXX_COMPILER="$MSAPI_GCC
 fi
 
 bash $(dirname ${BASH_SOURCE})/buildLib.sh
 ExitIfError $?
 
 # Unit tests under tests/unit/
-declare -a unit_tests=("dataHeader" "application" "objectData" "standardData" "html" "json" "table" "helper" "timer" "io" "sha256" 
+declare -a unit_tests=("dataHeader" "application" "objectData" "standardData" "html" "json" "table" "helper" "timer" "io" "sha256"  "basicSString"
 	"authorization" "sha1")
 
 for i in "${unit_tests[@]}"; do
-    RunCommand "cmake -DCMAKE_BUILD_TYPE=${BUILD_PROFILE} -B ${MSAPI_PATH}/tests/unit/${i}/build ${MSAPI_PATH}/tests/unit/${i}/build \
+    RunCommand "cmake -DCMAKE_BUILD_TYPE=${MSAPI_BUILD_PROFILE} ${options} -B ${MSAPI_PATH}/tests/unit/${i}/build ${MSAPI_PATH}/tests/unit/${i}/build \
 		2>&1 | tee ${MSAPI_PATH}/tests/unit/${i}/build/cmake.txt" "cmake MSAPI unit/${i} test"
 	ExitIfError $?
 	RunCommand "cmake --build ${MSAPI_PATH}/tests/unit/${i}/build -j $(nproc) \
@@ -34,10 +40,10 @@ for i in "${unit_tests[@]}"; do
 done
 
 # Integration tests under tests/integration/
-declare -a tests=("applicationHandlers" "objectProtocol" "http" "webSocketProtocol" "server")
+declare -a tests=("applicationHandlers" "objectProtocol" "http" "webSocketProtocol")
 
 for i in "${tests[@]}"; do
-    RunCommand "cmake -DCMAKE_BUILD_TYPE=${BUILD_PROFILE} -B ${MSAPI_PATH}/tests/integration/${i}/build ${MSAPI_PATH}/tests/integration/${i}/build \
+    RunCommand "cmake -DCMAKE_BUILD_TYPE=${MSAPI_BUILD_PROFILE} ${options} -B ${MSAPI_PATH}/tests/integration/${i}/build ${MSAPI_PATH}/tests/integration/${i}/build \
 		2>&1 | tee ${MSAPI_PATH}/tests/integration/${i}/build/cmake.txt" "cmake MSAPI ${i} test"
 	ExitIfError $?
 	RunCommand "cmake --build ${MSAPI_PATH}/tests/integration/${i}/build -j $(nproc) \

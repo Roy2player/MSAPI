@@ -9,8 +9,14 @@ echo -e "${VIOLET}START:${ENDCOLOR} ${taskName}"
 CheckGlobalVariables MSAPI_PATH
 ExitIfError $?
 
-if [ -z "${BUILD_PROFILE}" ]; then
-	BUILD_PROFILE="Debug"
+if [ -z "${MSAPI_BUILD_PROFILE}" ]; then
+	MSAPI_BUILD_PROFILE="Debug"
+fi
+
+options=""
+
+if [ -n "${MSAPI_GCC}" ]; then
+	options=$options" -DCMAKE_CXX_COMPILER="$MSAPI_GCC
 fi
 
 bash $(dirname ${BASH_SOURCE})/buildLib.sh
@@ -21,7 +27,7 @@ declare -a apps=("manager")
 SelectAppsToBuild apps[@] "$@"
 
 for i in "${BUILD_APPS[@]}"; do
-	RunCommand "cmake -DCMAKE_BUILD_TYPE=${BUILD_PROFILE} -B ${MSAPI_PATH}/apps/${i}/build ${MSAPI_PATH}/apps/${i}/build \
+	RunCommand "cmake -DCMAKE_BUILD_TYPE=${MSAPI_BUILD_PROFILE} ${options} -B ${MSAPI_PATH}/apps/${i}/build ${MSAPI_PATH}/apps/${i}/build \
 		2>&1 | tee ${MSAPI_PATH}/apps/${i}/build/cmake.txt" "cmake MSAPI ${i} app"
 	ExitIfError $?
 	RunCommand "cmake --build ${MSAPI_PATH}/apps/${i}/build -j $(nproc) \

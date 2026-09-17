@@ -24,7 +24,7 @@
  * Does not take into account UTC in set value. After click outside input, value will be normalized and validated by
  * additional document event listener.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 class Timer {
 	static #privateFields = (() => {
