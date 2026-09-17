@@ -526,7 +526,7 @@ FORCE_INLINE T Exponent10Of(T value)
  *
  * @locking Is not required.
  *
- * @return Trun on success, false otherwise.
+ * @return True on success, false otherwise.
  *
  * @test Yes.
  */

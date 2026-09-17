@@ -69,15 +69,15 @@ Definitions
 
 FORCE_INLINE [[nodiscard]] uint64_t ActionsCounter::GetActionsNumber() const noexcept
 {
-	return m_counter.load(std::memory_order::acquire);
+	return m_counter.load(std::memory_order_acquire);
 }
 
 FORCE_INLINE void ActionsCounter::IncrementActionsNumber() noexcept
 {
-	(void)m_counter.fetch_add(1, std::memory_order::release);
+	(void)m_counter.fetch_add(1, std::memory_order_release);
 }
 
-FORCE_INLINE void ActionsCounter::ClearActionsNumber() noexcept { m_counter.store(0, std::memory_order::release); }
+FORCE_INLINE void ActionsCounter::ClearActionsNumber() noexcept { m_counter.store(0, std::memory_order_release); }
 
 } // namespace MSAPI
 
