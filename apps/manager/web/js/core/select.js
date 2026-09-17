@@ -20,7 +20,7 @@
  * @brief Has "click" event listener to open select view. If click is outside select view, it will be closed without
  * changes.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 class Select {
 	static #privateFields = (() => {

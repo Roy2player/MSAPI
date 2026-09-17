@@ -1,6 +1,5 @@
 /**************************
  * @file        dataHeader.inl
- * @version     6.0
  * @date        2025-11-20
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,11 +20,11 @@
 #define MSAPI_UNIT_TEST_DATA_HEADER_INL
 
 #include "../../../../library/source/protocol/dataHeader.h"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -38,16 +37,18 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool DataHeader();
+FORCE_INLINE [[nodiscard]] bool DataHeader();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool DataHeader()
+FORCE_INLINE [[nodiscard]] bool DataHeader()
 {
-	LOG_INFO_UNITTEST("MSAPI Data header");
-	MSAPI::Test t;
+	static_assert(sizeof(MSAPI::DataHeader) % 16 == 0, "In buffer object alignment is correct");
+
+	LOG_INFO("MSAPI UNIT TEST Data header");
+	MSAPI::Test::Test t;
 
 	RETURN_IF_FALSE(t.Assert(
 		MSAPI::DataHeader{ std::span<const uint8_t>{} }.GetCipher(), 0, "Cipher of empty data header is expected"));
@@ -94,12 +95,12 @@ bool DataHeader()
 			MSAPI::DataHeader{ data1span.subspan(0, 15) }.GetBufferSize(), 0, "Buffer size of empty data is expected"));
 	}
 
-	return true;
+	return t.Passed<bool>();
 }
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

@@ -1,6 +1,5 @@
 /**************************
  * @file        objectClient.h
- * @version     6.0
  * @date        2023-12-16
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -20,9 +19,9 @@
 #ifndef OBJECT_CLIENT_H
 #define OBJECT_CLIENT_H
 
-#include "../../../../library/source/protocol/object.h"
-#include "../../../../library/source/server/server.h"
-#include "../../../../library/source/test/actionsCounter.h"
+#include "../../../../library/source/protocol/object.inl"
+#include "../../../../library/source/server/server.inl"
+#include "../../../../library/source/test/actionsCounter.inl"
 #include "commonStructures.h"
 
 /**************************
@@ -33,23 +32,32 @@ class ObjectClient : public MSAPI::Server,
 					 MSAPI::Protocol::Object::IHandler<InstrumentStructure>,
 					 MSAPI::Protocol::Object::IHandler<OrderStructure> {
 private:
-	MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure> m_instrumentStream{ this };
-	MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure> m_orderStream{ this };
+	MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure> m_instrumentStream{ *this };
+	MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure> m_orderStream{ *this };
 
 	std::set<InstrumentStructure> m_instruments;
 	std::set<OrderStructure> m_orders;
 
+	MSAPI::ActionsCounter m_unhandledActions;
+	MSAPI::Protocol::Object::Issue m_lastFailedIssue{ MSAPI::Protocol::Object::Issue::Undefined };
+
 public:
 	ObjectClient();
 
-	//* MSAPI::Server
+	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
-	//* MSAPI::Protocol::Object::IHandler
-	void HandleStreamOpened(int streamId) final;
-	void HandleStreamSnapshotDone(int streamId) final;
-	void HandleStreamFailed(int streamId) final;
-	void HandleObject(int streamId, const InstrumentStructure& object) final;
-	void HandleObject(int streamId, const OrderStructure& object) final;
+	// MSAPI::Application
+	void HandleOutcomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final
+	{
+		MSAPI::Protocol::Object::IHandlerBase::FailStreamsForConnectionId(connectionData->GetConnectionId());
+		MSAPI::Server::HandlePauseRequest();
+	}
+	// MSAPI::Protocol::Object::IHandler
+	void HandleStreamOpened(uint64_t streamId) noexcept final;
+	void HandleStreamSnapshotDone(uint64_t streamId) noexcept final;
+	void HandleStreamFailed(uint64_t streamId, MSAPI::Protocol::Object::Issue issue) noexcept final;
+	void HandleObject(uint64_t streamId, const InstrumentStructure& object) noexcept final;
+	void HandleObject(uint64_t streamId, const OrderStructure& object) noexcept final;
 
 	void Clear();
 
@@ -62,7 +70,17 @@ public:
 	MSAPI::Protocol::Object::Stream<InstrumentStructure, FilterStructure>& GetInstrumentStream();
 	MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure>& GetOrderStream();
 
-	void SetConnectionForStreams(int id);
+	FORCE_INLINE [[nodiscard]] MSAPI::Protocol::Object::Issue GetLastFailedIssue() const noexcept
+	{
+		return m_lastFailedIssue;
+	}
+
+	[[nodiscard]] bool SetConnectionForStreams(const std::shared_ptr<MSAPI::Connection::Data>& connectionData);
+
+	FORCE_INLINE [[nodiscard]] uint64_t GetUnhandledActions() const noexcept
+	{
+		return m_unhandledActions.GetActionsNumber();
+	}
 };
 
-#endif //* OBJECT_CLIENT_H
+#endif // OBJECT_CLIENT_H

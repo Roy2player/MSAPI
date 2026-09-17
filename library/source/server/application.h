@@ -1,6 +1,5 @@
 /**************************
  * @file        application.h
- * @version     6.0
  * @date        2023-12-11
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -22,12 +21,13 @@
 
 #include "../help/helper.h"
 #include "../protocol/standard.h"
+#include "connection.inl"
 #include <string>
 #include <variant>
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -36,11 +36,11 @@ namespace Unit {
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool Application();
+FORCE_INLINE [[nodiscard]] bool Application();
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 /**************************
  * @brief Basic class with separate state for creating an application, contains core logic to handle specific callbacks
@@ -154,7 +154,7 @@ public:
 		 * @param name Name of parameter.
 		 * @param value Value of parameter.
 		 *
-		 * @test Has unit tests for all types.
+		 * @test Yes.
 		 */
 		Parameter(std::string&& name, bool* value);
 
@@ -172,7 +172,7 @@ public:
 		 * @param max Maximum value of parameter. Empty by default.
 		 * @param canBeEmpty True if parameter can be empty. False by default.
 		 *
-		 * @test Has unit tests for all types.
+		 * @test Yes.
 		 */
 		template <typename T>
 			requires(is_standard_simple_type_ptr<T> && !std::is_same_v<T, bool*>)
@@ -211,7 +211,7 @@ public:
 		 * @param printFunc Custom print function for enum type.
 		 * @param canBeUndefined Set minimum as Enum::Undefined, false by default.
 		 *
-		 * @test Has unit tests.
+		 * @test Yes.
 		 */
 		template <typename T>
 			requires(std::is_pointer_v<T> && !std::is_const_v<std::remove_pointer_t<T>>
@@ -244,7 +244,7 @@ public:
 		 * @param value Value of parameter.
 		 * @param canBeEmpty True if parameter can be empty. False by default.
 		 *
-		 * @test Has unit tests for all types.
+		 * @test Yes.
 		 */
 		template <typename T>
 			requires std::is_same_v<T, std::string*> || std::is_same_v<T, Timer*>
@@ -267,7 +267,7 @@ public:
 		 * @param max Maximum value of parameter. Empty by default.
 		 * @param canBeEmpty True if parameter can be empty. False by default.
 		 *
-		 * @test Has unit tests.
+		 * @test Yes.
 		 */
 		template <typename T>
 			requires std::is_same_v<T, Timer::Duration*> || std::is_same_v<T, std::optional<Timer::Duration>*>
@@ -297,7 +297,7 @@ public:
 		 * @param value Value of parameter.
 		 * @param canBeEmpty True if parameter can be empty. False by default.
 		 *
-		 * @test Has unit tests for all types.
+		 * @test Yes.
 		 */
 		template <typename... Ts>
 		Parameter(std::string&& name, Table<Ts...>* value, const bool canBeEmpty = false)
@@ -316,7 +316,7 @@ public:
 		 *
 		 * @return True if value is correct, otherwise false.
 		 *
-		 * @test Has unit tests.
+		 * @test Yes.
 		 */
 		bool RegisterValidation(size_t id);
 
@@ -331,11 +331,11 @@ public:
 		 *
 		 * @return True if value is correct, otherwise false.
 		 *
-		 * @test Has unit tests for all types.
+		 * @test Yes.
 		 */
 		bool Merge(size_t id, const std::variant<standardTypes>& value);
 
-		friend bool Tests::Unit::Application();
+		friend bool Test::Unit::Application();
 		//* For access in RegisterValidation and Merge methods and direct access to fields.
 		friend class Application;
 	};
@@ -365,7 +365,7 @@ public:
 		 * @param name Name of parameter.
 		 * @param value Value of parameter.
 		 *
-		 * @test Has unit tests for all types.
+		 * @test Yes.
 		 * @todo Const string can be std::string_view or const char* too.
 		 */
 		template <typename T>
@@ -386,7 +386,7 @@ public:
 		 * @param name Name of parameter.
 		 * @param value Value of parameter.
 		 *
-		 * @test Has unit tests for all types.
+		 * @test Yes.
 		 */
 		template <typename... Ts>
 		ConstParameter(std::string&& name, const Table<Ts...>* value)
@@ -404,7 +404,7 @@ public:
 		 * @param value Value of parameter.
 		 * @param durationType Type of duration, should be valid or nanoseconds will be used.
 		 *
-		 * @test Has unit tests.
+		 * @test Yes.
 		 */
 		template <typename T>
 			requires std::is_pointer_v<T> && std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, Timer::Duration>
@@ -430,7 +430,7 @@ public:
 		 * @param value Value of parameter.
 		 * @param printFunc Custom print function for enum type.
 		 *
-		 * @test Has unit tests.
+		 * @test Yes.
 		 */
 		template <typename T>
 			requires std::is_pointer_v<T> && std::is_enum_v<std::remove_pointer_t<T>>
@@ -474,7 +474,7 @@ public:
 	 * @brief Handle run request from External application. Already defined in Server class, but can be overridden.
 	 * Default behavior: apply Running state if parameters are valid and application is not in running state.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual void HandleRunRequest();
 
@@ -482,7 +482,7 @@ public:
 	 * @brief Handle pause request from External application. Already defined in Server class, but can be
 	 * overridden. Default behavior: apply Paused state if application is in a running state.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual void HandlePauseRequest();
 
@@ -492,7 +492,7 @@ public:
 	 *
 	 * @param parametersUpdate Parameters update.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate);
 
@@ -500,7 +500,7 @@ public:
 	 * @brief Handle delete request from External application. Already defined in Server class, but can be
 	 * overridden. Default behavior: handle pause and call server stop to cancel main server process.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual void HandleDeleteRequest();
 
@@ -508,120 +508,119 @@ public:
 	 * @brief Handle hello message from external application. This message will be sent after opening new outcome
 	 * connection if or when server becomes running.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data structure.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	virtual void HandleHello(int connection);
+	virtual void HandleHello(const std::shared_ptr<Connection::Data>& connectionData);
 
 	/**************************
 	 * @brief Handle metadata message from external application. Metadata contains list of all usual and const
 	 * parameters.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data structure.
 	 * @param metadata Reserved metadata.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	virtual void HandleMetadata(int connection, std::string_view metadata);
+	virtual void HandleMetadata(const std::shared_ptr<Connection::Data>& connectionData, std::string_view metadata);
 
 	/**************************
 	 * @brief Handle parameters message from external application. Response contains list of all usual and const
 	 * parameters with values.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data structure.
 	 * @param parameters Reserved parameters.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	virtual void HandleParameters(int connection, const std::map<size_t, std::variant<standardTypes>>& parameters);
+	virtual void HandleParameters(const std::shared_ptr<Connection::Data>& connectionData,
+		const std::map<size_t, std::variant<standardTypes>>& parameters);
 
 	/**************************
 	 * @brief Not network signal about previously opened connection by id was closed no by server. Already defined
 	 * in Application class, but can be overridden. Default behavior is to call HandlePauseRequest.
 	 *
-	 * @param id Id of connection.
-	 * @param connection Connection.
+	 * @param connectionData Connection data structure.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	virtual void HandleOutcomeDisconnect(int32_t id, int32_t connection);
+	virtual void HandleOutcomeDisconnect(const std::shared_ptr<Connection::Data>& connectionData);
 
 	/**************************
 	 * @brief Not network signal about previously income connection was closed no by server.
 	 *
-	 * @param id Id of connection.
-	 * @param connection Connection.
+	 * @param connectionData Connection data structure.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	virtual void HandleIncomeDisconnect(int32_t id, int32_t connection);
+	virtual void HandleIncomeDisconnect(const std::shared_ptr<Connection::Data>& connectionData);
 
 	/**************************
 	 * @brief Not network signal about previously closed connection by id was reopened. Already defined in
 	 * Application class, but can be overridden. Default behavior is to call HandleRunRequest.
 	 *
-	 * @param id Id of connection.
+	 * @param connectionData Connection data structure.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	virtual void HandleReconnect(int id);
+	virtual void HandleReconnect(const std::shared_ptr<Connection::Data>& connectionData);
 
 	/**************************
 	 * @brief Set the Name object to application.
 	 *
 	 * @param name Name of application.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void SetName(const std::string& name);
 
 	/**************************
 	 * @return Readable reference to parameters.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	const std::map<size_t, Parameter>& GetParameters() const noexcept;
 
 	/**************************
 	 * @return Readable reference to constant parameters.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	const std::map<size_t, ConstParameter>& GetConstParameters() const noexcept;
 
 	/**************************
 	 * @return True if parameters with error not exist.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	bool AreParametersValid() const noexcept;
 
 	/**************************
 	 * @return Readable reference to parameters with errors.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	const std::map<size_t, const Parameter* const>& GetErrorParameters() const noexcept;
 
 	/**************************
 	 * @return Name of application, can be empty.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	const std::string& GetName() const noexcept;
 
 	/**************************
 	 * @return State of application.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	State GetState() const;
 
 	/**************************
 	 * @return True if application is running.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	bool IsRunning() const;
 
@@ -630,7 +629,7 @@ public:
 	 *
 	 * @example Undefined, Pause, Run, Unknown.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	static std::string_view EnumToString(State state);
 
@@ -640,7 +639,7 @@ protected:
 	 *
 	 * @param state State of application.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void SetState(State state);
 
@@ -648,12 +647,12 @@ protected:
 	 * @brief Collect Standard message with parameters or action from socket connection and call specific Handler
 	 * function.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data structure.
 	 * @param data Reserved Standard message.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	void Collect(int connection, const Protocol::Standard::Data& data);
+	void Collect(const std::shared_ptr<Connection::Data>& connectionData, const Protocol::Standard::Data& data);
 
 	/**************************
 	 * @brief Register parameter to application if it is not registered yet and value is consistent with
@@ -662,7 +661,7 @@ protected:
 	 * @param id Identifier of parameter.
 	 * @param parameter Parameter object.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void RegisterParameter(size_t id, Parameter&& parameter);
 
@@ -672,7 +671,7 @@ protected:
 	 * @param id Identifier of parameter.
 	 * @param parameter Const parameter object.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void RegisterConstParameter(size_t id, ConstParameter&& parameter);
 
@@ -688,17 +687,16 @@ protected:
 	 *		Seconds between try to connect(1000001) : 1
 	 *		Limit of attempts to connection(1000002) : 1000
 	 *		Limit of connections from one IP(1000003) : 5
-	 *		Recv buffer size(1000004) : 1024
-	 *		Recv buffer size limit(1000005) : 10485760
-	 *		Server state(1000006) const : Running
-	 *		Max connections(1000007) const : 4096
-	 *		Listening IP(1000008) const : 127.0.0.1
-	 *		Listening port(1000009) const : 60328
+	 *		Recv buffer size limit(1000004) : 10485760
+	 *		Server state(1000005) const : Running
+	 *		Max connections(1000006) const : 4096
+	 *		Listen IP(1000007) const : 127.0.0.1
+	 *		Listen port(1000008) const : 60328
 	 *		Name(2000001) const : Distributor
 	 *		Application state(2000002) const : Paused
 	 * }
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void GetParameters(std::string& parameters) const;
 
@@ -710,7 +708,7 @@ protected:
 	 *
 	 * @param parametersUpdate Parameters update.
 	 *
-	 * @test Has unit tests for all types.
+	 * @test Yes.
 	 */
 	void MergeParameters(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate);
 
@@ -723,7 +721,7 @@ protected:
 	 * @param id Id of parameter update.
 	 * @param value Value of parameter update.
 	 *
-	 * @test Has unit tests for all types.
+	 * @test Yes.
 	 */
 	void MergeParameter(size_t id, const std::variant<standardTypes>& value);
 
@@ -735,11 +733,11 @@ protected:
 	 * @param id Identifier of parameter.
 	 * @param error Error message.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void SetCustomError(size_t id, const std::string& error);
 
-	friend bool Tests::Unit::Application();
+	friend bool Test::Unit::Application();
 };
 
 }; //* namespace MSAPI

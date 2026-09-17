@@ -1,6 +1,5 @@
 /**************************
  * @file        commonStructures.h
- * @version     6.0
  * @date        2023-12-16
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov

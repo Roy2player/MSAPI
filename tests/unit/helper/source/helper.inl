@@ -1,6 +1,5 @@
 /**************************
  * @file        helper.inl
- * @version     6.0
  * @date        2025-11-20
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,11 +20,11 @@
 #define MSAPI_UNIT_TEST_HELPER_INL
 
 #include "../../../../library/source/help/helper.h"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -38,19 +37,19 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool Helper();
+FORCE_INLINE [[nodiscard]] bool Helper();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool Helper()
+FORCE_INLINE [[nodiscard]] bool Helper()
 {
 	static_assert(MSAPI::Helper::caseSensitive, "caseSensitive should be true");
 	static_assert(!MSAPI::Helper::caseInsensitive, "caseInsensitive should be false");
 
-	LOG_INFO_UNITTEST("MSAPI Helper");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST Helper");
+	MSAPI::Test::Test t;
 
 	{
 		const auto compareFloats{ [&t]<typename T> [[nodiscard]] (const T a, const T b, const int expected) {
@@ -435,12 +434,37 @@ bool Helper()
 			std::span<char>{ buffer, 0 }, "Base64Decode input invalid padding character (= at position -7)"));
 	}
 
-	return true;
+	{
+		const auto checkStringIp{ [&t](const std::string_view ipStr) {
+			in_addr address{};
+			RETURN_IF_FALSE(
+				t.Assert(inet_pton(AF_INET, ipStr.data(), &address), 1, std::format("inet_pton accepts {}", ipStr)));
+
+			MSAPI::SString<16> output;
+			RETURN_IF_FALSE(t.Assert(
+				Helper::GetStringIp(address, output), true, std::format("GetStringIp succeeds for {}", ipStr)));
+
+			return t.Assert(output.Get(), ipStr, std::format("GetStringIp converts {}", ipStr));
+		} };
+
+		RETURN_IF_FALSE(checkStringIp("0.0.0.0"));
+		RETURN_IF_FALSE(checkStringIp("127.0.0.1"));
+		RETURN_IF_FALSE(checkStringIp("192.168.1.1"));
+		RETURN_IF_FALSE(checkStringIp("8.8.8.8"));
+		RETURN_IF_FALSE(checkStringIp("1.1.1.1"));
+		RETURN_IF_FALSE(checkStringIp("255.255.255.255"));
+
+		in_addr invalidAddress{};
+		RETURN_IF_FALSE(t.Assert(
+			inet_pton(AF_INET, "256.256.256.256", &invalidAddress), 0, "inet_pton rejects an invalid IPv4 address"));
+	}
+
+	return t.Passed<bool>();
 };
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

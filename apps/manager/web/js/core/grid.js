@@ -26,7 +26,7 @@
  * @brief postUpdateRowFunction - function to be called after row is added or updated. It is passed row object and
  * updated values object.
  *
- * @test Has unit tests.
+ * @test Yes.
  *
  * @todo Add ability to resize columns width.
  */

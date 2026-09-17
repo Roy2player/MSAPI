@@ -1,6 +1,5 @@
 /**************************
  * @file        duration.js
- * @version     6.0
  * @date        2024-10-08
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -27,7 +26,7 @@
  * Can be cleared by empty input or 0. After click outside input, value will be normalized and validated by additional
  * document event listener.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 class Duration {
 	static DAYS_LIMIT = 106751n;

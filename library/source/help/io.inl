@@ -1,6 +1,5 @@
 /**************************
  * @file        io.inl
- * @version     6.0
  * @date        2023-09-24
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -56,47 +55,45 @@ struct FileGuard {
 	 * @param flags File access flags.
 	 * @param mode File access mode in octal format.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	template <typename T>
 		requires StringableView<T>
 	FORCE_INLINE FileGuard(T path, int32_t flags, int32_t mode) noexcept;
 
 	/**************************
-	 * @brief Default constructor.
-	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE FileGuard() noexcept = default;
 
-	const FileGuard& operator=(const FileGuard&) = delete;
 	FileGuard(const FileGuard&) = delete;
+	FileGuard& operator=(const FileGuard&) = delete;
 
 	/**************************
 	 * @brief Exchange file descriptor ownership. It is expected that moved from object will be destroyed soon.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	FORCE_INLINE const FileGuard& operator=(FileGuard&& other) noexcept;
+	FORCE_INLINE FileGuard& operator=(FileGuard&& other) noexcept;
 
 	/**************************
 	 * @brief Exchange file descriptor ownership. It is expected that moved from object will be destroyed soon.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE FileGuard(FileGuard&& other) noexcept;
 
 	/**************************
 	 * @brief Call Clear on destruction.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE ~FileGuard();
 
 	/**************************
 	 * @brief Close file descriptor if it's valid and set value to -1.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE void Clear();
 };
@@ -116,47 +113,45 @@ struct DirGuard {
 	 *
 	 * @param path Full path to directory.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	template <typename T>
 		requires StringableView<T>
 	FORCE_INLINE DirGuard(T path) noexcept;
 
 	/**************************
-	 * @brief Default constructor.
-	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE DirGuard() noexcept = default;
 
-	const DirGuard& operator=(const DirGuard&) = delete;
 	DirGuard(const DirGuard&) = delete;
+	DirGuard& operator=(const DirGuard&) = delete;
 
 	/**************************
 	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	FORCE_INLINE const DirGuard& operator=(DirGuard&& other) noexcept;
+	FORCE_INLINE DirGuard& operator=(DirGuard&& other) noexcept;
 
 	/**************************
 	 * @brief Exchange pointers ownership. It is expected that moved from object will be destroyed soon.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE DirGuard(DirGuard&& other) noexcept;
 
 	/**************************
 	 * @brief Call Clear on destruction.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE ~DirGuard();
 
 	/**************************
 	 * @brief Close directory if it's opened and set value to nullptr.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE void Clear();
 };
@@ -174,7 +169,7 @@ struct DirGuard {
  *
  * @return True if rename was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <typename T, typename S>
 	requires StringableView<T> && StringableView<S>
@@ -189,7 +184,7 @@ FORCE_INLINE [[nodiscard]] bool Rename(T currentName, S newName);
  *
  * @return True if path exists, false otherwise and error is printed.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <typename T>
 	requires StringableView<T>
@@ -202,7 +197,7 @@ FORCE_INLINE [[nodiscard]] bool HasPath(T path);
  *
  * @return Suggested flags.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 consteval int32_t SuggestFlags(const bool append);
 
@@ -222,7 +217,7 @@ consteval int32_t SuggestFlags(const bool append);
  *
  * @return True if save was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <bool Append = false, int32_t Mode = 0644, bool Multiple = false, typename T, typename S>
 	requires((std::is_pointer_v<std::remove_cvref_t<T>> || std::is_reference_v<T>)
@@ -250,7 +245,7 @@ constexpr bool single = false;
  *
  * @return True if saves were successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <bool Append = false, int32_t Mode = 0644, typename T, typename S>
 	requires(std::forward_iterator<typename T::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>))
@@ -271,7 +266,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, S pathOrFd);
  *
  * @return True if save was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <int32_t Mode = 0644, typename T, typename S>
 	requires(std::is_same_v<S, int32_t> || StringableView<S>)
@@ -286,7 +281,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, S pathOrFd, int64
  * @return Suggested maximum size of primitive string representation. For FP > 4 bytes and integer types > 8 bytes it is
  * maximum between provided PSM and 32.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <typename T, uint64_t PSM>
 	requires(std::is_integral_v<T> || std::is_floating_point_v<T>)
@@ -313,7 +308,7 @@ consteval uint64_t SuggestPsm();
  *
  * @return True if saves were successful or empty container, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint64_t PSM = 32,
 	template <typename> typename T, typename TT, typename S>
@@ -336,7 +331,7 @@ template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint6
  *
  * @return True if save was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <bool Append = false, int32_t Mode = 0644, typename T>
 	requires StringableView<T>
@@ -353,7 +348,7 @@ FORCE_INLINE [[nodiscard]] bool SaveStr(std::string_view str, T path);
  *
  * @return True if read was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <typename T, typename S>
 	requires StringableView<S>
@@ -371,7 +366,7 @@ template <typename T, typename S>
  *
  * @return True if read was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <template <typename> typename T, typename S, typename N>
 	requires StringableView<N>
@@ -387,7 +382,7 @@ template <template <typename> typename T, typename S, typename N>
  *
  * @return True if read was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <typename T>
 	requires StringableView<T>
@@ -402,7 +397,7 @@ FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, T path);
  *
  * @return True if removing was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(std::string_view path);
 
@@ -419,7 +414,7 @@ template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(std::str
  *
  * @return True if copying was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <typename T, typename S>
 	requires StringableView<T> && StringableView<S>
@@ -436,7 +431,7 @@ template <typename T, typename S>
  *
  * @return True if directory was created, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <int32_t Mode = 0755, typename T, uint64_t Buffer = 512>
 	requires StringableView<T>
@@ -461,7 +456,7 @@ enum class FileType : int16_t {
  *
  * @param type FileType enum value.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileType type);
 
@@ -481,7 +476,7 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileTyp
  *
  * @return True if read was successful, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <FileType FT, template <typename> typename T, typename S>
 	requires(StringableView<S> || std::is_same_v<S, DIR*>)
@@ -502,7 +497,7 @@ FORCE_INLINE FileGuard::FileGuard(const T path, const int32_t flags, const int32
 {
 }
 
-FORCE_INLINE const FileGuard& FileGuard::operator=(FileGuard&& other) noexcept
+FORCE_INLINE FileGuard& FileGuard::operator=(FileGuard&& other) noexcept
 {
 	std::swap(value, other.value);
 	return *this;
@@ -533,7 +528,7 @@ FORCE_INLINE DirGuard::DirGuard(const T path) noexcept
 {
 }
 
-FORCE_INLINE const DirGuard& DirGuard::operator=(DirGuard&& other) noexcept
+FORCE_INLINE DirGuard& DirGuard::operator=(DirGuard&& other) noexcept
 {
 	std::swap(value, other.value);
 	return *this;

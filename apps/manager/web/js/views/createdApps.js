@@ -19,8 +19,8 @@
  * - 4 (Delete) to delete application;
  * - 2000001 (Name) application name;
  * - 5 (Type) application type;
- * - 1000008 (Listening IP) application listening IP;
- * - 1000009 (Port) application port.
+ * - 1000007 (Listening IP) application listening IP;
+ * - 1000008 (Port) application port.
  *
  * Delete action also destroys all views related to the deleted application in terms of same port.
  */
@@ -40,8 +40,8 @@ class CreatedApps extends View {
 		this.m_portToParametersStream = new Map();
 		this.m_grid = new Grid({
 			parent : this.m_view,
-			indexColumnId : 1000009,
-			columns : [ 10, 2, 3, 4, 2000001, 5, 1000008, 1000009 ],
+			indexColumnId : 1000008,
+			columns : [ 10, 2, 3, 4, 2000001, 5, 1000007, 1000008 ],
 			indexColumn : "Port",
 			postAddRowFunction : (rowObject) => {
 				let changeStateCell = rowObject.row.querySelector(".cell[parameter-id='2']");
@@ -51,7 +51,7 @@ class CreatedApps extends View {
 							return;
 						}
 
-						const port = rowObject.values[1000009];
+						const port = rowObject.values[1000008];
 						if (port === undefined) {
 							console.error("Can't find server port in row values");
 							return;
@@ -82,7 +82,7 @@ class CreatedApps extends View {
 				let modifyCell = rowObject.row.querySelector(".cell[parameter-id='3']");
 				if (modifyCell) {
 					modifyCell.addEventListener("click", () => {
-						const port = rowObject.values[1000009];
+						const port = rowObject.values[1000008];
 						if (port === undefined) {
 							console.error("Can't find server port in row values");
 							return;
@@ -103,7 +103,7 @@ class CreatedApps extends View {
 				let deleteCell = rowObject.row.querySelector(".cell[parameter-id='4']");
 				if (deleteCell) {
 					deleteCell.addEventListener("click", () => {
-						const port = rowObject.values[1000009];
+						const port = rowObject.values[1000008];
 						if (port === undefined) {
 							console.error("Can't find server port in row values");
 							return;
@@ -176,7 +176,7 @@ class CreatedApps extends View {
 									console.error("Can't find server port in row values");
 									return;
 								}
-								const ip = rowObject.values[1000008];
+								const ip = rowObject.values[1000007];
 								if (ip === undefined) {
 									console.error("Can't find server ip in row values");
 									return;
@@ -210,7 +210,7 @@ class CreatedApps extends View {
 			if ("created" in data) {
 				data.created.forEach((app) => {
 					this.m_grid.AddOrUpdateRow({
-						1000009 : app.port,
+						1000008 : app.port,
 						5 : app.type,
 						10 : app.viewPortParameter,
 					});
@@ -218,7 +218,7 @@ class CreatedApps extends View {
 					let stream = new WebSocketStream({
 						event : Helper.StringHash32Uint("parameters"),
 						handleData : (parameters) => {
-							if (parameters["1000009"] == undefined) {
+							if (parameters["1000008"] == undefined) {
 								if (Object.keys(parameters).length != 0) {
 									console.warn(
 										"Update for app row is not empty but does not contain index row", parameters);

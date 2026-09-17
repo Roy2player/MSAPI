@@ -1,6 +1,5 @@
 /**************************
  * @file        standardData.inl
- * @version     6.0
  * @date        2025-11-20
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,11 +20,11 @@
 #define MSAPI_TEST_STANDARD_DATA_INL
 
 #include "../../../../library/source/protocol/standard.h"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -38,16 +37,16 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool StandardData();
+FORCE_INLINE [[nodiscard]] bool StandardData();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool StandardData()
+FORCE_INLINE [[nodiscard]] bool StandardData()
 {
-	LOG_INFO_UNITTEST("MSAPI Standard Data");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST Standard Data");
+	MSAPI::Test::Test t;
 
 	const auto checkEmpty{ [&t] [[nodiscard]] (const MSAPI::Protocol::Standard::Data& data) {
 		RETURN_IF_FALSE(t.Assert(data.ToString(), "Standard data:\n{\n\tCipher : 934875933\n\tBuffer size : 16\n}",
@@ -313,12 +312,12 @@ bool StandardData()
 	data.Clear();
 	RETURN_IF_FALSE(checkEmpty(data));
 
-	return true;
+	return t.Passed<bool>();
 }
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

@@ -1,6 +1,5 @@
 /**************************
  * @file        dataHeader.cpp
- * @version     6.0
  * @date        2024-04-09
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -55,4 +54,4 @@ std::string DataHeader::ToString() const
 	return result;
 }
 
-}; //* namespace MSAPI
+} // namespace MSAPI

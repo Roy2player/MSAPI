@@ -1,6 +1,5 @@
 /**************************
  * @file        dispatcher.js
- * @version     6.0
  * @date        2024-10-08
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov

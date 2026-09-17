@@ -1,6 +1,5 @@
 /**************************
- * @file        standardType.hpp
- * @version     6.0
+ * @file        standardType.inl
  * @date        2024-05-19
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -17,19 +16,23 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef MSAPI_STANDARD_TYPE_H
-#define MSAPI_STANDARD_TYPE_H
+#ifndef MSAPI_STANDARD_TYPE_INL
+#define MSAPI_STANDARD_TYPE_INL
 
 #include "log.h"
 
 namespace MSAPI {
+
+/*---------------------------------------------------------------------------------
+Declarations
+---------------------------------------------------------------------------------*/
 
 /**************************
  * @brief Standard types for MSAPI, they are can be send by standard protocol, used in parameters and added in table
  * (except TableData). Expected to be run at least on 64-bit architecture, where float and double precision float are 4
  * bytes and 8 bytes accordingly.
  *
- * @attention 80-bit FPU is not supported, due to it's highly sensitive to aligiment during accessing. It is
+ * @attention 80-bit FPU is not supported, due to its highly sensitive to alignment during accessing. It is
  * scientific-purpose type and its supporting should be strongly verified.
  */
 class StandardType {
@@ -166,6 +169,6 @@ public:
 	}
 };
 
-} //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_STANDARD_TYPE_H
+#endif // MSAPI_STANDARD_TYPE_INL

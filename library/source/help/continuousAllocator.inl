@@ -1,6 +1,5 @@
 /**************************
- * @file        continuousAllocator.h
- * @version     6.0
+ * @file        continuousAllocator.inl
  * @date        2025-05-30
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -17,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef MSAPI_CONTINUOUS_ALLOCATOR
-#define MSAPI_CONTINUOUS_ALLOCATOR
+#ifndef MSAPI_CONTINUOUS_ALLOCATOR_INL
+#define MSAPI_CONTINUOUS_ALLOCATOR_INL
 
 #include "log.h"
 #include <atomic>
@@ -28,6 +27,10 @@
 #include <vector>
 
 namespace MSAPI {
+
+/*---------------------------------------------------------------------------------
+Declarations
+---------------------------------------------------------------------------------*/
 
 //! This is first-touch implementation and has to be polished
 //! Tests for allocators are required for using in production
@@ -61,9 +64,9 @@ public:
 
 		~FreeNodes() { }
 
-		FreeNodes(const FreeNodes& other) = delete;
-		FreeNodes(FreeNodes&& other) = delete;
-		FreeNodes& operator=(const FreeNodes& other) = delete;
+		FreeNodes(const FreeNodes&) = delete;
+		FreeNodes(FreeNodes&&) = delete;
+		FreeNodes& operator=(const FreeNodes&) = delete;
 		FreeNodes& operator=(FreeNodes&&) = delete;
 
 		FORCE_INLINE void UpdateBegin(void* bufferBegin) { begin = &static_cast<int8_t*>(bufferBegin)[offset]; }
@@ -275,6 +278,6 @@ template <typename T, typename U> bool operator!=(const ContinuousAllocator<T>&,
 	return false;
 }
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_CONTINUOUS_ALLOCATOR
+#endif // MSAPI_CONTINUOUS_ALLOCATOR_INL

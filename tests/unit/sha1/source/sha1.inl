@@ -1,6 +1,5 @@
 /**************************
  * @file        sha1.inl
- * @version     6.0
  * @date        2026-02-08
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,11 +20,11 @@
 #define MSAPI_UNIT_TEST_SHA1_INL
 
 #include "../../../../library/source/help/sha1.inl"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -38,16 +37,16 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool Sha1();
+FORCE_INLINE [[nodiscard]] bool Sha1();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool Sha1()
+FORCE_INLINE [[nodiscard]] bool Sha1()
 {
-	LOG_INFO_UNITTEST("MSAPI Sha1");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST Sha1");
+	MSAPI::Test::Test t;
 
 	static_assert(Sha1::reset, "Sha1::reset should be true");
 	static_assert(!Sha1::doNotReset, "Sha1::doNotReset should be false");
@@ -208,12 +207,12 @@ bool Sha1()
 			shaSingle.Final<MSAPI::Sha1::doNotReset>(), "Boundary length chunked vs single should match"));
 	}
 
-	return true;
+	return t.Passed<bool>();
 }
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

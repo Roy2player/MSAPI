@@ -1,6 +1,5 @@
 /**************************
  * @file        manager.h
- * @version     6.0
  * @date        2024-02-19
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -23,11 +22,11 @@
 #include "../../../library/source/help/json.h"
 #include "../../../library/source/help/lock.inl"
 #include "../../../library/source/protocol/http.h"
-#include "../../../library/source/protocol/object.h"
+#include "../../../library/source/protocol/object.inl"
 #include "../../../library/source/protocol/webSocket.inl"
 #include "../../../library/source/protocol/webSocketEvents.inl"
 #include "../../../library/source/server/authorization.inl"
-#include "../../../library/source/server/server.h"
+#include "../../../library/source/server/server.inl"
 
 /**************************
  * @brief Manager app provides functionality to create, modify, delete, run, pause and monitor any another app based on
@@ -83,7 +82,7 @@ private:
 		/**************************
 		 * @return Unique port.
 		 *
-		 * @todo Add unit test.
+		 * @todo Add tests coverage.
 		 */
 		FORCE_INLINE [[nodiscard]] uint16_t Get()
 		{
@@ -108,7 +107,7 @@ private:
 		 *
 		 * @param port Port to be erased.
 		 *
-		 * @todo Add unit test.
+		 * @todo Add tests coverage.
 		 */
 		FORCE_INLINE void Erase(const uint16_t port) noexcept
 		{
@@ -119,7 +118,7 @@ private:
 		/**************************
 		 * @brief Clear range of used ports.
 		 *
-		 * @todo Add unit test.
+		 * @todo Add tests coverage.
 		 */
 		FORCE_INLINE void Clear() noexcept
 		{
@@ -171,7 +170,7 @@ private:
 		const int pid;
 		const MSAPI::Timer created;
 		const std::shared_ptr<InstalledAppData> appData;
-		int connection{ 0 };
+		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 
 		/**************************
 		 * @brief Construct a new Created App Data object.
@@ -180,7 +179,7 @@ private:
 		 * @param pid Process id.
 		 * @param appData Pointer to installed app data.
 		 */
-		CreatedAppData(size_t hash, int pid, std::shared_ptr<InstalledAppData> appData);
+		CreatedAppData(size_t hash, int pid, const std::shared_ptr<InstalledAppData>& appData);
 	};
 
 private:
@@ -206,21 +205,25 @@ public:
 	 */
 	Manager();
 
-	//* MSAPI::Server
+	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
-	//* MSAPI::Application
+	// MSAPI::Application
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;
 	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
-	void HandleParameters(int connection, const std::map<size_t, std::variant<standardTypes>>& parameters) final;
-	void HandleHello(int connection) final;
-	void HandleMetadata(int connection, std::string_view metadata) final;
-	void HandleOutcomeDisconnect(int id, int32_t connection) final;
-	void HandleIncomeDisconnect(int id, int32_t connection) final;
-	//* MSAPI::Protocol::HTTP::IHandler
-	void HandleHttp(int connection, const MSAPI::Protocol::HTTP::Data& data) final;
-	//* MSAPI::Protocol::WebSocket::IHandler
-	void HandleWebSocket(int connection, MSAPI::Protocol::WebSocket::Data&& data) final;
+	void HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
+		const std::map<size_t, std::variant<standardTypes>>& parameters) final;
+	void HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
+	void HandleMetadata(
+		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, std::string_view metadata) final;
+	void HandleOutcomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
+	void HandleIncomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
+	// MSAPI::Protocol::HTTP::IHandler
+	void HandleHttp(
+		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const MSAPI::Protocol::HTTP::Data& data) final;
+	// MSAPI::Protocol::WebSocket::IHandler
+	void HandleWebSocket(
+		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, MSAPI::Protocol::WebSocket::Data&& data) final;
 
 	/**************************
 	 * @brief Read the execution status of vforked apps to prevent zombie processes and answer related requests in
@@ -235,7 +238,7 @@ private:
 		auto backIt{ std::back_inserter(out) };
 		std::format_to(backIt, "[");
 		{
-			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
 			if (!m_hashToInstalledAppData.empty()) {
 				auto it{ m_hashToInstalledAppData.begin() };
 				const auto end{ m_hashToInstalledAppData.end() };
@@ -269,7 +272,7 @@ private:
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
-		MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
+		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
 		const auto it{ m_hashToInstalledAppData.find(*appType) };
 		if (it == m_hashToInstalledAppData.end()) {
 			out = std::format("Metadata request contains unknown appType: {}", *appType);
@@ -332,7 +335,8 @@ private:
 		}
 
 		std::string error;
-		if (!m_authorizationModule.LogonConnection(single.GetConnection(), *login, *password, error)) {
+		if (!m_authorizationModule.LogonConnection(
+				single.GetConnectionData()->GetConnectionId(), *login, *password, error)) {
 			out = error;
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
@@ -344,7 +348,7 @@ private:
 	FORCE_INLINE MSAPI::Protocol::WebSocket::Events::HandleResult Logout(
 		std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single)
 	{
-		m_authorizationModule.LogoutConnection(single.GetConnection());
+		m_authorizationModule.LogoutConnection(single.GetConnectionData()->GetConnectionId());
 		out += "\"\"";
 		return MSAPI::Protocol::WebSocket::Events::HandleResult::Success;
 	}
@@ -455,22 +459,23 @@ private:
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
-		int32_t connection;
+		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 		{
-			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
 				return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 			}
-			connection = it->second->connection;
+			connectionData = it->second->connectionData;
 		}
 
-		if (connection == 0) {
+		if (connectionData == nullptr) [[unlikely]] {
 			out = std::format("App on port {} is not connected yet", *port);
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
+		auto& connection{ connectionData->GetConnection() };
 		MSAPI::Protocol::Standard::SendActionPause(connection);
 		MSAPI::Protocol::Standard::SendParametersRequest(connection);
 		out += "\"\"";
@@ -486,22 +491,23 @@ private:
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
-		int32_t connection;
+		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 		{
-			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
 				return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 			}
-			connection = it->second->connection;
+			connectionData = it->second->connectionData;
 		}
 
-		if (connection == 0) {
+		if (connectionData == nullptr) [[unlikely]] {
 			out = std::format("App on port {} is not connected yet", *port);
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
+		auto& connection{ connectionData->GetConnection() };
 		MSAPI::Protocol::Standard::SendActionRun(connection);
 		MSAPI::Protocol::Standard::SendParametersRequest(connection);
 		out += "\"\"";
@@ -517,22 +523,23 @@ private:
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
-		int32_t connection;
+		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 		{
-			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
 				return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 			}
-			connection = it->second->connection;
+			connectionData = it->second->connectionData;
 		}
 
-		if (connection == 0) {
+		if (connectionData == nullptr) [[unlikely]] {
 			out = std::format("App on port {} is not connected yet", *port);
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
+		auto& connection{ connectionData->GetConnection() };
 		MSAPI::Protocol::Standard::SendActionDelete(connection);
 		out += "\"\"";
 		return MSAPI::Protocol::WebSocket::Events::HandleResult::Success;
@@ -557,7 +564,7 @@ private:
 
 		std::shared_ptr<CreatedAppData> createdAppData;
 		{
-			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
@@ -567,7 +574,7 @@ private:
 			createdAppData = it->second;
 		}
 
-		if (createdAppData->connection == 0) {
+		if (createdAppData->connectionData == nullptr) [[unlikely]] {
 			out = std::format("App on port {} is not connected yet", *port);
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
@@ -685,7 +692,7 @@ private:
 
 					std::shared_ptr<std::vector<MSAPI::StandardType::Type>> columns;
 					{
-						MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_tableIdToColumnsLock };
+						const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_tableIdToColumnsLock };
 						const auto it{ m_tableIdToColumns.find(key) };
 						if (it == m_tableIdToColumns.end()) [[unlikely]] {
 							LOG_ERROR_NEW("Columns for table with id: {} are not found, app with port: {}", key, *port);
@@ -808,8 +815,9 @@ private:
 #undef TMP_MANAGER_TRY_SET_DATA_PARAMETER
 
 		if (parametersUpdate.GetBufferSize() > sizeof(size_t) * 2) {
-			MSAPI::Protocol::Standard::Send(createdAppData->connection, parametersUpdate);
-			MSAPI::Protocol::Standard::SendParametersRequest(createdAppData->connection);
+			auto& connection{ createdAppData->connectionData->GetConnection() };
+			MSAPI::Protocol::Standard::Send(connection, parametersUpdate);
+			MSAPI::Protocol::Standard::SendParametersRequest(connection);
 		}
 
 		out += "\"\"";
@@ -822,7 +830,7 @@ private:
 		auto backIt{ std::back_inserter(out) };
 		std::format_to(backIt, "{{\"created\":[");
 		{
-			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			if (!m_portToCreatedApp.empty()) {
 				auto it{ m_portToCreatedApp.begin() };
 				const auto end{ m_portToCreatedApp.end() };
@@ -850,24 +858,24 @@ private:
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
-		int32_t connection;
+		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 		{
-			MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
 			const auto createdAppDataIt{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (createdAppDataIt == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} does not exist", *port);
 				return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 			}
 
-			connection = createdAppDataIt->second->connection;
+			connectionData = createdAppDataIt->second->connectionData;
 		}
 
-		if (connection == 0) {
+		if (connectionData == nullptr) [[unlikely]] {
 			out += "{}";
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Success;
 		}
 
-		MSAPI::Protocol::Standard::SendParametersRequest(connection);
+		MSAPI::Protocol::Standard::SendParametersRequest(connectionData->GetConnection());
 		out += "{}";
 		return MSAPI::Protocol::WebSocket::Events::HandleResult::Success;
 	}
@@ -893,4 +901,4 @@ private:
 	[[nodiscard]] uint16_t CreateApp(uint64_t hash, const MSAPI::Json& parameters, std::string& error);
 };
 
-#endif //* MSAPI_APP_MANAGER_H
+#endif // MSAPI_APP_MANAGER_H

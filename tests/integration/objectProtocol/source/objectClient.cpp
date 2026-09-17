@@ -1,6 +1,5 @@
 /**************************
  * @file        objectClient.cpp
- * @version     6.0
  * @date        2023-12-16
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -20,7 +19,7 @@
 #include "objectClient.h"
 
 ObjectClient::ObjectClient()
-	: MSAPI::Protocol::Object::ApplicationStateChecker(this)
+	: MSAPI::Protocol::Object::IHandlerBase{ *static_cast<const Application*>(this) }
 {
 	MSAPI::Application::SetState(MSAPI::Application::State::Running);
 }
@@ -29,35 +28,12 @@ void ObjectClient::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 {
 	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 
-	if (header.GetCipher() == 2666999999) {
-		if (!recvBuffer.RecvAdditional(header.GetBufferSize())) {
-			return;
-		}
-
-		MSAPI::Protocol::Object::Data data{ std::move(header), recvBuffer.GetBuffer() };
-
-		const void* object;
-		MSAPI::Protocol::Object::Data::UnpackData(&object, recvBuffer.GetData());
-
-		if (data.GetHash() == typeid(MSAPI::Protocol::Object::StreamStateResponse).hash_code()) {
-			CollectStreamState(
-				data.GetStreamId(), reinterpret_cast<const MSAPI::Protocol::Object::StreamStateResponse*>(object));
-			return;
-		}
-
-		if (data.GetHash() == typeid(InstrumentStructure).hash_code()) {
-			IHandler<InstrumentStructure>::Collect(data, object);
-			return;
-		}
-		if (data.GetHash() == typeid(OrderStructure).hash_code()) {
-			IHandler<OrderStructure>::Collect(data, object);
-			return;
-		}
-
-		LOG_ERROR("Unknown object protocol data: " + data.ToString());
+	if (MSAPI::Protocol::Object::IHandlerBase::Collect(header, recvBuffer)) {
+		return;
 	}
 
-	LOG_ERROR("Unknown protocol: " + header.ToString());
+	m_unhandledActions.IncrementActionsNumber();
+	LOG_ERROR_NEW("Unknown protocol: {}", header.ToString());
 }
 
 void ObjectClient::Clear()
@@ -88,46 +64,40 @@ MSAPI::Protocol::Object::Stream<OrderStructure, FilterStructure>& ObjectClient::
 	return m_orderStream;
 }
 
-void ObjectClient::HandleObject([[maybe_unused]] const int streamId, const InstrumentStructure& object)
+void ObjectClient::HandleObject([[maybe_unused]] const uint64_t streamId, const InstrumentStructure& object) noexcept
 {
 	LOG_DEBUG("Got Instrument object");
 	m_instruments.emplace(object);
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::HandleObject([[maybe_unused]] const int streamId, const OrderStructure& object)
+void ObjectClient::HandleObject([[maybe_unused]] const uint64_t streamId, const OrderStructure& object) noexcept
 {
 	LOG_DEBUG("Got Order object");
 	m_orders.emplace(object);
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::HandleStreamOpened(const int streamId)
+void ObjectClient::HandleStreamOpened(const uint64_t streamId) noexcept
 {
 	LOG_DEBUG("Stream open, id: " + _S(streamId));
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::HandleStreamSnapshotDone(const int streamId)
+void ObjectClient::HandleStreamSnapshotDone(const uint64_t streamId) noexcept
 {
 	LOG_DEBUG("Stream done, id: " + _S(streamId));
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::HandleStreamFailed(const int streamId)
+void ObjectClient::HandleStreamFailed(const uint64_t streamId, const MSAPI::Protocol::Object::Issue issue) noexcept
 {
-	LOG_DEBUG("Stream failed, id: " + _S(streamId));
+	LOG_DEBUG("Stream failed, id: " + _S(streamId) + ", reason: " + MSAPI::Protocol::Object::EnumToString(issue));
+	m_lastFailedIssue = issue;
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void ObjectClient::SetConnectionForStreams(const int id)
+bool ObjectClient::SetConnectionForStreams(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 {
-	const auto connection{ GetConnect(id) };
-	if (!connection.has_value()) {
-		LOG_ERROR("Din't find connection for id: " + _S(id));
-		return;
-	}
-	const auto connectionValue{ connection.value() };
-	m_instrumentStream.SetConnection(connectionValue);
-	m_orderStream.SetConnection(connectionValue);
+	return m_instrumentStream.SetConnectionData(connectionData) && m_orderStream.SetConnectionData(connectionData);
 }

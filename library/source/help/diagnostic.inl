@@ -1,6 +1,5 @@
 /**************************
  * @file        diagnostic.inl
- * @version     6.0
  * @date        2023-12-05
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov

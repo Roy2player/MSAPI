@@ -1,6 +1,5 @@
 /**************************
  * @file        table.h
- * @version     6.0
  * @date        2024-05-10
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,7 +20,7 @@
 #define MSAPI_TABLE_H
 
 #include "autoClearPtr.inl"
-#include "standardType.hpp"
+#include "standardType.inl"
 #include <list>
 #include <memory>
 #include <numeric>
@@ -62,17 +61,11 @@ public:
 		 */
 		Column(size_t id, StandardType::Type type);
 
-		/**************************
-		 * @brief Default comparison operator.
-		 */
-		friend bool operator==(const Column& first, const Column& second) = default;
+		FORCE_INLINE friend bool operator==(const Column&, const Column&) = default;
 	};
 
 public:
-	/**************************
-	 * @brief Default destructor.
-	 */
-	virtual ~TableBase() = default;
+	FORCE_INLINE virtual ~TableBase() = default;
 
 	/**************************
 	 * @brief Merge additional rows from the buffer into the table. Structure of the buffer should be: [(size_t) buffer
@@ -85,7 +78,7 @@ public:
 	 * @param buffer Buffer with additional rows.
 	 * @param bufferSize Size of buffer.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual void Copy(const TableData& TableData);
 
@@ -107,7 +100,7 @@ public:
 	 * 		}
 	 * }
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual std::string ToString() const;
 
@@ -117,28 +110,28 @@ public:
 	 * ,{"id":222222,"type":"Bool"},{"id":333333,"type":"Double"}],"Rows":[[null,false,
 	 * 20.3456789100000002],[1878,true,-19.2345678900000010],[1757,true,18.1234567800000015]]}
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual std::string ToJson() const;
 
 	/**************************
 	 * @return True if number of rows is zero, otherwise false.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual bool Empty() const noexcept;
 
 	/**************************
 	 * @return Readable pointer to list of columns in the table, nullptr if called pure method.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual const std::list<Column>* GetColumns() const noexcept;
 
 	/**************************
 	 * @return Size of buffer in bytes.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual size_t GetBufferSize() const noexcept;
 
@@ -151,7 +144,7 @@ public:
 	 *
 	 * @return Pointer to buffer with encoded table or nullptr if cannot allocate memory or pure method is called.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	virtual void* Encode() const;
 };
@@ -178,7 +171,7 @@ public:
 	 *
 	 * @param table Table with data.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	TableData(const TableBase& table) noexcept;
 
@@ -191,16 +184,14 @@ public:
 	 *
 	 * @param buffer Buffer with table data.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	TableData(const void* buffer);
 
 	/**************************
-	 * @brief Construct a new Table Data object without useful data.
-	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
-	TableData() = default;
+	FORCE_INLINE TableData() = default;
 
 	/**************************
 	 * @brief Construct a new Table Data object from ranges of JsonNodes and column types, fill buffer with table data.
@@ -210,28 +201,28 @@ public:
 	 * @param rows JsonNodes with rows, where each row is an array of values for each column.
 	 * @param columnTypes Types of columns.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	TableData(const std::list<JsonNode>& rows, const std::vector<StandardType::Type>& columnTypes);
 
 	/**************************
 	 * @return Readable pointer to buffer with table data, nullptr if buffer is empty.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	const void* GetBuffer() const noexcept;
 
 	/**************************
 	 * @return Size of buffer with table data.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	size_t GetBufferSize() const noexcept;
 
 	/**************************
 	 * @example Encoded table with 34 bytes size
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	std::string ToString() const;
 
@@ -245,14 +236,14 @@ public:
 	 * @example {"Buffer
 	 * size":59,"Rows":[[null,false, 20.3456789100000002],[1878,true,-19.2345678900000010],[1757,true,18.1234567800000015]]}
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	std::string LookUpToJson(const std::vector<StandardType::Type>& columnTypes) const;
 
 	/**************************
 	 * @return True if memory buffers are equal, false otherwise. Type of buffer is not matter, only size and data.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	friend FORCE_INLINE bool operator==(const TableData& first, const TableData& second)
 	{
@@ -322,7 +313,7 @@ private:
 	 *
 	 * @param ids IDs of table's columns.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	template <typename... Fs> void AddColumns(std::vector<size_t>&& ids)
 	{
@@ -413,7 +404,7 @@ public:
 	/**************************
 	 * @brief Construct a new Table object, connect types of columns and their range generated IDs.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	Table()
 	{
@@ -428,7 +419,7 @@ public:
 	 *
 	 * @param ids IDs of table's columns.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	Table(const std::initializer_list<size_t> ids)
 	{
@@ -456,7 +447,7 @@ public:
 	 *
 	 * @param ids IDs of table's columns.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	Table(std::vector<size_t>&& ids)
 	{
@@ -487,7 +478,7 @@ public:
 	 *
 	 * @param cells Cells for row.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	template <typename... Fs>
 		requires(sizeof...(Fs) == sizeof...(Ts)
@@ -560,7 +551,7 @@ public:
 	 * @param row Row index, starts from 0.
 	 * @param update Update for cell.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	template <typename T>
 		requires is_included_in<T, Ts...>
@@ -628,7 +619,7 @@ public:
 	 * @param buffer Buffer with additional rows.
 	 * @param bufferSize Size of buffer.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void Copy(const TableData& tableData) override
 	{
@@ -822,7 +813,7 @@ public:
 	 * 		}
 	 * }
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	std::string ToString() const override
 	{
@@ -901,7 +892,7 @@ public:
 	 * ,{"id":222222,"type":"Bool"},{"id":333333,"type":"Double"}],"Rows":[[null,false,
 	 * 20.3456789100000002],[1878,true,-19.2345678900000010],[1757,true,18.1234567800000015]]}
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	std::string ToJson() const override
 	{
@@ -989,28 +980,28 @@ public:
 	/**************************
 	 * @return True if number of rows is zero, otherwise false.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	bool Empty() const noexcept final { return m_rows == 0; }
 
 	/**************************
 	 * @return Number of rows in the table.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	size_t GetRowsSize() const noexcept { return m_rows; }
 
 	/**************************
 	 * @return Number of columns in the table.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	size_t GetColumnsSize() const noexcept { return m_columns.size(); }
 
 	/**************************
 	 * @return Readable pointer to list of columns in the table, nullptr if called pure method.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	const std::list<Column>* GetColumns() const noexcept final { return &m_columns; }
 
@@ -1022,7 +1013,7 @@ public:
 	 *
 	 * @return Readable pointer on the cell in the table or nullptr if cell does not exist.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	const void* GetCell(const size_t column, const size_t row) const
 	{
@@ -1043,7 +1034,7 @@ public:
 	/**************************
 	 * @brief Clear all rows and buffer size.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void Clear()
 	{
@@ -1057,7 +1048,7 @@ public:
 	/**************************
 	 * @return Size of buffer in bytes.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	size_t GetBufferSize() const noexcept final { return m_bufferSize; }
 
@@ -1070,7 +1061,7 @@ public:
 	 *
 	 * @return Pointer to buffer with encoded table or nullptr if cannot allocate memory or pure method is called.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void* Encode() const final
 	{
@@ -1171,7 +1162,7 @@ public:
 	 *
 	 * @param names Column names.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	template <typename... Fs>
 		requires(sizeof...(Fs) == sizeof...(Ts) && (std::is_same_v<std::decay_t<Fs>, const char*> && ...))
@@ -1190,7 +1181,7 @@ public:
 	 *
 	 * @param printFunc Enum to string function.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	template <Enum T> void AddMetadataForEnum(std::string_view (*printFunc)(T))
 	{
@@ -1204,7 +1195,7 @@ public:
 	 * @param columnIndex Index of a column since 0.
 	 * @param metadata String with custom metadata in format "key":"value",....
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	void SetColumnMetadata(uint64_t columnIndex, const std::string metadata)
 	{
@@ -1230,7 +1221,7 @@ public:
 	/**************************
 	 * @brief Compare by buffer size, number of rows, number of columns and data.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	friend bool operator==(const Table& first, const Table& second) noexcept
 	{

@@ -1,6 +1,5 @@
 /**************************
  * @file        account.js
- * @version     6.0
  * @date        2026-04-11
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov

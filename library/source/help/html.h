@@ -1,6 +1,5 @@
 /**************************
  * @file        html.h
- * @version     6.0
  * @date        2023-12-05
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -78,7 +77,7 @@ public:
 	/**************************
 	 * @brief Object to describe a HTML tag.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	struct Tag {
 	private:
@@ -165,14 +164,14 @@ public:
 	 *
 	 * @param buffer HTML data.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	HTML(std::string_view buffer);
 
 	/**************************
 	 * @return Tag by index, if index is out of range or 0, return last tag.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 *
 	 * @todo Way if tags size == 0.
 	 */
@@ -181,21 +180,21 @@ public:
 	/**************************
 	 * @return Maximal depth of tags.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	uint MaxDepth() const noexcept;
 
 	/**************************
 	 * @return HTML buffer size in bytes.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	size_t BodySize() const noexcept;
 
 	/**************************
 	 * @return Size of tags.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	size_t TagsSize() const noexcept;
 

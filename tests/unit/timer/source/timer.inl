@@ -1,6 +1,5 @@
 /**************************
  * @file        timer.inl
- * @version     6.0
  * @date        2025-11-20
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,12 +20,12 @@
 #define MSAPI_UNIT_TEST_TIMER_INL
 
 #include "../../../../library/source/help/time.h"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 #include <thread>
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -39,16 +38,16 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool Timer();
+FORCE_INLINE [[nodiscard]] bool Timer();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool Timer()
+FORCE_INLINE [[nodiscard]] bool Timer()
 {
-	LOG_INFO_UNITTEST("MSAPI Timer");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST Timer");
+	MSAPI::Test::Test t;
 
 	RETURN_IF_FALSE(t.Assert(MSAPI::Timer::HowMuchDaysInMonth(1, 2022 % 4 == 0), 31, "Days in month 1, 2022"));
 	RETURN_IF_FALSE(t.Assert(MSAPI::Timer::HowMuchDaysInMonth(2, 2022 % 4 == 0), 28, "Days in month 2, 2022"));
@@ -699,12 +698,12 @@ bool Timer()
 		RETURN_IF_FALSE(t.Assert(!eventFour.IsRunning(), true, "(2) event four is stopped"));
 	}
 
-	return true;
+	return t.Passed<bool>();
 }
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

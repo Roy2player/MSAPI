@@ -1,6 +1,5 @@
 /**************************
  * @file        http.h
- * @version     6.0
  * @date        2023-09-02
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -16,8 +15,8 @@
  *
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
- * @brief Protocol for reserving and sending HTTP messages.
- * @brief Request can recognize and prepare response message with correct content type for next formats: js, dat, ogg,
+ * @brief HTTP message parsing and producing.
+ * @brief Request can recognized and response be prepared for messages with correct content type formats: js, dat, ogg,
  * pdf, xhtml, json, ldjson, xml, zip, mp3, wma, wav, gif, jpeg, jpg, png, tiff, ico, djvu, svg, bmp, webp, css, csv,
  * html, txt, mpeg, mp4, mov, wmv, avi, webm.
  * @brief Response can be 200 OK or 404 Not Found only.
@@ -73,6 +72,8 @@ public:
 	 * @attention If request does not contain format, it will be set as html.
 	 *
 	 * @param recvBuffer Recv buffer object.
+	 *
+	 * @test Yes.
 	 */
 	Data(MSAPI::RecvBuffer& recvBuffer);
 
@@ -83,98 +84,137 @@ public:
 
 	/**************************
 	 * @return Size of headers map.
+	 *
+	 * @test Yes.
 	 */
 	size_t GetSizeHeadersMap() const noexcept;
 
 	/**************************
 	 * @return Readable pointer to value from headers map by key, nullptr if does not exist.
+	 *
+	 * @test Yes.
 	 */
 	const std::string* GetValue(const std::string& key) const;
 
 	/**************************
 	 * @return Version of HTTP message.
+	 *
+	 * @test Yes.
 	 */
 	const std::string& GetVersion() const noexcept;
 
 	/**************************
 	 * @return Type of HTTP message, GET/POST/PUT/DELETE/HEAD/CONNECT/OPTIONS/TRACE/PATCH.
+	 *
+	 * @test Yes.
 	 */
 	const std::string& GetTypeMessage() const noexcept;
 
 	/**************************
 	 * @return Type of HTTP message, HTTP or HTTPS.
+	 *
+	 * @test Yes.
 	 */
 	const std::string& GetHTTPType() const noexcept;
 
 	/**************************
 	 * @return Code of HTTP message.
+	 *
+	 * @test Yes.
 	 */
 	const std::string& GetCode() const noexcept;
 
 	/**************************
 	 * @return Code text of HTTP message.
+	 *
+	 * @test Yes.
 	 */
 	const std::string& GetCodeText() const noexcept;
 
 	/**************************
 	 * @return Whole size of HTTP message, including headers and body.
+	 *
+	 * @test Yes.
 	 */
 	size_t GetMessageSize() const noexcept;
 
 	/**************************
 	 * @return Request url of HTTP message.
+	 *
+	 * @test Yes.
 	 */
 	const std::string& GetUrl() const noexcept;
 
 	/**************************
 	 * @return Format of HTTP request, html as default.
+	 *
+	 * @test Yes.
 	 */
 	const std::string& GetFormat() const noexcept;
 
 	/**************************
 	 * @return Body of HTTP message.
+	 *
+	 * @test Yes.
 	 */
 	const std::string& GetBody() const noexcept;
 
 	/**************************
 	 * @return True if HTTP message is request.
+	 *
+	 * @test Yes.
 	 */
 	bool IsRequest() const noexcept;
 
 	/**************************
 	 * @return True if HTTP message is valid.
+	 *
+	 * @test Yes.
 	 */
 	bool IsValid() const noexcept;
 
 	/**************************
 	 * @brief Distributor function for sending HTTP 200 OK response message. Providing content type manually is faster.
 	 *
-	 * @param connection Socket connection to which send HTTP message.
+	 * @param connection Connection to which send HTTP message.
 	 * @param body Body of HTTP message.
 	 * @param contentType Content type of HTTP message, if empty, will be used format of data.
 	 *
 	 * @return True if HTTP message was sent successfully, false otherwise.
+	 *
+	 * @test Yes.
 	 */
-	bool SendResponse(int connection, const std::string& body, const std::string& contentType = "") const;
+	[[nodiscard]] bool SendResponse(
+		Connection& connection, const std::string& body, const std::string& contentType = "") const;
 
 	/**************************
 	 * @brief Distributor function for sending source file by path in HTTP message. Providing content type manually is
 	 * faster.
 	 *
-	 * @param connection Socket connection to which send HTTP message.
+	 * @param connection Connection to which send HTTP message.
 	 * @param path Full path to source file.
 	 * @param contentType Content type of HTTP message, if empty, will be used format of data.
+	 *
+	 * @return True if HTTP message was sent successfully, false otherwise.
+	 *
+	 * @test Yes.
 	 */
-	void SendSource(int connection, const std::string& path, const std::string& contentType = "") const;
+	[[nodiscard]] bool SendSource(
+		Connection& connection, const std::string& path, const std::string& contentType = "") const;
 
 	/**************************
 	 * @brief Distributor function for sending HTTP 404 response message.
 	 *
-	 * @param connection Socket connection to which send HTTP message.
+	 * @param connection Connection to which send HTTP message.
 	 * @param body Body of HTTP message, empty as default.
 	 * @param contentType Content type of HTTP message, if empty, will be used text/html. Used only if not empty body.
+	 *
+	 * @return True if HTTP message was sent successfully, false otherwise.
+	 *
+	 * @test Yes.
 	 */
-	void Send404(int connection, const std::string& body = "", const std::string& contentType = "") const;
+	[[nodiscard]] bool Send404(
+		Connection& connection, const std::string& body = "", const std::string& contentType = "") const;
 
 	/**************************
 	 * @return True if HTTP message is WebSocket upgrade request, false otherwise.
@@ -193,9 +233,9 @@ public:
 	 *
 	 * @return True if response sended successfully, false otherwise.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
-	[[nodiscard]] bool SendWebSocketUpgradeResponse(int connection) const;
+	[[nodiscard]] bool SendWebSocketUpgradeResponse(Connection& connection) const;
 
 	/**************************
 	 * @example HTTP message:
@@ -227,6 +267,8 @@ public:
 	 *      figi            : 1937652074990171732
 	 * }
 	 * }
+	 *
+	 * @test Yes.
 	 */
 	std::string ToString() const;
 
@@ -261,40 +303,45 @@ public:
 	 * @brief Construct a new IHandler object, empty constructor.
 	 *
 	 * @param application Readable pointer to application object.
+	 *
+	 * @test Yes.
 	 */
 	IHandler(const MSAPI::Application* application);
 
-	/**************************
-	 * @brief Default destructor.
-	 */
-	virtual ~IHandler() = default;
+	FORCE_INLINE virtual ~IHandler() = default;
 
 	/**************************
 	 * @brief Collect HTTP message from socket connection and call Handler function if Application is running.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data from which reserved message.
 	 * @param data Reserved HTTP message.
 	 *
 	 * @todo Data can be transferred by rvalue reference.
+	 *
+	 * @test Yes.
 	 */
-	void Collect(int connection, const Data& data);
+	void Collect(const std::shared_ptr<Connection::Data>& connectionData, const Data& data);
 
 	/**************************
 	 * @brief Handler function for HTTP message.
 	 *
-	 * @param connection Socket connection from which reserved message.
+	 * @param connectionData Connection data from which reserved message.
 	 * @param data Reserved HTTP message.
 	 */
-	virtual void HandleHttp(int connection, const Data& data) = 0;
+	virtual void HandleHttp(const std::shared_ptr<Connection::Data>& connectionData, const Data& data) = 0;
 };
 
 /**************************
  * @brief Send HTTP message to socket connection. End of request \r\n\r\n will be added inside. Cannot include body.
  *
- * @param connection Socket connection to which send HTTP message.
- * @param HTTP HTTP message.
+ * @param connection Connection to which send HTTP message.
+ * @param http HTTP message.
+ *
+ * @return True if HTTP message was sent successfully, false otherwise.
+ *
+ * @test Yes.
  */
-void SendRequest(int connection, const std::string& HTTP);
+[[nodiscard]] bool SendRequest(Connection& connection, const std::string& http);
 
 } // namespace HTTP
 
@@ -310,7 +357,7 @@ void SendRequest(int connection, const std::string& HTTP);
 #define MSAPI_HANDLER_WEBSOCKET_PRESET                                                                                 \
 	if (recvBuffer.GetDataType() == typeid(MSAPI::Protocol::WebSocket::Data).hash_code()) {                            \
 		MSAPI::Protocol::WebSocket::IHandler::Collect(                                                                 \
-			recvBuffer.GetConnection(), MSAPI::Protocol::WebSocket::Data{ recvBuffer });                               \
+			recvBuffer.GetConnectionData(), MSAPI::Protocol::WebSocket::Data{ recvBuffer });                           \
 		return;                                                                                                        \
 	}
 
@@ -319,7 +366,7 @@ void SendRequest(int connection, const std::string& HTTP);
 		if (http.IsWebSocketUpgradeRequest()) {                                                                        \
 			if (MSAPI::Application::IsRunning()) {                                                                     \
 				LOG_PROTOCOL(http.ToString());                                                                         \
-				if (!http.SendWebSocketUpgradeResponse(recvBuffer.GetConnection())) {                                  \
+				if (!http.SendWebSocketUpgradeResponse(recvBuffer.GetConnectionData()->GetConnection())) {             \
 					return;                                                                                            \
 				}                                                                                                      \
 				recvBuffer.SetToProcessSize(2);                                                                        \
@@ -342,7 +389,7 @@ void SendRequest(int connection, const std::string& HTTP);
 		}                                                                                                              \
 	}                                                                                                                  \
                                                                                                                        \
-	MSAPI::Protocol::HTTP::IHandler::Collect(recvBuffer.GetConnection(), http);                                        \
+	MSAPI::Protocol::HTTP::IHandler::Collect(recvBuffer.GetConnectionData(), http);                                    \
 	return;
 
 #endif // MSAPI_PROTOCOL_HTTP_H

@@ -1,7 +1,6 @@
 /**************************
  * @file        main.cpp
- * @version     6.0
- * @date        2025-10-23
+ * @date        2026-09-12
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
  *
@@ -18,31 +17,22 @@
  */
 
 #include "../../../../library/source/help/io.inl"
-#include "../../../../library/source/server/server.h"
-#include "../../../../library/source/test/test.h"
-#include <memory>
-#include <sys/mman.h>
-#include <sys/resource.h>
-
-struct ServerImpl : MSAPI::Server {
-	void HandleBuffer([[maybe_unused]] MSAPI::RecvBuffer& recvBuffer) override { }
-};
+#include "basicSString.inl"
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	MSAPI_MLOCKALL_CURRENT_FUTURE
-
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
 	if (path.empty()) [[unlikely]] {
+		std::cerr << "Cannot get executable path" << std::endl;
 		return 1;
 	}
 	path += "../";
 	MSAPI::logger.SetParentPath(path);
 	path += "logs/";
 
-	//* Clear old files
+	// Clear old files
 	std::vector<std::string> files;
 	if (MSAPI::IO::List<MSAPI::IO::FileType::Regular>(files, path.c_str())) {
 		for (const auto& file : files) {
@@ -51,21 +41,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	}
 
 	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::INFO);
-	MSAPI::logger.SetName("TestServer");
+	MSAPI::logger.SetName("UTBasicSString");
 	MSAPI::logger.SetToFile(true);
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
 
-	MSAPI::Test test;
-
-	ServerImpl serverImpl;
-	test.Assert(serverImpl.GetState(), MSAPI::Server::State::Initialization, "Server state is Initialization");
-	serverImpl.Stop();
-	test.Assert(serverImpl.GetState(), MSAPI::Server::State::Stopped, "Server state is Stopped");
-	MSAPI::Timer timer;
-	serverImpl.Start(INADDR_ANY, 1134);
-	test.Assert(MSAPI::Timer{} - timer < MSAPI::Timer::Duration::CreateMilliseconds(1), true,
-		"Server cannot start not in initialization state");
-
-	return test.Passed<int32_t>();
+	return static_cast<int>(!MSAPI::Test::Unit::BasicSString());
 }

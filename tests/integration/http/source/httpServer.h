@@ -1,6 +1,5 @@
 /**************************
  * @file        httpServer.h
- * @version     6.0
  * @date        2024-05-02
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,8 +20,8 @@
 #define HTTP_SERVER_H
 
 #include "../../../../library/source/protocol/http.h"
-#include "../../../../library/source/server/server.h"
-#include "../../../../library/source/test/actionsCounter.h"
+#include "../../../../library/source/server/server.inl"
+#include "../../../../library/source/test/actionsCounter.inl"
 
 /**************************
  * @brief HTTP server for MSAPI tests of HTTP protocol.
@@ -35,14 +34,15 @@ private:
 public:
 	HTTPServer();
 
-	//* MSAPI::Server
+	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
-	//* MSAPI::Application
+	// MSAPI::Application
 	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
-	//* MSAPI::Protocol::HTTP::IHandler
-	void HandleHttp(int connection, const MSAPI::Protocol::HTTP::Data& data) final;
+	// MSAPI::Protocol::HTTP::IHandler
+	void HandleHttp(
+		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const MSAPI::Protocol::HTTP::Data& data) final;
 
 	const std::optional<MSAPI::Protocol::HTTP::Data>& GetHTTPData() const noexcept;
 };
 
-#endif //* HTTP_SERVER_H
+#endif // HTTP_SERVER_H

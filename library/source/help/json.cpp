@@ -1,6 +1,5 @@
 /**************************
  * @file        json.cpp
- * @version     6.0
  * @date        2023-09-24
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -34,8 +33,6 @@ Json::Json(const std::string_view body) { Construct(body); }
 
 void Json::Construct(const std::string_view body)
 {
-	// std::cout << "body: " << body << std::endl;
-
 	const size_t bodySize{ body.size() };
 	if (bodySize < 2 || (body[0] == '{' && body[bodySize - 1] != '}')
 		|| (body[0] == '[' && body[bodySize - 1] != ']')) {

@@ -1,6 +1,5 @@
 /**************************
  * @file        log.h
- * @version     6.0
  * @date        2023-09-24
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -26,8 +25,7 @@
 #define FORCE_INLINE inline
 #endif
 
-// #include "circleContainer.hpp"
-#include "meta.hpp"
+#include "meta.inl"
 #include "time.h"
 #include <format>
 #include <fstream>
@@ -56,7 +54,6 @@
 #define COLOR_END "\033[0m"
 
 /*
-	@todo
 	https://stackoverflow.com/questions/78802843/build-error-caused-by-interaction-of-gcc-ub-sanitiser-and-std-format
 
 	Unfortunately, that function cannot be used with GCC sanitizer null, undefined and bounds options.
@@ -84,63 +81,6 @@ template <uint64_t... Size> consteval auto Concatenate(const char (&... strings)
 #define UINT64(v) static_cast<uint64_t>(v)
 
 namespace MSAPI {
-/*
-template <typename T, int_fast32_t Size> class Logger {
-private:
-CircleContainer<T, Size>::Accessor m_accessor;
-bool m_isRunning{ true };
-int_fast64_t m_readsCounter{ 0 };
-std::thread m_thread{ [this]() {
-	std::cout << "logger's thread is running" << std::endl;
-
-	while (m_isRunning) {
-		auto newWrites{ Buffers::writesCounter.load(std::memory_order_acquire) - m_readsCounter };
-		while (newWrites-- > 0) {
-			auto& current{ m_accessor.GetCurrent() };
-
-			// 	std::cout << m_readsCounter << " --> read from " << current.buffer << " : " << std::string_view{
-			// static_cast<char*>(current.buffer), current.size } << std::endl;
-			++m_readsCounter;
-		}
-
-		Buffers::writesCounter.wait(m_readsCounter); //! Can stuck here
-	}
-
-	// Write last portion of logs
-	auto newWrites{ Buffers::writesCounter.load(std::memory_order_acquire) - m_readsCounter };
-	while (newWrites-- > 0) {
-		auto& current{ m_accessor.GetCurrent() };
-		// std::cout << m_readsCounter << " --> read from " << current.buffer << " : " << std::string_view{
-		// static_cast<char*>(current.buffer), current.size } << std::endl;
-		// ++m_readsCounter; //! TMP FOR TESTING
-	}
-} };
-
-public:
-Logger(auto& container)
-	: m_accessor{ container }
-{
-}
-
-~Logger()
-{
-	m_isRunning = false;
-
-	if (m_readsCounter < Buffers::writesCounter.load(std::memory_order_acquire)) {
-		// std::cout << "Notify due to some logs to write" << std::endl;
-		Buffers::writesCounter.notify_one();
-	}
-	else {
-		// std::cout << "Notify with less value" << std::endl;
-		Buffers::writesCounter.fetch_sub(1, std::memory_order_relaxed);
-		Buffers::writesCounter.notify_one();
-	}
-
-	m_thread.join();
-	// std::cout << "logger's thread is realized" << std::endl;
-}
-};
-*/
 
 /**************************
  * @brief For logging. Class is common for all calls inside a builded unit, disable syncronization between C and C++ I/O
@@ -202,46 +142,6 @@ public:
 	 * @brief Synchrony request to write str by particular level.
 	 */
 	void Print(std::string&& str, Level level) noexcept;
-
-	// template <typename... Ts>
-	// 	requires(sizeof...(Ts) > 0)
-	// constexpr FORCE_INLINE void Print(const Level level, const std::string logPlace, const std::format_string<Ts...>
-	// pattern, Ts&&... args)
-	// {
-	//! std::format_to(std::back_inserter(s), "Item: {}, Price: {}", item, price);
-	//! Take buffer from circle container and write to it directly by back_inserter
-	//! It will be great to support really huge buffers for tables and so on.
-	// 	if (level > m_levelSave) {
-	// 		return;
-	// 	}
-	// 	std::lock_guard<std::mutex> lock(coutMutex);
-	// 	const auto time{ Timer().ToString() };
-	// 	if (m_toFile && m_ofstreamLog.is_open()) {
-	// 		m_ofstreamLog << std::format("# {} {} {} : {}.", time, GetStringLevel(level), m_name,
-	// 			std::format(pattern, std::forward<Ts>(args)...))
-	// 					  << std::endl;
-	// 	}
-	// 	if (m_toConsole) {
-	// 		std::cout << std::format("# {} {} {} : {}.", time, GetStringLevel(level), m_name,
-	// 			std::format(pattern, std::forward<Ts>(args)...))
-	// 				  << std::endl;
-	// 	}
-	// }
-
-	// constexpr FORCE_INLINE void Print(const Level level, const std::string logPlace, const std::string_view str)
-	// {
-	// 	if (level > m_levelSave) {
-	// 		return;
-	// 	}
-	// 	std::lock_guard<std::mutex> lock(coutMutex);
-	// 	const auto time{ Timer().ToString() };
-	// 	if (m_toFile && m_ofstreamLog.is_open()) {
-	// 		m_ofstreamLog << std::format("# {} {} {} : {}.", time, GetStringLevel(level), m_name, str) << std::endl;
-	// 	}
-	// 	if (m_toConsole) {
-	// 		std::cout << std::format("# {} {} {} : {}.", time, GetStringLevel(level), m_name, str) << std::endl;
-	// 	}
-	// }
 
 	/**************************
 	 * @return Current level to save.
@@ -325,6 +225,8 @@ public:
 	 * @note If dir doesn't exist, it will be created.
 	 *
 	 * @attention '/' symbol at the end is required.
+	 *
+	 * @todo Override for static string.
 	 */
 	void SetParentPath(const std::string& path) noexcept;
 
@@ -332,10 +234,6 @@ public:
 	 * @return String interpretation of Level enum.
 	 */
 	static std::string_view EnumToString(Level level) noexcept;
-
-	// TODO: TG
-	// TODO:https://ru.stackoverflow.com/questions/1349680/telegtam-api-%D0%9E%D1%82%D0%BF%D1%80%D0%B0%D0%B2%D0%B8%D1%82%D1%8C-%D1%82%D0%B5%D0%BA%D1%81%D1%82-%D0%9A%D0%B8%D1%80%D0%B8%D0%BB%D0%BB%D0%B8%D1%86%D1%83-%D1%87%D0%B5%D1%80%D0%B5%D0%B7-%D1%81-curl
-	// TODO: https://core.telegram.org/bots/api
 
 private:
 	Timer::Event m_timerToSeparate{ { [](int* parameter) {
@@ -517,4 +415,4 @@ struct std::formatter<T> {
 	template <typename FormatContext> auto format(const T opt, FormatContext& ctx) { return _S(opt); }
 };
 
-#endif //* MSAPI_LOG_H
+#endif // MSAPI_LOG_H

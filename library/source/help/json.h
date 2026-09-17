@@ -1,6 +1,5 @@
 /**************************
  * @file        json.h
- * @version     6.0
  * @date        2023-12-09
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -20,7 +19,7 @@
 #ifndef MSAPI_JSON_H
 #define MSAPI_JSON_H
 
-#include "meta.hpp"
+#include "meta.inl"
 #include <iostream>
 #include <list>
 #include <map>
@@ -55,44 +54,42 @@ public:
 	 *
 	 * @param body String to parse.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	Json(std::string_view body);
 
 	/**************************
-	 * @brief Construct a new empty Json object.
-	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
-	Json() = default;
+	FORCE_INLINE Json() = default;
 
 	/**************************
 	 * @brief Construct a new Json object, empty constructor.
 	 *
 	 * @param body String to parse.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	void Construct(std::string_view body);
 
 	/**************************
 	 * @return True if Json is valid.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	bool Valid() const noexcept;
 
 	/**************************
 	 * @return Readable reference on keys and values of Json.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	const std::map<std::string, JsonNode, std::less<>>& GetKeysAndValues() const noexcept;
 
 	/**************************
 	 * @return Readable pointer on value of key, nullptr if does not exist.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	const JsonNode* GetValue(std::string_view key) const noexcept;
 
@@ -105,7 +102,7 @@ public:
 	 *
 	 * @return Readable pointer on value of key, nullptr if does not exist or type is different.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	template <typename T>
 		requires is_json_node_type<T>
@@ -114,7 +111,7 @@ public:
 	/**************************
 	 * @brief Clear all data and set invalid flag.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	void Clear();
 
@@ -137,7 +134,7 @@ public:
 	 *  	type3	    : null
 	 * } <valid: true>
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	std::string ToString() const noexcept;
 
@@ -146,7 +143,7 @@ public:
 	 * 13:01:20.106297 2022: Get account information is true","2Tue Jun 21 13:01:20.106297 2022: Get account information
 	 * is true","3Tue Jun 21 13:01:20.106297 2022: Get account information is true"],"type":"true","type2":"true2"}
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	std::string ToJson() const noexcept;
 
@@ -182,7 +179,7 @@ public:
 	 *
 	 * @tparam T Type of value, except Json or array of JsonNode.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	template <typename T>
 		requires((is_json_node_type<std::decay_t<T>> || is_any_constructible_from<T, JsonNodeTypes>)
@@ -198,7 +195,7 @@ public:
 	 *
 	 * @param json Json value.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	template <typename T>
 		requires std::is_same_v<std::decay_t<T>, Json>
@@ -215,7 +212,7 @@ public:
 	 * @param begin Start position of array.
 	 * @param end End position of array.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	JsonNode(std::string_view body, size_t begin, size_t end);
 
@@ -224,7 +221,7 @@ public:
 	 *
 	 * @param array List of JsonNode.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	template <typename T>
 		requires std::is_same_v<std::decay_t<T>, std::list<JsonNode>>
@@ -240,21 +237,21 @@ public:
 	 *
 	 * @return True if node is valid.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	bool Valid() const noexcept;
 
 	/**************************
 	 * @return Readable reference on value of node.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	const std::variant<JsonNodeTypes>& GetValue() const noexcept;
 
 	/**************************
 	 * @return std::string representation of node.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	std::string ToString() const noexcept;
 
@@ -262,7 +259,7 @@ private:
 	/**************************
 	 * @brief Prepare json node value for ToJson() in Json class.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	std::string PrepareToJson() const noexcept;
 
