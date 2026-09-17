@@ -39,13 +39,13 @@ public:
 	{
 	}
 
-	FORCE_INLINE [[nodiscard]] bool HasConnectionFragmentedData(const uint64_t connectionId) noexcept
+	FORCE_INLINE [[nodiscard]] bool HasFragmentedDataForConnection(const uint64_t connectionId) noexcept
 	{
 		Lock::Atomic::Guard _{ m_handler.m_fragmentedDataLock };
 		return m_handler.m_connectionIdToFragmentedData.contains(connectionId);
 	}
 
-	FORCE_INLINE [[nodiscard]] size_t GetSizeOfFragmentedDataConnections() noexcept
+	FORCE_INLINE [[nodiscard]] size_t GetSizeOfConnectionIdToFragmentedData() noexcept
 	{
 		Lock::Atomic::Guard _{ m_handler.m_fragmentedDataLock };
 		return m_handler.m_connectionIdToFragmentedData.size();
@@ -56,13 +56,14 @@ public:
 		return m_handler.m_storedFragmentedDataSizeMb;
 	}
 
-	FORCE_INLINE [[nodiscard]] size_t GetSizeOfFragmentedDataTimerToConnection() noexcept
+	FORCE_INLINE [[nodiscard]] size_t GetSizeOfTimerToFragmentedData() noexcept
 	{
 		Lock::Atomic::Guard _{ m_handler.m_fragmentedDataLock };
-		return m_handler.m_connectionIdToFragmentedData.size();
+		return m_handler.m_timerToFragmentedData.size();
 	}
 
-	FORCE_INLINE [[nodiscard]] MSAPI::Timer GetLastFragmentedDataTimer(const uint64_t connectionId) noexcept
+	FORCE_INLINE [[nodiscard]] MSAPI::Timer GetLastFragmentedDataTimerForConnection(
+		const uint64_t connectionId) noexcept
 	{
 		Lock::Atomic::Guard _{ m_handler.m_fragmentedDataLock };
 		if (const auto it{ m_handler.m_connectionIdToFragmentedData.find(connectionId) };

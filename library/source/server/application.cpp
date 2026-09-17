@@ -1008,8 +1008,8 @@ void Application::Collect(const std::shared_ptr<Connection::Data>& connectionDat
 	}
 		return;
 	default:
-		LOG_ERROR_NEW(
-			"Unexpected data for collecting: {}, connection id: ", data.ToString(), connectionData->GetConnectionId());
+		LOG_ERROR_NEW("Unexpected data for collecting: {}, connection id: {}", data.ToString(),
+			connectionData->GetConnectionId());
 		return;
 	}
 }

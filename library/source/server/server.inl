@@ -68,8 +68,8 @@ Declarations
  * request handler. Default is 8 megabytes, minimum is 1024 bytes. Will be applied for newly allocated buffers.
  * - Const parameter 1000005 "Server state" is a state of server.
  * - Const parameter 1000006 "Max connections" is a SOMAXCONN number.
- * - Const parameter 1000007 "Listening IP" is a IP address of server to listen after starting.
- * - Const parameter 1000008 "Listening port" is a port of server to listen after starting.
+ * - Const parameter 1000007 "Listen IP" is a IP address of server to listen after starting.
+ * - Const parameter 1000008 "Listen port" is a port of server to listen after starting.
  *
  * States:
  * - Server state is internal variable which can be used for check server state and can't be managed outside.

@@ -180,8 +180,12 @@ template <typename T> FORCE_INLINE Daemon<T>::~Daemon()
 }
 
 template <typename T>
-FORCE_INLINE [[nodiscard]] std::optional<int> Daemon<T>::ConnectToDomain(const uint16_t port, const std::string& domain)
+FORCE_INLINE [[nodiscard]] std::optional<int> Daemon<T>::ConnectToDomain(
+	[[maybe_unused]] const uint16_t port, [[maybe_unused]] const std::string& domain)
 {
+	/*
+	Legacy function is not used, but contain some context. Let's keep it.
+
 	int id;
 	do {
 		id = m_connectionIdGenerator.fetch_add(1, std::memory_order_relaxed);
@@ -192,6 +196,8 @@ FORCE_INLINE [[nodiscard]] std::optional<int> Daemon<T>::ConnectToDomain(const u
 	}
 	m_connectionsDataToId.insert({ id, { port, domain } });
 	return id;
+	*/
+	return {};
 }
 
 template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uint32_t ip, const uint16_t port)

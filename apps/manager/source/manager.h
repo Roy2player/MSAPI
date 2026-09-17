@@ -882,8 +882,8 @@ private:
 
 	/**************************
 	 * @brief Creates an app from installed app data and parameters Json. Provides error message if failed.
-	 * @brief Parameter ip is application listening ip. INADDR_LOOPBACK by default.
-	 * @brief Parameter port is application listening port. Random from 3000 by default. 0 is not allowed.
+	 * @brief Parameter ip is application listen ip. INADDR_LOOPBACK by default.
+	 * @brief Parameter port is application listen port. Random from 3000 by default. 0 is not allowed.
 	 * @brief Parameter parentPath is parent directory for logger. Root of build directory or executable directory by
 	 * default (512 bytes are reserved).
 	 * @brief Parameter logLevel is WARNING by default.

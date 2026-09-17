@@ -345,9 +345,9 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 	} };
 
 	// 1.2. Initial state of WebSocket Handler on server
-	RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 0,
+	RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 		"Initial size of fragmented data connections on server"));
-	RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 0,
+	RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 0,
 		"Initial size of fragmented data timer to connection on server"));
 	RETURN_IF_FALSE(
 		t.Assert(serverObserver.GetStoredFragmentedDataSize(), 0., "Initial stored fragmented data size on server"));
@@ -653,7 +653,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		const std::string& clientPortStr{ clientDaemon.portStr };
 
 		MSAPI::Test::Protocol::WebSocket::Observer clientObserver{ client };
-		RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfFragmentedDataConnections(), 0,
+		RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 			std::format("Initial size of fragmented data connections on client {}", clientPortStr)));
 
 		// Key port is used to detect connection
@@ -785,14 +785,15 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		RETURN_IF_FALSE(t.Assert(clientHttpData->back().ToString(), wsHandshakeResponse,
 			std::format("Client {} got correct WebSocket handshake response", clientPortStr)));
 
-		RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfFragmentedDataConnections(), 0,
+		RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 			std::format("Size of fragmented data connections on client {} after handshake", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), false,
+		RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 			std::format("Server does not have fragmented data with client {} after handshake", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
+		RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
+			MSAPI::Timer{ 0 },
 			std::format("Server does not have timestamp of last fragmented data with client {} after handshake",
 				clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(clientObserver.HasConnectionFragmentedData(CTSCD->GetConnectionId()), false,
+		RETURN_IF_FALSE(t.Assert(clientObserver.HasFragmentedDataForConnection(CTSCD->GetConnectionId()), false,
 			std::format("Client {} does not have fragmented data with server after handshake", clientPortStr)));
 
 		RETURN_IF_FALSE(t.Assert(client.GetWebSocketData(CTSCD), nullptr,
@@ -1071,7 +1072,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr, &lastFragmentTime]() {
-					const auto currentLastFragmentTime{ serverObserver.GetLastFragmentedDataTimer(
+					const auto currentLastFragmentTime{ serverObserver.GetLastFragmentedDataTimerForConnection(
 						STCCD->GetConnectionId()) };
 					if (currentLastFragmentTime <= lastFragmentTime) {
 						return false;
@@ -1091,16 +1092,17 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		// 2.19. Send small fragmented message with different steps size
 		// 2.20. Send medium fragmented message with different steps size
 		// 2.21. Send large fragmented message with different steps size
-		RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfFragmentedDataConnections(), 0,
+		RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 			std::format("Size of fragmented data connections on client {} before fragmented messages", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), false,
+		RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 			std::format(
 				"Server does not have fragmented data with client {} before fragmented messages", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
+		RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
+			MSAPI::Timer{ 0 },
 			std::format(
 				"Server does not have timestamp of last fragmented data with client {} before fragmented messages",
 				clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(clientObserver.HasConnectionFragmentedData(CTSCD->GetConnectionId()), false,
+		RETURN_IF_FALSE(t.Assert(clientObserver.HasFragmentedDataForConnection(CTSCD->GetConnectionId()), false,
 			std::format(
 				"Client {} does not have fragmented data with server before fragmented messages", clientPortStr)));
 		{
@@ -1189,17 +1191,17 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 							RETURN_IF_FALSE(t.Wait(
 								50000,
 								[&serverObserver, &STCCD, &clientPortStr]() {
-									return serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId());
+									return serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 								},
 								true,
 								std::format(
 									"Server has fragmented data messages for client {} after fragmented message",
 									clientPortStr)));
-							RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfFragmentedDataConnections(), 0,
+							RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 								std::format("Size of fragmented data connections on client {} after fragmented message",
 									clientPortStr)));
 							RETURN_IF_FALSE(
-								t.Assert(clientObserver.HasConnectionFragmentedData(CTSCD->GetConnectionId()), false,
+								t.Assert(clientObserver.HasFragmentedDataForConnection(CTSCD->GetConnectionId()), false,
 									std::format(
 										"Client {} does not have fragmented data with server after fragmented messages",
 										clientPortStr)));
@@ -1238,19 +1240,19 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				RETURN_IF_FALSE(checkMessage(lastServerWebSocketData, true, false, false, false, originalOpcode,
 					isMasked, payloadSpan.subspan(0, payloadSize), clientPortStr));
 
-				RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), false,
+				RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 					std::format(
 						"Server does not have fragmented data messages for client {} after final fragmented message",
 						clientPortStr)));
-				RETURN_IF_FALSE(
-					t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
-						std::format("Server does not have timestamp of last fragmented data with client {} after final "
-									"fragmented message",
-							clientPortStr)));
-				RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfFragmentedDataConnections(), 0,
+				RETURN_IF_FALSE(t.Assert(
+					serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
+					std::format("Server does not have timestamp of last fragmented data with client {} after final "
+								"fragmented message",
+						clientPortStr)));
+				RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 					std::format("Size of fragmented data connections on client {} after final fragmented message",
 						clientPortStr)));
-				RETURN_IF_FALSE(t.Assert(clientObserver.HasConnectionFragmentedData(CTSCD->GetConnectionId()), false,
+				RETURN_IF_FALSE(t.Assert(clientObserver.HasFragmentedDataForConnection(CTSCD->GetConnectionId()), false,
 					std::format("Client {} does not have fragmented data with server after final fragmented messages",
 						clientPortStr)));
 
@@ -1314,14 +1316,14 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(checkMessage(lastServerWebSocketData1, true, false, false, false,
 				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, isMasked, payloadSpan.subspan(0, 100),
 				clientPortStr));
-			RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), true,
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), true,
 				std::format(
 					"Server still has fragmented data messages for client {} after overwritten fragmented message",
 					clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfFragmentedDataConnections(), 0,
+			RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 				std::format("Size of fragmented data connections on client {} after overwritten fragmented message",
 					clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(clientObserver.HasConnectionFragmentedData(CTSCD->GetConnectionId()), false,
+			RETURN_IF_FALSE(t.Assert(clientObserver.HasFragmentedDataForConnection(CTSCD->GetConnectionId()), false,
 				std::format("Client {} does not have fragmented data with server after overwritten fragmented messages",
 					clientPortStr)));
 
@@ -1343,19 +1345,19 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 			RETURN_IF_FALSE(checkMessage(lastServerWebSocketData2, true, false, false, false,
 				MSAPI::Protocol::WebSocket::Data::Opcode::Text, isMasked, payloadSpan.subspan(0, 200), clientPortStr));
-			RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), false,
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format(
 					"Server does not have fragmented data messages for client {} after final fragmented message",
 					clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
-					std::format("Server does not have timestamp of last fragmented data with client {} after final "
-								"fragmented message",
-						clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfFragmentedDataConnections(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
+				MSAPI::Timer{ 0 },
+				std::format("Server does not have timestamp of last fragmented data with client {} after final "
+							"fragmented message",
+					clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 				std::format(
 					"Size of fragmented data connections on client {} after final fragmented message", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(clientObserver.HasConnectionFragmentedData(CTSCD->GetConnectionId()), false,
+			RETURN_IF_FALSE(t.Assert(clientObserver.HasFragmentedDataForConnection(CTSCD->GetConnectionId()), false,
 				std::format("Client {} does not have fragmented data with server after final fragmented messages",
 					clientPortStr)));
 		}
@@ -1370,9 +1372,9 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 	thread2.join();
 
 	// 3.1. Final state of WebSocket Handler on server
-	RETURN_IF_FALSE(t.Assert(
-		serverObserver.GetSizeOfFragmentedDataConnections(), 0, "Final size of fragmented data connections on server"));
-	RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 0,
+	RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
+		"Final size of fragmented data connections on server"));
+	RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 0,
 		"Final size of fragmented data timer to connection on server"));
 	RETURN_IF_FALSE(
 		t.Assert(serverObserver.GetStoredFragmentedDataSize(), 0., "Final stored fragmented data size on server"));
@@ -1460,15 +1462,16 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
-					return serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId());
+					return serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true,
 				std::format(
 					"Server has fragmented data messages for client {} after fragmented message", clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 }, true,
-					std::format("Server has timestamp of last fragmented data with client {} after fragmented message",
-						clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(
+				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+				true,
+				std::format("Server has timestamp of last fragmented data with client {} after fragmented message",
+					clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(),
 				server.GetFragmentedDataLimit() / 2 + MSAPI::Protocol::WebSocket::Data::MAXIMUM_HEADER_MB,
 				std::format("Server stored fragmented data size is correct for client {}", clientPortStr)));
@@ -1484,18 +1487,18 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
-					return !serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId());
+					return !serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true,
 				std::format("Server does not have fragmented data messages for client {} after sending fragmented "
 							"message with payload size greater than fragmented data limit",
 					clientPortStr)));
 
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
-					std::format("Server does not have timestamp of last fragmented data with client {} after sending "
-								"fragmented message with payload size greater than fragmented data limit",
-						clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
+				MSAPI::Timer{ 0 },
+				std::format("Server does not have timestamp of last fragmented data with client {} after sending "
+							"fragmented message with payload size greater than fragmented data limit",
+					clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format(
 					"Size of WebSocket data on client {} should not change after sending fragmented message with "
@@ -1507,11 +1510,11 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 							"payload size greater than fragmented data limit",
 					clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 				std::format("Size of fragmented data connections on server after "
 							"purging fragment data for client {}",
 					clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 0,
 				std::format("Size of fragmented data timer to connection on server after purging fragment data for "
 							"client {}",
 					clientPortStr)));
@@ -1533,15 +1536,16 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
-					return serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId());
+					return serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true,
 				std::format(
 					"Server has fragmented data messages for client {} after fragmented message", clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 }, true,
-					std::format("Server has timestamp of last fragmented data with client {} after fragmented message",
-						clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(
+				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+				true,
+				std::format("Server has timestamp of last fragmented data with client {} after fragmented message",
+					clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(),
 				server.GetFragmentedDataLimit() / 2. + MSAPI::Protocol::WebSocket::Data::MAXIMUM_HEADER_MB,
 				std::format("Server stored fragmented data size is correct for client {}", clientPortStr)));
@@ -1556,17 +1560,17 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
-					return !serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId());
+					return !serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true,
 				std::format("Server does not have fragmented data messages for client {} after sending fragmented "
 							"message with payload size greater than fragmented data limit",
 					clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
-					std::format("Server does not have timestamp of last fragmented data with client {} after sending "
-								"fragmented message with payload size greater than fragmented data limit",
-						clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
+				MSAPI::Timer{ 0 },
+				std::format("Server does not have timestamp of last fragmented data with client {} after sending "
+							"fragmented message with payload size greater than fragmented data limit",
+					clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format(
 					"Size of WebSocket data on client {} should not change after sending fragmented message with "
@@ -1578,11 +1582,11 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 							"payload size greater than fragmented data limit",
 					clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 				std::format("Size of fragmented data connections on server after "
 							"purging fragment data for client {}",
 					clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 0,
 				std::format("Size of fragmented data timer to connection on server after purging fragment data for "
 							"client {}",
 					clientPortStr)));
@@ -1618,22 +1622,22 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				std::format("Server has WebSocket data with {} messages for client {}", serverWebSocketDataSize,
 					clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), false,
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
-					std::format("Server does not have timestamp of last fragmented data with client {} after sending "
-								"fragmented messages with zero fragmented data limit",
-						clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
+				MSAPI::Timer{ 0 },
+				std::format("Server does not have timestamp of last fragmented data with client {} after sending "
+							"fragmented messages with zero fragmented data limit",
+					clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change after sending fragmented messages "
 							"with zero fragmented data limit",
 					clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 				std::format(
 					"Size of fragmented data connections on server fragment data for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 0,
 				std::format("Size of fragmented data timer to connection on server client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(), 0.,
 				std::format("Stored fragmented data size on server for client {}", clientPortStr)));
@@ -1661,22 +1665,22 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				std::format("Server has WebSocket data with {} messages for client {}", serverWebSocketDataSize,
 					clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), false,
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
-					std::format("Server does not have timestamp of last fragmented data with client {} after sending "
-								"fragmented messages with zero fragmented data limit",
-						clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
+				MSAPI::Timer{ 0 },
+				std::format("Server does not have timestamp of last fragmented data with client {} after sending "
+							"fragmented messages with zero fragmented data limit",
+					clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change after sending fragmented messages "
 							"with zero fragmented data limit",
 					clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 				std::format(
 					"Size of fragmented data connections on server fragment data for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 0,
 				std::format("Size of fragmented data timer to connection on server client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(), 0.,
 				std::format("Stored fragmented data size on server for client {}", clientPortStr)));
@@ -1698,20 +1702,20 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
-					return serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId());
+					return serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true, std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 }, true,
-					std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(
+				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverWebSocketDataSize, server.GetWebSocketData(STCCD)->size(),
 				std::format("Size of WebSocket data on server for client {} should not change", clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 1,
 				std::format("Size of fragmented data connections on server", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 1,
 				std::format("Size of fragmented data timer to connection on server for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(),
 				0.5 + MSAPI::Protocol::WebSocket::Data::MAXIMUM_HEADER_MB,
@@ -1736,17 +1740,17 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				std::format("Server has WebSocket data with {} messages for client {}", serverWebSocketDataSize,
 					clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), true,
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), true,
 				std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 }, true,
-					std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(
+				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 1,
 				std::format("Size of fragmented data connections on server", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 1,
 				std::format("Size of fragmented data timer to connection on server for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(),
 				1 + MSAPI::Protocol::WebSocket::Data::MAXIMUM_HEADER_MB,
@@ -1764,17 +1768,17 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				std::format("Server has WebSocket data with {} messages for client {}", serverWebSocketDataSize,
 					clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), true,
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), true,
 				std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 }, true,
-					std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(
+				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 1,
 				std::format("Size of fragmented data connections on server", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 1,
 				std::format("Size of fragmented data timer to connection on server for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(),
 				1 + MSAPI::Protocol::WebSocket::Data::MAXIMUM_HEADER_MB,
@@ -1792,17 +1796,17 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				std::format("Server has WebSocket data with {} messages for client {}", serverWebSocketDataSize,
 					clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), false,
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()),
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
 				MSAPI::Timer{ 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 				std::format("Size of fragmented data connections on server", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 0,
 				std::format("Size of fragmented data timer to connection on server for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(), 0.,
 				std::format("Stored fragmented data size on for client {}", clientPortStr)));
@@ -1812,37 +1816,37 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
-					return serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId());
+					return serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true, std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 }, true,
-					std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(
+				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverWebSocketDataSize, server.GetWebSocketData(STCCD)->size(),
 				std::format("Size of WebSocket data on server for client {} should not change", clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 1,
 				std::format("Size of fragmented data connections on server", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 1,
 				std::format("Size of fragmented data timer to connection on server for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(),
 				0.5 + MSAPI::Protocol::WebSocket::Data::MAXIMUM_HEADER_MB,
 				std::format("Stored fragmented data size on for client {}", clientPortStr)));
 
 			server.Clear();
-			RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), false,
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()),
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
 				MSAPI::Timer{ 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 				std::format("Size of fragmented data connections on server", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 0,
 				std::format("Size of fragmented data timer to connection on server for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(), 0.,
 				std::format("Stored fragmented data size on for client {}", clientPortStr)));
@@ -1852,37 +1856,37 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
-					return serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId());
+					return serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true, std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(
-				t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 }, true,
-					std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(
+				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverWebSocketDataSize, server.GetWebSocketData(STCCD)->size(),
 				std::format("Size of WebSocket data on server for client {} should not change", clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 1,
 				std::format("Size of fragmented data connections on server", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 1,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 1,
 				std::format("Size of fragmented data timer to connection on server for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(),
 				0.5 + MSAPI::Protocol::WebSocket::Data::MAXIMUM_HEADER_MB,
 				std::format("Stored fragmented data size on for client {}", clientPortStr)));
 
 			server.ClearConnection(STCCD->GetConnectionId());
-			RETURN_IF_FALSE(t.Assert(serverObserver.HasConnectionFragmentedData(STCCD->GetConnectionId()), false,
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimer(STCCD->GetConnectionId()),
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
 				MSAPI::Timer{ 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
 
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataConnections(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 				std::format("Size of fragmented data connections on server", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfFragmentedDataTimerToConnection(), 0,
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetSizeOfTimerToFragmentedData(), 0,
 				std::format("Size of fragmented data timer to connection on server for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(), 0.,
 				std::format("Stored fragmented data size on for client {}", clientPortStr)));

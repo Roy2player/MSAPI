@@ -19,8 +19,8 @@
  * - 4 (Delete) to delete application;
  * - 2000001 (Name) application name;
  * - 5 (Type) application type;
- * - 1000007 (Listening IP) application listening IP;
- * - 1000008 (Port) application port.
+ * - 1000007 (Listen IP) application listening IP;
+ * - 1000008 (Listen port) application listening port.
  *
  * Delete action also destroys all views related to the deleted application in terms of same port.
  */
