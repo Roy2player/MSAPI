@@ -1,6 +1,5 @@
 /**************************
  * @file        sha1.inl
- * @version     6.0
  * @date        2026-02-08
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -60,7 +59,7 @@ public:
 	 *
 	 * @param data The input data to be hashed.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE void Update(std::span<const uint8_t> data) noexcept;
 
@@ -77,7 +76,7 @@ public:
 	 *
 	 * @return The view on 20-byte SHA-1 digest of the input data.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	template <bool Reset> FORCE_INLINE [[nodiscard]] std::span<const uint8_t> Final() noexcept;
 
@@ -90,7 +89,7 @@ private:
 	 *
 	 * @return The result of rotating x left by n bits.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] static uint32_t Rol(uint32_t x, uint32_t n) noexcept;
 
@@ -100,7 +99,7 @@ private:
 	 * @param dst The destination byte array where the integer will be written (must have at least 4 bytes).
 	 * @param x The 32-bit unsigned integer to write.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE static void WriteBe32(uint8_t* const dst, uint32_t x) noexcept;
 
@@ -111,7 +110,7 @@ private:
 	 *
 	 * @return The 32-bit unsigned integer read from the byte array.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] static uint32_t ReadBe32(const uint8_t* const p) noexcept;
 
@@ -120,7 +119,7 @@ private:
 	 *
 	 * @param block A pointer to a 64-byte block of input data to be processed.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE void ProcessBlock(const uint8_t* const block) noexcept;
 };

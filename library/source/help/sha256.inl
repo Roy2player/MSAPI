@@ -1,6 +1,5 @@
 /**************************
  * @file        sha256.inl
- * @version     6.0
  * @date        2025-12-23
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -56,7 +55,7 @@ public:
 	 *
 	 * @param data The input data to be hashed.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE void Update(std::span<const uint8_t> data) noexcept;
 
@@ -73,7 +72,7 @@ public:
 	 *
 	 * @return The view on 32-byte SHA-256 digest of the input data.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	template <bool Reset> FORCE_INLINE std::span<const uint8_t> Final() noexcept;
 
@@ -99,7 +98,7 @@ private:
 	/**************************
 	 * @brief Process a single 512-bit block of input data and update the hash state.
 	 *
-	 * @test Has unit tests.
+	 * @test Yes.
 	 */
 	FORCE_INLINE void ProcessBlock(const uint8_t* block) noexcept;
 };

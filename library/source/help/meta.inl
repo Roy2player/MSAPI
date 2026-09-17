@@ -1,6 +1,5 @@
 /**************************
- * @file        meta.hpp
- * @version     6.0
+ * @file        meta.inl
  * @date        2024-05-14
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -19,8 +18,8 @@
  * @brief Contains common groups of types, meta functions and type traits.
  */
 
-#ifndef MSAPI_META_H
-#define MSAPI_META_H
+#ifndef MSAPI_META_INL
+#define MSAPI_META_INL
 
 #include "time.h"
 #include <list>
@@ -375,6 +374,6 @@ template <Stringable T> FORCE_INLINE [[nodiscard]] const char* CString(const T s
 	}
 }
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_META_H
+#endif // MSAPI_META_INL

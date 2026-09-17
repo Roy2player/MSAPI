@@ -1,6 +1,5 @@
 /**************************
  * @file        html.inl
- * @version     6.0
  * @date        2025-11-20
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,11 +20,11 @@
 #define MSAPI_UNIT_TEST_HTML_INL
 
 #include "../../../../library/source/help/html.h"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -38,16 +37,16 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool HTML();
+FORCE_INLINE [[nodiscard]] bool HTML();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool HTML()
+FORCE_INLINE [[nodiscard]] bool HTML()
 {
-	LOG_INFO_UNITTEST("MSAPI HTML");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST HTML");
+	MSAPI::Test::Test t;
 
 	const std::string_view justHtml{
 		"<html><head></head><body><header></header><main><section></section></main><footer></footer></body></html>"
@@ -129,12 +128,12 @@ bool HTML()
 	RETURN_IF_FALSE(t.Assert(page.TagsSize(), 58, "HTML tags size (complex)"));
 	RETURN_IF_FALSE(t.Assert(page.GetTag(), page.GetTag(page.TagsSize() + 1), "HTML get default tag (complex)"));
 
-	return true;
+	return t.Passed<bool>();
 };
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

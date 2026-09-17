@@ -9,39 +9,46 @@ MSAPI is a modular, high-performance C++ library for building Linux-based micros
 ## 🔧 Building
 
 To build library follow next simple steps:
-```
+
+```bash
 cd library/build
 cmake -DCMAKE_BUILD_TYPE=Release .
 cmake --build . -j $(nproc)
 ```
 
 - ***Build system:*** CMake 3.2+
-- ***Compiler:*** GCC 16+
+- ***Compiler:*** GCC 16.2.1+
 - ***Runtime:*** Linux (POSIX threads, Linux sockets)
 - Pure C++ standard library
 
-***BUILD_PROFILE*** variable can be set to choose build type: Debug or Release.
+Number of bash scripts are available in the [bash/](bash/) folder to simplify building process.
+
+- ***MSAPI_PATH*** variable should be set to the root of the MSAPI repository.
+- ***MSAPI_BUILD_PROFILE*** variable can be set to choose build type: Debug or Release.
+- ***MSAPI_GCC*** can specify the GCC compiler to be used.
+
 See [CMakeListsCommonOptions.txt](library/build/CMakeListsCommonOptions.txt) for more details.
 
-Number of bash scripts are available in the [bash/](bash/) folder to simplify building process. ***MSAPI_PATH*** variable should be set to the root of the MSAPI repository.
-
-## 🧩 Features & structure:
+## 🧩 Features & structure
 
 ### [Server Framework](library/source/server/)
-- [**Server:**](library/source/server/server.h) Provides communication ability via TCP sockets and current-state model to manage server lifetime;
+
+- [**Server:**](library/source/server/server.inl) Asynchronous communication ability provider with independent connections lifecycle management.
 - [**Application:**](library/source/server/application.h) Provides customization ability via parameters and current-state model to manage application behavior.
-- [**Authorization:**](library/source/server/authorization.inl) Generic thread-safe account management and authentication.
+- [**Authorization:**](library/source/server/authorization.inl) Generic asynchronous account management and authentication.
+- [**Connection:**](library/source/server/connection.inl) Asynchronous connection wrapper, contains related data and allows to change functional behavior.
+- [**Recv buffer:**](library/source/server/recvBuffer.inl) Recv buffer manager for particular connection.
 
-Server provides data to be handled by calling a callback in case if this data is not a part of internal Application protocol.
+### [Protocols](library/source/protocol/)
 
-### [Custom and another protocols](library/source/protocol/)
-- [**Object protocol:**](library/source/protocol/object.h) Transfers simple copyable objects using stream and filter models.
-- [**Standard protocol:**](library/source/protocol/standard.h) Handles dynamic-size messages as arrays of key-value pairs.
-- [**HTTP protocol:**](library/source/protocol/http.h) Basic HTTP message parsing and handling.
+- [**Object protocol:**](library/source/protocol/object.inl) Transfers simple copyable objects using stream and filter model.
+- [**Standard protocol:**](library/source/protocol/standard.h) Handles dynamic-size messages as array of key-value pairs.
+- [**HTTP protocol:**](library/source/protocol/http.h) HTTP message parsing and producing.
 - [**WebSocket protocol:**](library/source/protocol/webSocket.inl) Implementation of data and parallel execution safe functional abstractions for 13 version (RFC 6455) WebSocket protocol.
 - [**WebSocket events protocol:**](library/source/protocol/webSocketEvents.inl) Parallel execution distributing model which works on top of web socket protocol with json payload, supports single and stream events with filters. Uses [Authorization](library/source/server/authorization.inl) to control data access rights.
 
 ### [Utility Modules](library/source/help/)
+
 - [**Log:**](library/source/help/log.h) Multiple log levels and console/file outputs.
 - [**Time:**](library/source/help/time.h) Time utilities and event scheduling.
 - [**HTML:**](library/source/help/html.h) Parser module.
@@ -50,13 +57,14 @@ Server provides data to be handled by calling a callback in case if this data is
 - [**Lock:**](library/source/help/lock.inl) Mutexes and atomic locks to manage concurrency.
 - [**IO:**](library/source/help/io.inl) Filesystem I/O utilities.
 - [**Helper:**](library/source/help/helper.h) Miscellaneous utilities for common tasks.
-- [**Meta:**](library/source/help/meta.hpp) Static enum translation, type helpers, and compile-time utilities.
+- [**Meta:**](library/source/help/meta.inl) Static enum translation, type helpers, and compile-time utilities.
 - [**SHA256:**](library/source/help/sha256.inl) SHA-256 hashing implementation.
 - [**SHA1:**](library/source/help/sha1.inl) SHA-1 hashing implementation.
+- [**Static string**](library/source/help/basicSString.inl) Functional static string container.
 
 ### [Testing Framework](library/source/test/)
 
-Unit/end-to-end tests utilities with ability to run servers as daemons.
+Unit and integration test utilities with ability to run servers as daemons.
 
 ## 🖥️ Frontend
 
@@ -77,11 +85,12 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 
 ### 🎬 Preview
 
-![MSAPI Manager preview](/apps/manager/MSAPI_Manager_preview.gif)
+![MSAPI Manager preview](apps/manager/MSAPI_Manager_preview.gif)
 
  **Scenario:** Load page -> open created apps view (some apps were created before) -> attempt to create app -> login -> create app -> search for app by type filter -> create app view -> run app -> interact with run app.
 
-### [JS Core](/apps/manager/web/js/core)
+### [JS Core](apps/manager/web/js/core/)
+
 - [**View:**](apps/manager/web/js/core/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling.
 - [**Table:**](apps/manager/web/js/core/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types.
 - [**Grid:**](apps/manager/web/js/core/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations.
@@ -90,15 +99,18 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 - [**Select:**](apps/manager/web/js/core/select.js) Custom select input with searchable options, validation, and dynamic metadata integration.
 - [**WebSocket handler:**](apps/manager/web/js/core/webSocketHandler.js) Client implementation of events protocol to interact with [server](library/source/protocol/webSocketEvents.inl).
 
-### [JS Help](/apps/manager/web/js/help)
+### [JS Help](apps/manager/web/js/help/)
+
 - [**Helper:**](apps/manager/web/js/help/helper.js) Utility functions for type limits, validation, formatting, deep equality, and more.
 - [**Dynamic:**](apps/manager/web/js/help/dynamic.js) Helpers to add interface dynamic.
 
-### [JS Testing Framework](/apps/manager/web/js/test)
+### [JS Testing Framework](apps/manager/web/js/test/)
+
 - [**Server simulator:**](apps/manager/web/js/test/serverSimulator.js) Server's behavior simulator.
 - [**Test runner:**](apps/manager/web/js/test/testRunner.js) Test execution controller, assertions result tracker.
 
-### [Default views](/apps/manager/web/js/views)
+### [Default views](apps/manager/web/js/views/)
+
 - [**Installed apps:**](apps/manager/web/js/views/installedApps.js) Displays a grid of installed MSAPI applications.
 - [**Created apps:**](apps/manager/web/js/views/createdApps.js) Shows a grid of created/running apps with parameters and action buttons.
 - [**New app:**](apps/manager/web/js/views/newApp.js) Presents a form for creating new applications.
@@ -111,12 +123,24 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 
 ## ⚖️ License
 
-This software is licensed under the **Polyform Noncommercial License 1.0.0**, see [LICENSE.md](LICENSE.md).  
+This software is licensed under the **Polyform Noncommercial License 1.0.0**, see [LICENSE.md](LICENSE.md).
 You may use, copy, modify, and distribute it for noncommercial purposes only.
 
-For commercial use, please contact: maks.angels@mail.ru
+For commercial use, please contact: [maks.angels@mail.ru](mailto:maks.angels@mail.ru)
 
 ## 🤝 Contributing
 
-Contributions are welcome!  
+Contributions are welcome!
+
 By contributing to this repository, you agree to the [Contributor License Agreement](CONTRIBUTING.md).
+
+### [Guidelines](guidelines/)
+
+Project has a set of guidelines to ensure following best practices, maintain code quality and consistency.
+
+- [**Code general:**](guidelines/codeGeneral.md) General engineering rules.
+- [**Code style:**](guidelines/codeStyle.md) Naming conventions and code formatting expectations.
+- [**Code syntax:**](guidelines/codeSyntax.md) Syntax and declaration rules.
+- [**Concurrency:**](guidelines/concurrency.md) Locking patterns and thread-safety requirements.
+- [**Doxygen inline documentation:**](guidelines/doxygenInlineDocumentation.md) Required inline documentation and comment structure.
+- [**Logging:**](guidelines/logging.md) Logging levels, message style, and runtime logging guidance.

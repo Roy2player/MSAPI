@@ -1,6 +1,5 @@
 /**************************
  * @file        helper.h
- * @version     6.0
  * @date        2023-09-24
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -22,8 +21,8 @@
 #ifndef MSAPI_HELPER_H
 #define MSAPI_HELPER_H
 
-#include "log.h"
-#include "meta.hpp"
+#include "basicSString.inl"
+#include "meta.inl"
 #include <arpa/inet.h>
 #include <codecvt>
 #include <concepts>
@@ -36,8 +35,6 @@
 namespace MSAPI {
 
 namespace Helper {
-
-constexpr std::hash<std::string_view> stringHasher;
 
 template <std::floating_point T> struct Epsilon { };
 
@@ -60,7 +57,7 @@ template <> struct Epsilon<long double> {
  *
  * @return True if string is email, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 bool ValidateEmail(std::string_view email);
 
@@ -86,6 +83,8 @@ bool ValidateIpv6(const char* ip);
  * @brief Get path of executable directory with \ at the end and print error if failed.
  *
  * @param path Path for saving. Maximum size of read is the path capacity. If failed, path will be empty.
+ *
+ * @todo Override for static string.
  */
 void GetExecutableDir(std::string& path);
 
@@ -127,7 +126,7 @@ constexpr bool caseInsensitive = false;
  *
  * @return True if base contains sub, false otherwise.
  *
- * @todo Add unit tests.
+ * @todo Add tests coverage.
  */
 template <bool CaseSensitive> FORCE_INLINE bool ContainsStr(const std::string& base, const std::string& sub)
 {
@@ -255,7 +254,7 @@ FORCE_INLINE std::string Replace(T&& str, const char from, const char to)
  *
  * @return 0 if equal, 1 if first > second, -1 if first < second.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <std::floating_point T, T epsilon = Epsilon<T>::value>
 FORCE_INLINE int CompareFloats(const T first, const T second)
@@ -275,7 +274,7 @@ FORCE_INLINE int CompareFloats(const T first, const T second)
  *
  * @return True if first < second, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <std::floating_point T, T epsilon = Epsilon<T>::value>
 FORCE_INLINE bool FloatLess(const T first, const T second)
@@ -295,7 +294,7 @@ FORCE_INLINE bool FloatLess(const T first, const T second)
  *
  * @return True if first > second, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <std::floating_point T, T epsilon = Epsilon<T>::value>
 FORCE_INLINE bool FloatGreater(const T first, const T second)
@@ -315,7 +314,7 @@ FORCE_INLINE bool FloatGreater(const T first, const T second)
  *
  * @return True if first == second, false otherwise.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <std::floating_point T, T epsilon = Epsilon<T>::value>
 FORCE_INLINE bool FloatEqual(const T first, const T second)
@@ -372,7 +371,7 @@ int WhereIsPoint(double x1, double y1, double x2, double y2, double x3, double y
  *
  * @return Wstring constructed from UTF-8 string.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 FORCE_INLINE std::wstring StringToWstring(const char* cstr)
 {
@@ -432,7 +431,7 @@ FORCE_INLINE std::wstring StringToWstring(const char* cstr)
  *
  * @return String which is constructed from wstring encoded as UTF-8.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 FORCE_INLINE std::string WstringToString(const wchar_t* wcstr)
 {
@@ -480,7 +479,7 @@ FORCE_INLINE std::string WstringToString(const wchar_t* wcstr)
  *
  * @return Normalized string.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 FORCE_INLINE std::string NormalizeOctalEscapedUtf8(const char* cstr)
 {
@@ -494,7 +493,7 @@ FORCE_INLINE std::string NormalizeOctalEscapedUtf8(const char* cstr)
  *
  * @return Return exponent of 10 for value, 0 if value is 0, as for |x| <= 10.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <typename T>
 	requires std::is_integral_v<T>
@@ -520,9 +519,30 @@ FORCE_INLINE T Exponent10Of(T value)
 }
 
 /**************************
- * @return String IP by sockaddr structure, empty if IP is unknown.
+ * @brief Convert binary IPv4 address to string.
+ *
+ * @param addr Ipv4 address in BE (network) format.
+ * @param ipv4 Static string to contain result.
+ *
+ * @locking Is not required.
+ *
+ * @return True on success, false otherwise.
+ *
+ * @test Yes.
  */
-std::string GetStringIp(sockaddr_in addr);
+template <size_t Capacity>
+	requires(Capacity >= 16)
+FORCE_INLINE [[nodiscard]] bool GetStringIp(const in_addr addr, SString<Capacity>& ipv4) noexcept
+{
+	if (inet_ntop(AF_INET, &addr, ipv4.GetBuffer(), 16) != nullptr) [[likely]] {
+		(void)ipv4.UpdateSize();
+		return true;
+	}
+
+	LOG_ERROR_NEW(
+		"Failed attempt to convert binary IPv4 address to string. Error №{}: {}", errno, std::strerror(errno));
+	return false;
+}
 
 /**************************
  * @brief Encode data to Base64 format.
@@ -534,7 +554,7 @@ std::string GetStringIp(sockaddr_in addr);
  *
  * @return String view on the encoded data inside buffer.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <typename T>
 	requires(sizeof(T) == 1 && std::is_integral_v<T>)
@@ -597,7 +617,7 @@ FORCE_INLINE [[nodiscard]] std::string_view Base64Encode(const std::span<T> data
  *
  * @return Span of decoded data inside buffer.
  *
- * @test Has unit tests.
+ * @test Yes.
  */
 template <typename T>
 	requires(sizeof(T) == 1 && std::is_integral_v<T>)
@@ -690,7 +710,7 @@ FORCE_INLINE [[nodiscard]] std::span<const T> Base64Decode(const std::string_vie
  *
  * @return Unsigned 32 bit hash for provided string.
  *
- * @todo Add unit test.
+ * @todo Add tests coverage.
  */
 FORCE_INLINE [[nodiscard]] constexpr uint32_t StringHash32Uint(const std::string_view str) noexcept
 {
@@ -702,8 +722,8 @@ FORCE_INLINE [[nodiscard]] constexpr uint32_t StringHash32Uint(const std::string
 	return hash;
 }
 
-}; //* namespace Helper
+} // namespace Helper
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_HELPER_H
+#endif // MSAPI_HELPER_H

@@ -17,7 +17,7 @@ jobs:
 
     env:
       MSAPI_PATH: ${{ github.workspace }}
-      BUILD_PROFILE: Release
+      MSAPI_BUILD_PROFILE: Release
       # Force CMake/Make to use the new compiler versions
       CC: gcc-16
       CXX: g++-16

@@ -1,6 +1,5 @@
 /**************************
  * @file        io.inl
- * @version     6.0
  * @date        2025-12-13
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,11 +20,11 @@
 #define MSAPI_UNIT_TEST_IO_INL
 
 #include "../../../../library/source/help/io.inl"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -38,13 +37,13 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool Io();
+FORCE_INLINE [[nodiscard]] bool Io();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool Io()
+FORCE_INLINE [[nodiscard]] bool Io()
 {
 	static_assert(IO::append, "Append global is true");
 	static_assert(!IO::overwrite, "Overwrite global is false");
@@ -80,8 +79,8 @@ bool Io()
 	static_assert(IO::EnumToString(IO::FileType::Lnk) == "Lnk", "EnumToString Lnk failed");
 	static_assert(IO::EnumToString(IO::FileType::Sock) == "Sock", "EnumToString Sock failed");
 
-	LOG_INFO_UNITTEST("MSAPI IO");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST IO");
+	MSAPI::Test::Test t;
 
 	std::string path;
 	path.resize(512);
@@ -636,12 +635,12 @@ bool Io()
 	RETURN_IF_FALSE(t.Assert(IO::EnumToString(static_cast<IO::FileType>(U(IO::FileType::Sock) + 1)), "Unknown",
 		"EnumToString(unknown FileType) should return 'Unknown'"));
 
-	return true;
+	return t.Passed<bool>();
 }
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

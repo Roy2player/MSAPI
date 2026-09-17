@@ -1,6 +1,5 @@
 /**************************
  * @file        main.cpp
- * @version     6.0
  * @date        2026-02-08
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -48,5 +47,5 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetToConsole(true);
 	MSAPI::logger.Start();
 
-	return static_cast<int>(!MSAPI::Tests::Unit::Sha1());
+	return static_cast<int>(!MSAPI::Test::Unit::Sha1());
 }

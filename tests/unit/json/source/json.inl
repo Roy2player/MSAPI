@@ -1,6 +1,5 @@
 /**************************
  * @file        json.inl
- * @version     6.0
  * @date        2025-11-20
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,11 +20,11 @@
 #define MSAPI_UNIT_TEST_JSON_INL
 
 #include "../../../../library/source/help/json.h"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -38,16 +37,16 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool Json();
+FORCE_INLINE [[nodiscard]] bool Json();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool Json()
+FORCE_INLINE [[nodiscard]] bool Json()
 {
-	LOG_INFO_UNITTEST("MSAPI Json");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST Json");
+	MSAPI::Test::Test t;
 
 	{
 		MSAPI::Json json{ "" };
@@ -1176,12 +1175,12 @@ bool Json()
 		RETURN_IF_FALSE(t.Assert(std::get<double>(jsonNodePtr->GetValue()), 0.4, "Value of key 'Currency' is 0.4"));
 	}
 
-	return true;
+	return t.Passed<bool>();
 }
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

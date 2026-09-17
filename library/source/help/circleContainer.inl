@@ -1,6 +1,5 @@
 /**************************
- * @file        circleContainer.h
- * @version     6.0
+ * @file        circleContainer.inl
  * @date        2025-06-03
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -17,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef MSAPI_CIRCLE_CONTAINER
-#define MSAPI_CIRCLE_CONTAINER
+#ifndef MSAPI_CIRCLE_CONTAINER_INL
+#define MSAPI_CIRCLE_CONTAINER_INL
 
 #include <array>
 #include <atomic>
@@ -32,6 +31,10 @@
 #include <unistd.h>
 
 namespace MSAPI {
+
+/*---------------------------------------------------------------------------------
+Declarations
+---------------------------------------------------------------------------------*/
 
 /**************************
  * @brief Circle buffer container.
@@ -69,18 +72,13 @@ public:
 				~ANON()
 				{
 					*node = (*node)->next;
-					// 	std::cout << "--> store true" << std::endl;
 					ready.store(true);
-					// 	std::cout << "--> notify true" << std::endl;
 					ready.notify_one();
 				}
 			} tmp{ &m_current, m_ready };
 
-			// 			std::cout << "--> wait true" << std::endl;
 			m_ready.wait(false);
-			// 			std::cout << "--> store false" << std::endl;
 			m_ready.store(false);
-			// 			std::cout << "--> notify false" << std::endl;
 			m_ready.notify_one();
 			return m_current->value;
 		};
@@ -135,8 +133,6 @@ struct Buffers {
 	{
 		auto& current{ accessor.GetCurrent() };
 		current.size = std::min(size, Buffer::pageSize);
-		// 		std::cout << "<-- write to " << current.buffer << " " << std::string_view{ static_cast<const
-		// char*>(from), size } << std::endl;
 		memcpy(current.buffer, from, current.size);
 		writesCounter.fetch_add(1, std::memory_order_relaxed);
 	}
@@ -146,6 +142,6 @@ template <> std::atomic<bool> CircleContainer<Buffers::Buffer, BUFFERS_COUNTER>:
 std::atomic<int_fast32_t> Buffers::writesCounter = 0;
 const int_fast16_t Buffers::Buffer::pageSize = 4096; // Only for tests
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_CIRCLE_CONTAINER
+#endif //* MSAPI_CIRCLE_CONTAINER_INL

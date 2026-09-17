@@ -1,6 +1,5 @@
 /**************************
  * @file        objectDistributor.cpp
- * @version     6.0
  * @date        2023-12-16
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -20,13 +19,15 @@
 #include "objectDistributor.h"
 
 ObjectDistributor::ObjectDistributor()
-	: MSAPI::Protocol::Object::ApplicationStateChecker(this)
+	: MSAPI::Protocol::Object::Distributor<FilterStructure>(*static_cast<const Application*>(this))
 {
 	MSAPI::Application::SetState(MSAPI::Application::State::Running);
 }
 
 void ObjectDistributor::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 {
+	m_lastConnectionId = recvBuffer.GetConnectionId();
+
 	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 
 	if (header.GetCipher() == 2666999999) {
@@ -37,55 +38,69 @@ void ObjectDistributor::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 		MSAPI::Protocol::Object::Data data{ std::move(header), recvBuffer.GetBuffer() };
 
 		const void* object;
-		MSAPI::Protocol::Object::Data::UnpackData(&object, recvBuffer.GetData());
+		MSAPI::Protocol::Object::Data::GetPointerToObjectInBuffer(&object, recvBuffer.GetData());
 
-		if (data.GetHash() == typeid(MSAPI::Protocol::Object::StreamStateResponse).hash_code()) {
-			Distributor::StreamExternalAction({ data.GetStreamId(), recvBuffer.GetConnection() },
+		if (data.GetObjectHash() == typeid(MSAPI::Protocol::Object::StreamStateResponse).hash_code()) {
+			Distributor::StreamExternalAction(data.GetStreamId(), recvBuffer.GetConnectionId(),
 				reinterpret_cast<const MSAPI::Protocol::Object::StreamStateResponse*>(object));
 			return;
 		}
 
-		if (data.GetHash() == typeid(MSAPI::Protocol::Object::Filter<FilterStructure>).hash_code()
-			|| data.GetHash() == typeid(FilterStructure).hash_code()) {
+		if (data.GetObjectHash() == typeid(MSAPI::Protocol::Object::Filter<FilterStructure>).hash_code()
+			|| data.GetObjectHash() == typeid(FilterStructure).hash_code()) {
 
-			Distributor::Collect<FilterStructure>(recvBuffer.GetConnection(), data, object);
+			Distributor::Collect<FilterStructure>(recvBuffer.GetConnectionData(), data, object);
 			return;
 		}
 
+		m_unhandledActions.IncrementActionsNumber();
 		LOG_ERROR("Unknown object protocol data: " + data.ToString());
 	}
 
+	m_unhandledActions.IncrementActionsNumber();
 	LOG_ERROR("Unknown protocol: " + header.ToString());
 }
 
 void ObjectDistributor::SetInstrument(const InstrumentStructure& instrument)
 {
-	Distributor::SendNewObject(instrument, m_predicateForInstrument);
+	LOG_DEBUG("New instrument is added");
+	{
+		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_distributionLock };
+		Distributor::SendNewObject(instrument, m_predicateForInstrument);
+	}
 	m_instruments.emplace(instrument);
 }
 
 void ObjectDistributor::SetOrder(const OrderStructure& order)
 {
-	Distributor::SendNewObject(order, m_predicateForOrder);
+	LOG_DEBUG("New order is added");
+	{
+		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_distributionLock };
+		Distributor::SendNewObject(order, m_predicateForOrder);
+	}
 	m_orders.emplace(order);
 }
 
-void ObjectDistributor::HandleNewStreamOpened(const int streamId, const MSAPI::Protocol::Object::StreamData& streamData)
+void ObjectDistributor::HandleNewStreamOpened(
+	MSAPI::Protocol::Object::Distributor<FilterStructure>::StreamData& streamData)
 {
-	if (typeid(InstrumentStructure).hash_code() == streamData.objectHash) {
-		LOG_DEBUG("Stream id: " + _S(streamId) + ", connection: " + _S(streamData.connection)
-			+ ", hash: " + _S(streamData.objectHash) + " is open");
-		Distributor::SendOldObjects(streamId, streamData, m_instruments, m_predicateForInstrument);
-		return;
-	}
-	if (typeid(OrderStructure).hash_code() == streamData.objectHash) {
-		LOG_DEBUG("Stream id: " + _S(streamId) + ", connection: " + _S(streamData.connection)
-			+ ", hash: " + _S(streamData.objectHash) + " is open");
-		Distributor::SendOldObjects(streamId, streamData, m_orders, m_predicateForOrder);
-		return;
+	const auto streamObjectHash{ streamData.GetStreamObjectHash() };
+
+	{
+		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_distributionLock };
+
+		if (typeid(InstrumentStructure).hash_code() == streamObjectHash) {
+			(void)Distributor::SendObjectsToStream(streamData, m_instruments, m_predicateForInstrument);
+			return;
+		}
+		if (typeid(OrderStructure).hash_code() == streamObjectHash) {
+			(void)Distributor::SendObjectsToStream(streamData, m_orders, m_predicateForOrder);
+			return;
+		}
 	}
 
-	LOG_ERROR("Unknown hash for opening stream: " + streamData.ToString());
+	m_unhandledActions.IncrementActionsNumber();
+	LOG_ERROR_NEW("Unknown hash for opening stream: {}", streamObjectHash);
 }
 
 void ObjectDistributor::Clear()

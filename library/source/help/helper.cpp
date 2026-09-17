@@ -1,6 +1,5 @@
 /**************************
  * @file        helper.cpp
- * @version     6.0
  * @date        2023-09-24
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -256,15 +255,6 @@ int WhereIsPoint(const double x1, const double y1, const double x2, const double
 	return temp == 0 ? 0 : -1;
 }
 
-std::string GetStringIp(const sockaddr_in addr)
-{
-	std::string ip;
-	ip.resize(INET_ADDRSTRLEN);
-	inet_ntop(AF_INET, &addr.sin_addr, ip.data(), INET_ADDRSTRLEN);
-	ip.resize(strlen(ip.c_str()));
-	return ip;
-}
+} // namespace Helper
 
-}; //* namespace Helper
-
-}; //* namespace MSAPI
+} // namespace MSAPI

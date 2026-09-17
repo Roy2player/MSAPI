@@ -1,6 +1,5 @@
 /**************************
  * @file        client.h
- * @version     6.0
  * @date        2024-04-10
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -20,8 +19,8 @@
 #ifndef APPLICATION_HANDLERS_CLIENT_H
 #define APPLICATION_HANDLERS_CLIENT_H
 
-#include "../../../../library/source/server/server.h"
-#include "../../../../library/source/test/actionsCounter.h"
+#include "../../../../library/source/server/server.inl"
+#include "../../../../library/source/test/actionsCounter.inl"
 
 /**************************
  * @brief Client for MSAPI tests of application handlers based on standard protocol.
@@ -91,10 +90,12 @@ public:
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;
 	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
-	void HandleHello(int connection) final;
-	void HandleMetadata(int connection, std::string_view metadata) final;
-	void HandleParameters(int connection, const std::map<size_t, std::variant<standardTypes>>& parameters) final;
-	void HandleIncomeDisconnect(int32_t id, int32_t connection) final;
+	void HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
+	void HandleMetadata(
+		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, std::string_view metadata) final;
+	void HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
+		const std::map<size_t, std::variant<standardTypes>>& parameters) final;
+	void HandleIncomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
 
 	int8_t GetParameter1() const noexcept;
 	int16_t GetParameter2() const noexcept;
@@ -144,8 +145,7 @@ public:
 	GetParameter43() const noexcept;
 	const MSAPI::Table<int32_t>& GetParameter44() const noexcept;
 
-	const size_t& GetUnhandledActions() const noexcept;
-	void WaitUnhandledActions(const MSAPI::Test& test, size_t delay, size_t expected);
+	size_t GetUnhandledActions() const noexcept;
 };
 
 #endif //* APPLICATION_HANDLERS_CLIENT_H

@@ -1,6 +1,5 @@
 /**************************
  * @file        client.cpp
- * @version     6.0
  * @date        2024-04-10
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -119,28 +118,29 @@ void Client::HandleModifyRequest(const std::map<size_t, std::variant<standardTyp
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Client::HandleHello(const int connection)
+void Client::HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 {
-	LOG_ERROR("Unexpected hello received from connection: " + _S(connection));
+	LOG_ERROR_NEW("Unexpected hello received from connection id: {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Client::HandleMetadata(const int connection, [[maybe_unused]] const std::string_view metadata)
+void Client::HandleMetadata(
+	const std::shared_ptr<MSAPI::Connection::Data>& connectionData, [[maybe_unused]] const std::string_view metadata)
 {
-	LOG_ERROR("Unexpected metadata received from connection: " + _S(connection));
+	LOG_ERROR_NEW("Unexpected metadata received from connection id: {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Client::HandleParameters(
-	const int connection, [[maybe_unused]] const std::map<size_t, std::variant<standardTypes>>& parameters)
+void Client::HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
+	[[maybe_unused]] const std::map<size_t, std::variant<standardTypes>>& parameters)
 {
-	LOG_ERROR("Unexpected parameters received from connection: " + _S(connection));
+	LOG_ERROR_NEW("Unexpected parameters received from connection id: {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Client::HandleIncomeDisconnect(const int32_t id, const int32_t connection)
+void Client::HandleIncomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
 {
-	LOG_PROTOCOL_NEW("id {} connection {}", id, connection);
+	LOG_PROTOCOL_NEW("connection id: {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
@@ -241,9 +241,4 @@ Client::GetParameter43() const noexcept
 
 const MSAPI::Table<int32_t>& Client::GetParameter44() const noexcept { return m_parameter44; }
 
-const size_t& Client::GetUnhandledActions() const noexcept { return m_unhandledActions.GetActionsNumber(); }
-
-void Client::WaitUnhandledActions(const MSAPI::Test& test, const size_t delay, const size_t expected)
-{
-	m_unhandledActions.WaitActionsNumber(test, delay, expected);
-}
+size_t Client::GetUnhandledActions() const noexcept { return m_unhandledActions.GetActionsNumber(); }

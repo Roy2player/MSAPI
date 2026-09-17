@@ -1,6 +1,5 @@
 /**************************
  * @file        table.cpp
- * @version     6.0
  * @date        2024-05-12
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -19,7 +18,7 @@
 
 #include "table.h"
 #include "json.h"
-#include "meta.hpp"
+#include "meta.inl"
 
 namespace MSAPI {
 

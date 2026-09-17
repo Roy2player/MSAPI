@@ -1,6 +1,5 @@
 /**************************
  * @file        lock.inl
- * @version     6.0
  * @date        2024-01-28
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -48,7 +47,7 @@ template <MutexT T> struct NamedMutex {
 	 *
 	 * @param name Mutex name.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE NamedMutex(std::string&& name) noexcept;
 };
@@ -71,7 +70,7 @@ concept MutexAndParams
  *
  * @return True if mutex initialized successfully, false if any errors occurred.
  *
- * @todo Add unit test.
+ * @todo Add tests coverage.
  */
 template <typename T, typename S>
 	requires MutexAndParams<T, S>
@@ -87,7 +86,7 @@ FORCE_INLINE [[nodiscard]] bool MutexInit(NamedMutex<T>& namedMutex, const S mut
  *
  * @return True if mutex destroyed successfully, false if any errors occurred.
  *
- * @todo Add unit test.
+ * @todo Add tests coverage.
  */
 template <typename T> FORCE_INLINE [[nodiscard]] bool MutexDestroy(NamedMutex<T>& namedMutex);
 
@@ -98,7 +97,7 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexDestroy(NamedMutex<T>
  *
  * @return True if mutex locked successfully, false if any errors occurred.
  *
- * @todo Add unit test.
+ * @todo Add tests coverage.
  */
 FORCE_INLINE [[nodiscard]] bool MutexLock(NamedMutex<pthread_mutex_t>& namedMutex);
 
@@ -124,7 +123,7 @@ static_assert(!doLock, "Lock \"doLock\" must be false");
  *
  * @return True if mutex locked successfully, false if any errors occurred or try lock and mutex busy.
  *
- * @todo Add unit test.
+ * @todo Add tests coverage.
  */
 template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMutex<pthread_rwlock_t>& namedMutex);
 
@@ -137,7 +136,7 @@ template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMu
  *
  * @return True if mutex is unlocked successfully, false if any errors occurred.
  *
- * @todo Add unit test.
+ * @todo Add tests coverage.
  */
 template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>& namedMutex);
 
@@ -154,19 +153,19 @@ public:
 	 *
 	 * @param namedMutex Named mutex.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE Guard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept;
 
 	Guard(const Guard&) = delete;
 	Guard(Guard&&) = delete;
-	const Guard& operator=(const Guard&) = delete;
-	const Guard& operator=(Guard&&) = delete;
+	Guard& operator=(const Guard&) = delete;
+	Guard& operator=(Guard&&) = delete;
 
 	/**************************
 	 * @brief Destroy the Guard object, unlock mutex.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE ~Guard() noexcept;
 };
@@ -189,19 +188,19 @@ public:
 	 * @param mutex Pointer to mutex.
 	 * @param name Mutex name for logging.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept;
 
 	GuardRW(const GuardRW&) = delete;
 	GuardRW(GuardRW&&) = delete;
-	const GuardRW& operator=(const GuardRW&) = delete;
-	const GuardRW& operator=(GuardRW&&) = delete;
+	GuardRW& operator=(const GuardRW&) = delete;
+	GuardRW& operator=(GuardRW&&) = delete;
 
 	/**************************
 	 * @brief Destroy the Guard RW object, unlock mutex.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE ~GuardRW() noexcept;
 };
@@ -224,19 +223,19 @@ public:
 		 *
 		 * @param atomicLock Atomic lock.
 		 *
-		 * @todo Add unit test.
+		 * @todo Add tests coverage.
 		 */
 		FORCE_INLINE Guard(Atomic& atomicLock) noexcept;
 
 		Guard(const Guard&) = delete;
 		Guard(Guard&&) = delete;
-		const Guard& operator=(const Guard&) = delete;
-		const Guard& operator=(Guard&&) = delete;
+		Guard& operator=(const Guard&) = delete;
+		Guard& operator=(Guard&&) = delete;
 
 		/**************************
 		 * @brief Destroy the Guard object, unlock atomic lock.
 		 *
-		 * @todo Add unit test.
+		 * @todo Add tests coverage.
 		 */
 		FORCE_INLINE ~Guard() noexcept;
 	};
@@ -249,13 +248,13 @@ public:
 
 	Atomic(const Atomic&) = delete;
 	Atomic(Atomic&&) = delete;
-	const Atomic& operator=(const Atomic&) = delete;
-	const Atomic& operator=(Atomic&&) = delete;
+	Atomic& operator=(const Atomic&) = delete;
+	Atomic& operator=(Atomic&&) = delete;
 
 	/**************************
 	 * @brief Wait for lock is false and set it to true.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE void Lock() noexcept;
 
@@ -264,14 +263,14 @@ public:
 	 *
 	 * @return True if lock was false and now is true, false if lock was true.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE bool TryLock() noexcept;
 
 	/**************************
 	 * @brief Set lock to false and notify one thread.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE void Unlock() noexcept;
 
@@ -299,19 +298,19 @@ public:
 		 *
 		 * @param atomicRWLock Atomic read/write lock.
 		 *
-		 * @todo Add unit test.
+		 * @todo Add tests coverage.
 		 */
 		FORCE_INLINE Guard(AtomicRW& atomicRWLock) noexcept;
 
 		Guard(const Guard&) = delete;
 		Guard(Guard&&) = delete;
-		const Guard& operator=(const Guard&) = delete;
-		const Guard& operator=(Guard&&) = delete;
+		Guard& operator=(const Guard&) = delete;
+		Guard& operator=(Guard&&) = delete;
 
 		/**************************
 		 * @brief Destroy the Guard object, unlock atomic read/write lock.
 		 *
-		 * @todo Add unit test.
+		 * @todo Add tests coverage.
 		 */
 		FORCE_INLINE ~Guard() noexcept;
 	};
@@ -325,34 +324,34 @@ public:
 
 	AtomicRW(const AtomicRW&) = delete;
 	AtomicRW(AtomicRW&&) = delete;
-	const AtomicRW& operator=(const AtomicRW&) = delete;
-	const AtomicRW& operator=(AtomicRW&&) = delete;
+	AtomicRW& operator=(const AtomicRW&) = delete;
+	AtomicRW& operator=(AtomicRW&&) = delete;
 
 	/**************************
 	 * @brief Lock for read, wait if write lock is set.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE void ReadLock() noexcept;
 
 	/**************************
 	 * @brief Unlock for read and notify one thread.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE void ReadUnlock() noexcept;
 
 	/**************************
 	 * @brief Lock for write, wait if write lock is not set and then wait for all read locks to be released.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE void WriteLock() noexcept;
 
 	/**************************
 	 * @brief Unlock for write and notify all threads.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE void WriteUnlock() noexcept;
 };

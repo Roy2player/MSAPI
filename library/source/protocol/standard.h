@@ -1,6 +1,5 @@
 /**************************
  * @file        standard.h
- * @version     6.0
  * @date        2024-04-09
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -28,8 +27,9 @@
 #define MSAPI_PROTOCOL_STANDARD_H
 
 #include "../help/log.h"
-#include "../help/standardType.hpp"
+#include "../help/standardType.inl"
 #include "../help/table.h"
+#include "../server/connection.inl"
 #include "dataHeader.h"
 
 namespace MSAPI {
@@ -62,7 +62,7 @@ public:
 	 *
 	 * @note Ciphers from 934875930 to 934875939 are reserved for standard protocol.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	Data(size_t cipher);
 
@@ -72,7 +72,7 @@ public:
 	 * @param header Header of data.
 	 * @param buffer Buffer with data.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	Data(const DataHeader& header, const void* buffer);
 
@@ -89,7 +89,7 @@ public:
 	 * @param key Identifier of data, should be unique. If not - data will not be set.
 	 * @param value Data.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	template <typename T>
 		requires(is_standard_type<std::remove_cv_t<std::remove_reference_t<T>>>
@@ -226,14 +226,14 @@ public:
 	 *
 	 * @return Pointer to memory, nullptr if cannot allocate.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	void* Encode() const;
 
 	/**************************
 	 * @brief Clear data containers and buffer size.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	void Clear();
 
@@ -298,71 +298,71 @@ public:
 /**************************
  * @brief Send data to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  * @param data Data to send.
  *
- * @test Has unit test.
+ * @test Yes.
  */
-void Send(int connection, const Data& data);
+void Send(Connection& connection, const Data& data);
 
 /**************************
  * @brief Send pause message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
- * @test Has unit test.
+ * @test Yes.
  */
-void SendActionPause(int connection);
+void SendActionPause(Connection& connection);
 
 /**************************
  * @brief Send run message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
- * @test Has unit test.
+ * @test Yes.
  */
-void SendActionRun(int connection);
+void SendActionRun(Connection& connection);
 
 /**************************
  * @brief Send delete message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
- * @test Has unit test.
+ * @test Yes.
  */
-void SendActionDelete(int connection);
+void SendActionDelete(Connection& connection);
 
 /**************************
  * @brief Send hello message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
- * @test Has unit test.
+ * @test Yes.
  */
-void SendActionHello(int connection);
+void SendActionHello(Connection& connection);
 
 /**************************
  * @brief Send metadata request message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
- * @test Has unit test.
+ * @test Yes.
  */
-void SendMetadataRequest(int connection);
+void SendMetadataRequest(Connection& connection);
 
 /**************************
  * @brief Send parameters request message to connection.
  *
- * @param connection Socket to send.
+ * @param connection Target connection.
  *
- * @test Has unit test.
+ * @test Yes.
  */
-void SendParametersRequest(int connection);
+void SendParametersRequest(Connection& connection);
 
-}; // namespace Standard
+} // namespace Standard
 
-}; // namespace Protocol
+} // namespace Protocol
 
-}; // namespace MSAPI
+} // namespace MSAPI
 
 #endif // MSAPI_PROTOCOL_STANDARD_H

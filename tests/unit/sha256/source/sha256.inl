@@ -1,6 +1,5 @@
 /**************************
  * @file        sha256.inl
- * @version     6.0
  * @date        2025-12-23
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,11 +20,11 @@
 #define MSAPI_UNIT_TEST_SHA256_INL
 
 #include "../../../../library/source/help/sha256.inl"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -38,16 +37,16 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool Sha256();
+FORCE_INLINE [[nodiscard]] bool Sha256();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool Sha256()
+FORCE_INLINE [[nodiscard]] bool Sha256()
 {
-	LOG_INFO_UNITTEST("MSAPI Sha256");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST Sha256");
+	MSAPI::Test::Test t;
 
 	static_assert(Sha256::reset, "Sha256::reset should be true");
 	static_assert(!Sha256::doNotReset, "Sha256::doNotReset should be false");
@@ -209,12 +208,12 @@ bool Sha256()
 			shaSingle.Final<MSAPI::Sha256::doNotReset>(), "Boundary length chunked vs single should match"));
 	}
 
-	return true;
+	return t.Passed<bool>();
 }
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

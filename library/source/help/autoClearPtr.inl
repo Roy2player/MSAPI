@@ -1,6 +1,5 @@
 /**************************
  * @file        autoClearPtr.inl
- * @version     6.0
  * @date        2023-11-27
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -46,7 +45,7 @@ public:
 	 *
 	 * @attention On bad allocation pointer will be nullptr.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE AutoClearPtr();
 
@@ -57,7 +56,7 @@ public:
 	 *
 	 * @param size Number of bytes for allocating, default is size of template class object.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE AutoClearPtr(uint64_t size);
 
@@ -66,7 +65,7 @@ public:
 	 *
 	 * @param ptr Pointer to already allocated memory.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE AutoClearPtr(T* ptr) noexcept;
 
@@ -76,21 +75,21 @@ public:
 	/**************************
 	 * @brief Move ptr from object and set nullptr back.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE AutoClearPtr(AutoClearPtr&& other) noexcept;
 
 	/**************************
 	 * @brief Free memory if allocated, move pointer from object and set nullptr back.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE AutoClearPtr& operator=(AutoClearPtr&& other) noexcept;
 
 	/**************************
 	 * @brief Destroy the Auto Clear Ptr object and free memory.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE ~AutoClearPtr() noexcept;
 
@@ -101,21 +100,21 @@ public:
 	 *
 	 * @return Pointer to reallocated memory or nullptr.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE [[nodiscard]] T* Realloc(uint64_t newSize);
 
 	/**************************
 	 * @return Pointer to memory.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE [[nodiscard]] T* Get() noexcept;
 
 	/**************************
 	 * @return Const pointer to memory.
 	 *
-	 * @todo Add unit test.
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE [[nodiscard]] const T* Get() const noexcept;
 };

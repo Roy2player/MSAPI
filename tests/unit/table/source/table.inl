@@ -1,6 +1,5 @@
 /**************************
  * @file        table.inl
- * @version     6.0
  * @date        2025-11-20
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -22,11 +21,11 @@
 
 #include "../../../../library/source/help/json.h"
 #include "../../../../library/source/help/table.h"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -39,16 +38,16 @@ Declarations
  *
  * @return True if all tests passed and false if something went wrong.
  */
-[[nodiscard]] bool Table();
+FORCE_INLINE [[nodiscard]] bool Table();
 
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool Table()
+FORCE_INLINE [[nodiscard]] bool Table()
 {
-	LOG_INFO_UNITTEST("MSAPI Table");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST Table");
+	MSAPI::Test::Test t;
 
 	const auto basicTableCheck{ [&t]<class... Ts> [[nodiscard]] (const MSAPI::Table<Ts...>& table, const size_t rows,
 									const std::vector<size_t>& ids) {
@@ -2138,12 +2137,12 @@ bool Table()
 			"operator =="));
 	}
 
-	return true;
+	return t.Passed<bool>();
 }
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

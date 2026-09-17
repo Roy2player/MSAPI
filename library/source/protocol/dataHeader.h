@@ -1,6 +1,5 @@
 /**************************
  * @file        dataHeader.h
- * @version     6.0
  * @date        2024-04-09
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -40,7 +39,7 @@ public:
 	 *
 	 * @param buffer Buffer with data to parse.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	DataHeader(std::span<const uint8_t> buffer) noexcept;
 
@@ -49,21 +48,21 @@ public:
 	 *
 	 * @param cipher Cipher for data.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	DataHeader(uint64_t cipher) noexcept;
 
 	/**************************
 	 * @return Cipher of data.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	uint64_t GetCipher() const noexcept;
 
 	/**************************
 	 * @return Buffer size of data, zero if invalid.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	uint64_t GetBufferSize() const noexcept;
 
@@ -74,21 +73,21 @@ public:
 	 * 		buffer size : 60
 	 * }
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	std::string ToString() const;
 
 	/**************************
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
-	bool operator==(const DataHeader& x) const noexcept = default;
+	[[nodiscard]] bool operator==(const DataHeader&) const noexcept = default;
 
 	/**************************
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
-	bool operator!=(const DataHeader& x) const noexcept = default;
+	[[nodiscard]] bool operator!=(const DataHeader&) const noexcept = default;
 };
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_DATA_HEADER_H
+#endif // MSAPI_DATA_HEADER_H

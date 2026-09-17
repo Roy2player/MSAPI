@@ -1,6 +1,5 @@
 /**************************
  * @file        application.inl
- * @version     6.0
  * @date        2025-11-20
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -21,11 +20,11 @@
 #define MSAPI_UNIT_TEST_APPLICATION_INL
 
 #include "../../../../library/source/server/application.h"
-#include "../../../../library/source/test/test.h"
+#include "../../../../library/source/test/test.inl"
 
 namespace MSAPI {
 
-namespace Tests {
+namespace Test {
 
 namespace Unit {
 
@@ -39,10 +38,10 @@ Declarations
 Definitions
 ---------------------------------------------------------------------------------*/
 
-bool Application()
+FORCE_INLINE [[nodiscard]] bool Application()
 {
-	LOG_INFO_UNITTEST("MSAPI Application");
-	MSAPI::Test t;
+	LOG_INFO("MSAPI UNIT TEST Application");
+	MSAPI::Test::Test t;
 
 	MSAPI::Application app;
 
@@ -1783,12 +1782,12 @@ bool Application()
 
 #undef ASE
 
-	return true;
+	return t.Passed<bool>();
 }
 
 } // namespace Unit
 
-} // namespace Tests
+} // namespace Test
 
 } // namespace MSAPI
 

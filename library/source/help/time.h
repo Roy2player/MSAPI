@@ -1,6 +1,5 @@
 /**************************
  * @file        time.h
- * @version     6.0
  * @date        2023-09-24
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
@@ -63,7 +62,7 @@ public:
 	 * @brief Class for planning a function call in future by timer. Callback and data or only handler can be provided
 	 * in constructor.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	class Event {
 	public:
@@ -171,7 +170,7 @@ public:
 		/**************************
 		 * @example 2023-12-30
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		std::string ToString() const;
 
@@ -193,42 +192,42 @@ public:
 		/**************************
 		 * @brief Compare by all fields.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator<(const Timer::Date& first, const Timer::Date& second);
 
 		/**************************
 		 * @brief Compare by all fields.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator>(const Timer::Date& first, const Timer::Date& second);
 
 		/**************************
 		 * @brief Compare by all fields.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator==(const Timer::Date& first, const Timer::Date& second);
 
 		/**************************
 		 * @brief Compare by all fields.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator!=(const Timer::Date& first, const Timer::Date& second);
 
 		/**************************
 		 * @brief Compare by all fields.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator>=(const Timer::Date& first, const Timer::Date& second);
 
 		/**************************
 		 * @brief Compare by all fields.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator<=(const Timer::Date& first, const Timer::Date& second);
 	};
@@ -272,63 +271,63 @@ public:
 		/**************************
 		 * @brief Construct a new empty Duration object, empty constructor.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		Duration();
 
 		/**************************
 		 * @return True if duration nanoseconds is 0.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		bool Empty() const;
 
 		/**************************
 		 * @return The total number of whole days in duration.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		int64_t GetDays() const;
 
 		/**************************
 		 * @return The total number of whole hours in duration.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		int64_t GetHours() const;
 
 		/**************************
 		 * @return The total number of whole minutes in duration.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		int64_t GetMinutes() const;
 
 		/**************************
 		 * @return The total number of whole seconds in duration.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		int64_t GetSeconds() const;
 
 		/**************************
 		 * @return The total number of whole milliseconds in duration.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		int64_t GetMilliseconds() const;
 
 		/**************************
 		 * @return The total number of whole microseconds in duration.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		int64_t GetMicroseconds() const;
 
 		/**************************
 		 * @return The total number of whole nanoseconds in duration.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		int64_t GetNanoseconds() const;
 
@@ -337,7 +336,7 @@ public:
 		 *
 		 * @example 108 hours
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		std::string ToString(Type type = Type::Nanoseconds) const;
 
@@ -359,58 +358,58 @@ public:
 		/**************************
 		 * @brief Compare by nanoseconds counter.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator<(Duration first, Duration second);
 
 		/**************************
 		 * @brief Compare by nanoseconds counter.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator<=(Duration first, Duration second);
 
 		/**************************
 		 * @brief Compare by nanoseconds counter.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator>(Duration first, Duration second);
 
 		/**************************
 		 * @brief Compare by nanoseconds counter.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator>=(Duration first, Duration second);
 
 		/**************************
 		 * @brief Compare by nanoseconds counter.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator==(Duration first, Duration second);
 
 		/**************************
 		 * @brief Compare by nanoseconds counter.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend bool operator!=(Duration first, Duration second);
 
 		/**************************
 		 * @brief Compare by nanoseconds counter.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend Duration operator-(Duration first, Duration second);
 
 		/**************************
 		 * @brief Compare by nanoseconds counter.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		friend Duration operator+(Duration first, Duration second);
 
@@ -425,7 +424,7 @@ public:
 		 * @param seconds Duration seconds.
 		 * @param nanoseconds Duration nanoseconds.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		static Duration Create(
 			int64_t days = 0, int64_t hours = 0, int64_t minutes = 0, int64_t seconds = 0, int32_t nanoseconds = 0);
@@ -435,7 +434,7 @@ public:
 		 *
 		 * @param days Duration days.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		static Duration CreateDays(int64_t days);
 
@@ -444,7 +443,7 @@ public:
 		 *
 		 * @param hours Duration hours.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		static Duration CreateHours(int64_t hours);
 
@@ -453,7 +452,7 @@ public:
 		 *
 		 * @param minutes Duration minutes.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		static Duration CreateMinutes(int64_t minutes);
 
@@ -462,7 +461,7 @@ public:
 		 *
 		 * @param seconds Duration seconds.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		static Duration CreateSeconds(int64_t seconds);
 
@@ -471,7 +470,7 @@ public:
 		 *
 		 * @param milliseconds Duration milliseconds.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		static Duration CreateMilliseconds(int64_t milliseconds);
 
@@ -480,7 +479,7 @@ public:
 		 *
 		 * @param microseconds Duration microseconds.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		static Duration CreateMicroseconds(int64_t microseconds);
 
@@ -489,7 +488,7 @@ public:
 		 *
 		 * @param nanoseconds Duration nanoseconds.
 		 *
-		 * @test Has unit test.
+		 * @test Yes.
 		 */
 		static Duration CreateNanoseconds(int64_t nanoseconds);
 
@@ -570,14 +569,14 @@ public:
 	/**************************
 	 * @return Timer converted to Date format.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	Date ToDate() const;
 
 	/**************************
 	 * @example 2023-11-20 21:36:03.492368859
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	std::string ToString() const;
 
@@ -599,63 +598,63 @@ public:
 	/**************************
 	 * @brief Compare by time point.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	friend bool operator<(Timer first, Timer second);
 
 	/**************************
 	 * @brief Compare by time point.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	friend bool operator<=(Timer first, Timer second);
 
 	/**************************
 	 * @brief Compare by time point.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	friend bool operator>(Timer first, Timer second);
 
 	/**************************
 	 * @brief Compare by time point.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	friend bool operator>=(Timer first, Timer second);
 
 	/**************************
 	 * @brief Compare by time point.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	friend bool operator==(Timer first, Timer second);
 
 	/**************************
 	 * @brief Compare by time point.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	friend bool operator!=(Timer first, Timer second);
 
 	/**************************
 	 * @return Difference between time points.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	friend Duration operator-(Timer first, Timer second);
 
 	/**************************
 	 * @return Sum of time point and duration.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	friend Timer operator+(Timer timer, Duration duration);
 
 	/**************************
 	 * @return Timer with subtracted duration.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	friend Timer operator-(Timer timer, Duration duration);
 
@@ -694,7 +693,7 @@ public:
 	 *
 	 * @return Timer object or empty timer if parameters are invalid.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	static Timer Create(uint16_t year = 1970, uint8_t month = 1, uint8_t day = 1, uint8_t hour = 0, uint8_t minute = 0,
 		uint8_t second = 0, uint32_t nanosecond = 0);
@@ -707,7 +706,7 @@ public:
 	 *
 	 * @return Timer object or empty timer if parsing fails.
 	 *
-	 * @test Has unit test.
+	 * @test Yes.
 	 */
 	static FORCE_INLINE Timer Create(std::string_view dateStr)
 	{
