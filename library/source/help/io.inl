@@ -21,7 +21,7 @@
 #ifndef MSAPI_IO_INL
 #define MSAPI_IO_INL
 
-#include "../help/log.h"
+#include "log.h"
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>

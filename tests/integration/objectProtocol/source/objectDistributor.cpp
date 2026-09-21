@@ -19,7 +19,7 @@
 #include "objectDistributor.h"
 
 ObjectDistributor::ObjectDistributor()
-	: MSAPI::Protocol::Object::Distributor<FilterStructure>(*static_cast<const Application*>(this))
+	: MSAPI::Protocol::Object::Distributor<FilterStructure>{ *static_cast<const Application*>(this) }
 {
 	MSAPI::Application::SetState(MSAPI::Application::State::Running);
 }

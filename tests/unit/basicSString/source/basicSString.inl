@@ -49,11 +49,16 @@
  * 5.3. Copy assignment constructor
  * 5.4. Move assignment constructor
  * 6. String view assignment
- * 7. Different capacity construction and assignment
- * 8. Equality and inequality
- * 9. Hash
- * 10. Different capacity comparison
- * 11. Formatter
+ * 6.1. String view constructor
+ * 7.1. Append via operator+= with a string view
+ * 7.2. Append via operator+= with another instance of same capacity
+ * 7.3. Append via operator+= with an instance of different capacity
+ * 7.4. Append via operator+= overflow preserves destination
+ * 8. Different capacity construction and assignment
+ * 9. Equality and inequality
+ * 10. Hash
+ * 11. Different capacity comparison
+ * 12. Formatter
  */
 
 #ifndef MSAPI_UNIT_TEST_BASIC_SSTRING_INL
@@ -356,7 +361,68 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 				"String view assignment content is expected"));
 		}
 
-		// 7. Different capacity construction and assignment
+		// 6.1. String view constructor
+		{
+			const MSAPI::BasicSString<Type, 41> constructedString{ std::basic_string_view<Type>{ source.data(), 31 } };
+
+			RETURN_IF_FALSE(t.Assert(constructedString.GetSize(), 31, "String view constructor size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(constructedString.Get().data(), source.data(), 31 * sizeof(Type)), 0,
+				"String view constructor content is expected"));
+		}
+
+		// 7.1. Append via operator+= with a string view
+		{
+			MSAPI::BasicSString<Type, 41> appendedString;
+			appendedString = std::basic_string_view<Type>{ source.data(), 3 };
+			appendedString += std::basic_string_view<Type>{ source.data(), 31 };
+
+			RETURN_IF_FALSE(t.Assert(appendedString.GetSize(), 34, "String view append size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data(), source.data(), 3 * sizeof(Type)), 0,
+				"String view append preserves existing content"));
+			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data() + 3, source.data(), 31 * sizeof(Type)), 0,
+				"String view append content is expected"));
+		}
+
+		// 7.2. Append via operator+= with another instance of same capacity
+		{
+			MSAPI::BasicSString<Type, 41> appendedString;
+			appendedString = std::basic_string_view<Type>{ source.data(), 3 };
+			MSAPI::BasicSString<Type, 41> otherString;
+			otherString = std::basic_string_view<Type>{ source.data(), 31 };
+			appendedString += otherString;
+
+			RETURN_IF_FALSE(t.Assert(appendedString.GetSize(), 34, "Same capacity append size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data() + 3, source.data(), 31 * sizeof(Type)), 0,
+				"Same capacity append content is expected"));
+		}
+
+		// 7.3. Append via operator+= with an instance of different capacity
+		{
+			MSAPI::BasicSString<Type, 41> appendedString;
+			appendedString = std::basic_string_view<Type>{ source.data(), 3 };
+			MSAPI::BasicSString<Type, 42> otherString;
+			otherString = std::basic_string_view<Type>{ source.data(), 31 };
+			appendedString += otherString;
+
+			RETURN_IF_FALSE(t.Assert(appendedString.GetSize(), 34, "Different capacity append size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data() + 3, source.data(), 31 * sizeof(Type)), 0,
+				"Different capacity append content is expected"));
+		}
+
+		// 7.4. Append via operator+= overflow preserves destination
+		{
+			MSAPI::BasicSString<Type, 32> appendedString;
+			appendedString = std::basic_string_view<Type>{ source.data(), 3 };
+			MSAPI::BasicSString<Type, 41> otherString;
+			otherString = std::basic_string_view<Type>{ source.data(), 31 };
+			appendedString += otherString;
+
+			RETURN_IF_FALSE(t.Assert(appendedString.GetSize(), 3, "Overflow append preserves destination size"));
+			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data(), source.data(), 3 * sizeof(Type)), 0,
+				"Overflow append preserves destination content"));
+		}
+
+		// 8. Different capacity construction and assignment
 		{
 			MSAPI::BasicSString<Type, 41> sourceString;
 			sourceString = std::basic_string_view<Type>{ source.data(), 31 };
@@ -395,7 +461,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 				overflowAssignedString.GetSize(), 3, "Different capacity overflow assignment preserves destination"));
 		}
 
-		// 8. Equality and inequality
+		// 9. Equality and inequality
 		{
 			MSAPI::BasicSString<Type, 41> firstString;
 			MSAPI::BasicSString<Type, 41> secondString;
@@ -409,7 +475,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			RETURN_IF_FALSE(t.Assert(firstString != secondString, true, "Different strings are different"));
 		}
 
-		// 9. Hash
+		// 10. Hash
 		{
 			MSAPI::BasicSString<Type, 41> hashedString;
 			hashedString = std::basic_string_view<Type>{ source.data(), 31 };
@@ -418,7 +484,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 				"Hash is based on string view"));
 		}
 
-		// 10. Different capacity comparison
+		// 11. Different capacity comparison
 		{
 			MSAPI::BasicSString<Type, 41> smallerString;
 			MSAPI::BasicSString<Type, 42> largerString;
@@ -434,7 +500,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			RETURN_IF_FALSE(t.Assert(smallerString != largerString, true, "Different capacities are different"));
 		}
 
-		// 11. Formatter
+		// 12. Formatter
 		{
 			MSAPI::BasicSString<Type, 41> formattedString;
 			formattedString = std::basic_string_view<Type>{ source.data(), 31 };

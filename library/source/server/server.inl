@@ -287,6 +287,8 @@ public:
 	/**************************
 	 * @brief Open new outcome connection.
 	 *
+	 * @attention Can block in attempts to connect until limit.
+	 *
 	 * @param ip IP address to connect.
 	 * @param port Port to connect.
 	 * @param doReconnection If true, server will try to reconnect if connection was closed.
@@ -303,6 +305,8 @@ public:
 
 	/**************************
 	 * @brief Open new manager connection. Manager connection has lifecycle control.
+	 *
+	 * @attention Can block in attempts to connect until limit.
 	 *
 	 * @param ip IP address to connect.
 	 * @param port Port to connect.
@@ -419,6 +423,8 @@ private:
 
 	/**************************
 	 * @brief Open new connection. Send hello if server is running.
+	 *
+	 * @attention Can block in attempts to connect until limit.
 	 *
 	 * @tparam IsUnique Whether the connection is unique or a reconnection.
 	 * @tparam IsUsual Whether the connection is usual or a manager.
@@ -1049,7 +1055,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 			LOG_INFO_NEW("Connecting to: {}:{} is interrupted, server is stopped", ipStr, port);
 			return {};
 		}
-	} while (false);
+	} while (true);
 
 	std::unique_ptr<Connection> newConnection;
 	if constexpr (IsUnique) {

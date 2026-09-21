@@ -20,6 +20,7 @@
 #define MSAPI_BASIC_SSTRING_INL
 
 #include "log.h"
+#include <cstring>
 #include <limits>
 
 namespace MSAPI {
@@ -66,16 +67,31 @@ public:
 	FORCE_INLINE BasicSString(const BasicSString&) noexcept = default;
 
 	/**************************
+	 * @attention Copy is silently interrupted and instance is left empty if other size is greater than capacity.
+	 *
 	 * @test Yes.
 	 */
 	template <size_t OtherCapacity> FORCE_INLINE BasicSString(const BasicSString<Type, OtherCapacity>& other) noexcept;
 
 	/**************************
+	 * @attention Copy is silently interrupted and instance is left empty if other size is greater than capacity.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE explicit BasicSString(std::basic_string_view<Type> other) noexcept;
+
+	/**************************
+	 * @attention Copy is silently interrupted and previous content is preserved if other size is greater than
+	 * capacity.
+	 *
 	 * @test Yes.
 	 */
 	FORCE_INLINE BasicSString& operator=(std::basic_string_view<Type> other) noexcept;
 
 	/**************************
+	 * @attention Copy is silently interrupted and previous content is preserved if other size is greater than
+	 * capacity.
+	 *
 	 * @test Yes.
 	 */
 	template <size_t OtherCapacity>
@@ -90,6 +106,37 @@ public:
 	 * @test Yes.
 	 */
 	FORCE_INLINE BasicSString& operator=(BasicSString&&) noexcept = default;
+
+	/**************************
+	 * @brief Append data from view to the end of meaningful data via AppendFrom.
+	 *
+	 * @attention Append is silently interrupted and previous content is preserved if resulting size is greater than
+	 * capacity.
+	 *
+	 * @param other Data to be appended.
+	 *
+	 * @return Reference to this instance.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE BasicSString& operator+=(const std::basic_string_view<Type> other) noexcept;
+
+	/**************************
+	 * @brief Append meaningful data of other instance to the end of meaningful data via AppendFrom.
+	 *
+	 * @attention Append is silently interrupted and previous content is preserved if resulting size is greater than
+	 * capacity.
+	 *
+	 * @tparam OtherCapacity The maximum length of other instance.
+	 *
+	 * @param other Instance to append data from.
+	 *
+	 * @return Reference to this instance.
+	 *
+	 * @test Yes.
+	 */
+	template <size_t OtherCapacity>
+	FORCE_INLINE BasicSString& operator+=(const BasicSString<Type, OtherCapacity>& other) noexcept;
 
 	/**************************
 	 * @test Yes.
@@ -154,6 +201,34 @@ public:
 	FORCE_INLINE [[nodiscard]] bool CopyFrom(const std::basic_string_view<Type> view) noexcept;
 
 	/**************************
+	 * @brief Copy n characters, or n * sizeof(Type) bytes, from source to the end of internal buffer and set size
+	 * accordingly.
+	 *
+	 * @attention Does not check if null terminator is before the end.
+	 *
+	 * @param source Append from.
+	 * @param size Size to append.
+	 *
+	 * @pre source != nullptr.
+	 *
+	 * @return True on append, false if resulting size is greater than capacity.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE [[nodiscard]] bool AppendFrom(const Type* const source, const size_t size) noexcept;
+
+	/**************************
+	 * @brief Append data from source to the end of internal buffer and set size accordingly.
+	 *
+	 * @param view Data to be appended.
+	 *
+	 * @return True on append, false if resulting size is greater than capacity.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE [[nodiscard]] bool AppendFrom(const std::basic_string_view<Type> view) noexcept;
+
+	/**************************
 	 * @attention Size is expected to be updated by specific method on C-style buffer writing.
 	 *
 	 * @return Size of meaningful data.
@@ -201,6 +276,13 @@ FORCE_INLINE BasicSString<Type, Capacity>::BasicSString(const BasicSString<Type,
 
 template <typename Type, size_t Capacity>
 	requires BasicSStringConcept<Type, Capacity>
+FORCE_INLINE BasicSString<Type, Capacity>::BasicSString(const std::basic_string_view<Type> other) noexcept
+{
+	(void)CopyFrom(other);
+}
+
+template <typename Type, size_t Capacity>
+	requires BasicSStringConcept<Type, Capacity>
 FORCE_INLINE BasicSString<Type, Capacity>& BasicSString<Type, Capacity>::operator=(
 	const std::basic_string_view<Type> other) noexcept
 {
@@ -215,6 +297,25 @@ FORCE_INLINE BasicSString<Type, Capacity>& BasicSString<Type, Capacity>::operato
 	const BasicSString<Type, OtherCapacity>& other) noexcept
 {
 	(void)CopyFrom(other.Get());
+	return *this;
+}
+
+template <typename Type, size_t Capacity>
+	requires BasicSStringConcept<Type, Capacity>
+FORCE_INLINE BasicSString<Type, Capacity>& BasicSString<Type, Capacity>::operator+=(
+	const std::basic_string_view<Type> other) noexcept
+{
+	(void)AppendFrom(other);
+	return *this;
+}
+
+template <typename Type, size_t Capacity>
+	requires BasicSStringConcept<Type, Capacity>
+template <size_t OtherCapacity>
+FORCE_INLINE BasicSString<Type, Capacity>& BasicSString<Type, Capacity>::operator+=(
+	const BasicSString<Type, OtherCapacity>& other) noexcept
+{
+	(void)AppendFrom(other.Get());
 	return *this;
 }
 
@@ -278,6 +379,29 @@ template <typename Type, size_t Capacity>
 FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::CopyFrom(const std::basic_string_view<Type> view) noexcept
 {
 	return CopyFrom(view.data(), view.size());
+}
+
+template <typename Type, size_t Capacity>
+	requires BasicSStringConcept<Type, Capacity>
+FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::AppendFrom(
+	const Type* const source, const size_t size) noexcept
+{
+	if (m_size + size > Capacity) [[unlikely]] {
+		LOG_WARNING_NEW("Is interrupted because capacity: {} < requested resulting size: {}", Capacity, m_size + size);
+		return false;
+	}
+
+	(void)memcpy(m_buffer.data() + m_size, source, size * sizeof(Type));
+	m_size += size;
+	return true;
+}
+
+template <typename Type, size_t Capacity>
+	requires BasicSStringConcept<Type, Capacity>
+FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::AppendFrom(
+	const std::basic_string_view<Type> view) noexcept
+{
+	return AppendFrom(view.data(), view.size());
 }
 
 template <typename Type, size_t Capacity>

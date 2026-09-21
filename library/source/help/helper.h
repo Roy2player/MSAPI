@@ -212,10 +212,10 @@ double Round(double price, double tick);
  * @return String with replaced symbols.
  */
 template <typename T>
-	requires(std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>)
+	requires(std::is_same_v<std::remove_reference_t<T>, std::string> || std::is_same_v<T, std::string_view>)
 FORCE_INLINE std::string Replace(T&& str, const char from, const char to)
 {
-	if constexpr (std::is_same_v<T, std::string>) {
+	if constexpr (std::is_same_v<std::remove_reference_t<T>, std::string>) {
 		for (size_t index{ 0 }; index < str.size(); ++index) {
 			if (str[index] == from) {
 				str[index] = to;
