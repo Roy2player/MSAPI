@@ -107,6 +107,8 @@ public:
 	 * @param capacityLimit Buffer capacity limit.
 	 * @param toProcessSize Minimum required size to be read on socket to allow execution unit move forward.
 	 *
+	 * @pre connectionData != nullptr.
+	 *
 	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE RecvBuffer(std::shared_ptr<Connection::Data> connectionData /* by value as moved */,
@@ -487,25 +489,25 @@ FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::RecvTrunc(const uint64_t truncSi
 		return 0;
 	}
 
-	static constexpr uint64_t JUNK_BUFFER_SIZE{ 1024 };
-	static thread_local std::array<uint8_t, JUNK_BUFFER_SIZE> t_junkStorage;
+	static constexpr uint64_t TRUNC_BUFFER_SIZE{ 1024 };
+	static thread_local std::array<uint8_t, TRUNC_BUFFER_SIZE> t_truncStorage;
 
 	bool partialDrop [[indeterminate]];
 	uint64_t dropPortion [[indeterminate]];
 	uint8_t* truncBuffer [[indeterminate]];
 
-	if (truncSize <= JUNK_BUFFER_SIZE) {
+	if (truncSize <= TRUNC_BUFFER_SIZE) {
 		partialDrop = false;
 		dropPortion = truncSize;
-		truncBuffer = t_junkStorage.data();
+		truncBuffer = t_truncStorage.data();
 	}
 	else if (!CheckCapacity(truncSize + m_size)) [[unlikely]] {
 		partialDrop = true;
-		dropPortion = JUNK_BUFFER_SIZE;
-		truncBuffer = t_junkStorage.data();
+		dropPortion = TRUNC_BUFFER_SIZE;
+		truncBuffer = t_truncStorage.data();
 
 		LOG_PROTOCOL_NEW(
-			"Trunc data by portion: {}, connection id: {}", JUNK_BUFFER_SIZE, m_connectionData->GetConnectionId());
+			"Trunc data by portion: {}, connection id: {}", TRUNC_BUFFER_SIZE, m_connectionData->GetConnectionId());
 	}
 	else {
 		partialDrop = false;
@@ -530,7 +532,12 @@ FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::RecvTrunc(const uint64_t truncSi
 			break;
 		}
 
-		if (partialDrop && dropPortion < rest) {
+		if (partialDrop) {
+			if (rest < dropPortion) {
+				dropPortion = rest;
+			}
+		}
+		else {
 			dropPortion = rest;
 		}
 	}
