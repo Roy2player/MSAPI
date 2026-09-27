@@ -617,13 +617,9 @@ private:
 
 public:
 	/**************************
-	 * @brief Construct a new empty Filter Base object, empty constructor.
-	 *
-	 * @param type Stream type to set.
-	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE FilterBase(Type type) noexcept;
+	FORCE_INLINE FilterBase() noexcept = default;
 
 	FORCE_INLINE virtual ~FilterBase() noexcept = default;
 
@@ -688,6 +684,20 @@ protected:
 	 * @test Yes.
 	 */
 	FORCE_INLINE void SetTotalFilterSize(uint64_t size) noexcept;
+
+	/**************************
+	 * @brief Set the stream type to filter.
+	 *
+	 * @param type Stream type to be set.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE void SetType(Type type) noexcept;
+
+	// To set type on stream opening
+	template <typename Object, typename FObject>
+		requires std::is_class_v<Object> && std::is_class_v<FObject>
+	friend class Stream;
 };
 
 /**************************
@@ -711,13 +721,9 @@ private:
 
 public:
 	/**************************
-	 * @brief Construct a new Filter object.
-	 *
-	 * @param type Type of stream.
-	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Filter(Type type) noexcept;
+	FORCE_INLINE Filter() noexcept = default;
 
 	/**************************
 	 * @brief Construct a new Filter object from base filter.
@@ -889,15 +895,18 @@ public:
 	FORCE_INLINE [[nodiscard]] bool SetFilter(FO&& filter) noexcept;
 
 	/**************************
-	 * @brief Open stream if it is closed: failed or undefined state. Required to set distributor connection.
+	 * @brief Open stream with the requested type if it is in closed, failed or undefined state. Requires a distributor
+	 * connection and filter.
 	 *
-	 * @locking Read lock stream base and stream filter.
+	 * @param type Stream type.
+	 *
+	 * @locking Write lock stream base and write lock stream filter.
 	 *
 	 * @return True if stream open is sent to distributor, false if any error occurred.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool Open() noexcept;
+	FORCE_INLINE [[nodiscard]] bool Open(Type type) noexcept;
 
 	/**************************
 	 * @brief Close stream if it is active, clear snapshot done flag, set Closed state and set new unique stream id.
@@ -1932,10 +1941,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::Collect(
 FilterBase
 ---------------------------------------------------------------------------------*/
 
-FORCE_INLINE FilterBase::FilterBase(const Type type) noexcept
-	: m_type(type)
-{
-}
+FORCE_INLINE void FilterBase::SetType(const Type type) noexcept { m_type = type; }
 
 FORCE_INLINE [[nodiscard]] uint64_t FilterBase::GetTotalFilterSize() const noexcept { return m_totalFilterSize; }
 
@@ -1969,13 +1975,6 @@ FORCE_INLINE void FilterBase::SetTotalFilterSize(const uint64_t size) noexcept {
 /*---------------------------------------------------------------------------------
 Filter
 ---------------------------------------------------------------------------------*/
-
-template <typename FObject>
-	requires std::is_class_v<FObject>
-FORCE_INLINE Filter<FObject>::Filter(const Type type) noexcept
-	: FilterBase{ type }
-{
-}
 
 template <typename FObject>
 	requires std::is_class_v<FObject>
@@ -2115,17 +2114,22 @@ FORCE_INLINE [[nodiscard]] bool Stream<Object, FObject>::SetFilter(FO&& filter) 
 
 template <typename Object, typename FObject>
 	requires std::is_class_v<Object> && std::is_class_v<FObject>
-FORCE_INLINE [[nodiscard]] bool Stream<Object, FObject>::Open() noexcept
+FORCE_INLINE [[nodiscard]] bool Stream<Object, FObject>::Open(const Type type) noexcept
 {
 	const auto streamId{ m_id.load(std::memory_order_relaxed) };
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_lock };
+	if (type != Type::Snapshot && type != Type::SnapshotAndLive) [[unlikely]] {
+		LOG_PROTOCOL_NEW("Client tries to open stream id: {} with invalid type: {}", streamId, EnumToString(type));
+		return false;
+	}
+
+	const Lock::AtomicRW::Guard<Lock::write> _{ m_lock };
 
 	if (m_connectionData == nullptr) [[unlikely]] {
 		LOG_PROTOCOL_NEW("Client tries to open stream id {} without connection", streamId);
 		return false;
 	}
 
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_filterLock };
+	const Lock::AtomicRW::Guard<Lock::write> _{ m_filterLock };
 
 	if (!m_filter.has_value()) [[unlikely]] {
 		LOG_PROTOCOL_NEW("Client tries to open stream id {} without filter", streamId);
@@ -2137,7 +2141,8 @@ FORCE_INLINE [[nodiscard]] bool Stream<Object, FObject>::Open() noexcept
 		return false;
 	}
 
-	const auto& filterValue{ m_filter.value() };
+	auto& filterValue{ m_filter.value() };
+	filterValue.SetType(type);
 	m_state = State::Pending;
 	LOG_PROTOCOL_NEW("Client opens stream id {} with {}", streamId, filterValue.ToString());
 

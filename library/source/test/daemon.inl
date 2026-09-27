@@ -202,7 +202,9 @@ FORCE_INLINE [[nodiscard]] std::optional<int> Daemon<T>::ConnectToDomain(
 
 template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uint32_t ip, const uint16_t port)
 {
-	auto state{ static_cast<Server*>(&m_application)->GetState() };
+	auto state{ m_application.Server::GetState() };
+	const auto stoppedStateCount{ m_application.Server::GetStoppedStateCount() };
+
 	if (state == Server::State::Running) {
 		LOG_ERROR("Application is in running state, port: " + _S(port));
 		return false;
@@ -236,13 +238,13 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uin
 	LOG_DEBUG("Pthread for daemon is created successfully");
 
 	while (true) {
-		state = static_cast<Server*>(&m_application)->GetState();
+		state = m_application.Server::GetState();
 		if (state == Server::State::Running) {
 			m_isRan = true;
 			return true;
 		}
 
-		if (state == Server::State::Stopped) {
+		if (stoppedStateCount != m_application.Server::GetStoppedStateCount()) {
 			LOG_ERROR("Application is in Stopped state, port: " + _S(port));
 			break;
 		}

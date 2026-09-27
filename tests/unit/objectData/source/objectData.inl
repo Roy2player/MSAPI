@@ -141,7 +141,7 @@ FORCE_INLINE [[nodiscard]] bool ObjectData()
 
 	// Filter
 	{
-		MSAPI::Protocol::Object::FilterBase filter{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
+		MSAPI::Protocol::Object::FilterBase filter;
 
 		struct TestStruct {
 			uint16_t field{};
@@ -166,7 +166,7 @@ FORCE_INLINE [[nodiscard]] bool ObjectData()
 				+ _S(typeid(TestStruct).hash_code())
 				+ "\n\tfilter size        : 2"
 				  "\n\t                   : Filter base:\n{"
-				  "\n\ttype               : Snapshot and live"
+				  "\n\ttype               : Undefined"
 				  "\n\tstream object hash : 0"
 				  "\n\ttotal filter size  : 0"
 				  "\n}\n}",

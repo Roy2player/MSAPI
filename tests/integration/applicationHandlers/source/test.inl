@@ -265,8 +265,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		"attempts to connection\",\"type\":\"Uint64\",\"min\":1},\"1000003\":{\"name\":\"Limit of connections from one "
 		"IP\",\"type\":\"Uint64\",\"min\":1},\"1000004\":{\"name\":\"Recv buffer size "
 		"limit\",\"type\":\"Uint64\",\"min\":1024}},\"const\":{\"1000005\":{\"name\":\"Server "
-		"state\",\"type\":\"Int8\",\"stringInterpretations\":{\"0\":\"Undefined\",\"1\":\"Initialization\",\"2\":"
-		"\"Running\",\"3\":\"Stopped\"}},\"1000006\":{\"name\":\"Max "
+		"state\",\"type\":\"Int8\",\"stringInterpretations\":{\"0\":\"Undefined\",\"1\":"
+		"\"Running\",\"2\":\"Stopped\"}},\"1000006\":{\"name\":\"Max "
 		"connections\",\"type\":\"Int32\"},\"1000007\":{\"name\":\"Listen "
 		"IP\",\"type\":\"String\"},\"1000008\":{\"name\":\"Listen "
 		"port\",\"type\":\"Uint16\"},\"2000001\":{\"name\":\"Name\",\"type\":\"String\"},\"2000002\":{\"name\":"
@@ -876,8 +876,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 	// paused
 	manager.Stop();
 	RETURN_IF_FALSE(t.Wait<MSAPI::Server::State>(
-		50000, [&manager]() { return manager.MSAPI::Server::GetState(); }, MSAPI::Server::State::Initialization,
-		"Manager is stopped and in initialization state"));
+		50000, [&manager]() { return manager.MSAPI::Server::GetState(); }, MSAPI::Server::State::Stopped,
+		"Manager is stopped"));
 	RETURN_IF_FALSE(t.Assert(manager.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
 		"Manager unexpectedly stopped on application side"));
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
@@ -904,8 +904,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 	// 43) Manager sends delete request to the client, state is changed
 	manager.SendActionDelete();
 	RETURN_IF_FALSE(t.Wait<MSAPI::Server::State>(
-		50000, [&client]() { return client.MSAPI::Server::GetState(); }, MSAPI::Server::State::Initialization,
-		"Client is stopped and in initialization state"));
+		50000, [&client]() { return client.MSAPI::Server::GetState(); }, MSAPI::Server::State::Stopped,
+		"Client is stopped"));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
 		"Client with valid parameters in paused state after delete request"));
 

@@ -116,8 +116,8 @@ testRunner.Test('Create InstalledApps panel', async () => {
 	testRunner.Assert(View.GetViewTemplate('Installed apps') !== undefined, true, 'View template is unexpected');
 	testRunner.Assert(view.m_grid !== null, true, 'Grid is not created');
 
-	await TestRunner.WaitFor(() => view.m_grid.m_view.children.length == 5, "Installed apps are loaded");
-	testRunner.Assert(view.m_grid.m_view.childNodes.length, 5, 'Grid has unexpected number of children');
+	await TestRunner.WaitFor(() => view.m_grid.m_visibleRows.length == 4, "Installed apps are loaded");
+	testRunner.Assert(view.m_grid.m_visibleRows.length, 4, 'Installed app rows count is unexpected');
 	testRunner.Assert(view.m_grid.m_columnById.size, 2, 'Columns size is unexpected');
 	testRunner.Assert(view.m_grid.m_columnByOrder.size, 2, 'Columns size is unexpected');
 	testRunner.Assert(view.m_grid.m_columnByOrder.get(0).headerCell.querySelector("span.text").innerHTML, 'Create',
@@ -163,7 +163,7 @@ testRunner.Test('Add view to CreatedApps panel', () => {
 	view.m_grid.AddColumn({ id : -1 });
 
 	testRunner.Assert(view.m_grid !== null, true, 'Grid not created');
-	testRunner.Assert(view.m_grid.m_view.childNodes.length, 1, 'Grid has unexpected number of children');
+	testRunner.Assert(view.m_grid.m_visibleRows.length, 0, 'Created apps grid should be empty');
 	// Some additional metadata should be already taken from Installed Apps view request
 	testRunner.Assert(view.m_grid.m_columnById.size, 8, 'Columns size is unexpected');
 	testRunner.Assert(view.m_grid.m_columnByOrder.size, 8, 'Columns size is unexpected');

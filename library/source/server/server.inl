@@ -71,12 +71,11 @@ Declarations
  * - Const parameter 1000007 "Listen IP" is a IP address of server to listen after starting.
  * - Const parameter 1000008 "Listen port" is a port of server to listen after starting.
  *
- * States:
- * - Server state is internal variable which can be used for check server state and can't be managed outside.
- * - Initialization state - server is ready to start. This is the first and last server state. Income data will be
- * processed.
- * - Running state - server is ready to accept and open new connections. Income data will be processed.
- * - Stopped state - server is stopped and can't accept or open new connections, will lead to end of main process.
+ * Server state is internal variable which can be used for check server state and can't be managed outside. Each time
+ * server became Stopped, internal stopped state counter is increased.
+ * - Running state, server is ready to accept and open new connections. Income data will be processed.
+ * - Stopped state, server is stopped and can't accept or open new connections, will lead to end of main accepting
+ * process.
  *
  * @attention Each TCP socket is opened with SO_REUSEADDR=true, SO_REUSEPORT=false if supported and TCP_NODELAY=true
  * options.
@@ -95,7 +94,7 @@ Declarations
  */
 class Server : public Application {
 public:
-	enum State : int8_t { Undefined, Initialization, Running, Stopped, Max };
+	enum State : int8_t { Undefined, Running, Stopped, Max };
 
 	/**************************
 	 * @locking Is not required.
@@ -196,7 +195,6 @@ private:
 	Lock::AtomicRW m_closingConnectionsLock;
 	Lock::Atomic m_serverAcceptingLoop;
 	Lock::AtomicRW m_alivePthreadsRWLock;
-	Lock::AtomicRW m_stateLock;
 
 	SString<16> m_listenIp;
 	std::string m_listenIpStr; // TODO: SString should be instead
@@ -205,13 +203,14 @@ private:
 
 	uint64_t m_recvBufferSizeLimit{ 1024 * 1024 * 10 /* 10 megabytes */ }; // TODO: Atomic
 	uint32_t m_secondsBetweenTryToConnect{ 1 }; // TODO: Atomic
-	int32_t m_listeningSocket;
+	int32_t m_listeningSocket{ -1 };
 	sockaddr_in m_addr{ 0, 0, 0, 0 };
 	std::atomic<int32_t> m_connectionIdGenerator{};
 	uint16_t m_listenPort{}; // TODO: Atomic
-	std::atomic<State> m_state{ State::Initialization };
+	std::atomic<uint64_t> m_stoppedStateCount{};
+	std::atomic<State> m_state{ State::Stopped };
 	// TODO: remove when application parameters will be atomic values
-	State m_stateTmp{ State::Initialization };
+	State m_stateTmp{ State::Stopped };
 
 	static inline constexpr int32_t m_somaxconn{ SOMAXCONN };
 
@@ -248,13 +247,13 @@ public:
 
 	/**************************
 	 * @brief Blocking start the main accepting loop to listen income connections. Set state as running. Send hello to
-	 * all connection. Wait for all pthreads to be finished on interruption.
+	 * all connections. Wait for all pthreads to be finished on interruption.
 	 *
 	 * @attention Interrupted when the server enters the Stopped state, socket initialization fails, or the listen
-	 * connection limit is reached.
+	 * connection limit is reached. Startup errors leave the server restartable.
 	 *
 	 * @locking Holds lock on m_serverAcceptingLoop, read lock on m_idToConnectionDataRWLock on hello sending and write
-	 * lock m_alivePthreadsRWLock on exit due to stop function call.
+	 * lock m_alivePthreadsRWLock on interruption.
 	 *
 	 * @param ip Address to listen.
 	 * @param port Port to listen.
@@ -265,7 +264,8 @@ public:
 
 	/**************************
 	 * @brief Close connections, cancel child pthreads and clear containers. If was in running state - set state to
-	 * Stopped and close main listening socket which is an interrupt condition for main accepting loop.
+	 * Stopped, increase stopped state counter and close main listening socket which is an interrupt condition for main
+	 * accepting loop.
 	 *
 	 * @attention This function does not wait for pthreads to be finished as it can be called inside one.
 	 *
@@ -283,6 +283,15 @@ public:
 	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE [[nodiscard]] State GetState() const noexcept;
+
+	/**************************
+	 * @locking Is not required.
+	 *
+	 * @return Count of how many times server was stopped.
+	 *
+	 * @todo Add tests coverage.
+	 */
+	FORCE_INLINE [[nodiscard]] uint64_t GetStoppedStateCount() const noexcept;
 
 	/**************************
 	 * @brief Open new outcome connection.
@@ -415,11 +424,11 @@ protected:
 	FORCE_INLINE [[nodiscard]] uint16_t GetListenPort() const noexcept;
 
 private:
-	static inline constexpr bool unique{ true };
-	static inline constexpr bool reconnection{ false };
+	static inline constexpr bool UNIQUE{ true };
+	static inline constexpr bool RECONNECTION{ false };
 
-	static inline constexpr bool usual{ true };
-	static inline constexpr bool manager{ false };
+	static inline constexpr bool USUAL{ true };
+	static inline constexpr bool MANAGER{ false };
 
 	/**************************
 	 * @brief Open new connection. Send hello if server is running.
@@ -515,8 +524,8 @@ private:
 	 */
 	FORCE_INLINE [[nodiscard]] std::unique_ptr<Connection> Accept(int32_t socket, sockaddr_in* addr) noexcept;
 
-	static inline constexpr bool reconnectionIsPossible{ true };
-	static inline constexpr bool reconnectionIsNotPossible{ false };
+	static inline constexpr bool RECONNECTION_IS_POSSIBLE{ true };
+	static inline constexpr bool RECONNECTION_IS_NOT_POSSIBLE{ false };
 
 	/**************************
 	 * @brief Clear containers, shutdown and close connection. Perform attempt to reconnection for outcome connection
@@ -660,8 +669,6 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view Server::EnumToString(const
 	switch (state) {
 	case State::Undefined:
 		return "Undefined";
-	case State::Initialization:
-		return "Initialization";
 	case State::Running:
 		return "Running";
 	case State::Stopped:
@@ -716,9 +723,8 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 	MSAPI::Lock::Atomic::Guard _{ m_serverAcceptingLoop };
 
 	auto state{ m_state.load(std::memory_order_acquire) };
-	if (state != State::Initialization) [[unlikely]] {
-		LOG_DEBUG_NEW(
-			"Server is not in initialization state and cannot be started, current state: {}", EnumToString(state));
+	if (state != State::Stopped) [[unlikely]] {
+		LOG_DEBUG_NEW("Server is not in stopped state and cannot be started, current state: {}", EnumToString(state));
 		return;
 	}
 
@@ -728,7 +734,6 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 	}
 
 	m_listenIpStr = m_listenIp.Get();
-
 	m_listenPort = port;
 	m_addr.sin_port = htobe16(port);
 	m_addr.sin_family = AF_INET;
@@ -737,20 +742,26 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 
 	m_listeningSocket = Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (m_listeningSocket == -1) [[unlikely]] {
-		LOG_ERROR("Force stop. Socket constructor error");
-		Stop();
+		m_listenIp = "";
+		m_listenIpStr = "";
+		m_listenPort = 0;
+		LOG_ERROR("Socket constructor error, starting is interrupted");
 		return;
 	}
 
 	if (!Bind(m_listeningSocket, &m_addr)) [[unlikely]] {
-		LOG_ERROR("Force stop. Bind constructor throw");
-		Stop();
+		m_listenIp = "";
+		m_listenIpStr = "";
+		m_listenPort = 0;
+		LOG_ERROR("Bind constructor error, starting is interrupted");
 		return;
 	}
 
 	if (!Listen(m_listeningSocket)) [[unlikely]] {
-		LOG_ERROR("Force stop. Listen constructor throw");
-		Stop();
+		m_listenIp = "";
+		m_listenIpStr = "";
+		m_listenPort = 0;
+		LOG_ERROR("Listen constructor error, starting is interrupted");
 		return;
 	}
 
@@ -769,15 +780,6 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		}
 	}
 
-	const auto exit{ [this, &attr]() {
-		LOG_DEBUG("Server state is Stopped, wait for pthreads to be finished");
-		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_alivePthreadsRWLock };
-		pthread_attr_destroy(&attr);
-		m_state.store(State::Initialization, std::memory_order_release);
-		m_stateTmp = State::Initialization;
-		LOG_DEBUG("Server state is Initialization, all pthreads are finished");
-	} };
-
 	sockaddr_in clientAddr{ 0, 0, 0, 0 };
 	SString<16> clientIp;
 	do {
@@ -786,7 +788,12 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 			state = m_state.load(std::memory_order_acquire);
 
 			if (state == State::Stopped) [[unlikely]] {
-				exit();
+				m_listenIp = "";
+				m_listenIpStr = "";
+				m_listenPort = 0;
+				LOG_DEBUG("Server state is Stopped, wait for pthreads to be finished");
+				const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_alivePthreadsRWLock };
+				pthread_attr_destroy(&attr);
 				return;
 			}
 
@@ -813,8 +820,9 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 	pthread_attr_destroy(&attr);
 	LOG_ERROR_NEW("Unexpected exit from the main accepting loop, server state: {}, connections counter: {}",
 		EnumToString(m_state.load(std::memory_order_acquire)), GetConnectionsCount());
-	m_state.store(State::Initialization, std::memory_order_release);
-	m_stateTmp = State::Initialization;
+	m_listenIp = "";
+	m_listenIpStr = "";
+	m_listenPort = 0;
 }
 
 FORCE_INLINE void Server::Stop() noexcept
@@ -829,6 +837,7 @@ FORCE_INLINE void Server::Stop() noexcept
 
 	if (state == State::Running) {
 		m_state.store(State::Stopped, std::memory_order_release);
+		m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
 		m_stateTmp = State::Stopped;
 
 		if (m_listeningSocket != -1) [[likely]] {
@@ -838,6 +847,7 @@ FORCE_INLINE void Server::Stop() noexcept
 			if (close(m_listeningSocket) == -1) [[unlikely]] {
 				LOG_ERROR_NEW("Listen socket close is failed. Error №{}: {}", errno, std::strerror(errno));
 			}
+			m_listeningSocket = -1;
 		}
 	}
 
@@ -854,7 +864,7 @@ FORCE_INLINE void Server::Stop() noexcept
 				connectionData = m_idToConnectionData.begin()->second;
 			}
 
-			Close<reconnectionIsNotPossible>(connectionData, /*doReconnection=*/false);
+			Close<RECONNECTION_IS_NOT_POSSIBLE>(connectionData, /*doReconnection=*/false);
 		} while (true);
 	}
 
@@ -866,18 +876,23 @@ FORCE_INLINE [[nodiscard]] Server::State Server::GetState() const noexcept
 	return m_state.load(std::memory_order_acquire);
 }
 
+FORCE_INLINE [[nodiscard]] uint64_t Server::GetStoppedStateCount() const noexcept
+{
+	return m_stoppedStateCount.load(std::memory_order_relaxed);
+}
+
 FORCE_INLINE
 [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnection(
 	const uint32_t ip, const uint16_t port, const bool doReconnection) noexcept
 {
-	return OpenConnectionImpl<unique, usual>(ip, port, doReconnection, /*oldId=*/0);
+	return OpenConnectionImpl<UNIQUE, USUAL>(ip, port, doReconnection, /*oldId=*/0);
 }
 
 FORCE_INLINE
 [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenManagerConnection(
 	const uint32_t ip, const uint16_t port, const bool doReconnection) noexcept
 {
-	return OpenConnectionImpl<unique, manager>(ip, port, doReconnection, /*oldId=*/0);
+	return OpenConnectionImpl<UNIQUE, MANAGER>(ip, port, doReconnection, /*oldId=*/0);
 }
 
 template <Connection::Type Type>
@@ -944,7 +959,7 @@ FORCE_INLINE void Server::RecvLoop(const std::shared_ptr<Connection::Data>& conn
 	}
 
 	const MSAPI::Lock::AtomicRW::Guard<Lock::read> _{ m_closingConnectionsLock };
-	Close<reconnectionIsPossible>(connectionData, connectionData->GetDoReconnection());
+	Close<RECONNECTION_IS_POSSIBLE>(connectionData, connectionData->GetDoReconnection());
 }
 
 FORCE_INLINE [[nodiscard]] uint64_t Server::GetConnectionsCount() noexcept
@@ -1045,6 +1060,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 		if (++attempt >= m_limitConnectAttempts) [[unlikely]] {
 			LOG_ERROR_NEW(
 				"Limit of attempts: {} is reached during connection to: {}:{}", m_limitConnectAttempts, ipStr, port);
+			(void)close(socket);
 			return {};
 		}
 
@@ -1053,6 +1069,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 
 		if (m_state.load(std::memory_order_acquire) == State::Stopped) [[unlikely]] {
 			LOG_INFO_NEW("Connecting to: {}:{} is interrupted, server is stopped", ipStr, port);
+			(void)close(socket);
 			return {};
 		}
 	} while (true);
@@ -1139,7 +1156,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::CreatePthre
 
 		LOG_ERROR_NEW("Pthread is not created, {} connection id: {}. Error №{}: {}", Connection::EnumToString(Type), id,
 			result, std::strerror(result));
-		Close<reconnectionIsNotPossible>(connectionData, /*doReconnection=*/false);
+		Close<RECONNECTION_IS_NOT_POSSIBLE>(connectionData, /*doReconnection=*/false);
 		return {};
 	}
 }
@@ -1203,7 +1220,7 @@ FORCE_INLINE void Server::Close(const std::shared_ptr<Connection::Data>& connect
 			m_idToConnectionData.erase(id);
 		}
 
-		if constexpr (HasReconnectionPath == reconnectionIsPossible) {
+		if constexpr (HasReconnectionPath == RECONNECTION_IS_POSSIBLE) {
 			LOG_INFO_NEW("{} connection is closed, id: {}, {}:{}, do reconnection: {}. Active connections "
 						 "counter: {}",
 				Connection::EnumToString(connectionData->GetType()), id, connectionData->GetIpStr(),
@@ -1214,11 +1231,11 @@ FORCE_INLINE void Server::Close(const std::shared_ptr<Connection::Data>& connect
 
 				std::shared_ptr<Connection::Data> newConnectionData;
 				if (connectionData->GetType() == Connection::Type::Outcome) {
-					newConnectionData = OpenConnectionImpl<reconnection, usual>(
+					newConnectionData = OpenConnectionImpl<RECONNECTION, USUAL>(
 						connectionData->GetIp(), connectionData->GetPort(), /*doReconnection=*/true, id);
 				}
 				else {
-					newConnectionData = OpenConnectionImpl<reconnection, manager>(
+					newConnectionData = OpenConnectionImpl<RECONNECTION, MANAGER>(
 						connectionData->GetIp(), connectionData->GetPort(), /*doReconnection=*/true, id);
 				}
 

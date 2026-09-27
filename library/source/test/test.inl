@@ -128,6 +128,30 @@ public:
 		&& std::same_as<std::decay_t<std::invoke_result_t<F, Args...>>, std::decay_t<T>>
 	FORCE_INLINE [[nodiscard]] bool Wait(
 		uint64_t waitTime, F&& getter, T&& expected, const std::string_view name, Args&&... args);
+
+private:
+	static inline constexpr bool SILENT{ true };
+	static inline constexpr bool COUNT{ false };
+
+	/**************************
+	 * @brief Registers the assertion of couple values and save result.
+	 *
+	 * @tparam Policy Defines if assertion is counted or silent.
+	 * @tparam T Any standard type, wstring, string/wstring view or type with "string ToString()" method.
+	 * @tparam S Any standard type, wstring, string/wstring view or type with "string ToString()" method and comparable
+	 * with T.
+	 *
+	 * @param actual Actual value.
+	 * @param expected Expected value.
+	 * @param name Assertion name.
+	 *
+	 * @return True if assertion passed successfully, false otherwise.
+	 *
+	 * @todo Iterate under array like data and additionally print index of first different element.
+	 */
+	template <bool Policy, typename T, typename S>
+		requires comparable<T, S>
+	FORCE_INLINE [[nodiscard]] bool AssertImpl(T&& actual, S&& expected, const std::string_view name);
 };
 
 /*---------------------------------------------------------------------------------
@@ -172,7 +196,16 @@ template <typename T, typename S>
 	requires comparable<T, S>
 FORCE_INLINE [[nodiscard]] bool Test::Assert(T&& actual, S&& expected, const std::string_view name)
 {
-	++m_counter;
+	return AssertImpl<COUNT>(std::forward<T>(actual), std::forward<S>(expected), name);
+}
+
+template <bool Policy, typename T, typename S>
+	requires comparable<T, S>
+FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const std::string_view name)
+{
+	if constexpr (Policy == COUNT) {
+		++m_counter;
+	}
 
 	using N = std::decay_t<T>;
 	using Z = remove_optional_t<N>;
@@ -180,108 +213,149 @@ FORCE_INLINE [[nodiscard]] bool Test::Assert(T&& actual, S&& expected, const std
 	using G = std::conditional_t<is_greater_type<Z, remove_optional_t<std::decay_t<S>>>, safe_underlying_type_t<Z>,
 		safe_underlying_type_t<remove_optional_t<std::decay_t<S>>>>;
 
+	bool isPassed{};
 	if constexpr (is_integer_type<N> || std::is_same_v<N, bool> || std::is_enum_v<N> || std::is_enum_v<Z>) {
 		if (static_cast<G>(actual) == static_cast<G>(expected)) [[likely]] {
-
-#define TMP_MSAPI_TEST_ASSERT_SUCCESS                                                                                  \
-	LOG_INFO_NEW(m_patternPassed, name, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());                        \
-	m_timer.Reset();                                                                                                   \
-	++m_passedCounter;                                                                                                 \
-	return true;
-
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
+			isPassed = true;
 		}
-		LOG_INFO_NEW(
-			m_patternFailed, name, _S(actual), _S(expected), Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+		else {
+			if constexpr (Policy == COUNT) {
+				LOG_INFO_NEW(m_patternFailed, name, _S(actual), _S(expected),
+					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
+		}
 	}
 	else if constexpr (is_integer_type_optional<N>) {
 		if (const bool valuesPresented{ actual.has_value() && expected.has_value() };
 			!valuesPresented || static_cast<G>(actual.value()) == static_cast<G>(expected.value())) [[likely]] {
 
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
+			isPassed = true;
 		}
-		LOG_INFO_NEW(
-			m_patternFailed, name, _S(actual), _S(expected), Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+		else {
+			if constexpr (Policy == COUNT) {
+				LOG_INFO_NEW(m_patternFailed, name, _S(actual), _S(expected),
+					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
+		}
 	}
 	else if constexpr (is_float_type<N>) {
 		if (MSAPI::Helper::FloatEqual(static_cast<G>(actual), static_cast<G>(expected))) [[likely]] {
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
+			isPassed = true;
 		}
-		LOG_INFO_NEW(
-			m_patternFailed, name, _S(actual), _S(expected), Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+		else {
+			if constexpr (Policy == COUNT) {
+				LOG_INFO_NEW(m_patternFailed, name, _S(actual), _S(expected),
+					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
+		}
 	}
 	else if constexpr (is_float_type_optional<N>) {
 		if (const bool valuesPresented{ actual.has_value() && expected.has_value() }; !valuesPresented
 			|| MSAPI::Helper::FloatEqual(static_cast<G>(actual.value()), static_cast<G>(expected.value()))) [[likely]] {
 
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
+			isPassed = true;
 		}
-		LOG_INFO_NEW(
-			m_patternFailed, name, _S(actual), _S(expected), Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+		else {
+			if constexpr (Policy == COUNT) {
+				LOG_INFO_NEW(m_patternFailed, name, _S(actual), _S(expected),
+					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
+		}
 	}
 	else if constexpr (std::is_same_v<N, std::string> || std::is_same_v<N, std::string_view>) {
 		if (actual == expected) [[likely]] {
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
+			isPassed = true;
 		}
-		LOG_INFO_NEW(m_patternFailed, name, actual, expected, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+		else {
+			if constexpr (Policy == COUNT) {
+				LOG_INFO_NEW(
+					m_patternFailed, name, actual, expected, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
+		}
 	}
 	else if constexpr (std::is_same_v<N, std::wstring> || std::is_same_v<N, std::wstring_view>) {
 		if (actual == expected) [[likely]] {
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
-		}
-
-		std::string actualString;
-		if constexpr (std::is_same_v<std::decay_t<N>, std::wstring>) {
-			actualString = Helper::WstringToString(actual.c_str());
+			isPassed = true;
 		}
 		else {
-			actualString = Helper::WstringToString(std::wstring{ actual }.c_str());
+			if constexpr (Policy == COUNT) {
+				std::string actualString;
+				if constexpr (std::is_same_v<std::decay_t<N>, std::wstring>) {
+					actualString = Helper::WstringToString(actual.c_str());
+				}
+				else {
+					actualString = Helper::WstringToString(std::wstring{ actual }.c_str());
+				}
+				std::string expectedString;
+				if constexpr (std::is_same_v<std::decay_t<S>, std::wstring>) {
+					expectedString = Helper::WstringToString(expected.c_str());
+				}
+				else {
+					expectedString = Helper::WstringToString(std::wstring{ expected }.c_str());
+				}
+				LOG_INFO_NEW(m_patternFailed, name, actualString, expectedString,
+					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
 		}
-		std::string expectedString;
-		if constexpr (std::is_same_v<std::decay_t<S>, std::wstring>) {
-			expectedString = Helper::WstringToString(expected.c_str());
-		}
-		else {
-			expectedString = Helper::WstringToString(std::wstring{ expected }.c_str());
-		}
-		LOG_INFO_NEW(
-			m_patternFailed, name, actualString, expectedString, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 	}
 	else if constexpr (std::is_same_v<N, MSAPI::Timer> || std::is_same_v<N, MSAPI::Timer::Duration>) {
 		if (actual == expected) [[likely]] {
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
+			isPassed = true;
 		}
-		LOG_INFO_NEW(m_patternFailed, name, actual.ToString(), expected.ToString(),
-			Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+		else {
+			if constexpr (Policy == COUNT) {
+				LOG_INFO_NEW(m_patternFailed, name, actual.ToString(), expected.ToString(),
+					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
+		}
 	}
 	else if constexpr (has_to_string<T> && has_to_string<S>) {
 		if (actual == expected) [[likely]] {
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
+			isPassed = true;
 		}
-		LOG_INFO_NEW(m_patternFailed, name, actual.ToString(), expected.ToString(),
-			Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+		else {
+			if constexpr (Policy == COUNT) {
+				LOG_INFO_NEW(m_patternFailed, name, actual.ToString(), expected.ToString(),
+					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
+		}
 	}
 	else if constexpr (std::is_pointer_v<T> && std::is_pointer_v<S>) {
 		const auto actualAddress{ reinterpret_cast<uintptr_t>(actual) };
 		const auto expectedAddress{ reinterpret_cast<uintptr_t>(expected) };
 
 		if (actualAddress == expectedAddress) {
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
+			isPassed = true;
 		}
-		LOG_INFO_NEW(m_patternFailed, name, actualAddress, expectedAddress,
-			Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+		else {
+			if constexpr (Policy == COUNT) {
+				LOG_INFO_NEW(m_patternFailed, name, actualAddress, expectedAddress,
+					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
+		}
 	}
 	else {
 		if (actual == expected) [[likely]] {
-			TMP_MSAPI_TEST_ASSERT_SUCCESS;
-#undef TMP_MSAPI_TEST_ASSERT_SUCCESS
+			isPassed = true;
 		}
-		LOG_INFO_NEW(m_patternFailed, name, "<unprintable>", "<unprintable>",
-			Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+		else {
+			if constexpr (Policy == COUNT) {
+				LOG_INFO_NEW(m_patternFailed, name, "<unprintable>", "<unprintable>",
+					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			}
+		}
 	}
 
-	m_timer.Reset();
-	return false;
+	if constexpr (Policy == COUNT) {
+		if (isPassed) {
+			LOG_INFO_NEW(m_patternPassed, name, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			++m_passedCounter;
+		}
+
+		m_timer.Reset();
+	}
+
+	return isPassed;
 }
 
 template <typename T, typename F, typename... Args>
@@ -289,16 +363,18 @@ template <typename T, typename F, typename... Args>
 FORCE_INLINE [[nodiscard]] bool Test::Wait(
 	uint64_t waitTime, F&& getter, T&& expected, const std::string_view name, Args&&... args)
 {
-	if (getter(std::forward<Args>(args)...) == expected) {
-		return Assert(true, true, name);
+	if (const auto actual{ getter(std::forward<Args>(args)...) }; AssertImpl<SILENT>(actual, expected, name)) {
+		return AssertImpl<COUNT>(std::move(actual), std::forward<T>(expected), name);
 	}
+
 	waitTime /= 100;
 	while (true) {
 		if (waitTime == 0) {
-			return Assert(getter(std::forward<Args>(args)...), std::forward<T>(expected), name);
+			return AssertImpl<COUNT>(getter(std::forward<Args>(args)...), std::forward<T>(expected), name);
 		}
-		if (getter(std::forward<Args>(args)...) == expected) {
-			return Assert(true, true, name);
+
+		if (const auto actual{ getter(std::forward<Args>(args)...) }; AssertImpl<SILENT>(actual, expected, name)) {
+			return AssertImpl<COUNT>(std::move(actual), std::forward<T>(expected), name);
 		}
 
 		--waitTime;

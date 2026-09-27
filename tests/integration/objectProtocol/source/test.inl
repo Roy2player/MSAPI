@@ -85,7 +85,8 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	orderStreamId = client.GetOrderStream().GetId();
 	RETURN_IF_FALSE(t.Assert(orderStreamId, 1, "Order stream id is expected"));
 
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), false, "Cannot open stream without connection"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Snapshot), false,
+		"Cannot open stream without connection"));
 
 	RETURN_IF_FALSE(t.Assert(
 		client.SetConnectionForStreams(clientToDistributorConnectionData), true, "Set connections to streams"));
@@ -93,20 +94,29 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 		clientToDistributorConnectionData->GetConnectionId(), "Set connection id is expected"));
 	RETURN_IF_FALSE(t.Assert(client.GetOrderStream().GetConnectionData()->GetConnectionId(),
 		clientToDistributorConnectionData->GetConnectionId(), "Set connection id is expected"));
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), false, "Cannot open stream without filter"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Snapshot), false,
+		"Cannot open stream without filter"));
 	const uint64_t figi1{ 123456789012 };
 	InstrumentStructure instrument1{ InstrumentStructure::InstrumentStructureType::First, figi1, 7432435, 998274902,
 		34387675464, 1000, 133, InstrumentStructure::Nominal{ 133, 1 }, true, true, true, 133, 0.25, 555666333 };
 	distributor.SetInstrument(instrument1);
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter{ MSAPI::Protocol::Object::Type::Snapshot };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter;
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetFilter(filter), true, "Filter is set"));
 	auto streamStateData{ client.GetInstrumentStream().GetStateData() };
 	RETURN_IF_FALSE(
 		t.Assert(streamStateData.GetState(), MSAPI::Protocol::Object::State::Closed, "Stream state is closed"));
 	RETURN_IF_FALSE(t.Assert(streamStateData.IsSnapshotDone(), false, "Snapshot is not done"));
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Undefined), false,
+		"Cannot open stream with undefined type"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Max), false,
+		"Cannot open stream with max type"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().GetStateData().GetState(),
+		MSAPI::Protocol::Object::State::Closed, "Invalid type keeps stream closed"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Snapshot), true,
+		"Instrument stream is opened"));
 
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), false, "Cannot open already opened stream"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Snapshot), false,
+		"Cannot open already opened stream"));
 
 	// Waiting for HandleStreamSnapshotDone
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
@@ -134,7 +144,8 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	InstrumentStructure instrument2{ InstrumentStructure::InstrumentStructureType::Second, figi2, 7432435, 998274902,
 		34387675464, 1000, 133, InstrumentStructure::Nominal{ 133, 2 }, true, true, true, 133, 0.25, 555666333 };
 	distributor.SetInstrument(instrument2);
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Snapshot), true,
+		"Instrument stream is opened"));
 
 	// Waiting for HandleStreamSnapshotDone
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
@@ -164,9 +175,10 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 
 	// Setup for next steps
 	client.Clear();
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter2{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter2;
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetFilter(std::move(filter2)), true, "Filter is set"));
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), true,
+		"Instrument stream is opened"));
 
 	// Waiting for HandleStreamSnapshotDone
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
@@ -230,11 +242,12 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 
 	// Setup for next steps
 	client.Clear();
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter3{ MSAPI::Protocol::Object::Type::Snapshot };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter3;
 	FilterStructure figiFilter3{ figi3 };
 	RETURN_IF_FALSE(t.Assert(filter3.SetObject(figiFilter3), 1, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetFilter(std::move(filter3)), true, "Filter is set"));
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Snapshot), true,
+		"Instrument stream is opened"));
 
 	// Waiting for HandleStreamSnapshotDone
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
@@ -258,12 +271,13 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 
 	// Setup for next steps
 	client.Clear();
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter4{ MSAPI::Protocol::Object::Type::Snapshot };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter4;
 	FilterStructure figiFilter2{ figi2 };
 	RETURN_IF_FALSE(t.Assert(filter4.SetObject(figiFilter2), 1, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(filter4.SetObject(figiFilter3), 2, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetFilter(std::move(filter4)), true, "Filter is set"));
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Snapshot), true,
+		"Instrument stream is opened"));
 
 	// Waiting for HandleStreamSnapshotDone
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
@@ -295,7 +309,7 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	client.Clear();
 	const uint64_t figi4{ 123456789015 };
 	const uint64_t figi5{ 123456789016 };
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter5{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter5;
 	InstrumentStructure instrument4{ InstrumentStructure::InstrumentStructureType::Fourth, figi4, 7432435, 998274902,
 		34387675464, 1000, 133, InstrumentStructure::Nominal{ 133, 4 }, true, true, true, 133, 0.25, 555666333 };
 	InstrumentStructure instrument5{ InstrumentStructure::InstrumentStructureType::First, figi5, 7432435, 998274902,
@@ -307,7 +321,8 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	RETURN_IF_FALSE(t.Assert(filter5.SetObject(figiFilter4), 3, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(filter5.SetObject(figiFilter5), 4, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetFilter(std::move(filter5)), true, "Filter is set"));
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), true,
+		"Instrument stream is opened"));
 
 	// Waiting for HandleStreamSnapshotDone
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
@@ -392,7 +407,7 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	// Setup for next steps
 	client.Clear();
 	distributor.Clear();
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter6{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter6;
 	RETURN_IF_FALSE(t.Assert(filter6.SetObject(figiFilter2), 1, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(filter6.SetObject(figiFilter3), 2, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(filter6.SetObject(figiFilter4), 3, "Filters count after setting"));
@@ -415,14 +430,17 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	distributor.SetOrder(order2);
 	distributor.SetInstrument(instrument2);
 
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
-	RETURN_IF_FALSE(t.Assert(client.GetOrderStream().Open(), false, "Try open stream without filter"));
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter7{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), true,
+		"Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetOrderStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), false,
+		"Try open stream without filter"));
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter7;
 	RETURN_IF_FALSE(t.Assert(filter7.SetObject(figiFilter2), 1, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(filter7.SetObject(figiFilter3), 2, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(filter7.SetObject(figiFilter4), 3, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(client.GetOrderStream().SetFilter(filter7), true, "Filter is set"));
-	RETURN_IF_FALSE(t.Assert(client.GetOrderStream().Open(), true, "Order stream is opened"));
+	RETURN_IF_FALSE(t.Assert(
+		client.GetOrderStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), true, "Order stream is opened"));
 
 	// Waiting instrument and order stream' HandleStreamSnapshotDone calls
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
@@ -562,7 +580,8 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	RETURN_IF_FALSE(t.Assert(client.GetOrders().size(), 3, "Client still got three orders"));
 
 	// Open order stream with snapshot and live, filter and distributor's orders are unchanged since last close
-	RETURN_IF_FALSE(t.Assert(client.GetOrderStream().Open(), true, "Order stream is opened"));
+	RETURN_IF_FALSE(t.Assert(
+		client.GetOrderStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), true, "Order stream is opened"));
 
 	// Waiting for HandleStreamSnapshotDone
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
@@ -595,12 +614,13 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().GetConnectionData()->GetConnectionId(),
 		clientToDistributor2ConnectionData->GetConnectionId(), "Set connection id is expected"));
 	FilterStructure figiFilter6{ figi6 };
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter8{ MSAPI::Protocol::Object::Type::Snapshot };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter8;
 	RETURN_IF_FALSE(t.Assert(filter8.SetObject(figiFilter6), 1, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetFilter(std::move(filter8)), true, "Filter is set"));
 
 	// Open instrument stream and check expectations
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::Snapshot), true,
+		"Instrument stream is opened"));
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		20000, [&client]() { return client.GetActionsNumber(); }, 18, "Client's actions: opened + instrument + done"));
 	RETURN_IF_FALSE(t.Assert(client.GetInstruments().size(), 4, "Client got four instruments"));
@@ -640,10 +660,11 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	OrderStructure order6{ figi6, 100.0, 20 };
 	distributor2.SetOrder(order6);
 	FilterStructure orderFigiFilter6{ figi6 };
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter9{ MSAPI::Protocol::Object::Type::Snapshot };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter9;
 	RETURN_IF_FALSE(t.Assert(filter9.SetObject(orderFigiFilter6), 1, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(client.GetOrderStream().SetFilter(std::move(filter9)), true, "Filter is set"));
-	RETURN_IF_FALSE(t.Assert(client.GetOrderStream().Open(), true, "Order stream is opened"));
+	RETURN_IF_FALSE(t.Assert(
+		client.GetOrderStream().Open(MSAPI::Protocol::Object::Type::Snapshot), true, "Order stream is opened"));
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		20000, [&client]() { return client.GetActionsNumber(); }, 21, "Client's actions: opened + order + done"));
 	RETURN_IF_FALSE(t.Assert(client.GetOrders().size(), 4, "Client got four orders"));
@@ -663,10 +684,11 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 		"Instrument stream is reassigned back to first distributor"));
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().GetConnectionData()->GetConnectionId(),
 		clientToDistributorConnectionData->GetConnectionId(), "Set connection id is expected"));
-	MSAPI::Protocol::Object::Filter<FilterStructure> filter10{ MSAPI::Protocol::Object::Type::SnapshotAndLive };
+	MSAPI::Protocol::Object::Filter<FilterStructure> filter10;
 	RETURN_IF_FALSE(t.Assert(filter10.SetObject(figiFilter2), 1, "Filters count after setting"));
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetFilter(filter10), true, "Filter is set"));
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), true,
+		"Instrument stream is opened"));
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		20000, [&client]() { return client.GetActionsNumber(); }, 3, "Client's actions: opened + instrument + done"));
 	streamStateData = client.GetInstrumentStream().GetStateData();
@@ -694,8 +716,8 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 		"Client application state is paused"));
 
 	// Client attempts to open stream over the dead connection, send fails and stream state becomes Failed locally
-	RETURN_IF_FALSE(
-		t.Assert(client.GetInstrumentStream().Open(), false, "Instrument stream open fails over dead connection"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), false,
+		"Instrument stream open fails over dead connection"));
 	streamStateData = client.GetInstrumentStream().GetStateData();
 	RETURN_IF_FALSE(t.Assert(
 		streamStateData.GetState(), MSAPI::Protocol::Object::State::Failed, "Instrument stream state is remained"));
@@ -716,7 +738,8 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 
 		RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetConnectionData(clientToDistributorConnectionData),
 			true, "Instrument stream is reassigned to distributor again"));
-		RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+		RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive),
+			true, "Instrument stream is opened"));
 		RETURN_IF_FALSE(t.Wait<MSAPI::Protocol::Object::State>(
 			20000, [&client]() { return client.GetInstrumentStream().GetStateData().GetState(); },
 			MSAPI::Protocol::Object::State::Opened, "Instrument stream state is opened"));
@@ -766,7 +789,8 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetConnectionData(clientToDistributorConnectionData), true,
 		"Instrument stream is assigned after client reconnect"));
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetFilter(filter10), true, "Filter is set"));
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is opened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), true,
+		"Instrument stream is opened"));
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		20000, [&client]() { return client.GetActionsNumber(); }, 3,
 		"Client's actions: opened + instrument + done before client close"));
@@ -802,7 +826,8 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetConnectionData(clientToDistributorConnectionData), true,
 		"Instrument stream is reassigned after client connection cleanup"));
 	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetFilter(filter10), true, "Filter is set again"));
-	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(), true, "Instrument stream is reopened"));
+	RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().Open(MSAPI::Protocol::Object::Type::SnapshotAndLive), true,
+		"Instrument stream is reopened"));
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		20000, [&client]() { return client.GetActionsNumber(); }, 3,
 		"Client's actions: reopened + instrument + done after client cleanup"));

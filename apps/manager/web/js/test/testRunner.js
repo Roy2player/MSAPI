@@ -56,6 +56,12 @@ EventTarget.prototype.removeEventListener = function(type, listener, options) {
 global.getEventListeners = function(target) { return eventListeners.get(target) || {}; };
 global.window = jsdom.window;
 global.MutationObserver = require("mutation-observer");
+global.ResizeObserver = class {
+	observe() { }
+	disconnect() { }
+};
+global.requestAnimationFrame = function(callback) { return setTimeout(callback, 0); };
+global.cancelAnimationFrame = function(timer) { clearTimeout(timer); };
 
 require("../views/dispatcher"); // Required for View in Select in Helper
 const event = new jsdom.window.Event("DOMContentLoaded", { bubbles : true, cancelable : true });
