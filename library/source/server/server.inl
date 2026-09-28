@@ -72,11 +72,11 @@ Declarations
  * - Const parameter 1000008 "Listen port" is a port of server to listen after starting.
  *
  * Server state is internal variable which can be used for check server state and can't be managed outside. Each time
- * server became Stopped, internal stopped state counter is increased.
+ * server becomes Stopped, the internal stopped state counter is increased.
  * - Running state, server is ready to accept and open new connections. Income data will be processed.
  * - Stopped state, server is stopped and can't accept or open new connections, will lead to end of main accepting
  * process.
- * - Stopping state, server is finishes its main accepting loop.
+ * - Stopping state, server is finishing its main accepting loop.
  *
  * @attention Each TCP socket is opened with SO_REUSEADDR=true, SO_REUSEPORT=false if supported and TCP_NODELAY=true
  * options.
