@@ -25,6 +25,7 @@ global.EventTarget = jsdom.window.EventTarget;
 global.body = document.querySelector('body');
 
 const originalAddEventListener = EventTarget.prototype.addEventListener;
+const originalRemoveEventListener = EventTarget.prototype.removeEventListener;
 const eventListeners = new WeakMap();
 
 EventTarget.prototype.addEventListener = function(type, listener, options) {
@@ -40,6 +41,7 @@ EventTarget.prototype.addEventListener = function(type, listener, options) {
 };
 
 EventTarget.prototype.removeEventListener = function(type, listener, options) {
+	originalRemoveEventListener.call(this, type, listener, options);
 	if (!eventListeners.has(this) || !eventListeners.get(this)[type]) {
 		return;
 	}
@@ -56,6 +58,12 @@ EventTarget.prototype.removeEventListener = function(type, listener, options) {
 global.getEventListeners = function(target) { return eventListeners.get(target) || {}; };
 global.window = jsdom.window;
 global.MutationObserver = require("mutation-observer");
+global.ResizeObserver = class {
+	observe() { }
+	disconnect() { }
+};
+global.requestAnimationFrame = function(callback) { return setTimeout(callback, 0); };
+global.cancelAnimationFrame = function(timer) { clearTimeout(timer); };
 
 require("../views/dispatcher"); // Required for View in Select in Helper
 const event = new jsdom.window.Event("DOMContentLoaded", { bubbles : true, cancelable : true });

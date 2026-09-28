@@ -541,21 +541,17 @@ class View {
 				this.m_maximizeButton.style.display = "none";
 			}
 
-			let stickButton = this.m_parentView.querySelector(".viewHeader .stick");
-			if (!stickButton) {
+			this.m_stickButton = this.m_parentView.querySelector(".viewHeader .stick");
+			if (!this.m_stickButton) {
 				console.error("Can't find stick button for view");
 				this.Destructor();
 			}
+
 			if (this.m_canBeSticked) {
-				this.m_sticked = false;
-				stickButton.addEventListener("click", () => {
-					this.m_sticked = !this.m_sticked;
-					stickButton.classList.toggle("on");
-					this.m_parentView.classList.toggle("sticked");
-				});
+				this.m_stickButton.addEventListener("click", () => { this.ToggleStick(); });
 			}
 			else {
-				stickButton.style.display = "none";
+				this.m_stickButton.style.display = "none";
 			}
 
 			if (parameters && parameters.hasOwnProperty("port")) {
@@ -615,6 +611,17 @@ class View {
 			this.m_parentView.remove();
 		}
 		WebSocketHandler.ClearViewRelatedEvents(this.m_uid);
+	}
+
+	ToggleStick()
+	{
+		if (!this.m_canBeSticked) {
+			return;
+		}
+
+		this.m_sticked = !this.m_sticked;
+		this.m_stickButton.classList.toggle("on");
+		this.m_parentView.classList.toggle("sticked");
 	}
 
 	Maximize()
