@@ -24,6 +24,7 @@ class TableView extends View {
 	{
 		this.m_title += ": " + parameters.viewTitle;
 		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+		this.m_eventTarget = parameters.eventTarget;
 
 		let table = new Table(
 			{ parent : this.m_view, id : parameters.tableId, metadata : parameters.metadata, isMutable : false });

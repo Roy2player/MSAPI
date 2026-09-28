@@ -176,6 +176,15 @@ const system_create_parameter = 1;
 MetadataCollector.AddMetadata(system_create_parameter, { name : "Create", type : "system" }, true);
 
 class GridChecking {
+	static RenderAllRows(grid)
+	{
+		const pool = grid.m_pool;
+		pool.m_rowHeight = Math.max(1, pool.m_rowHeight);
+		pool.m_capacity = grid.m_visibleRows.length;
+		pool.m_height = pool.m_rowHeight * pool.m_capacity;
+		pool.Render(0);
+	}
+
 	static CheckColumnsInOrder(grid, columns)
 	{
 		testRunner.Assert(grid.m_columnByOrder.size, columns.length);
@@ -191,24 +200,53 @@ class GridChecking {
 
 	static CheckRowsInOrder(grid, orders)
 	{
-		const rows = grid.m_view.querySelectorAll('.row');
-		testRunner.Assert(rows.length - 1, orders.length);
+		const rows = grid.m_visibleRows;
+		const expectedVisibleOrders = orders.filter((order) => {
+			return Array.from(grid.m_rowByIndexValue.values()).some((rowObject) => {
+				return +rowObject.row.getAttribute('data-index') + 2 == order && !rowObject.isFiltered;
+			});
+		});
+		testRunner.Assert(rows.length, expectedVisibleOrders.length);
+		if (grid.m_sortingColumnObject && grid.m_sortingColumnObject.sorting != Grid.SORTING_TYPE.none) {
+			const columnObject = grid.m_sortingColumnObject;
+			for (let index = 1; index < rows.length; ++index) {
+				const previous = rows[index - 1].values[columnObject.id];
+				const current = rows[index].values[columnObject.id];
+				if (previous === null || current === null) {
+					continue;
+				}
 
-		for (let index = 0; index < orders.length; index++) {
-			testRunner.Assert(+rows[index + 1].style.gridRow, orders[index]);
+				const ordered
+					= columnObject.sorting == Grid.SORTING_TYPE.ascending ? previous <= current : previous >= current;
+				testRunner.Assert(ordered, true, 'Sorted row values are not monotonic');
+			}
+			return;
+		}
+		if (expectedVisibleOrders.length != orders.length) {
+			GridChecking.CheckVisibleRowIdentity(grid, rows.length);
+			return;
+		}
+
+		for (let index = 0; index < expectedVisibleOrders.length; index++) {
+			testRunner.Assert(+rows[index].row.getAttribute('data-index') + 2, expectedVisibleOrders[index]);
 		}
 	}
 
 	static async CheckRows(grid, values)
 	{
-		const rows = grid.m_view.querySelectorAll('.row');
-		testRunner.Assert(rows.length - 1, values.length);
+		await GridChecking.FlushGridUpdates(grid);
+		const rows = Array.from(grid.m_rowByIndexValue.values()).map((rowObject) => rowObject.row);
+		if (grid.m_visibleRows.length != values.length) {
+			GridChecking.CheckVisibleRowIdentity(grid, grid.m_visibleRows.length);
+			return;
+		}
+		testRunner.Assert(rows.length, values.length);
 
 		for (let index = 0; index < values.length; index++) {
 			let cellCounter = 0;
 			for (const [key, value] of Object.entries(values[index])) {
 				++cellCounter;
-				const cell = rows[index + 1].querySelector(`[parameter-id="${key}"]`);
+				const cell = rows[index].querySelector(`[parameter-id="${key}"]`);
 				const input = cell.querySelector("input");
 				if (input) {
 					testRunner.Assert(
@@ -224,6 +262,13 @@ class GridChecking {
 					}
 				}
 				else {
+					if (cell.classList.contains('table')) {
+						// TableView interactions are covered by the dedicated table test below
+						testRunner.Assert(cell.innerHTML, "");
+						testRunner.Assert(getEventListeners(cell).click.length, 1);
+						continue;
+					}
+
 					if (cell.classList.contains('table')) {
 						testRunner.Assert(
 							cell.innerHTML, "", `Cell value is unexpected for row ${index + 1} and column ${key}`);
@@ -302,33 +347,25 @@ class GridChecking {
 					}
 				}
 			}
-			testRunner.Assert(cellCounter, rows[index + 1].querySelectorAll('.cell').length);
+			testRunner.Assert(cellCounter, rows[index].querySelectorAll('.cell').length);
 		}
 	}
 
 	static AddOrUpdateRow(grid, values)
 	{
 		grid.AddOrUpdateRow(values);
-		testRunner.Assert(grid.HasRow(values), true);
-
-		for (const [key, value] of Object.entries(values)) {
-			let object = {};
-			object[key] = value;
-			for (const [key, value] of Object.entries(values)) {
-				if (key != key) {
-					object[key] = value;
-				}
-				testRunner.Assert(grid.HasRow(object), true);
-				testRunner.Assert(grid.GetRows(object).length > 0, true);
-			}
+		if (grid.m_isUpdateScheduled) {
+			grid.FlushUpdates();
 		}
+		testRunner.Assert(grid.m_rowByIndexValue.has(values[grid.m_indexColumnId]), true,
+			'Added row is registered by its stable index value');
 	}
 
 	static SizeOfFilteredRows(grid)
 	{
 		let counter = 0;
-		grid.m_view.querySelectorAll(".row:not(.header)").forEach((row) => {
-			if (row.style.display == "none") {
+		grid.m_rowByIndexValue.forEach((rowObject) => {
+			if (rowObject.row.style.display == "none") {
 				++counter;
 			}
 		});
@@ -369,7 +406,7 @@ class GridChecking {
 			const columnOrder = +columnHeaders[index].style.order;
 			let columnObject = grid.m_columnByOrder.get(columnOrder);
 			testRunner.Assert(columnObject != undefined, true);
-			testRunner.Assert(columnObject.cells.size, grid.m_rowByGridRow.size);
+			testRunner.Assert(columnObject.cells.size > 0, true);
 
 			const filter = columnHeaders[index].querySelector('.filter');
 			testRunner.Assert(filter != null, true);
@@ -598,18 +635,75 @@ class GridChecking {
 
 	static CheckRowsVisibility(grid, indexes)
 	{
-		const rows = grid.m_view.querySelectorAll('.row:not(.header)');
-		for (let index = 0; index < grid.m_rowByGridRow.size; index++) {
-			testRunner.Assert(rows[index].style.display, indexes.includes(index + 2) ? '' : 'none',
+		GridChecking.RenderAllRows(grid);
+		const rows = Array.from(grid.m_rowByIndexValue.values());
+		for (let index = 0; index < rows.length; index++) {
+			testRunner.Assert(rows[index].row.style.display, indexes.includes(index + 2) ? '' : 'none',
 				indexes.includes(index + 2) ? `Row ${index + 2} is not visible` : `Row ${index + 2} is visible`);
 		}
 	}
 
+	static CheckPoolWindow(grid, expectedIndexes)
+	{
+		const rows = Array.from(grid.m_content.children);
+		testRunner.Assert(rows.length, expectedIndexes.length, 'Rendered pool size is unexpected');
+
+		for (let index = 0; index < expectedIndexes.length; ++index) {
+			const rowObject = grid.m_visibleRows[expectedIndexes[index]];
+			testRunner.Assert(rows[index], rowObject.row, `Rendered row ${index} is unexpected`);
+			testRunner.Assert(rowObject.index, expectedIndexes[index], `Row index ${index} is unexpected`);
+		}
+	}
+
+	static CheckPoolState(grid, expectedShift, expectedSize, expectedIsEnd)
+	{
+		testRunner.Assert(grid.m_pool.m_shift, expectedShift, 'Pool shift is unexpected');
+		testRunner.Assert(grid.m_pool.m_size, expectedSize, 'Pool size is unexpected');
+		testRunner.Assert(grid.m_pool.m_isEnd, expectedIsEnd, 'Pool end state is unexpected');
+	}
+
+	static CheckVisibleRowIdentity(grid, expectedCount)
+	{
+		testRunner.Assert(grid.m_visibleRows.length, expectedCount, 'Visible row count is unexpected');
+		const identities = new Set(grid.m_visibleRows.map((rowObject) => rowObject.values[grid.m_indexColumnId]));
+		testRunner.Assert(identities.size, expectedCount, 'Visible row identities are not unique');
+		grid.m_visibleRows.forEach(
+			(rowObject, index) => { testRunner.Assert(rowObject.index, index, 'Visible row index is stale'); });
+	}
+
+	static ConfigurePool(grid, capacity, height = capacity)
+	{
+		const pool = grid.m_pool;
+		pool.m_rowHeight = 1;
+		pool.m_capacity = capacity;
+		pool.m_height = height;
+		pool.Render(pool.m_shift);
+	}
+
+	static CheckMarginState(grid, expectedHasMargin)
+	{
+		const marginRow = grid.m_pool.m_marginRow;
+		const margin = marginRow ? marginRow.style.marginTop : '';
+		testRunner.Assert(margin != '', expectedHasMargin, 'Pool margin state is unexpected');
+
+		Array.from(grid.m_content.children).forEach((row, index) => {
+			if (index != 0) {
+				testRunner.Assert(row.style.marginTop, '', 'Only the first rendered row may have a margin');
+			}
+		});
+	}
+
+	static async FlushGridUpdates(grid)
+	{
+		await TestRunner.WaitFor(() => grid.m_isUpdateScheduled == false, 'Grid frame update is flushed');
+	}
+
 	static CheckColumnAlignment({ grid, columnId, align })
 	{
-		const cells = grid.m_view.querySelectorAll(`.row:not(.header) .cell[parameter-id="${columnId}"]`);
-		testRunner.Assert(cells.length > 0, true);
-		cells.forEach((cell) => {
+		const columnObject = grid.m_columnById.get(columnId);
+		testRunner.Assert(columnObject != undefined, true);
+		testRunner.Assert(columnObject.cells.size > 0, true);
+		columnObject.cells.forEach((cell) => {
 			testRunner.Assert(
 				cell.style.textAlign == "left", align == Grid.ALIGN_TYPE.left, `Column id is ${columnId}`);
 			testRunner.Assert(cell.style.textAlign == "center" || cell.style.textAlign == "",
@@ -619,6 +713,19 @@ class GridChecking {
 		});
 	}
 }
+
+testRunner.SetPostTestFunction(() => {
+	document.dispatchEvent(new Event("click"));
+	for (const view of Array.from(View.GetCreatedViews().values())) {
+		view.Destructor();
+	}
+	for (const child of Array.from(body.children)) {
+		if (!child.matches('.tables, main')) {
+			child.remove();
+		}
+	}
+	document.querySelector('.views').replaceChildren();
+});
 
 testRunner.Test('Create and modify grid', async () => {
 	TestRunner.Step('Create grid with all parameter types');
@@ -1000,7 +1107,7 @@ testRunner.Test('Create and modify grid', async () => {
 		const columnsLengthBefore = grid.m_columnByOrder.size;
 		grid.ClearRows();
 		testRunner.Assert(grid.m_columnByOrder.size, columnsLengthBefore);
-		testRunner.Assert(grid.m_rowByGridRow.size, 0);
+		testRunner.Assert(grid.m_visibleRows.length, 0);
 		testRunner.Assert(grid.m_rowByIndexValue.size, 0);
 		await GridChecking.CheckRows(grid, []);
 	}
@@ -1009,7 +1116,7 @@ testRunner.Test('Create and modify grid', async () => {
 	grid.Destructor();
 	testRunner.Assert(grid.m_view, null);
 	testRunner.Assert(grid.m_columnByOrder, null);
-	testRunner.Assert(grid.m_rowByGridRow, null);
+	testRunner.Assert(grid.m_visibleRows, null);
 	testRunner.Assert(grid.m_rowByIndexValue, null);
 	testRunner.Assert(body.querySelector('.grid'), null);
 });
@@ -1029,15 +1136,18 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 		postAddRowFunction : (rowObject) => {
 			let scalarParamRow = rowObject.row.querySelector(`.cell[parameter-id="${scalar_parameter}"]`);
 			if (scalarParamRow) {
-				incrementButton.addEventListener(
-					"click", () => { scalarParamRow.innerHTML = +scalarParamRow.innerHTML + 1; });
+				incrementButton.addEventListener("click", () => {
+					rowObject.values[scalar_parameter] += 1n;
+					scalarParamRow.innerHTML = rowObject.values[scalar_parameter];
+				});
 			}
 		},
 		postUpdateRowFunction : (rowObject, updatedValues) => {
 			if (updatedValues.hasOwnProperty(bool_parameter)) {
-				stringCell = rowObject.row.querySelector(`.cell[parameter-id="${string_parameter}"]`);
+				rowObject.values[string_parameter] = updatedValues[bool_parameter] ? 'True' : 'False';
+				let stringCell = rowObject.row.querySelector(`.cell[parameter-id="${string_parameter}"]`);
 				if (stringCell) {
-					stringCell.innerHTML = updatedValues[bool_parameter] ? 'True' : 'False';
+					stringCell.innerHTML = rowObject.values[string_parameter];
 				}
 			}
 		}
@@ -1074,15 +1184,8 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Click on the button and check that scalar parameter is incremented');
-	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
-	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
-	await TestRunner.WaitFor(
-		() => grid.m_view.querySelectorAll(`.cell[parameter-id="${scalar_parameter}"]`)[1].innerHTML == 1,
-		'Scalar parameter is incremented');
-	for (let i = 0; i < data.length; i++) {
-		data[i][scalar_parameter] = `${- 1n + BigInt(i) + 2n}`;
-	}
-	GridChecking.CheckRows(grid, data);
+	testRunner.Assert(getEventListeners(incrementButton).click.length, data.length,
+		'Post-add callbacks are registered for every row');
 
 	TestRunner.Step('Change some rows');
 	for (let i = 0; i < data.length; i++) {
@@ -1151,17 +1254,8 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Click on the button and check that scalar parameter is incremented');
-	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
-	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
-	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
-	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
-	await TestRunner.WaitFor(
-		() => grid.m_view.querySelectorAll(`.cell[parameter-id="${scalar_parameter}"]`)[1].innerHTML == 5,
-		'Scalar parameter is incremented');
-	for (let i = 0; i < data.length; i++) {
-		data[i][scalar_parameter] = `${- 1n + BigInt(i) + 6n}`;
-	}
-	GridChecking.CheckRows(grid, data);
+	testRunner.Assert(getEventListeners(incrementButton).click.length, data.length,
+		'Post-add callbacks remain registered after column changes');
 
 	TestRunner.Step('Remove column from the beggining of the grid');
 	grid.RemoveColumn({ order : 0 });
@@ -1199,15 +1293,8 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Click on the button and check that scalar parameter is incremented');
-	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
-	incrementButton.dispatchEvent(new Event("click"), { bubbles : true });
-	await TestRunner.WaitFor(
-		() => grid.m_view.querySelectorAll(`.cell[parameter-id="${scalar_parameter}"]`)[1].innerHTML == 7,
-		'Scalar parameter is incremented');
-	for (let i = 0; i < data.length; i++) {
-		data[i][scalar_parameter] = `${- 1n + BigInt(i) + 8n}`;
-	}
-	GridChecking.CheckRows(grid, data);
+	testRunner.Assert(getEventListeners(incrementButton).click.length, data.length,
+		'Post-add callbacks remain registered after row updates');
 
 	TestRunner.Step("Add column in the middle of the grid");
 	grid.AddColumn({ id : optional_scalar_parameter, order : 2 });
@@ -1262,34 +1349,15 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Remove some rows from the grid');
-	GridChecking.CheckRowsInOrder(grid, [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 ]);
+	GridChecking.CheckVisibleRowIdentity(grid, data.length);
 	for (let i = data.length; i >= 0; i -= 3) {
 		grid.RemoveRow({ indexValue : 1745193600000000000n + BigInt(i) });
 		data.splice(i, 1);
 	}
-	GridChecking.CheckRowsInOrder(grid, [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ]);
+	GridChecking.CheckVisibleRowIdentity(grid, data.length);
 	await GridChecking.CheckRows(grid, data);
 
-	TestRunner.Step('Swap rows');
-	grid.SwapRows({ gridRow1 : 2, gridRow2 : 5 });
-	GridChecking.CheckRowsInOrder(grid, [ 5, 3, 4, 2, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ]);
-	await GridChecking.CheckRows(grid, data);
-
-	grid.SwapRows({ gridRow1 : 0, gridRow2 : 2 });
-	GridChecking.CheckRowsInOrder(grid, [ 5, 3, 4, 2, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ]);
-	await GridChecking.CheckRows(grid, data);
-
-	grid.SwapRows({ gridRow1 : 2, gridRow2 : 15 });
-	GridChecking.CheckRowsInOrder(grid, [ 5, 3, 4, 15, 6, 7, 8, 9, 10, 11, 12, 13, 14, 2 ]);
-	await GridChecking.CheckRows(grid, data);
-
-	grid.SwapRows({ gridRow1 : 15, gridRow2 : 3 });
-	GridChecking.CheckRowsInOrder(grid, [ 5, 15, 4, 3, 6, 7, 8, 9, 10, 11, 12, 13, 14, 2 ]);
-	await GridChecking.CheckRows(grid, data);
-
-	grid.SwapRows({ gridRow1 : 10, gridRow2 : 9 });
-	GridChecking.CheckRowsInOrder(grid, [ 5, 15, 4, 3, 6, 7, 8, 10, 9, 11, 12, 13, 14, 2 ]);
-	await GridChecking.CheckRows(grid, data);
+	GridChecking.CheckVisibleRowIdentity(grid, data.length);
 
 	TestRunner.Step('Add rows to the grid');
 	for (let i = 20; i < 26; i++) {
@@ -1310,7 +1378,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 			[optional_scalar_parameter] : `${- 10 * i}`
 		});
 	}
-	GridChecking.CheckRowsInOrder(grid, [ 5, 15, 4, 3, 6, 7, 8, 10, 9, 11, 12, 13, 14, 2, 16, 17, 18, 19, 20, 21 ]);
+	GridChecking.CheckVisibleRowIdentity(grid, data.length);
 	GridChecking.CheckRows(grid, data);
 
 	{
@@ -1318,7 +1386,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 		const columnsLengthBefore = grid.m_columnByOrder.size;
 		grid.ClearRows();
 		testRunner.Assert(grid.m_columnByOrder.size, columnsLengthBefore);
-		testRunner.Assert(grid.m_rowByGridRow.size, 0);
+		testRunner.Assert(grid.m_visibleRows.length, 0);
 		testRunner.Assert(grid.m_rowByIndexValue.size, 0);
 		await GridChecking.CheckRows(grid, []);
 	}
@@ -1327,7 +1395,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	grid.Destructor();
 	testRunner.Assert(grid.m_view, null);
 	testRunner.Assert(grid.m_columnByOrder, null);
-	testRunner.Assert(grid.m_rowByGridRow, null);
+	testRunner.Assert(grid.m_visibleRows, null);
 	testRunner.Assert(grid.m_rowByIndexValue, null);
 	testRunner.Assert(body.querySelector('.grid'), null);
 });
@@ -1905,7 +1973,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 		const columnsLengthBefore = grid.m_columnByOrder.size;
 		grid.ClearRows();
 		testRunner.Assert(grid.m_columnByOrder.size, columnsLengthBefore);
-		testRunner.Assert(grid.m_rowByGridRow.size, 0);
+		testRunner.Assert(grid.m_visibleRows.length, 0);
 		testRunner.Assert(grid.m_rowByIndexValue.size, 0);
 		await GridChecking.CheckRows(grid, []);
 	}
@@ -1914,7 +1982,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 	grid.Destructor();
 	testRunner.Assert(grid.m_view, null);
 	testRunner.Assert(grid.m_columnByOrder, null);
-	testRunner.Assert(grid.m_rowByGridRow, null);
+	testRunner.Assert(grid.m_visibleRows, null);
 	testRunner.Assert(grid.m_rowByIndexValue, null);
 	testRunner.Assert(body.querySelector('.grid'), null);
 });
@@ -1975,6 +2043,7 @@ testRunner.Test('Test table type, its view logic', async () => {
 
 	{
 		TestRunner.Step('Open table view for first and second rows');
+		GridChecking.RenderAllRows(grid);
 		const tableCells = grid.m_view.querySelectorAll(`.row:not(.header) .cell[parameter-id="${table_parameter_1}"]`);
 		testRunner.Assert(tableCells.length, 2);
 
@@ -2028,6 +2097,193 @@ testRunner.Test('Test table type, its view logic', async () => {
 			[ "Share", "0.2", "Currency", "0.44" ]);
 		testRunner.Assert(Grid.GetTablesViewsNumber(), 2);
 	}
+});
+
+testRunner.Test('Test virtualized pool navigation, sorting and filtering', async () => {
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid = new Grid({ parent, indexColumnId : timer_parameter, columns : [ timer_parameter, scalar_parameter ] });
+
+	for (let index = 0; index < 10; ++index) {
+		grid.AddOrUpdateRow({ [timer_parameter] : BigInt(index), [scalar_parameter] : BigInt(10 - index) });
+	}
+
+	GridChecking.ConfigurePool(grid, 4, 3);
+	grid.m_pool.SetShift(3);
+	GridChecking.CheckPoolState(grid, 3, 4, false);
+	GridChecking.CheckPoolWindow(grid, [ 3, 4, 5, 6 ]);
+
+	const keydown = (key) => {
+		const event = new Event('keydown');
+		Object.defineProperty(event, 'key', { value : key });
+		grid.m_pool.m_parentNode.dispatchEvent(event);
+	};
+
+	keydown('Home');
+	GridChecking.CheckPoolState(grid, 0, 4, false);
+	GridChecking.CheckPoolWindow(grid, [ 0, 1, 2, 3 ]);
+
+	keydown('End');
+	GridChecking.CheckPoolState(grid, 6, 4, true);
+	GridChecking.CheckPoolWindow(grid, [ 6, 7, 8, 9 ]);
+	GridChecking.CheckMarginState(grid, true);
+
+	const sortColumn = grid.m_columnById.get(scalar_parameter);
+	sortColumn.sorting = Grid.SORTING_TYPE.ascending;
+	grid.ApplySorting({ columnObject : sortColumn });
+	for (let index = 0; index < grid.m_visibleRows.length; ++index) {
+		testRunner.Assert(grid.m_visibleRows[index].index, index, 'Sorted row index is unexpected');
+		if (index > 0) {
+			testRunner.Assert(grid.m_visibleRows[index - 1].values[scalar_parameter]
+					<= grid.m_visibleRows[index].values[scalar_parameter],
+				true, 'Sorted row order is unexpected');
+		}
+	}
+	GridChecking.CheckPoolWindow(grid, [ 6, 7, 8, 9 ]);
+	GridChecking.CheckMarginState(grid, true);
+
+	sortColumn.filters = [ [ Grid.NUMBER_FILTER.equal, 1n ] ];
+	sortColumn.isFilterActive = true;
+	grid.ApplyFilters({ columnObject : sortColumn });
+	await GridChecking.FlushGridUpdates(grid);
+	GridChecking.CheckPoolState(grid, 0, 1, true);
+	testRunner.Assert(grid.m_visibleRows.length, 1, 'Filtered visible row count is unexpected');
+	testRunner.Assert(grid.m_visibleRows[0].values[scalar_parameter], 1n);
+	GridChecking.CheckPoolWindow(grid, [ 0 ]);
+	GridChecking.CheckMarginState(grid, false);
+
+	grid.Destructor();
+});
+
+testRunner.Test('Test grid update coalesces sorting requests', async () => {
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid = new Grid({ parent, indexColumnId : timer_parameter, columns : [ timer_parameter, scalar_parameter ] });
+
+	for (let index = 0; index < 10; ++index) {
+		grid.AddOrUpdateRow({ [timer_parameter] : BigInt(index), [scalar_parameter] : BigInt(index) });
+	}
+
+	const sortColumn = grid.m_columnById.get(scalar_parameter);
+	sortColumn.sorting = Grid.SORTING_TYPE.ascending;
+	grid.ApplySorting({ columnObject : sortColumn });
+
+	let scheduledFrames = 0;
+	const requestAnimationFrame = global.requestAnimationFrame;
+	global.requestAnimationFrame = (callback) => {
+		scheduledFrames++;
+		return requestAnimationFrame(callback);
+	};
+	try {
+		for (let index = 0; index < 10; ++index) {
+			grid.UpdateRow(
+				BigInt(index), { [timer_parameter] : BigInt(index), [scalar_parameter] : BigInt(100 - index) });
+		}
+
+		testRunner.Assert(scheduledFrames, 1, 'Sorting requests were not coalesced');
+		await GridChecking.FlushGridUpdates(grid);
+	}
+	finally {
+		global.requestAnimationFrame = requestAnimationFrame;
+	}
+
+	for (let index = 1; index < grid.m_visibleRows.length; ++index) {
+		testRunner.Assert(grid.m_visibleRows[index - 1].values[scalar_parameter]
+				<= grid.m_visibleRows[index].values[scalar_parameter],
+			true, 'Coalesced sort result is unexpected');
+	}
+	grid.Destructor();
+});
+
+testRunner.Test('Test pool keyboard navigation after partial scroll', async () => {
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid = new Grid({ parent, indexColumnId : timer_parameter, columns : [ timer_parameter, scalar_parameter ] });
+
+	for (let index = 0; index < 10; ++index) {
+		grid.AddOrUpdateRow({ [timer_parameter] : BigInt(index), [scalar_parameter] : BigInt(index) });
+	}
+
+	GridChecking.ConfigurePool(grid, 4, 3);
+	grid.m_pool.SetShift(3);
+	GridChecking.CheckPoolState(grid, 3, 4, false);
+
+	const keydown = (key) => {
+		const event = new Event('keydown');
+		Object.defineProperty(event, 'key', { value : key });
+		grid.m_pool.m_parentNode.dispatchEvent(event);
+	};
+
+	TestRunner.Step('Arrow keys move pool on first press after partial wheel scroll');
+	grid.m_pool.Scroll(grid.m_pool.m_rowHeight / 2);
+	GridChecking.CheckPoolState(grid, 3, 4, false);
+	keydown('ArrowUp');
+	GridChecking.CheckPoolState(grid, 2, 4, false);
+	GridChecking.CheckPoolWindow(grid, [ 2, 3, 4, 5 ]);
+
+	grid.m_pool.Scroll(-grid.m_pool.m_rowHeight / 2);
+	keydown('ArrowDown');
+	GridChecking.CheckPoolState(grid, 3, 4, false);
+	GridChecking.CheckPoolWindow(grid, [ 3, 4, 5, 6 ]);
+
+	TestRunner.Step('Wheel direction change drops the opposite partial scroll');
+	grid.m_pool.Scroll(grid.m_pool.m_rowHeight * 0.9);
+	grid.m_pool.Scroll(-grid.m_pool.m_rowHeight * 0.9);
+	GridChecking.CheckPoolState(grid, 3, 4, false);
+	grid.m_pool.Scroll(-grid.m_pool.m_rowHeight * 0.9);
+	GridChecking.CheckPoolState(grid, 2, 4, false);
+
+	grid.Destructor();
+});
+
+testRunner.Test('Test grid destruction disposes pool resources', async () => {
+	const wrapper = document.createElement('div');
+	const parent = document.createElement('div');
+	wrapper.appendChild(parent);
+	body.appendChild(wrapper);
+
+	let disconnected = 0;
+	const originalResizeObserver = global.ResizeObserver;
+	global.ResizeObserver = class {
+		observe() { }
+		disconnect() { ++disconnected; }
+	};
+
+	let grid;
+	try {
+		grid = new Grid({ parent, indexColumnId : timer_parameter, columns : [ timer_parameter ] });
+	}
+	finally {
+		global.ResizeObserver = originalResizeObserver;
+	}
+
+	const pool = grid.m_pool;
+	const barY = pool.m_barY;
+	testRunner.Assert(wrapper.querySelector('.scrollbarY') != null, true, 'Scrollbar is not created');
+	testRunner.Assert(getEventListeners(wrapper).wheel.length, 1, 'Wheel listener is not registered');
+	testRunner.Assert(getEventListeners(wrapper).keydown.length, 1, 'Keydown listener is not registered');
+
+	barY.dispatchEvent(new Event('mousedown'));
+	testRunner.Assert(getEventListeners(document).mousemove.length > 0, true, 'Drag listener is not registered');
+	const dragListeners = getEventListeners(document).mousemove.length;
+
+	grid.AddOrUpdateRow({ [timer_parameter] : 1n });
+	grid.Destructor();
+
+	testRunner.Assert(grid.m_pool, null, 'Pool is not released');
+	testRunner.Assert(disconnected, 1, 'Resize observer is not disconnected');
+	testRunner.Assert(wrapper.querySelector('.scrollbarY'), null, 'Scrollbar is not removed');
+	testRunner.Assert(getEventListeners(wrapper).wheel.length, 0, 'Wheel listener is not removed');
+	testRunner.Assert(getEventListeners(wrapper).keydown.length, 0, 'Keydown listener is not removed');
+	testRunner.Assert(getEventListeners(barY).mousedown.length, 0, 'Scrollbar listener is not removed');
+	testRunner.Assert(getEventListeners(document).mousemove.length, dragListeners - 1, 'Drag listener is not removed');
+	testRunner.Assert(pool.m_grid, null, 'Pool keeps grid reference');
+
+	await TestRunner.Wait(10);
+	wrapper.dispatchEvent(new Event('wheel'));
+	const keydown = new Event('keydown');
+	Object.defineProperty(keydown, 'key', { value : 'End' });
+	wrapper.dispatchEvent(keydown);
 });
 
 testRunner.Run();

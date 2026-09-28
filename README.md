@@ -93,7 +93,7 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 
 - [**View:**](apps/manager/web/js/core/view.js) Abstraction for UI views, supporting creation, movement, resizing, snapping, maximizing, hiding, closing, and error handling.
 - [**Table:**](apps/manager/web/js/core/table.js) Dynamic table creation and management, supporting mutable and immutable tables, validation, and custom column types.
-- [**Grid:**](apps/manager/web/js/core/grid.js) Flexible grid component for displaying and managing tabular data with sorting, filtering, and column/row operations.
+- [**Grid:**](apps/manager/web/js/core/grid.js) Represents a grid with pool of rendered rows with sorting, filtering, and column/row operations.
 - [**Timer:**](apps/manager/web/js/core/timer.js) Timestamp input handling, normalization, and validation with timezone support.
 - [**Duration:**](apps/manager/web/js/core/duration.js) Duration input parsing, normalization, and validation for multiple time units.
 - [**Select:**](apps/manager/web/js/core/select.js) Custom select input with searchable options, validation, and dynamic metadata integration.
