@@ -216,21 +216,25 @@
 .view > .viewContent > .scrollbarY {
   position: absolute;
   right: 0;
-  width: 20px;
-  height: 100%;
-  background: palevioletred;
+  width: 12px;
+  background: var(--background-element-general);
+  opacity: 0.8;
+}
+
+.view > .viewContent > .scrollbarY:hover, .view > .viewContent > .scrollbarY:focus, .view > .viewContent > .scrollbarY:active {
+  opacity: 1;
 }
 
 .view > .viewContent > .scrollbarY > .bar {
   position: absolute;
   right: 50%;
   transform: translateX(50%);
-  background: orange;
-  width: 10px;
+  background: var(--background-element-header);
+  width: 100%;
   cursor: pointer;
 }
 
 .view > .viewContent > .scrollbarY > .bar.active {
   cursor: n-resize;
-  background: aqua;
+  background: var(--background-element-enabled);
 }

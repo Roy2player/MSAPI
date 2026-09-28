@@ -2195,4 +2195,54 @@ testRunner.Test('Test grid update coalesces sorting requests', async () => {
 	grid.Destructor();
 });
 
+testRunner.Test('Test grid destruction disposes pool resources', async () => {
+	const wrapper = document.createElement('div');
+	const parent = document.createElement('div');
+	wrapper.appendChild(parent);
+	body.appendChild(wrapper);
+
+	let disconnected = 0;
+	const originalResizeObserver = global.ResizeObserver;
+	global.ResizeObserver = class {
+		observe() { }
+		disconnect() { ++disconnected; }
+	};
+
+	let grid;
+	try {
+		grid = new Grid({ parent, indexColumnId : timer_parameter, columns : [ timer_parameter ] });
+	}
+	finally {
+		global.ResizeObserver = originalResizeObserver;
+	}
+
+	const pool = grid.m_pool;
+	const barY = pool.m_barY;
+	testRunner.Assert(wrapper.querySelector('.scrollbarY') != null, true, 'Scrollbar is not created');
+	testRunner.Assert(getEventListeners(wrapper).wheel.length, 1, 'Wheel listener is not registered');
+	testRunner.Assert(getEventListeners(wrapper).keydown.length, 1, 'Keydown listener is not registered');
+
+	barY.dispatchEvent(new Event('mousedown'));
+	testRunner.Assert(getEventListeners(document).mousemove.length > 0, true, 'Drag listener is not registered');
+	const dragListeners = getEventListeners(document).mousemove.length;
+
+	grid.AddOrUpdateRow({ [timer_parameter] : 1n });
+	grid.Destructor();
+
+	testRunner.Assert(grid.m_pool, null, 'Pool is not released');
+	testRunner.Assert(disconnected, 1, 'Resize observer is not disconnected');
+	testRunner.Assert(wrapper.querySelector('.scrollbarY'), null, 'Scrollbar is not removed');
+	testRunner.Assert(getEventListeners(wrapper).wheel.length, 0, 'Wheel listener is not removed');
+	testRunner.Assert(getEventListeners(wrapper).keydown.length, 0, 'Keydown listener is not removed');
+	testRunner.Assert(getEventListeners(barY).mousedown.length, 0, 'Scrollbar listener is not removed');
+	testRunner.Assert(getEventListeners(document).mousemove.length, dragListeners - 1, 'Drag listener is not removed');
+	testRunner.Assert(pool.m_grid, null, 'Pool keeps grid reference');
+
+	await TestRunner.Wait(10);
+	wrapper.dispatchEvent(new Event('wheel'));
+	const keydown = new Event('keydown');
+	Object.defineProperty(keydown, 'key', { value : 'End' });
+	wrapper.dispatchEvent(keydown);
+});
+
 testRunner.Run();

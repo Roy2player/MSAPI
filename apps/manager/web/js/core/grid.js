@@ -1626,6 +1626,12 @@ class Grid {
 
 	Destructor()
 	{
+		if (this.m_pool) {
+			this.m_pool.Destructor();
+			this.m_pool = null;
+		}
+		this.m_pendingFilterColumns?.clear();
+		this.m_isSortingPending = false;
 		if (this.m_view) {
 			this.m_view.remove();
 			this.m_view = null;
@@ -1678,52 +1684,52 @@ class Pool {
 		this.m_parentNode.appendChild(this.m_scrollbarY);
 		this.m_barYHeight = 0;
 
-		this.m_parentNode.addEventListener('wheel', (event) => {
+		this.m_onWheel = (event) => {
 			if (event.ctrlKey || event.metaKey) {
 				return;
 			}
 
 			event.preventDefault();
 			this.Scroll(event.deltaY);
-		}, { passive : false });
+		};
+		this.m_wheelOptions = { passive : false };
+		this.m_parentNode.addEventListener('wheel', this.m_onWheel, this.m_wheelOptions);
 
-		this.m_barY.addEventListener('mousedown', event => { StartScrolling(event, this); });
-
-		function StartScrolling(event, savedThis)
-		{
+		this.m_stopScrolling = null;
+		this.m_onBarMouseDown = (event) => {
 			event.preventDefault();
-			savedThis.m_barY.classList.add("active");
+			this.m_barY.classList.add("active");
 
-			const range = savedThis.m_height - savedThis.m_barYHeight;
-			const maxShift = Math.max(0, savedThis.m_grid.m_visibleRows.length - savedThis.m_size);
+			const range = this.m_height - this.m_barYHeight;
+			const maxShift = Math.max(0, this.m_grid.m_visibleRows.length - this.m_size);
 			const startY = event.clientY;
-			const startShift = savedThis.m_shift;
+			const startShift = this.m_shift;
 
-			function OnMouseMove(ev)
-			{
+			const onMouseMove = (ev) => {
 				if (range <= 0 || maxShift == 0) {
 					return;
 				}
 
-				const shift = Math.round(startShift + (ev.clientY - startY) * maxShift / range);
-				savedThis.SetShift(shift);
-			}
+				this.SetShift(Math.round(startShift + (ev.clientY - startY) * maxShift / range));
+			};
 
-			function OnMouseUp()
-			{
-				savedThis.m_barY.classList.remove("active");
-				document.removeEventListener('mousemove', OnMouseMove);
-				document.removeEventListener('mouseup', OnMouseUp);
-			}
+			const onMouseUp = () => {
+				this.m_barY.classList.remove("active");
+				document.removeEventListener('mousemove', onMouseMove);
+				document.removeEventListener('mouseup', onMouseUp);
+				this.m_stopScrolling = null;
+			};
 
-			document.addEventListener('mousemove', OnMouseMove);
-			document.addEventListener('mouseup', OnMouseUp);
-		}
+			this.m_stopScrolling = onMouseUp;
+			document.addEventListener('mousemove', onMouseMove);
+			document.addEventListener('mouseup', onMouseUp);
+		};
+		this.m_barY.addEventListener('mousedown', this.m_onBarMouseDown);
 
 		// Ensure the row container can receive focus
 		this.m_parentNode.setAttribute('tabindex', '0');
 
-		this.m_parentNode.addEventListener('keydown', (e) => {
+		this.m_onKeyDown = (e) => {
 			switch (e.key) {
 			case 'ArrowDown':
 				this.Scroll(this.m_rowHeight);
@@ -1750,7 +1756,8 @@ class Pool {
 				e.preventDefault();
 				return;
 			}
-		});
+		};
+		this.m_parentNode.addEventListener('keydown', this.m_onKeyDown);
 
 		this.m_resizeObserver = new ResizeObserver((entries) => {
 			for (const entry of entries) {
@@ -1759,6 +1766,43 @@ class Pool {
 		});
 
 		this.m_resizeObserver.observe(this.m_parentNode);
+	}
+
+	/**************************
+	 * @brief Disconnect the observer, remove all listeners and the scrollbar, and release the grid reference.
+	 */
+	Destructor()
+	{
+		if (this.m_resizeObserver) {
+			this.m_resizeObserver.disconnect();
+			this.m_resizeObserver = null;
+		}
+		if (this.m_stopScrolling) {
+			this.m_stopScrolling();
+		}
+		if (this.m_parentNode && typeof this.m_parentNode === "object") {
+			if (this.m_onWheel) {
+				this.m_parentNode.removeEventListener('wheel', this.m_onWheel, this.m_wheelOptions);
+			}
+			if (this.m_onKeyDown) {
+				this.m_parentNode.removeEventListener('keydown', this.m_onKeyDown);
+			}
+		}
+		if (this.m_barY && this.m_onBarMouseDown) {
+			this.m_barY.removeEventListener('mousedown', this.m_onBarMouseDown);
+		}
+		if (this.m_scrollbarY) {
+			this.m_scrollbarY.remove();
+		}
+
+		this.m_onWheel = null;
+		this.m_onKeyDown = null;
+		this.m_onBarMouseDown = null;
+		this.m_scrollbarY = null;
+		this.m_barY = null;
+		this.m_marginRow = null;
+		this.m_parentNode = null;
+		this.m_grid = null;
 	}
 
 	AddRow(row)

@@ -266,7 +266,7 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		"IP\",\"type\":\"Uint64\",\"min\":1},\"1000004\":{\"name\":\"Recv buffer size "
 		"limit\",\"type\":\"Uint64\",\"min\":1024}},\"const\":{\"1000005\":{\"name\":\"Server "
 		"state\",\"type\":\"Int8\",\"stringInterpretations\":{\"0\":\"Undefined\",\"1\":"
-		"\"Running\",\"2\":\"Stopped\"}},\"1000006\":{\"name\":\"Max "
+		"\"Running\",\"2\":\"Stopped\",\"3\":\"Stopping\"}},\"1000006\":{\"name\":\"Max "
 		"connections\",\"type\":\"Int32\"},\"1000007\":{\"name\":\"Listen "
 		"IP\",\"type\":\"String\"},\"1000008\":{\"name\":\"Listen "
 		"port\",\"type\":\"Uint16\"},\"2000001\":{\"name\":\"Name\",\"type\":\"String\"},\"2000002\":{\"name\":"

@@ -25,6 +25,7 @@ global.EventTarget = jsdom.window.EventTarget;
 global.body = document.querySelector('body');
 
 const originalAddEventListener = EventTarget.prototype.addEventListener;
+const originalRemoveEventListener = EventTarget.prototype.removeEventListener;
 const eventListeners = new WeakMap();
 
 EventTarget.prototype.addEventListener = function(type, listener, options) {
@@ -40,6 +41,7 @@ EventTarget.prototype.addEventListener = function(type, listener, options) {
 };
 
 EventTarget.prototype.removeEventListener = function(type, listener, options) {
+	originalRemoveEventListener.call(this, type, listener, options);
 	if (!eventListeners.has(this) || !eventListeners.get(this)[type]) {
 		return;
 	}

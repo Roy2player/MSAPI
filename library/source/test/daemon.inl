@@ -245,7 +245,7 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uin
 		}
 
 		if (stoppedStateCount != m_application.Server::GetStoppedStateCount()) {
-			LOG_ERROR("Application is in Stopped state, port: " + _S(port));
+			LOG_ERROR("Stopped state count is increased, port: " + _S(port));
 			break;
 		}
 

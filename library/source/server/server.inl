@@ -76,6 +76,7 @@ Declarations
  * - Running state, server is ready to accept and open new connections. Income data will be processed.
  * - Stopped state, server is stopped and can't accept or open new connections, will lead to end of main accepting
  * process.
+ * - Stopping state, server is finishes its main accepting loop.
  *
  * @attention Each TCP socket is opened with SO_REUSEADDR=true, SO_REUSEPORT=false if supported and TCP_NODELAY=true
  * options.
@@ -94,7 +95,7 @@ Declarations
  */
 class Server : public Application {
 public:
-	enum State : int8_t { Undefined, Running, Stopped, Max };
+	enum State : int8_t { Undefined, Running, Stopped, Stopping, Max };
 
 	/**************************
 	 * @locking Is not required.
@@ -247,9 +248,10 @@ public:
 
 	/**************************
 	 * @brief Blocking start the main accepting loop to listen income connections. Set state as running. Send hello to
-	 * all connections. Wait for all pthreads to be finished on interruption.
+	 * all connections. Wait for all pthreads to be finished on interruption, increase stopped state counter and set
+	 * state to Stopped.
 	 *
-	 * @attention Interrupted when the server enters the Stopped state, socket initialization fails, or the listen
+	 * @attention Interrupted when the server enters the Stopping state, socket initialization fails, or the listen
 	 * connection limit is reached. Startup errors leave the server restartable.
 	 *
 	 * @locking Holds lock on m_serverAcceptingLoop, read lock on m_idToConnectionDataRWLock on hello sending and write
@@ -264,8 +266,7 @@ public:
 
 	/**************************
 	 * @brief Close connections, cancel child pthreads and clear containers. If was in running state - set state to
-	 * Stopped, increase stopped state counter and close main listening socket which is an interrupt condition for main
-	 * accepting loop.
+	 * Stopping and close main listening socket which is an interrupt condition for main accepting loop.
 	 *
 	 * @attention This function does not wait for pthreads to be finished as it can be called inside one.
 	 *
@@ -666,6 +667,8 @@ Server
 FORCE_INLINE [[nodiscard]] constexpr std::string_view Server::EnumToString(const State state) noexcept
 {
 	// Must generate a jump table when the case labels are not dense, but short, and fill empty with default case.
+	static_assert(U(State::Max) == 4, "Missed server state to string interpretation");
+
 	switch (state) {
 	case State::Undefined:
 		return "Undefined";
@@ -673,6 +676,8 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view Server::EnumToString(const
 		return "Running";
 	case State::Stopped:
 		return "Stopped";
+	case State::Stopping:
+		return "Stopping";
 	case State::Max:
 		return "Max";
 	default:
@@ -746,22 +751,29 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		m_listenIpStr = "";
 		m_listenPort = 0;
 		LOG_ERROR("Socket constructor error, starting is interrupted");
+		m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
 		return;
 	}
 
 	if (!Bind(m_listeningSocket, &m_addr)) [[unlikely]] {
+		(void)close(m_listeningSocket);
+		m_listeningSocket = -1;
 		m_listenIp = "";
 		m_listenIpStr = "";
 		m_listenPort = 0;
 		LOG_ERROR("Bind constructor error, starting is interrupted");
+		m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
 		return;
 	}
 
 	if (!Listen(m_listeningSocket)) [[unlikely]] {
+		(void)close(m_listeningSocket);
+		m_listeningSocket = -1;
 		m_listenIp = "";
 		m_listenIpStr = "";
 		m_listenPort = 0;
 		LOG_ERROR("Listen constructor error, starting is interrupted");
+		m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
 		return;
 	}
 
@@ -787,13 +799,17 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 			auto newConnection{ Accept(m_listeningSocket, &clientAddr) };
 			state = m_state.load(std::memory_order_acquire);
 
-			if (state == State::Stopped) [[unlikely]] {
+			if (state == State::Stopping) [[unlikely]] {
 				m_listenIp = "";
 				m_listenIpStr = "";
 				m_listenPort = 0;
-				LOG_DEBUG("Server state is Stopped, wait for pthreads to be finished");
+				LOG_DEBUG("Server state is Stopping, wait for pthreads to be finished");
 				const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_alivePthreadsRWLock };
 				pthread_attr_destroy(&attr);
+				LOG_DEBUG("All pthreads are finished, server is stopped");
+				m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
+				m_state.store(State::Stopped, std::memory_order_release);
+				m_stateTmp = State::Stopped;
 				return;
 			}
 
@@ -817,38 +833,43 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		std::this_thread::sleep_for(std::chrono::seconds(10));
 	} while (m_somaxconn >= GetConnectionsCount());
 
-	pthread_attr_destroy(&attr);
 	LOG_ERROR_NEW("Unexpected exit from the main accepting loop, server state: {}, connections counter: {}",
 		EnumToString(m_state.load(std::memory_order_acquire)), GetConnectionsCount());
+	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_alivePthreadsRWLock };
+	pthread_attr_destroy(&attr);
+	(void)close(m_listeningSocket);
+	m_listeningSocket = -1;
 	m_listenIp = "";
 	m_listenIpStr = "";
 	m_listenPort = 0;
+	m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
+	m_state.store(State::Stopped, std::memory_order_release);
+	m_stateTmp = State::Stopped;
 }
 
 FORCE_INLINE void Server::Stop() noexcept
 {
 	auto state{ m_state.load(std::memory_order_acquire) };
-	if (state == State::Stopped) [[unlikely]] {
-		LOG_DEBUG("Server is already stopped");
+	if (state != State::Running) [[unlikely]] {
+		LOG_DEBUG_NEW("Server is not running, current state: {}", EnumToString(state));
+		// To interrupt OpenConnectionImpl as it can be called on Stopped server state
+		m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
 		return;
 	}
 
 	LOG_INFO("Server is stopping");
 
-	if (state == State::Running) {
-		m_state.store(State::Stopped, std::memory_order_release);
-		m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
-		m_stateTmp = State::Stopped;
+	m_state.store(State::Stopping, std::memory_order_release);
+	m_stateTmp = State::Stopping;
 
-		if (m_listeningSocket != -1) [[likely]] {
-			if (shutdown(m_listeningSocket, SHUT_RDWR) == -1) [[unlikely]] {
-				LOG_ERROR_NEW("Listen socket shutdown is failed. Error №{}: {}", errno, std::strerror(errno));
-			}
-			if (close(m_listeningSocket) == -1) [[unlikely]] {
-				LOG_ERROR_NEW("Listen socket close is failed. Error №{}: {}", errno, std::strerror(errno));
-			}
-			m_listeningSocket = -1;
+	if (m_listeningSocket != -1) [[likely]] {
+		if (shutdown(m_listeningSocket, SHUT_RDWR) == -1) [[unlikely]] {
+			LOG_ERROR_NEW("Listen socket shutdown is failed. Error №{}: {}", errno, std::strerror(errno));
 		}
+		if (close(m_listeningSocket) == -1) [[unlikely]] {
+			LOG_ERROR_NEW("Listen socket close is failed. Error №{}: {}", errno, std::strerror(errno));
+		}
+		m_listeningSocket = -1;
 	}
 
 	{
@@ -868,7 +889,7 @@ FORCE_INLINE void Server::Stop() noexcept
 		} while (true);
 	}
 
-	LOG_INFO("Server is stopped");
+	LOG_INFO("Connections are closed");
 }
 
 FORCE_INLINE [[nodiscard]] Server::State Server::GetState() const noexcept
@@ -954,7 +975,8 @@ FORCE_INLINE void Server::RecvLoop(const std::shared_ptr<Connection::Data>& conn
 		HandleIncomeDisconnect(connectionData);
 	}
 
-	if (m_state.load(std::memory_order_acquire) == State::Stopped) {
+	// Recv loop is always part of pthread, if it is interrupted due to server is stopping, it is already closed
+	if (m_state.load(std::memory_order_acquire) == State::Stopping) {
 		return;
 	}
 
@@ -1015,9 +1037,9 @@ FORCE_INLINE std::shared_ptr<Connection::Data> Server::GetConnectionData(const u
 
 FORCE_INLINE void Server::HandleBuffer(RecvBuffer& recvBuffer)
 {
-	if (m_state.load(std::memory_order_acquire) == State::Stopped) [[likely]] {
+	if (m_state.load(std::memory_order_acquire) == State::Stopping) [[likely]] {
 		LOG_PROTOCOL_NEW(
-			"Buffer from connection id: {} is dropped as server already paused", recvBuffer.GetConnectionId());
+			"Buffer from connection id: {} is dropped as server is stopping", recvBuffer.GetConnectionId());
 		return;
 	}
 
@@ -1040,10 +1062,12 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 		ipStr = std::string_view{ "unknown" };
 	}
 
-	if (m_state.load(std::memory_order_acquire) == State::Stopped) [[unlikely]] {
-		LOG_INFO_NEW("Connecting to: {}:{} is interrupted, server is stopped", ipStr, port);
+	if (m_state.load(std::memory_order_acquire) == State::Stopping) [[unlikely]] {
+		LOG_INFO_NEW("Connecting to: {}:{} is interrupted, server is Stopping", ipStr, port);
 		return {};
 	}
+
+	const auto stoppedStateCount{ m_stoppedStateCount.load(std::memory_order_relaxed) };
 
 	const int32_t socket{ Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) };
 	if (socket == -1) [[unlikely]] {
@@ -1067,8 +1091,8 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 		LOG_WARNING_NEW("Failed to connect to: {}:{}. Error №{}: {}", ipStr, port, errno, std::strerror(errno));
 		std::this_thread::sleep_for(std::chrono::seconds(m_secondsBetweenTryToConnect));
 
-		if (m_state.load(std::memory_order_acquire) == State::Stopped) [[unlikely]] {
-			LOG_INFO_NEW("Connecting to: {}:{} is interrupted, server is stopped", ipStr, port);
+		if (stoppedStateCount != m_stoppedStateCount.load(std::memory_order_relaxed)) [[unlikely]] {
+			LOG_INFO_NEW("Connecting to: {}:{} is interrupted, stopped state count is increased", ipStr, port);
 			(void)close(socket);
 			return {};
 		}
@@ -1186,7 +1210,6 @@ FORCE_INLINE [[nodiscard]] bool Server::Listen(const int32_t socket) noexcept
 FORCE_INLINE [[nodiscard]] std::unique_ptr<Connection> Server::Accept(
 	const int32_t socket, sockaddr_in* const addr) noexcept
 {
-	// LOG_DEBUG_NEW("Accept on descriptor {}", socket);
 	auto sizeAddr{ static_cast<uint32_t>(sizeof(sockaddr_in)) };
 	const auto result{ accept(socket, reinterpret_cast<sockaddr*>(addr), &sizeAddr) };
 	if (result != -1) [[likely]] {
@@ -1195,8 +1218,8 @@ FORCE_INLINE [[nodiscard]] std::unique_ptr<Connection> Server::Accept(
 		return connection;
 	}
 
-	if (m_state.load(std::memory_order_acquire) == State::Stopped) [[likely]] {
-		LOG_DEBUG("Socket accepting is interrupted, server state is Stopped");
+	if (m_state.load(std::memory_order_acquire) == State::Stopping) [[likely]] {
+		LOG_DEBUG("Socket accepting is interrupted, server state is Stopping");
 		return {};
 	}
 
