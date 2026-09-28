@@ -2195,6 +2195,47 @@ testRunner.Test('Test grid update coalesces sorting requests', async () => {
 	grid.Destructor();
 });
 
+testRunner.Test('Test pool keyboard navigation after partial scroll', async () => {
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid = new Grid({ parent, indexColumnId : timer_parameter, columns : [ timer_parameter, scalar_parameter ] });
+
+	for (let index = 0; index < 10; ++index) {
+		grid.AddOrUpdateRow({ [timer_parameter] : BigInt(index), [scalar_parameter] : BigInt(index) });
+	}
+
+	GridChecking.ConfigurePool(grid, 4, 3);
+	grid.m_pool.SetShift(3);
+	GridChecking.CheckPoolState(grid, 3, 4, false);
+
+	const keydown = (key) => {
+		const event = new Event('keydown');
+		Object.defineProperty(event, 'key', { value : key });
+		grid.m_pool.m_parentNode.dispatchEvent(event);
+	};
+
+	TestRunner.Step('Arrow keys move pool on first press after partial wheel scroll');
+	grid.m_pool.Scroll(grid.m_pool.m_rowHeight / 2);
+	GridChecking.CheckPoolState(grid, 3, 4, false);
+	keydown('ArrowUp');
+	GridChecking.CheckPoolState(grid, 2, 4, false);
+	GridChecking.CheckPoolWindow(grid, [ 2, 3, 4, 5 ]);
+
+	grid.m_pool.Scroll(-grid.m_pool.m_rowHeight / 2);
+	keydown('ArrowDown');
+	GridChecking.CheckPoolState(grid, 3, 4, false);
+	GridChecking.CheckPoolWindow(grid, [ 3, 4, 5, 6 ]);
+
+	TestRunner.Step('Wheel direction change drops the opposite partial scroll');
+	grid.m_pool.Scroll(grid.m_pool.m_rowHeight * 0.9);
+	grid.m_pool.Scroll(-grid.m_pool.m_rowHeight * 0.9);
+	GridChecking.CheckPoolState(grid, 3, 4, false);
+	grid.m_pool.Scroll(-grid.m_pool.m_rowHeight * 0.9);
+	GridChecking.CheckPoolState(grid, 2, 4, false);
+
+	grid.Destructor();
+});
+
 testRunner.Test('Test grid destruction disposes pool resources', async () => {
 	const wrapper = document.createElement('div');
 	const parent = document.createElement('div');

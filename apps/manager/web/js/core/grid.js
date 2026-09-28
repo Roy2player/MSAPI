@@ -1732,18 +1732,22 @@ class Pool {
 		this.m_onKeyDown = (e) => {
 			switch (e.key) {
 			case 'ArrowDown':
+				this.m_partScrollY = 0;
 				this.Scroll(this.m_rowHeight);
 				e.preventDefault();
 				return;
 			case 'ArrowUp':
+				this.m_partScrollY = 0;
 				this.Scroll(-this.m_rowHeight);
 				e.preventDefault();
 				return;
 			case 'PageDown':
+				this.m_partScrollY = 0;
 				this.Scroll(this.m_rowHeight * Math.max(1, this.m_capacity - this.m_capacityBuffer));
 				e.preventDefault();
 				return;
 			case 'PageUp':
+				this.m_partScrollY = 0;
 				this.Scroll(-this.m_rowHeight * Math.max(1, this.m_capacity - this.m_capacityBuffer));
 				e.preventDefault();
 				return;
@@ -2052,6 +2056,10 @@ class Pool {
 	{
 		if (deltaY == 0 || this.m_rowHeight == 0) {
 			return;
+		}
+
+		if (Math.sign(deltaY) != Math.sign(this.m_partScrollY)) {
+			this.m_partScrollY = 0;
 		}
 
 		this.m_partScrollY += deltaY;
