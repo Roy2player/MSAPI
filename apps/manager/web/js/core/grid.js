@@ -146,15 +146,15 @@ class Grid {
 		}
 
 		this.m_parent.appendChild(Grid.#templateElement.content.cloneNode(true));
-		this.m_view = this.m_parent.lastElementChild;
+		this.m_viewSpecificNode = this.m_parent.lastElementChild;
 
-		this.m_header = this.m_view.querySelector("div.row.header");
-		if (!this.m_header) {
+		this.m_headerNode = this.m_viewSpecificNode.querySelector("div.row.header");
+		if (!this.m_headerNode) {
 			log.error("Header row is not found");
 			return;
 		}
 
-		this.m_content = this.m_view.querySelector("div.content");
+		this.m_content = this.m_viewSpecificNode.querySelector("div.content");
 		if (!this.m_content) {
 			log.error("Content div is not found");
 			return;
@@ -174,15 +174,15 @@ class Grid {
 
 			document.addEventListener("click", (event) => {
 				settingsViews.forEach(settingView => {
-					if (!settingView.m_parentView.parentNode) {
+					if (!settingView.m_viewNode.parentNode) {
 						settingsViews.delete(settingView);
 						return;
 					}
 
-					if (!settingView.m_parentView.contains(event.target)) {
+					if (!settingView.m_viewNode.contains(event.target)) {
 						const lastView = View.GetLastCreatedView();
 						if (lastView && lastView.m_viewType == "SelectView"
-							&& lastView.m_parentView.contains(event.target)) {
+							&& lastView.m_viewNode.contains(event.target)) {
 
 							return;
 						}
@@ -198,16 +198,16 @@ class Grid {
 
 				tablesViews.forEach((container, rowId) => {
 					container.forEach((tableView, columnId) => {
-						if (!tableView.m_parentView.parentNode) {
+						if (!tableView.m_viewNode.parentNode) {
 							container.delete(columnId);
 							return;
 						}
 
-						if (!tableView.m_parentView.contains(event.target)) {
+						if (!tableView.m_viewNode.contains(event.target)) {
 
 							const lastView = View.GetLastCreatedView();
 							if (lastView && lastView.m_viewType == "TableView"
-								&& lastView.m_parentView.contains(event.target)) {
+								&& lastView.m_viewNode.contains(event.target)) {
 
 								return;
 							}
@@ -333,7 +333,7 @@ class Grid {
 		text.classList.add("text");
 		text.innerHTML = metadata.metadata.name;
 		headerCell.appendChild(text);
-		this.m_header.appendChild(headerCell);
+		this.m_headerNode.appendChild(headerCell);
 		let columnObject = {
 			metadata,
 			id,
@@ -384,7 +384,7 @@ class Grid {
 		let settingsViews = Grid.#privateFields.m_settingsViews;
 
 		settings.addEventListener("click", () => {
-			if (settingsView && settingsView.m_parentView.parentNode) {
+			if (settingsView && settingsView.m_viewNode.parentNode) {
 				return;
 			}
 
@@ -401,42 +401,42 @@ class Grid {
 
 			settingsViews.add(settingsView);
 
-			let alignLeft = settingsView.m_view.querySelector(".group > .action.alignLeft");
+			let alignLeft = settingsView.m_viewSpecificNode.querySelector(".group > .action.alignLeft");
 			if (!alignLeft) {
 				console.error("Align left is not found");
 				return;
 			}
-			let alignCenter = settingsView.m_view.querySelector(".group > .action.alignCenter");
+			let alignCenter = settingsView.m_viewSpecificNode.querySelector(".group > .action.alignCenter");
 			if (!alignCenter) {
 				console.error("Align center is not found");
 				return;
 			}
-			let alignRight = settingsView.m_view.querySelector(".group > .action.alignRight");
+			let alignRight = settingsView.m_viewSpecificNode.querySelector(".group > .action.alignRight");
 			if (!alignRight) {
 				console.error("Align right is not found");
 				return;
 			}
-			let sortingAscending = settingsView.m_view.querySelector(".group > .action.ascending");
+			let sortingAscending = settingsView.m_viewSpecificNode.querySelector(".group > .action.ascending");
 			if (!sortingAscending) {
 				console.error("Ascending is not found");
 				return;
 			}
-			let sortingNone = settingsView.m_view.querySelector(".group > .action.none");
+			let sortingNone = settingsView.m_viewSpecificNode.querySelector(".group > .action.none");
 			if (!sortingNone) {
 				console.error("None is not found");
 				return;
 			}
-			let sortingDescending = settingsView.m_view.querySelector(".group > .action.descending");
+			let sortingDescending = settingsView.m_viewSpecificNode.querySelector(".group > .action.descending");
 			if (!sortingDescending) {
 				console.error("Descending is not found");
 				return;
 			}
-			let filterGeneral = settingsView.m_view.querySelector(".group > .action.filter");
+			let filterGeneral = settingsView.m_viewSpecificNode.querySelector(".group > .action.filter");
 			if (!filterGeneral) {
 				console.error("Filter is not found");
 				return;
 			}
-			let filters = settingsView.m_view.querySelector(".filters");
+			let filters = settingsView.m_viewSpecificNode.querySelector(".filters");
 			if (!filters) {
 				console.error("Container for filters is not found");
 				return;
@@ -1141,7 +1141,7 @@ class Grid {
 
 		let settingsView;
 		for (let view of Grid.#privateFields.m_settingsViews) {
-			if (view.m_parentView.parentNode && view.m_parameterId == columnObject.id) {
+			if (view.m_viewNode.parentNode && view.m_parameterId == columnObject.id) {
 				settingsView = view;
 				break;
 			}
@@ -1150,7 +1150,7 @@ class Grid {
 		if (hasFilteredRows) {
 			filter.classList.add("active");
 			if (settingsView) {
-				settingsView.m_view.querySelector(".group > .action.filter").classList.add("active");
+				settingsView.m_viewSpecificNode.querySelector(".group > .action.filter").classList.add("active");
 			}
 
 			this.RequestSorting();
@@ -1160,7 +1160,7 @@ class Grid {
 		filter.classList.remove("active");
 		columnObject.isFilterActive = false;
 		if (settingsView) {
-			settingsView.m_view.querySelector(".group > .action.filter").classList.remove("active");
+			settingsView.m_viewSpecificNode.querySelector(".group > .action.filter").classList.remove("active");
 		}
 
 		if (anyNewVisible) {
@@ -1259,7 +1259,7 @@ class Grid {
 
 			let tableView;
 			cell.addEventListener("click", () => {
-				if (tableView && tableView.m_parentView.parentNode) {
+				if (tableView && tableView.m_viewNode.parentNode) {
 					return;
 				}
 
@@ -1632,9 +1632,9 @@ class Grid {
 		}
 		this.m_pendingFilterColumns?.clear();
 		this.m_isSortingPending = false;
-		if (this.m_view) {
-			this.m_view.remove();
-			this.m_view = null;
+		if (this.m_viewSpecificNode) {
+			this.m_viewSpecificNode.remove();
+			this.m_viewSpecificNode = null;
 		}
 		if (this.m_columnByOrder) {
 			this.m_columnByOrder.clear();
@@ -1659,7 +1659,7 @@ class Pool {
 	constructor(grid)
 	{
 		this.m_grid = grid;
-		this.m_parentNode = this.m_grid.m_parent.parentNode;
+		this.m_viewsNode = this.m_grid.m_parent.parentNode;
 		this.m_height = 0;
 		this.m_rowHeight = 0;
 		this.m_capacity = 0;
@@ -1670,18 +1670,18 @@ class Pool {
 		this.m_partScrollY = 0;
 		this.m_marginRow = null;
 
-		if (typeof this.m_parentNode !== "object") {
-			console.error("Invalid parentNode type, object is expected", this.m_parentNode);
+		if (typeof this.m_viewsNode !== "object") {
+			console.error("Invalid parentNode type, object is expected", this.m_viewsNode);
 			return;
 		}
 
-		this.m_parentNode.style.overflowY = "hidden";
+		this.m_viewsNode.style.overflowY = "hidden";
 		this.m_scrollbarY = document.createElement("div");
 		this.m_scrollbarY.classList.add("scrollbarY");
 		this.m_barY = document.createElement("div");
 		this.m_barY.classList.add("bar");
 		this.m_scrollbarY.appendChild(this.m_barY);
-		this.m_parentNode.appendChild(this.m_scrollbarY);
+		this.m_viewsNode.appendChild(this.m_scrollbarY);
 		this.m_barYHeight = 0;
 
 		this.m_onWheel = (event) => {
@@ -1693,7 +1693,7 @@ class Pool {
 			this.Scroll(event.deltaY);
 		};
 		this.m_wheelOptions = { passive : false };
-		this.m_parentNode.addEventListener('wheel', this.m_onWheel, this.m_wheelOptions);
+		this.m_viewsNode.addEventListener('wheel', this.m_onWheel, this.m_wheelOptions);
 
 		this.m_stopScrolling = null;
 		this.m_onBarMouseDown = (event) => {
@@ -1727,7 +1727,7 @@ class Pool {
 		this.m_barY.addEventListener('mousedown', this.m_onBarMouseDown);
 
 		// Ensure the row container can receive focus
-		this.m_parentNode.setAttribute('tabindex', '0');
+		this.m_viewsNode.setAttribute('tabindex', '0');
 
 		this.m_onKeyDown = (e) => {
 			switch (e.key) {
@@ -1761,7 +1761,7 @@ class Pool {
 				return;
 			}
 		};
-		this.m_parentNode.addEventListener('keydown', this.m_onKeyDown);
+		this.m_viewsNode.addEventListener('keydown', this.m_onKeyDown);
 
 		this.m_resizeObserver = new ResizeObserver((entries) => {
 			for (const entry of entries) {
@@ -1769,7 +1769,7 @@ class Pool {
 			}
 		});
 
-		this.m_resizeObserver.observe(this.m_parentNode);
+		this.m_resizeObserver.observe(this.m_viewsNode);
 	}
 
 	/**************************
@@ -1784,12 +1784,12 @@ class Pool {
 		if (this.m_stopScrolling) {
 			this.m_stopScrolling();
 		}
-		if (this.m_parentNode && typeof this.m_parentNode === "object") {
+		if (this.m_viewsNode && typeof this.m_viewsNode === "object") {
 			if (this.m_onWheel) {
-				this.m_parentNode.removeEventListener('wheel', this.m_onWheel, this.m_wheelOptions);
+				this.m_viewsNode.removeEventListener('wheel', this.m_onWheel, this.m_wheelOptions);
 			}
 			if (this.m_onKeyDown) {
-				this.m_parentNode.removeEventListener('keydown', this.m_onKeyDown);
+				this.m_viewsNode.removeEventListener('keydown', this.m_onKeyDown);
 			}
 		}
 		if (this.m_barY && this.m_onBarMouseDown) {
@@ -1805,7 +1805,7 @@ class Pool {
 		this.m_scrollbarY = null;
 		this.m_barY = null;
 		this.m_marginRow = null;
-		this.m_parentNode = null;
+		this.m_viewsNode = null;
 		this.m_grid = null;
 	}
 
@@ -1821,7 +1821,7 @@ class Pool {
 			return;
 		}
 
-		this.Resize(this.m_parentNode.offsetHeight);
+		this.Resize(this.m_viewsNode.offsetHeight);
 	}
 
 	SetRowHeight(row)
@@ -1848,7 +1848,7 @@ class Pool {
 
 	Resize(height)
 	{
-		const headerRowHeight = Helper.GetFullDimensions(this.m_grid.m_header).height;
+		const headerRowHeight = Helper.GetFullDimensions(this.m_grid.m_headerNode).height;
 		if (this.m_rowHeight == 0) {
 			return;
 		}
@@ -1865,7 +1865,7 @@ class Pool {
 			}
 		}
 
-		const viewHeader = this.m_parentNode.parentNode.querySelector('.viewHeader');
+		const viewHeader = this.m_headerNode; //! sabe header and footer in view params
 		const headerViewHeight = viewHeader ? Helper.GetFullDimensions(viewHeader).height : 0;
 		this.m_scrollbarY.style.top = headerRowHeight + headerViewHeight + "px";
 

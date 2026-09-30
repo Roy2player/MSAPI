@@ -29,12 +29,12 @@ class Helper {
 	});
 
 	static #privateFields = (() => {
-		let m_uid = 0;
+		let m_id = 0;
 
-		return { m_uid };
+		return { m_id };
 	})();
 
-	static GenerateUid() { return Helper.#privateFields.m_uid++; }
+	static GenerateId() { return Helper.#privateFields.m_id++; }
 
 	static DatetimeLocalToTimestamp(input)
 	{

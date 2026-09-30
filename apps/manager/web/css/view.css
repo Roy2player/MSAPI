@@ -126,17 +126,18 @@
     display: none;
 }
 
-.view>.viewHeader {
-    font-size: 15px;
-    height: 20px;
-    display: flex;
-    justify-content: space-between;
-    user-select: none;
-    border-bottom: 1px solid var(--border-color-general);
-    flex: 0 0 auto;
-    margin-bottom: -1px;
-    z-index: 1;
-    overflow: auto;
+.view > .viewHeader {
+  font-size: 15px;
+  height: 20px;
+  display: flex;
+  justify-content: space-between;
+  user-select: none;
+  border-bottom: 1px solid var(--border-color-general);
+  flex: 0 0 auto;
+  margin-bottom: -1px;
+  z-index: 2;
+  overflow: auto;
+  background: var(--background-view);
 }
 
 .view>.viewContent>* {
@@ -144,7 +145,7 @@
     display: inline-block;
 }
 
-.view>.viewContent>*::after {
+.view>.viewContent::after {
     content: "";
     position: absolute;
     left: 0;
@@ -158,17 +159,12 @@
     transition: all 0.3s ease 0s;
 }
 
-.view>.viewContent>.changing::after {
+.view>.viewContent.changing::after, .view>.viewContent.loading::after {
     visibility: visible;
     opacity: 0.5;
 }
 
-.view>.viewContent>.loading::after {
-    visibility: visible;
-    opacity: 0.5;
-}
-
-.view>.viewContent>.loading::before {
+.view>.viewContent.loading::before {
     content: "";
     position: absolute;
     left: 50%;
@@ -182,6 +178,16 @@
     transition: all 0.3s ease 0s;
     animation: spin 1s linear infinite;
     z-index: 2;
+}
+
+@keyframes spin {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
 }
 
 .view>.viewContent>.appView {
@@ -439,15 +445,17 @@
     }
 }
 
-.view>.viewFooter {
-    position: relative;
-    border-top: 1px solid var(--border-color-general);
-    transition: all 0.3s ease 0s;
-    opacity: 0;
-    visibility: hidden;
-    height: 0;
-    width: 0;
-    overflow: hidden;
+.view > .viewFooter {
+  position: relative;
+  border-top: 1px solid var(--border-color-general);
+  transition: all 0.3s ease 0s;
+  opacity: 0;
+  visibility: hidden;
+  height: 0;
+  width: 0;
+  overflow: hidden;
+  z-index: 2;
+  background: var(--background-view);
 }
 
 .view>.viewFooter>.errorMessage {

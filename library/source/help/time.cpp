@@ -33,7 +33,7 @@ Timer::Event
 Timer::Event::Event(std::function<void(int*)> callback, int* data)
 {
 	if (data == nullptr) {
-		LOG_ERROR("Interrupted timer event creation due to data is nullptr, id: " + _S(m_uid));
+		LOG_ERROR("Interrupted timer event creation due to data is nullptr, id: " + _S(m_id));
 		return;
 	}
 
@@ -62,7 +62,7 @@ Timer::Event::Event(Timer::Event::IHandler* handler)
 	: m_handler{ handler }
 {
 	if (m_handler == nullptr) {
-		LOG_ERROR("Interrupted timer event creation due to handler is nullptr, id: " + _S(m_uid));
+		LOG_ERROR("Interrupted timer event creation due to handler is nullptr, id: " + _S(m_id));
 		return;
 	}
 
@@ -85,13 +85,13 @@ Timer::Event::~Event()
 	}
 }
 
-int64_t Timer::Event::GetId() const { return m_uid; }
+int64_t Timer::Event::GetId() const { return m_id; }
 
 #define TMP_MSAPI_TIMER_EVENT_STOP(ret)                                                                                \
-	LOG_DEBUG("Stop timer event, id: " + _S(m_uid));                                                                   \
+	LOG_DEBUG("Stop timer event, id: " + _S(m_id));                                                                    \
                                                                                                                        \
-	if (timer_delete(m_id) != 0) {                                                                                     \
-		LOG_ERROR("timer_delete, id " + _S(m_uid) + ". Error №" + _S(errno) + ": " + std::strerror(errno));            \
+	if (timer_delete(m_timer) != 0) {                                                                                  \
+		LOG_ERROR("timer_delete, id " + _S(m_id) + ". Error №" + _S(errno) + ": " + std::strerror(errno));             \
 		return ret;                                                                                                    \
 	}                                                                                                                  \
 	m_running = false;
@@ -128,19 +128,19 @@ bool Timer::Event::Start(const time_t timeToCall, const time_t timeToRepeatCall,
 		}
 
 #define TMP_MSAPI_TIMER_EVENT_START_END                                                                                \
-	int res{ timer_create(CLOCK_REALTIME, &m_sev, &m_id) };                                                            \
+	int res{ timer_create(CLOCK_REALTIME, &m_sev, &m_timer) };                                                         \
 	if (res != 0) {                                                                                                    \
-		LOG_ERROR("timer_create, id: " + _S(m_uid) + ". Error №" + _S(errno) + ": " + std::strerror(errno));           \
+		LOG_ERROR("timer_create, id: " + _S(m_id) + ". Error №" + _S(errno) + ": " + std::strerror(errno));            \
 		return false;                                                                                                  \
 	}                                                                                                                  \
                                                                                                                        \
-	res = timer_settime(m_id, 0, &m_its, nullptr);                                                                     \
+	res = timer_settime(m_timer, 0, &m_its, nullptr);                                                                  \
 	if (res != 0) {                                                                                                    \
-		LOG_ERROR("timer_settime, id: " + _S(m_uid) + ". Error №" + _S(errno) + ": " + std::strerror(errno));          \
+		LOG_ERROR("timer_settime, id: " + _S(m_id) + ". Error №" + _S(errno) + ": " + std::strerror(errno));           \
 		return false;                                                                                                  \
 	}                                                                                                                  \
                                                                                                                        \
-	LOG_DEBUG("Start timer event, id: " + _S(m_uid) + ", time to call: " + _S(UINT64(m_timeToCall))                    \
+	LOG_DEBUG("Start timer event, id: " + _S(m_id) + ", time to call: " + _S(UINT64(m_timeToCall))                     \
 		+ ", repeat: " + _S(m_timeToRepeatCall != 0) + ", time to repeat call: " + _S(UINT64(m_timeToRepeatCall))      \
 		+ ", instant call: " + _S(m_instantCall));                                                                     \
                                                                                                                        \
@@ -160,7 +160,7 @@ bool Timer::Event::Start(const time_t timeToCall, const time_t timeToRepeatCall,
 		TMP_MSAPI_TIMER_EVENT_START_END;
 	}
 
-	LOG_ERROR("Timer event starting is interrupted as it is created with error, id: " + _S(m_uid));
+	LOG_ERROR("Timer event starting is interrupted as it is created with error, id: " + _S(m_id));
 	return false;
 }
 

@@ -23,11 +23,15 @@ class TableView extends View {
 	Constructor(parameters)
 	{
 		this.m_title += ": " + parameters.viewTitle;
-		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+		this.m_viewNode.querySelector(".title > span").textContent = this.m_title;
 		this.m_eventTarget = parameters.eventTarget;
 
-		let table = new Table(
-			{ parent : this.m_view, id : parameters.tableId, metadata : parameters.metadata, isMutable : false });
+		let table = new Table({
+			parent : this.m_viewSpecificNode,
+			id : parameters.tableId,
+			metadata : parameters.metadata,
+			isMutable : false
+		});
 		this.m_tables.set(+parameters.tableId, table);
 
 		return true;

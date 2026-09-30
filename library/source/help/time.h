@@ -76,7 +76,7 @@ public:
 	private:
 		std::function<void(int*)> m_callback;
 		IHandler* m_handler;
-		timer_t m_id{};
+		timer_t m_timer{};
 		//* Callback, this, parameter
 		std::tuple<void*, int*, int*> m_data;
 		bool m_running{};
@@ -86,7 +86,7 @@ public:
 		bool m_instantCall{};
 		sigevent m_sev{ 0, 0, 0, 0 };
 		itimerspec m_its;
-		int64_t m_uid{ m_eventsCounter.fetch_add(1, std::memory_order_relaxed) };
+		int64_t m_id{ m_eventsCounter.fetch_add(1, std::memory_order_relaxed) };
 
 		static inline std::atomic<int64_t> m_eventsCounter{};
 

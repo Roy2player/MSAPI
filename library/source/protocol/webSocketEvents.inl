@@ -953,7 +953,7 @@ FORCE_INLINE void SendFailed(const uint64_t id, Connection& connection, const st
 	static_assert(static_cast<int32_t>(Stream::State::Failed) == 4, "Stream failed state is expected");
 	LOG_PROTOCOL_NEW(
 		"Send stream event failed state, stream id: {}, error: {}, connection id: {}", id, error, connection.GetId());
-	std::string payload{ std::format("{{\"uids\":[{}],\"state\":4,\"error\":\"{}\"}}", id, error) };
+	std::string payload{ std::format("{{\"ids\":[{}],\"state\":4,\"error\":\"{}\"}}", id, error) };
 	Data data{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
 		Data::Opcode::Text };
 	Send(connection, data);
@@ -1078,7 +1078,7 @@ FORCE_INLINE void Stream::SendState(const State state) const
 	auto& connection{ GetConnectionData()->GetConnection() };
 	LOG_PROTOCOL_NEW("Send stream event {} state, stream id: {}, connection id: {}", EnumToString(state), GetId(),
 		connection.GetId());
-	std::string payload{ std::format("{{\"uids\":[{}],\"state\":{}}}", GetId(), U(state)) };
+	std::string payload{ std::format("{{\"ids\":[{}],\"state\":{}}}", GetId(), U(state)) };
 	Data data{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
 		Data::Opcode::Text };
 	Send(connection, data);
@@ -1580,7 +1580,7 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 	// Trade of from locking while sending to once locking but string allocating
 	struct Destination {
 		Connection& connection;
-		std::string uids;
+		std::string ids;
 
 		FORCE_INLINE Destination(Connection& connection) noexcept
 			: connection{ connection }
@@ -1588,7 +1588,7 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 		}
 	};
 
-	size_t maxUidsSize{};
+	size_t maxIdsSize{};
 	std::vector<Destination> destinations;
 	for (auto& events : eventsArray) {
 		const Lock::AtomicRW::Guard<Lock::read> _{ events->GetLock() };
@@ -1598,16 +1598,16 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 
 		if (begin != end) {
 			Destination destination{ begin->second->GetConnectionData()->GetConnection() };
-			auto backIt{ std::back_inserter(destination.uids) };
+			auto backIt{ std::back_inserter(destination.ids) };
 			std::format_to(backIt, "{}", begin->second->GetId());
 
 			while (++begin != end) {
 				std::format_to(backIt, ",{}", begin->second->GetId());
 			}
 
-			const auto size{ destination.uids.size() };
-			if (maxUidsSize < size) {
-				maxUidsSize = size;
+			const auto size{ destination.ids.size() };
+			if (maxIdsSize < size) {
+				maxIdsSize = size;
 			}
 
 			destinations.emplace_back(std::move(destination));
@@ -1618,13 +1618,13 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 		return SendResult::Nothing;
 	}
 
-	maxUidsSize += 9;
-	if (static_cast<int64_t>(maxUidsSize) < 0) [[unlikely]] {
+	maxIdsSize += 9;
+	if (static_cast<int64_t>(maxIdsSize) < 0) [[unlikely]] {
 		FailEventsOnConnectionsByFilter(filter, "Data destination is unexpected");
 		return SendResult::Fail;
 	}
 
-	std::string payload(maxUidsSize, ' ');
+	std::string payload(maxIdsSize, ' ');
 	if constexpr (std::is_same_v<std::string_view, T>) {
 		std::format_to(std::back_inserter(payload), "],\"data\":{}}}", getData);
 	}
@@ -1640,11 +1640,11 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 	const auto payloadTotalSize{ payload.size() };
 	for (const auto& destination : destinations) {
 		LOG_PROTOCOL_NEW(
-			"Send data to events, uids: [{}], connection id: {}", destination.uids, destination.connection.GetId());
-		const auto headerSize{ destination.uids.size() + 9 };
-		const auto headerShift{ maxUidsSize - headerSize };
+			"Send data to events, ids: [{}], connection id: {}", destination.ids, destination.connection.GetId());
+		const auto headerSize{ destination.ids.size() + 9 };
+		const auto headerShift{ maxIdsSize - headerSize };
 		std::format_to_n(
-			payload.data() + headerShift, static_cast<int64_t>(headerSize), "{{\"uids\":[{}", destination.uids);
+			payload.data() + headerShift, static_cast<int64_t>(headerSize), "{{\"ids\":[{}", destination.ids);
 		Send(destination.connection,
 			{ std::span<const uint8_t>(
 				  reinterpret_cast<const uint8_t*>(payload.data() + headerShift), payloadTotalSize - headerShift),
@@ -1735,7 +1735,7 @@ FORCE_INLINE void SinglesDistributor<Module>::Handle(const uint64_t id, const ui
 	const auto connectionId{ connectionData->GetConnectionId() };
 	LOG_PROTOCOL_NEW("New single event id: {} type hash: {} connection id: {}", id, hash, connectionId);
 
-	std::string payload{ std::format("{{\"uids\":[{}],\"data\":", id) };
+	std::string payload{ std::format("{{\"ids\":[{}],\"data\":", id) };
 	Single single{ id, std::move(handlerData), std::move(json), connectionData };
 
 	const auto result{ single.Handle(payload) };
@@ -1785,7 +1785,7 @@ FORCE_INLINE void StreamsDistributor<Module>::Handle(const uint64_t id, const ui
 	const auto connectionId{ connectionData->GetConnectionId() };
 	LOG_PROTOCOL_NEW("New stream event, id {} event type hash {} connection id {}", id, hash, connectionId);
 
-	std::string payload{ std::format("{{\"uids\":[{}],\"data\":", id) };
+	std::string payload{ std::format("{{\"ids\":[{}],\"data\":", id) };
 	auto stream{ std::make_shared<Stream>(id, std::move(handlerData), std::move(json), connectionData) };
 
 	const auto result{ stream->Handle(payload) };

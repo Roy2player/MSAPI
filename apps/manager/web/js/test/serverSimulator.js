@@ -33,8 +33,8 @@ class ServerSimulator {
 			connection.on("message", (json) => {
 				json = Helper.JsonStringToObject(json);
 
-				if (!("uid" in json)) {
-					throw new Error(`Message from client does not contain uid ${json}`);
+				if (!("id" in json)) {
+					throw new Error(`Message from client does not contain id ${json}`);
 					return;
 				}
 
@@ -79,7 +79,7 @@ class ServerSimulator {
 
 	SendInstalledApps(connection, json)
 	{
-		let response = { "uids" : [ json["uid"] ], "data" : [] };
+		let response = { "ids" : [ json["id"] ], "data" : [] };
 		this.m_installedApps.forEach((appData) => { response["data"].push(appData); });
 		connection.send(Helper.ParametersToJson(response));
 	}
@@ -102,7 +102,7 @@ class ServerSimulator {
 
 		if (appData == undefined) {
 			let response
-				= { "uids" : [ json["uid"] ], "state" : WebSocketStream.State.Failed, "error" : "Unknown app type" };
+				= { "ids" : [ json["id"] ], "state" : WebSocketStream.State.Failed, "error" : "Unknown app type" };
 			connection.send(Helper.ParametersToJson(response));
 			return;
 		}
@@ -110,13 +110,13 @@ class ServerSimulator {
 		const port = Math.floor(Math.random() * (65535 - 1000 + 1)) + 1000;
 		this.m_createdApps.set(
 			port, { "type" : appType, "port" : port, "pid" : port, "creation time" : "2026-04-28 16:53:15.460089632" });
-		let response = { "uids" : [ json["uid"] ], "data" : { "port" : port } };
+		let response = { "ids" : [ json["id"] ], "data" : { "port" : port } };
 		connection.send(Helper.ParametersToJson(response));
 	}
 
 	SendCreatedApps(connection, json)
 	{
-		let response = { "uids" : [ json["uid"] ], "data" : { "created" : [] } };
+		let response = { "ids" : [ json["id"] ], "data" : { "created" : [] } };
 		this.m_createdApps.forEach((appData) => { response["data"]["created"].push(appData); });
 		connection.send(Helper.ParametersToJson(response));
 	}
@@ -126,7 +126,7 @@ class ServerSimulator {
 		let response = {};
 		if (json["appType"] == Helper.StringHash32Uint("Strategy")) {
 			response = {
-				"uids" : [ json["uid"] ],
+				"ids" : [ json["id"] ],
 				"data" : {
 					"mutable" : {
 						"30001" : {
@@ -224,7 +224,7 @@ class ServerSimulator {
 			};
 		}
 		else {
-			response = { "uids" : [ json["uid"] ], "data" : { "mutable" : {}, "const" : {} } };
+			response = { "ids" : [ json["id"] ], "data" : { "mutable" : {}, "const" : {} } };
 		}
 
 		connection.send(Helper.ParametersToJson(response));
@@ -232,7 +232,7 @@ class ServerSimulator {
 
 	SendParameters(connection, json)
 	{
-		let response = { "uids" : [ json["uid"] ], "data" : {} };
+		let response = { "ids" : [ json["id"] ], "data" : {} };
 		if (json["appType"] == Helper.StringHash32Uint("Strategy")) {
 			response["data"]["response"] = "Soft scalping";
 		}

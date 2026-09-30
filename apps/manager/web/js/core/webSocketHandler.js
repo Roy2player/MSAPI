@@ -15,8 +15,8 @@
  */
 
 class WebSocketHandler {
-	static m_uidToEvent = new Map();
-	static m_viewUidToEventUids = new Map();
+	static m_idToEvent = new Map();
+	static m_viewIdToEventIds = new Map();
 	static m_queue = [];
 
 	static Type = Object.freeze({
@@ -33,17 +33,17 @@ class WebSocketHandler {
 			return;
 		}
 
-		WebSocketHandler.m_uidToEvent.set(event.m_uid, event);
+		WebSocketHandler.m_idToEvent.set(event.m_id, event);
 
-		let eventUids = WebSocketHandler.m_viewUidToEventUids.get(event.m_viewUid);
-		if (!eventUids) {
-			let uids = new Set();
-			uids.add(event.m_uid);
-			WebSocketHandler.m_viewUidToEventUids.set(event.m_viewUid, uids)
+		let eventIds = WebSocketHandler.m_viewIdToEventIds.get(event.m_viewId);
+		if (!eventIds) {
+			let ids = new Set();
+			ids.add(event.m_id);
+			WebSocketHandler.m_viewIdToEventIds.set(event.m_viewId, ids)
 			return;
 		}
 
-		eventUids.add(event.m_uid);
+		eventIds.add(event.m_id);
 	}
 
 	static RemoveEvent(event)
@@ -53,40 +53,39 @@ class WebSocketHandler {
 			return;
 		}
 
-		if (!WebSocketHandler.m_uidToEvent.has(event.m_uid)) {
+		if (!WebSocketHandler.m_idToEvent.has(event.m_id)) {
 			return;
 		}
-		WebSocketHandler.m_uidToEvent.delete(event.m_uid);
+		WebSocketHandler.m_idToEvent.delete(event.m_id);
 
-		let eventUids = WebSocketHandler.m_viewUidToEventUids.get(event.m_viewUid);
-		if (!eventUids) {
-			console.warn("Unexpectedly empty related events to view uid", event.m_viewUid);
+		let eventIds = WebSocketHandler.m_viewIdToEventIds.get(event.m_viewId);
+		if (!eventIds) {
+			console.warn("Unexpectedly empty related events to view id", event.m_viewId);
 			return;
 		}
 
-		eventUids.delete(event.m_uid);
+		eventIds.delete(event.m_id);
 	}
 
-	static ClearViewRelatedEvents(viewUid)
+	static ClearViewRelatedEvents(viewId)
 	{
-		let eventUids = WebSocketHandler.m_viewUidToEventUids.get(viewUid);
-		if (eventUids) {
-			eventUids.forEach((uid) => {
-				let event = WebSocketHandler.GetEvent(uid);
+		let eventIds = WebSocketHandler.m_viewIdToEventIds.get(viewId);
+		if (eventIds) {
+			eventIds.forEach((id) => {
+				let event = WebSocketHandler.GetEvent(id);
 				if (!event) {
-					console.warn("Unknown event uid", uid);
+					console.warn("Unknown event id", id);
 					return
 				}
-				WebSocketHandler.Send(
-					`{"uid":${uid},"type":${event.m_type},"event":${event.m_event},"interrupt":true}`);
-				WebSocketHandler.m_uidToEvent.delete(uid);
+				WebSocketHandler.Send(`{"id":${id},"type":${event.m_type},"event":${event.m_event},"interrupt":true}`);
+				WebSocketHandler.m_idToEvent.delete(id);
 			})
 
-			WebSocketHandler.m_viewUidToEventUids.delete(viewUid);
+			WebSocketHandler.m_viewIdToEventIds.delete(viewId);
 		}
 	}
 
-	static GetEvent(uid) { return WebSocketHandler.m_uidToEvent.get(uid); }
+	static GetEvent(id) { return WebSocketHandler.m_idToEvent.get(id); }
 
 	static Send(json)
 	{
@@ -123,27 +122,27 @@ class WebSocketHandler {
 		});
 
 		WebSocketHandler.m_serverConnection.addEventListener("close", () => {
-			this.m_uidToEvent.forEach((event, uid) => {
+			this.m_idToEvent.forEach((event, id) => {
 				if (event.m_handleFailed) {
 					event.m_handleFailed(`Web socket is closed, event is interrupted`);
 				}
 			});
 
-			this.m_uidToEvent.clear();
-			this.m_viewUidToEventUids.clear();
+			this.m_idToEvent.clear();
+			this.m_viewIdToEventIds.clear();
 		});
 
 		WebSocketHandler.m_serverConnection.addEventListener("error", (error) => {
 			console.error("WebSocket is closed with error:", error);
 
-			this.m_uidToEvent.forEach((event, uid) => {
+			this.m_idToEvent.forEach((event, id) => {
 				if (event.m_handleFailed) {
 					event.m_handleFailed(`Web socket is closed, event is interrupted, error: ${error}`);
 				}
 			});
 
-			this.m_uidToEvent.clear();
-			this.m_viewUidToEventUids.clear();
+			this.m_idToEvent.clear();
+			this.m_viewIdToEventIds.clear();
 		});
 
 		WebSocketHandler.m_serverConnection.addEventListener("message", (e) => {
@@ -151,27 +150,27 @@ class WebSocketHandler {
 			// console.log("Receive", json);
 			json = Helper.JsonStringToObject(json);
 
-			if (!("uids" in json)) {
-				console.warn("Message does not contain event uids", json);
+			if (!("ids" in json)) {
+				console.warn("Message does not contain event ids", json);
 				return;
 			}
 
-			const uids = Array.from(json["uids"]);
+			const ids = Array.from(json["ids"]);
 			let type = WebSocketHandler.Type.Undefined;
 
-			const getEvent = (uid) => {
-				uid = Number(uid);
-				const event = WebSocketHandler.GetEvent(uid);
+			const getEvent = (id) => {
+				id = Number(id);
+				const event = WebSocketHandler.GetEvent(id);
 				if (!event) {
-					console.warn("Message for unknown event is reserved", uid);
+					console.warn("Message for unknown event is reserved", id);
 					return null;
 				}
 
 				return event;
 			};
 
-			for (const uid of uids) {
-				const event = getEvent(uid);
+			for (const id of ids) {
+				const event = getEvent(id);
 				if (!event) {
 					continue;
 				}
@@ -189,8 +188,8 @@ class WebSocketHandler {
 					const state = Number(json["state"]);
 					if (state == WebSocketStream.State.Failed) {
 						if ("error" in json) {
-							Array.from(json["uids"]).forEach((uid) => {
-								const event = getEvent(uid);
+							Array.from(json["ids"]).forEach((id) => {
+								const event = getEvent(id);
 								if (event) {
 									event.m_handleFailed(json["error"]);
 									WebSocketHandler.RemoveEvent(event);
@@ -199,8 +198,8 @@ class WebSocketHandler {
 							return;
 						}
 
-						Array.from(json["uids"]).forEach((uid) => {
-							const event = getEvent(uid);
+						Array.from(json["ids"]).forEach((id) => {
+							const event = getEvent(id);
 							if (event) {
 								event.m_handleFailed();
 								WebSocketHandler.RemoveEvent(event);
@@ -215,8 +214,8 @@ class WebSocketHandler {
 					return;
 				}
 
-				Array.from(json["uids"]).forEach((uid) => {
-					const event = getEvent(uid);
+				Array.from(json["ids"]).forEach((id) => {
+					const event = getEvent(id);
 					if (event) {
 						event.m_handleResponse(json["data"]);
 						WebSocketHandler.RemoveEvent(event);
@@ -230,8 +229,8 @@ class WebSocketHandler {
 					let state = Number(json["state"]);
 					switch (state) {
 					case WebSocketStream.State.Opened:
-						Array.from(json["uids"]).forEach((uid) => {
-							const event = getEvent(uid);
+						Array.from(json["ids"]).forEach((id) => {
+							const event = getEvent(id);
 							if (event) {
 								event.m_state = state;
 								if (event.m_handleOpened) {
@@ -241,8 +240,8 @@ class WebSocketHandler {
 						});
 						return;
 					case WebSocketStream.State.Done:
-						Array.from(json["uids"]).forEach((uid) => {
-							const event = getEvent(uid);
+						Array.from(json["ids"]).forEach((id) => {
+							const event = getEvent(id);
 							if (event) {
 								event.m_state = state;
 								if (event.m_handleSnapshotDone) {
@@ -252,8 +251,8 @@ class WebSocketHandler {
 						});
 						return;
 					case WebSocketStream.State.Failed:
-						Array.from(json["uids"]).forEach((uid) => {
-							const event = getEvent(uid);
+						Array.from(json["ids"]).forEach((id) => {
+							const event = getEvent(id);
 							if (!event) {
 								return;
 							}
@@ -283,8 +282,8 @@ class WebSocketHandler {
 				}
 
 				if ("data" in json) {
-					Array.from(json["uids"]).forEach((uid) => {
-						const event = getEvent(uid);
+					Array.from(json["ids"]).forEach((id) => {
+						const event = getEvent(id);
 						if (event) {
 							event.m_handleData(json["data"]);
 						}
@@ -308,8 +307,8 @@ class WebSocketSingle {
 			console.warn("Event must be number type", args.event);
 			return;
 		}
-		if (typeof args.viewUid !== "number") {
-			console.warn("View uid must be number type", args.viewUid);
+		if (typeof args.viewId !== "number") {
+			console.warn("View id must be number type", args.viewId);
 			return;
 		}
 		if (!args.handleResponse || typeof args.handleResponse !== "function") {
@@ -324,8 +323,8 @@ class WebSocketSingle {
 		this.m_event = args.event;
 		this.m_handleResponse = args.handleResponse;
 		this.m_handleFailed = args.handleFailed;
-		this.m_uid = Helper.GenerateUid();
-		this.m_viewUid = args.viewUid;
+		this.m_id = Helper.GenerateId();
+		this.m_viewId = args.viewId;
 		this.m_type = WebSocketHandler.Type.Single;
 
 		let data = {};
@@ -333,7 +332,7 @@ class WebSocketSingle {
 			data = args.data;
 		}
 
-		data.uid = this.m_uid;
+		data.id = this.m_id;
 		data.event = this.m_event;
 		data.type = WebSocketHandler.Type.Single;
 
@@ -352,8 +351,8 @@ class WebSocketStream {
 			console.warn("Event must be number type", args.event);
 			return;
 		}
-		if (typeof args.viewUid !== "number") {
-			console.warn("View uid must be number type", args.viewUid);
+		if (typeof args.viewId !== "number") {
+			console.warn("View id must be number type", args.viewId);
 			return;
 		}
 		if (!args.handleData || typeof args.handleData !== "function") {
@@ -378,8 +377,8 @@ class WebSocketStream {
 		this.m_handleOpened = args.handleOpened;
 		this.m_handleSnapshotDone = args.handleSnapshotDone;
 		this.m_handleFailed = args.handleFailed;
-		this.m_uid = Helper.GenerateUid();
-		this.m_viewUid = args.viewUid;
+		this.m_id = Helper.GenerateId();
+		this.m_viewId = args.viewId;
 		this.m_type = WebSocketHandler.Type.Stream;
 		this.m_state = WebSocketStream.State.Pending;
 
@@ -387,7 +386,7 @@ class WebSocketStream {
 		if (args.data) {
 			data = args.data;
 		}
-		data.uid = this.m_uid;
+		data.id = this.m_id;
 		data.event = this.m_event;
 		data.type = WebSocketHandler.Type.Stream;
 
@@ -399,7 +398,7 @@ class WebSocketStream {
 	{
 		this.m_state = WebSocketStream.State.Closed;
 		WebSocketHandler.Send(
-			`{"uid":${this.m_uid},"type":${WebSocketHandler.Type.Stream},"event":${this.m_event},"interrupt":true}`);
+			`{"id":${this.m_id},"type":${WebSocketHandler.Type.Stream},"event":${this.m_event},"interrupt":true}`);
 		WebSocketHandler.RemoveEvent(this);
 	}
 };
