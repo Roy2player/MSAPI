@@ -22,7 +22,7 @@ class GridSettingsView extends View {
 
 	Constructor(parameters)
 	{
-		this.m_parentView.querySelector(".title > span").textContent = parameters.viewTitle;
+		this.m_viewNode.querySelector(".title > span").textContent = parameters.viewTitle;
 		this.m_eventTarget = parameters.eventTarget;
 		this.m_parameterId = parameters.parameterId;
 		return true;

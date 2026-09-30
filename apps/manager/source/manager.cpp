@@ -154,9 +154,9 @@ void Manager::HandleWebSocket(
 		return;
 	}
 
-	const auto* uid{ json.GetValueType<uint64_t>("uid") };
-	if (uid == nullptr) {
-		LOG_DEBUG_NEW("Json does not contain \"uid\" {}", json.ToString());
+	const auto* id{ json.GetValueType<uint64_t>("id") };
+	if (id == nullptr) {
+		LOG_DEBUG_NEW("Json does not contain \"id\" {}", json.ToString());
 		return;
 	}
 
@@ -174,10 +174,10 @@ void Manager::HandleWebSocket(
 
 	switch (static_cast<MSAPI::Protocol::WebSocket::Events::Type>(*type)) {
 	case MSAPI::Protocol::WebSocket::Events::Type::Single:
-		m_singlesDistributor.Collect(*uid, *event, connectionData, std::move(json));
+		m_singlesDistributor.Collect(*id, *event, connectionData, std::move(json));
 		return;
 	case MSAPI::Protocol::WebSocket::Events::Type::Stream:
-		m_streamsDistributor.Collect(*uid, *event, connectionData, std::move(json));
+		m_streamsDistributor.Collect(*id, *event, connectionData, std::move(json));
 		return;
 	default:
 		LOG_WARNING_NEW("Unexpected type event is reserved {}",

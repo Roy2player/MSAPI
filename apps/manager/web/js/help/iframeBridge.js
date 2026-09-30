@@ -22,13 +22,13 @@
 window.addEventListener("message", (event) => {
 	if (event.data && event.data.type === "init") {
 		window.parentOrigin = event.data.origin;
-		window.uid = event.data.uid;
+		window.id = event.data.id;
 	}
 });
 
 // Forward click events to parent window
 window.addEventListener("click", (event) => {
-	if (window.parent && window.uid && window.parentOrigin) {
-		window.parent.postMessage({ type : "iframeClick", uid : window.uid }, window.parentOrigin);
+	if (window.parent && window.id && window.parentOrigin) {
+		window.parent.postMessage({ type : "iframeClick", id : window.id }, window.parentOrigin);
 	}
 });

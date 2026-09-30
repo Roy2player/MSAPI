@@ -63,13 +63,13 @@ struct InstrumentStructure {
 	bool APITradeAvailable{ false };
 	const size_t isoCurrencyName;
 	double tick{ 0.0 };
-	const size_t uid;
+	const size_t id;
 	int32_t requiredLotMultiplier{ 0 };
 
 	InstrumentStructure(const InstrumentStructureType type, const size_t figi, const size_t ticker,
 		const size_t classCode, const size_t isin, const int32_t lotSize, const size_t currency, const Nominal& nominal,
 		const bool buyAvailable, const bool sellAvailable, const bool APITradeAvailable, const size_t isoCurrencyName,
-		double tick, const size_t uid)
+		double tick, const size_t id)
 		: type(type)
 		, figi(figi)
 		, ticker(ticker)
@@ -83,7 +83,7 @@ struct InstrumentStructure {
 		, APITradeAvailable(APITradeAvailable)
 		, isoCurrencyName(isoCurrencyName)
 		, tick(tick)
-		, uid(uid)
+		, id(id)
 		, requiredLotMultiplier(lotSize * 10)
 	{
 	}
@@ -94,7 +94,7 @@ struct InstrumentStructure {
 						   "\n\ttype       : {}"
 						   "\n\tclass      : {}"
 						   "\n\tISO        : {}"
-						   "\n\tuid        : {}"
+						   "\n\tid         : {}"
 						   "\n\tfig        : {}"
 						   "\n\tticker     : {}"
 						   "\n\tisin       : {}"
@@ -109,7 +109,7 @@ struct InstrumentStructure {
 						   "\n\tcan limit  : {}"
 						   "\n\tcan order  : {}"
 						   "\n}}",
-			U(type), classCode, isoCurrencyName, uid, figi, ticker, isin, nominal.ToString(), lotSize,
+			U(type), classCode, isoCurrencyName, id, figi, ticker, isin, nominal.ToString(), lotSize,
 			requiredLotMultiplier, currency, _S(tick), buyAvailable, sellAvailable, APITradeAvailable,
 			limitOrderAvailable, marketOrderAvailable);
 	}

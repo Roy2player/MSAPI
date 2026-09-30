@@ -51,7 +51,7 @@ class Select {
 	{
 		let view = undefined;
 		input.addEventListener("click", () => {
-			if (view && view.m_parentView.parentNode) {
+			if (view && view.m_viewNode.parentNode) {
 				return;
 			}
 
@@ -89,7 +89,7 @@ class Select {
 				canBeClinged : false,
 			});
 
-			let selectItems = view.m_view.querySelector(".options");
+			let selectItems = view.m_viewSpecificNode.querySelector(".options");
 			if (!selectItems) {
 				console.error(`Select container for options is not found, parameter id: ${parameterId}`);
 				return;
@@ -111,7 +111,7 @@ class Select {
 					view.Destructor();
 
 					selectViews.forEach(selectView => {
-						if (!selectView.m_parentView.parentNode) {
+						if (!selectView.m_viewNode.parentNode) {
 							selectViews.delete(selectView);
 						}
 					});
@@ -126,12 +126,12 @@ class Select {
 				Select.#privateFields.m_hasGlobalEventListener = true;
 				document.addEventListener("click", (event) => {
 					selectViews.forEach(selectView => {
-						if (!selectView.m_parentView.parentNode) {
+						if (!selectView.m_viewNode.parentNode) {
 							selectViews.delete(selectView);
 							return;
 						}
 
-						if (!selectView.m_parentView.contains(event.target)) {
+						if (!selectView.m_viewNode.contains(event.target)) {
 							if (event.target == selectView.m_eventTarget) {
 								View.UpdateZIndex(selectView);
 								return;

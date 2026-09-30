@@ -39,7 +39,7 @@ class CreatedApps extends View {
 	{
 		this.m_portToParametersStream = new Map();
 		this.m_grid = new Grid({
-			parent : this.m_view,
+			parent : this.m_viewSpecificNode,
 			indexColumnId : 1000008,
 			columns : [ 10, 2, 3, 4, 2000001, 5, 1000007, 1000008 ],
 			indexColumn : "Port",
@@ -70,7 +70,7 @@ class CreatedApps extends View {
 								changeStateCell.classList.remove("loading");
 								this.DisplayErrorMessage(error);
 							},
-							viewUid : this.m_uid,
+							viewId : this.m_id,
 							data : { "port" : port }
 						});
 						changeStateCell.classList.add("loading");
@@ -132,7 +132,7 @@ class CreatedApps extends View {
 								deleteCell.classList.remove("loading");
 								this.DisplayErrorMessage(error);
 							},
-							viewUid : this.m_uid,
+							viewId : this.m_id,
 							data : { "port" : port }
 						});
 						deleteCell.classList.add("loading");
@@ -228,7 +228,7 @@ class CreatedApps extends View {
 							this.m_grid.AddOrUpdateRow(parameters);
 						},
 						handleFailed : (error) => { this.DisplayErrorMessage(error); },
-						viewUid : this.m_uid,
+						viewId : this.m_id,
 						data : { "port" : app.port, "filter" : app.port }
 					});
 					this.m_portToParametersStream.set(app.port, stream);
@@ -240,7 +240,7 @@ class CreatedApps extends View {
 			event : Helper.StringHash32Uint("createdApps"),
 			handleData : handleCreatedApps,
 			handleFailed : (error) => { this.DisplayErrorMessage(error); },
-			viewUid : this.m_uid
+			viewId : this.m_id
 		});
 
 		return true;

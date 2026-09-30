@@ -23,6 +23,7 @@
  *
  * Has three parts:
  * 1) Header which contains view tile and on view options:
+ * @filed m_headerNode - node of header.
  * @field m_title - title of view.
  *	- Stick/unstick to disables/enables moving and resizing of view and another actions except closing;
  * @field m_canBeSticked - flag of view can be sticked/unsticked.
@@ -36,9 +37,12 @@
  *	- Close to close view and remove it from DOM tree.
  * @field m_canBeClosed - flag of view can be closed.
  * 2) Content which contains the main part of a view, exact in that part the specific view template is placed;
- * @brief m_view - root of template.
- * @brief m_parentView - parent of root of template.
+ * @field m_viewNode - node of general view template.
+ * @field m_viewSpecificNode - node of specific view template.
  * 3) Footer which contains information about errors.
+ * @field m_footerView = node of footer.
+ *
+ * @brief m_viewsNode - node of all views parent.
  *
  * Features:
  * 1) Creating view from template, template should be added by static method before creating view;
@@ -59,16 +63,13 @@
  *
  * Common fields are:
  * @brief m_parameters - parameters of view.
- * @brief m_uid - unique identifier of view.
+ * @brief m_id - identifier of view.
  * @brief m_port - port associated with view.
  * @brief m_title - title of view.
- * @brief m_parentView - parent view element.
- * @brief m_parentNode - parent node of view.
  * @brief m_tables - map of tables in view.
  * @brief m_grid - grid in view.
  * @brief m_created - flag of view creation.
  * @brief m_maximizeButton - maximize button element.
- * @brief m_footer - footer element of view.
  * @brief m_errorMessage - error message element in footer.
  * @brief m_silentExit - flag to suppress error logging on failed Constructor call.
  *
@@ -141,7 +142,7 @@ class View {
 			if (other == this || !other.m_canBeClinged) {
 				continue;
 			}
-			const oRect = other.m_parentView.getBoundingClientRect();
+			const oRect = other.m_viewNode.getBoundingClientRect();
 			const oTop = Math.round(oRect.top);
 			const oRight = Math.round(oRect.right);
 			const oBottom = Math.round(oRect.bottom);
@@ -202,7 +203,7 @@ class View {
 		}
 
 		View.#privateFields.m_lastCreatedView = view;
-		View.#privateFields.m_createdViews.set(view.m_uid, view);
+		View.#privateFields.m_createdViews.set(view.m_id, view);
 	}
 
 	static GetLastCreatedView() { return View.#privateFields.m_lastCreatedView; }
@@ -222,7 +223,7 @@ class View {
 		return false;
 	}
 
-	static RemoveCreatedView(view) { View.#privateFields.m_createdViews.delete(view.m_uid); }
+	static RemoveCreatedView(view) { View.#privateFields.m_createdViews.delete(view.m_id); }
 
 	static HandleResponse(type, response, parameters)
 	{
@@ -261,18 +262,18 @@ class View {
 	constructor(viewType, parameters)
 	{
 		try {
-			this.m_viewType = viewType;
+			this.m_viewNodeType = viewType;
 			this.m_title = viewType;
 			this.m_parameters = parameters;
 
 			if (parameters && parameters.parent) {
-				this.m_parentNode = parameters.parent;
+				this.m_viewsNode = parameters.parent;
 			}
 			else {
-				this.m_parentNode = document.querySelector("body > main > section.views");
+				this.m_viewsNode = document.querySelector("body > main > section.views");
 			}
 
-			if (!this.m_parentNode) {
+			if (!this.m_viewsNode) {
 				console.error("Can't find parent node for view");
 				return false;
 			}
@@ -290,8 +291,8 @@ class View {
 			}
 
 			if (parameters && parameters.isInterfaceUnit) {
-				this.m_view = specificTemplate.templateElement.content.cloneNode(true).firstElementChild;
-				this.m_parentNode.appendChild(this.m_view);
+				this.m_viewSpecificNode = specificTemplate.templateElement.content.cloneNode(true).firstElementChild;
+				this.m_viewsNode.appendChild(this.m_viewSpecificNode);
 
 				if (!this.Constructor(parameters)) {
 					this.Destructor();
@@ -308,21 +309,22 @@ class View {
 				View.#generalTemplateElement = template;
 			}
 
-			this.m_parentView = View.#generalTemplateElement.content.cloneNode(true).firstElementChild;
-			this.m_parentView.querySelector(".title > span").textContent = this.m_title;
-			this.m_parentView.querySelector(".viewContent")
-				.appendChild(specificTemplate.templateElement.content.cloneNode(true));
-			this.m_view = this.m_parentView.querySelector(".viewContent").lastElementChild;
-			this.m_footer = this.m_parentView.querySelector(".viewFooter");
-			this.m_parentNode.appendChild(this.m_parentView);
+			this.m_viewNode = View.#generalTemplateElement.content.cloneNode(true).firstElementChild;
+			this.m_viewNode.querySelector(".title > span").textContent = this.m_title;
+			this.m_contentNode = this.m_viewNode.querySelector(".viewContent");
+			this.m_footerNode = this.m_viewNode.querySelector(".viewFooter");
+			this.m_headerNode = this.m_viewNode.querySelector(".viewHeader");
+			this.m_contentNode.appendChild(specificTemplate.templateElement.content.cloneNode(true));
+			this.m_viewSpecificNode = this.m_contentNode.lastElementChild;
+			this.m_viewsNode.appendChild(this.m_viewNode);
 
 			this.m_tables = new Map();
 
-			this.MakeDraggable(this.m_parentView.querySelector(".viewHeader .title"), this.m_parentView);
-			this.m_parentView.addEventListener("mousedown", () => { View.UpdateZIndex(this); });
+			this.MakeDraggable(this.m_headerNode.querySelector(".title"), this.m_viewNode);
+			this.m_viewNode.addEventListener("mousedown", () => { View.UpdateZIndex(this); });
 
-			this.m_parentView.style.left = "0px";
-			this.m_parentView.style.top = "0px";
+			this.m_viewNode.style.left = "0px";
+			this.m_viewNode.style.top = "0px";
 
 			if (parameters) {
 				this.m_canBeHidden = parameters.canBeHidden != false;
@@ -339,7 +341,7 @@ class View {
 				this.m_canBeClinged = true;
 			}
 
-			this.m_parentView.querySelectorAll('.handleResize').forEach(handle => {
+			this.m_viewNode.querySelectorAll('.handleResize').forEach(handle => {
 				const direction = Array.from(handle.classList);
 				handle.addEventListener('mousedown', e => { StartResizing(e, direction, this); });
 
@@ -349,29 +351,29 @@ class View {
 					}
 
 					if (direction.includes('right') || direction.includes('left')) {
-						let w = Helper.GetFullDimensions(this.m_view).width;
-						const style = window.getComputedStyle(this.m_parentView);
+						let w = Helper.GetFullDimensions(this.m_viewSpecificNode).width;
+						const style = window.getComputedStyle(this.m_viewNode);
 						w += parseFloat(style.marginLeft) || 0;
 						w += parseFloat(style.marginRight) || 0;
 						w += parseFloat(style.borderLeftWidth) || 0;
 						w += parseFloat(style.borderRightWidth) || 0;
 						w += parseFloat(style.paddingLeft) || 0;
 						w += parseFloat(style.paddingRight) || 0;
-						this.m_parentView.style.width = w + 'px';
+						this.m_viewNode.style.width = w + 'px';
 					}
 
 					if (direction.includes('bottom') || direction.includes('top')) {
-						let h = Helper.GetFullDimensions(this.m_view).height;
-						h += Helper.GetFullDimensions(this.m_parentView.querySelector('.viewHeader')).height
-							+ Helper.GetFullDimensions(this.m_parentView.querySelector('.viewFooter')).height;
-						const style = window.getComputedStyle(this.m_parentView);
+						let h = Helper.GetFullDimensions(this.m_viewSpecificNode).height;
+						h += Helper.GetFullDimensions(this.m_headerNode).height
+							+ Helper.GetFullDimensions(this.m_viewNode.querySelector('.viewFooter')).height;
+						const style = window.getComputedStyle(this.m_viewNode);
 						h += parseFloat(style.marginTop) || 0;
 						h += parseFloat(style.marginBottom) || 0;
 						h += parseFloat(style.borderTopWidth) || 0;
 						h += parseFloat(style.borderBottomWidth) || 0;
 						h += parseFloat(style.paddingTop) || 0;
 						h += parseFloat(style.paddingBottom) || 0;
-						this.m_parentView.style.height = h + 'px';
+						this.m_viewNode.style.height = h + 'px';
 					}
 				});
 			});
@@ -382,16 +384,16 @@ class View {
 					return;
 				}
 
-				savedThis.m_parentView.classList.add("resizing");
-				View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.add("changing"); });
+				savedThis.m_viewNode.classList.add("resizing");
+				View.GetCreatedViews().values().forEach((view) => { view.m_contentNode.classList.add("changing"); });
 
 				element.preventDefault();
 				const startX = element.clientX;
 				const startY = element.clientY;
-				const startWidth = savedThis.m_parentView.offsetWidth;
-				const startHeight = savedThis.m_parentView.offsetHeight;
-				const startTop = savedThis.m_parentView.offsetTop;
-				const startLeft = savedThis.m_parentView.offsetLeft;
+				const startWidth = savedThis.m_viewNode.offsetWidth;
+				const startHeight = savedThis.m_viewNode.offsetHeight;
+				const startTop = savedThis.m_viewNode.offsetTop;
+				const startLeft = savedThis.m_viewNode.offsetLeft;
 
 				function OnMouseMove(ev)
 				{
@@ -455,10 +457,10 @@ class View {
 					}
 
 					if (!savedThis.m_canBeClinged) {
-						savedThis.m_parentView.style.left = newLeft + "px";
-						savedThis.m_parentView.style.top = newTop + "px";
-						savedThis.m_parentView.style.width = newWidth + "px";
-						savedThis.m_parentView.style.height = newHeight + "px";
+						savedThis.m_viewNode.style.left = newLeft + "px";
+						savedThis.m_viewNode.style.top = newTop + "px";
+						savedThis.m_viewNode.style.width = newWidth + "px";
+						savedThis.m_viewNode.style.height = newHeight + "px";
 					}
 					else {
 						const clingData = savedThis.FindClosestToCling(
@@ -466,36 +468,37 @@ class View {
 
 						if (clingData) {
 							if (includesRight) {
-								savedThis.m_parentView.style.left = newLeft + "px";
-								savedThis.m_parentView.style.width = newWidth + (clingData.left - newLeft) + "px";
+								savedThis.m_viewNode.style.left = newLeft + "px";
+								savedThis.m_viewNode.style.width = newWidth + (clingData.left - newLeft) + "px";
 							}
 							else {
-								savedThis.m_parentView.style.left = clingData.left + "px";
-								savedThis.m_parentView.style.width = newWidth - (clingData.left - newLeft) + "px";
+								savedThis.m_viewNode.style.left = clingData.left + "px";
+								savedThis.m_viewNode.style.width = newWidth - (clingData.left - newLeft) + "px";
 							}
 
 							if (includesBottom) {
-								savedThis.m_parentView.style.top = newTop + "px";
-								savedThis.m_parentView.style.height = newHeight + (clingData.top - newTop) + "px";
+								savedThis.m_viewNode.style.top = newTop + "px";
+								savedThis.m_viewNode.style.height = newHeight + (clingData.top - newTop) + "px";
 							}
 							else {
-								savedThis.m_parentView.style.top = clingData.top + "px";
-								savedThis.m_parentView.style.height = newHeight - (clingData.top - newTop) + "px";
+								savedThis.m_viewNode.style.top = clingData.top + "px";
+								savedThis.m_viewNode.style.height = newHeight - (clingData.top - newTop) + "px";
 							}
 						}
 						else {
-							savedThis.m_parentView.style.left = newLeft + "px";
-							savedThis.m_parentView.style.top = newTop + "px";
-							savedThis.m_parentView.style.width = newWidth + "px";
-							savedThis.m_parentView.style.height = newHeight + "px";
+							savedThis.m_viewNode.style.left = newLeft + "px";
+							savedThis.m_viewNode.style.top = newTop + "px";
+							savedThis.m_viewNode.style.width = newWidth + "px";
+							savedThis.m_viewNode.style.height = newHeight + "px";
 						}
 					}
 				}
 
 				function OnMouseUp()
 				{
-					savedThis.m_parentView.classList.remove("resizing");
-					View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.remove("changing"); });
+					savedThis.m_viewNode.classList.remove("resizing");
+					View.GetCreatedViews().values().forEach(
+						(view) => { view.m_contentNode.classList.remove("changing"); });
 					document.removeEventListener('mousemove', OnMouseMove);
 					document.removeEventListener('mouseup', OnMouseUp);
 				}
@@ -504,7 +507,7 @@ class View {
 				document.addEventListener('mouseup', OnMouseUp);
 			}
 
-			let closeButton = this.m_parentView.querySelector(".viewHeader .close");
+			let closeButton = this.m_headerNode.querySelector(".close");
 			if (!closeButton) {
 				console.error("Can't find close button for view");
 				return;
@@ -521,12 +524,12 @@ class View {
 				closeButton.style.display = "none";
 			}
 
-			let hideButton = this.m_parentView.querySelector(".viewHeader .hide");
+			let hideButton = this.m_headerNode.querySelector(".hide");
 			if (!hideButton) {
 				console.error("Can't find hide button for view");
 				this.Destructor();
 			}
-			this.m_maximizeButton = this.m_parentView.querySelector(".viewHeader .maximize");
+			this.m_maximizeButton = this.m_headerNode.querySelector(".maximize");
 			if (!this.m_maximizeButton) {
 				console.error("Can't find maximize button for view");
 				this.Destructor();
@@ -541,7 +544,7 @@ class View {
 				this.m_maximizeButton.style.display = "none";
 			}
 
-			this.m_stickButton = this.m_parentView.querySelector(".viewHeader .stick");
+			this.m_stickButton = this.m_headerNode.querySelector(".stick");
 			if (!this.m_stickButton) {
 				console.error("Can't find stick button for view");
 				this.Destructor();
@@ -558,7 +561,7 @@ class View {
 				this.m_port = parameters.port;
 			}
 
-			this.m_uid = Helper.GenerateUid();
+			this.m_id = Helper.GenerateId();
 			if (!this.Constructor(parameters)) {
 				this.Destructor();
 				if (!this.m_silentExit) {
@@ -568,14 +571,14 @@ class View {
 			}
 
 			View.SaveView(this);
-			this.m_parentView.setAttribute("uid", this.m_uid);
-			this.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
+			this.m_viewNode.setAttribute("id", this.m_id);
+			this.m_viewNode.style.zIndex = View.#privateFields.m_createdViews.size;
 
 			if (parameters) {
 				if (parameters.hasOwnProperty("positionUnder")) {
-					this.m_parentView.style.left = parameters.positionUnder.getBoundingClientRect().left + "px";
-					this.m_parentView.style.top = parameters.positionUnder.getBoundingClientRect().bottom + "px";
-					this.m_parentView.style.position = "absolute";
+					this.m_viewNode.style.left = parameters.positionUnder.getBoundingClientRect().left + "px";
+					this.m_viewNode.style.top = parameters.positionUnder.getBoundingClientRect().bottom + "px";
+					this.m_viewNode.style.position = "absolute";
 				}
 			}
 
@@ -589,7 +592,7 @@ class View {
 
 	Constructor(parameters)
 	{
-		console.error("Constructor is not implemented for view of type", this.m_viewType);
+		console.error("Constructor is not implemented for view of type", this.m_viewNodeType);
 		return false;
 	}
 
@@ -604,13 +607,13 @@ class View {
 			this.m_grid.Destructor();
 			delete this.m_grid;
 		}
-		if (this.m_parentView) {
-			if (this.m_parentView.style.zIndex != "") {
+		if (this.m_viewNode) {
+			if (this.m_viewNode.style.zIndex != "") {
 				this.Show();
 			}
-			this.m_parentView.remove();
+			this.m_viewNode.remove();
 		}
-		WebSocketHandler.ClearViewRelatedEvents(this.m_uid);
+		WebSocketHandler.ClearViewRelatedEvents(this.m_id);
 	}
 
 	ToggleStick()
@@ -621,7 +624,7 @@ class View {
 
 		this.m_sticked = !this.m_sticked;
 		this.m_stickButton.classList.toggle("on");
-		this.m_parentView.classList.toggle("sticked");
+		this.m_viewNode.classList.toggle("sticked");
 	}
 
 	Maximize()
@@ -638,21 +641,21 @@ class View {
 		else {
 			this.Show();
 			this.m_savedViewParameters = {
-				left : this.m_parentView.style.left,
-				top : this.m_parentView.style.top,
-				width : this.m_parentView.style.width,
-				height : this.m_parentView.style.height
+				left : this.m_viewNode.style.left,
+				top : this.m_viewNode.style.top,
+				width : this.m_viewNode.style.width,
+				height : this.m_viewNode.style.height
 			};
 
-			this.m_parentView.style.position = "absolute";
-			this.m_parentView.style.top = "0";
-			this.m_parentView.style.left = "0";
-			this.m_parentView.style.width = "100%";
-			this.m_parentView.style.height = "100%";
+			this.m_viewNode.style.position = "absolute";
+			this.m_viewNode.style.top = "0";
+			this.m_viewNode.style.left = "0";
+			this.m_viewNode.style.width = "100%";
+			this.m_viewNode.style.height = "100%";
 
 			this.m_maximized = true;
 			this.m_maximizeButton.classList.add("normalize");
-			this.m_parentView.classList.add("maximized");
+			this.m_viewNode.classList.add("maximized");
 		}
 	}
 
@@ -662,19 +665,19 @@ class View {
 			return;
 		}
 
-		this.m_parentView.style.top = this.m_savedViewParameters.top;
-		this.m_parentView.style.left = this.m_savedViewParameters.left;
-		this.m_parentView.style.width = this.m_savedViewParameters.width;
-		this.m_parentView.style.height = this.m_savedViewParameters.height;
+		this.m_viewNode.style.top = this.m_savedViewParameters.top;
+		this.m_viewNode.style.left = this.m_savedViewParameters.left;
+		this.m_viewNode.style.width = this.m_savedViewParameters.width;
+		this.m_viewNode.style.height = this.m_savedViewParameters.height;
 
 		this.m_maximized = false;
 		this.m_maximizeButton.classList.remove("normalize");
-		this.m_parentView.classList.remove("maximized");
+		this.m_viewNode.classList.remove("maximized");
 	}
 
 	Hide()
 	{
-		if (this.m_sticked || !this.m_canBeMaximized || this.m_parentView.classList.contains("hidden")) {
+		if (this.m_sticked || !this.m_canBeMaximized || this.m_viewNode.classList.contains("hidden")) {
 			return;
 		}
 
@@ -688,7 +691,7 @@ class View {
 		}
 
 		View.UpdateZIndex(this);
-		if (!this.m_parentView.classList.contains("hidden")) {
+		if (!this.m_viewNode.classList.contains("hidden")) {
 			return;
 		}
 
@@ -715,7 +718,7 @@ class View {
 				return;
 			}
 
-			View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.add("changing"); });
+			View.GetCreatedViews().values().forEach((view) => { view.m_contentNode.classList.add("changing"); });
 
 			startX = e.clientX;
 			startY = e.clientY;
@@ -728,10 +731,10 @@ class View {
 				isDragging = true;
 
 				if (this.m_maximized) {
-					this.m_parentView.style.left = e.clientX - 30 + "px";
-					this.m_parentView.style.top = e.clientY - 10 + "px";
-					this.m_parentView.style.width = this.m_savedViewParameters.width;
-					this.m_parentView.style.height = this.m_savedViewParameters.height;
+					this.m_viewNode.style.left = e.clientX - 30 + "px";
+					this.m_viewNode.style.top = e.clientY - 10 + "px";
+					this.m_viewNode.style.width = this.m_savedViewParameters.width;
+					this.m_viewNode.style.height = this.m_savedViewParameters.height;
 
 					this.m_maximized = false;
 					this.m_maximizeButton.classList.remove("normalize");
@@ -777,7 +780,7 @@ class View {
 			isDragging = false;
 			document.removeEventListener("mousemove", onMouseMove);
 			document.removeEventListener("mouseup", onMouseUp);
-			View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.remove("changing"); });
+			View.GetCreatedViews().values().forEach((view) => { view.m_contentNode.classList.remove("changing"); });
 		};
 	}
 
@@ -786,17 +789,17 @@ class View {
 		if (this.m_errorMessage === undefined) {
 			this.m_errorMessage = document.createElement("div");
 			this.m_errorMessage.classList.add("errorMessage");
-			this.m_footer.appendChild(this.m_errorMessage);
+			this.m_footerNode.appendChild(this.m_errorMessage);
 		}
 
-		this.m_footer.classList.add("visible");
+		this.m_footerNode.classList.add("visible");
 		this.m_errorMessage.innerHTML = message || "Error is not specified";
 	}
 
 	HideErrorMessage()
 	{
-		if (this.m_errorMessage !== undefined && this.m_footer.classList.contains("visible")) {
-			this.m_footer.classList.remove("visible");
+		if (this.m_errorMessage !== undefined && this.m_footerNode.classList.contains("visible")) {
+			this.m_footerNode.classList.remove("visible");
 		}
 	}
 
@@ -923,20 +926,20 @@ class View {
 
 	static UpdateZIndex(view)
 	{
-		if (view.m_parentView.style.zIndex == View.#privateFields.m_createdViews.size) {
+		if (view.m_viewNode.style.zIndex == View.#privateFields.m_createdViews.size) {
 			return;
 		}
 
-		const shiftedPosition = view.m_parentView.style.zIndex;
+		const shiftedPosition = view.m_viewNode.style.zIndex;
 
-		View.#privateFields.m_createdViews.forEach((item, uid) => {
-			if (uid != view.m_uid) {
-				if (item.m_parentView.style.zIndex > shiftedPosition) {
-					item.m_parentView.style.zIndex = item.m_parentView.style.zIndex - 1;
+		View.#privateFields.m_createdViews.forEach((item, id) => {
+			if (id != view.m_id) {
+				if (item.m_viewNode.style.zIndex > shiftedPosition) {
+					item.m_viewNode.style.zIndex = item.m_viewNode.style.zIndex - 1;
 				}
 			}
 			else {
-				item.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
+				item.m_viewNode.style.zIndex = View.#privateFields.m_createdViews.size;
 			}
 		});
 	}
@@ -945,13 +948,13 @@ class View {
 // Handle clicks inside iframes to prevent losing focus
 window.addEventListener("message", function(event) {
 	if (event.data && event.data.type === "iframeClick") {
-		const view = View.GetCreatedViews().get(event.data.uid);
+		const view = View.GetCreatedViews().get(event.data.id);
 		if (!view) {
-			console.error("View not found for UID:", event.data.uid);
+			console.error("View not found for id:", event.data.id);
 			return;
 		}
 
-		view.m_parentView.dispatchEvent(new Event("mousedown", { bubbles : true }));
+		view.m_viewNode.dispatchEvent(new Event("mousedown", { bubbles : true }));
 	}
 });
 

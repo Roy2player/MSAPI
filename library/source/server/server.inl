@@ -89,9 +89,6 @@ Declarations
  * @concurrency Yes.
  *
  * @todo Application class should be based on the Server class, not vice versa.
- * @todo Improve UID generation. Way with std::atomic counter is thread safe, but performance overhead is sensitive in
- * some cases. Way with int generation + check in container even worse. Probably it should be UID generator with two
- * uint64_t values. UPD the performance overhead on atomic synchronization must be proved first and result documented.
  */
 class Server : public Application {
 public:

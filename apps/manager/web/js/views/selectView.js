@@ -23,15 +23,15 @@ class SelectView extends View {
 	Constructor(parameters)
 	{
 		this.m_title = parameters.viewTitle;
-		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+		this.m_viewNode.querySelector(".title > span").textContent = this.m_title;
 		this.m_eventTarget = parameters.eventTarget;
 
-		let caseSensitiveElement = this.m_view.querySelector(".search > .caseSensitive");
+		let caseSensitiveElement = this.m_viewSpecificNode.querySelector(".search > .caseSensitive");
 		let isCaseSensitive = false;
 		caseSensitiveElement.classList.add("disabled");
 
 		let search = () => {
-			let items = this.m_view.querySelectorAll(".options>*");
+			let items = this.m_viewSpecificNode.querySelectorAll(".options>*");
 			items.forEach((item) => {
 				if ((isCaseSensitive && item.innerHTML.includes(searchElement.value))
 					|| (!isCaseSensitive && item.innerHTML.toLowerCase().includes(searchElement.value.toLowerCase()))) {
@@ -56,7 +56,7 @@ class SelectView extends View {
 			search();
 		});
 
-		let searchElement = this.m_view.querySelector(".search > input");
+		let searchElement = this.m_viewSpecificNode.querySelector(".search > input");
 		searchElement.addEventListener("input", search);
 
 		return true;

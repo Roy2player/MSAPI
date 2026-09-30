@@ -24,29 +24,29 @@ class NewApp extends View {
 	{
 		this.m_appType = parameters.appType;
 		this.m_title += ": " + this.m_appType;
-		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+		this.m_viewNode.querySelector(".title > span").textContent = this.m_title;
 
-		this.m_view.querySelector(".button").addEventListener("click", () => {
+		this.m_viewSpecificNode.querySelector(".button").addEventListener("click", () => {
 			this.HideErrorMessage();
-			if (!View.ValidateInputs(this.m_view)) {
+			if (!View.ValidateInputs(this.m_viewSpecificNode)) {
 				return;
 			}
 
-			this.m_parentView.classList.add("loading");
+			this.m_contentNode.classList.add("loading");
 
 			let data = {};
 			data["appType"] = Helper.StringHash32Uint(this.m_appType);
-			data["parameters"] = View.ParseInputs(this.m_view, true);
+			data["parameters"] = View.ParseInputs(this.m_viewSpecificNode, true);
 
 			new WebSocketSingle({
 				event : Helper.StringHash32Uint("createApp"),
 				handleResponse : (result) => { this.Destructor(); },
 				handleFailed : (error) => {
-					this.m_parentView.classList.remove("loading");
+					this.m_contentNode.classList.remove("loading");
 					this.DisplayErrorMessage(error);
 				},
 				data : data,
-				viewUid : this.m_uid
+				viewId : this.m_id
 			});
 		});
 
