@@ -38,18 +38,21 @@ namespace Protocol {
 
 namespace Standard {
 
-constexpr size_t cipherActionHello{ 934875930 };
-constexpr size_t cipherMetadataResponse{ 934875931 };
-constexpr size_t cipherParametersResponse{ 934875932 };
-constexpr size_t cipherMetadataRequest{ 934875933 };
-constexpr size_t cipherParametersRequest{ 934875934 };
-constexpr size_t cipherActionPause{ 934875935 };
-constexpr size_t cipherActionRun{ 934875936 };
-constexpr size_t cipherActionDelete{ 934875937 };
-constexpr size_t cipherActionModify{ 934875938 };
+constexpr uint64_t CIPHER_ACTION_HELLO{ 934875930 };
+constexpr uint64_t CIPHER_METADATA_RESPONSE{ 934875931 };
+constexpr uint64_t CIPHER_PARAMETERS_RESPONSE{ 934875932 };
+constexpr uint64_t CIPHER_METADATA_REQUEST{ 934875933 };
+constexpr uint64_t CIPHER_PARAMETERS_REQUEST{ 934875934 };
+constexpr uint64_t CIPHER_ACTION_PAUSE{ 934875935 };
+constexpr uint64_t CIPHER_ACTION_RUN{ 934875936 };
+constexpr uint64_t CIPHER_ACTION_DELETE{ 934875937 };
+constexpr uint64_t CIPHER_ACTION_MODIFY{ 934875938 };
 
 /**************************
  * @brief Object for containing data of standard message.
+ *
+ * @purging Key-value pairs accumulate with each SetData call and are not released automatically. Clear releases all of
+ * them and resets the buffer size.
  */
 class Data : public DataHeader {
 private:

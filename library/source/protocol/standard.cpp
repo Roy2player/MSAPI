@@ -329,7 +329,7 @@ void Send(Connection& connection, const Data& data)
 void SendActionPause(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ cipherActionPause };
+		size_t cipher{ CIPHER_ACTION_PAUSE };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send action pause to connection id: {}", connection.GetId());
@@ -340,7 +340,7 @@ void SendActionPause(Connection& connection)
 void SendActionRun(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ cipherActionRun };
+		size_t cipher{ CIPHER_ACTION_RUN };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send action run to connection id: {}", connection.GetId());
@@ -351,7 +351,7 @@ void SendActionRun(Connection& connection)
 void SendActionDelete(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ cipherActionDelete };
+		size_t cipher{ CIPHER_ACTION_DELETE };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send action delete to connection id: {}", connection.GetId());
@@ -362,7 +362,7 @@ void SendActionDelete(Connection& connection)
 void SendActionHello(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ cipherActionHello };
+		size_t cipher{ CIPHER_ACTION_HELLO };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send action hello to connection id: {}", connection.GetId());
@@ -373,7 +373,7 @@ void SendActionHello(Connection& connection)
 void SendMetadataRequest(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ cipherMetadataRequest };
+		size_t cipher{ CIPHER_METADATA_REQUEST };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send metadata request to connection id: {}", connection.GetId());
@@ -384,7 +384,7 @@ void SendMetadataRequest(Connection& connection)
 void SendParametersRequest(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ cipherParametersRequest };
+		size_t cipher{ CIPHER_PARAMETERS_REQUEST };
 		size_t bufferSize{ sizeof(size_t) * 2 };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send parameters request to connection id: {}", connection.GetId());

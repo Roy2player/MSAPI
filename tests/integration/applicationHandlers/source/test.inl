@@ -428,7 +428,7 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		50000, [&manager]() { return manager.GetActionsNumber(); }, 3, "Correct number of actions on manager side"));
 	RETURN_IF_FALSE(checkParametersResponse(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, {}, 14, {}, 16, {}, 18, {}, 20, {},
-		22, {}, 24, {}, 26, {}, 28, 29, 30, {}, 32, {}, "34", "", MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30), 0,
+		22, {}, 24, {}, 26, {}, 28, {}, 30, {}, 32, {}, "34", "", MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30), 0,
 		MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653), {}, false, table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
 		"Client state is not changed after parameters request"));
@@ -463,7 +463,7 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 
 	// 14) Manager sends modify request for some of invalid parameters to the client, parameters are changed, state is
 	// not changed
-	MSAPI::Protocol::Standard::Data parametersData{ MSAPI::Protocol::Standard::cipherActionModify };
+	MSAPI::Protocol::Standard::Data parametersData{ MSAPI::Protocol::Standard::CIPHER_ACTION_MODIFY };
 	parametersData.SetData(3, int32_t{ -78234 });
 	parametersData.SetData(27, std::optional<uint64_t>{ 6790004 });
 	parametersData.SetData(29, std::optional<float>{ -400.00002 });

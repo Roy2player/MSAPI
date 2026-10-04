@@ -465,19 +465,20 @@ FORCE_INLINE [[nodiscard]] uint64_t Connection::Recv(void* const buffer, const u
 			return 0;
 		}
 
-		if (errno == EINTR) {
-			if (!m_isUsable.load(std::memory_order_relaxed)) {
-				LOG_DEBUG_NEW("Recv returned EINTR on shutdown socket, connection id: {}", m_id);
-				return 0;
-			}
+		if (!m_isUsable.load()) {
+			return 0;
+		}
 
+		if (errno == EINTR) {
 			LOG_DEBUG_NEW("Recv returned EINTR on working socket, connection id: {}", m_id);
 			continue;
 		}
 
 		if (flags & MSG_PEEK) {
+			// EWOULDBLOCK is the same error as EAGAIN on Linux
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				LOG_DEBUG_NEW("Non-blocking recv returned EAGAIN or EWOULDBLOCK, connection id: {}", m_id);
+				LOG_DEBUG_NEW(
+					"Non-blocking recv returned EAGAIN/EWOULDBLOCK on working socket, connection id: {}", m_id);
 				continue;
 			}
 		}

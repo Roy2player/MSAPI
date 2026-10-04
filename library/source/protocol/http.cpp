@@ -627,7 +627,7 @@ std::string Data::ToString() const
 	}
 
 	const auto webSocketKeySize{ webSocketKey->size() };
-	const auto acceptKeySize{ webSocketKeySize + m_webSocketGUID.size() };
+	const auto acceptKeySize{ webSocketKeySize + WEB_SOCKET_GUID.size() };
 	if (acceptKeySize > 128) [[unlikely]] {
 		LOG_WARNING_NEW("Sec-WebSocket-Key header value is too long, connection id: {}", connection.GetId());
 		(void)Send404(connection);
@@ -638,11 +638,11 @@ std::string Data::ToString() const
 
 	std::array<char, 128> acceptKey{};
 	std::copy(webSocketKey->begin(), webSocketKey->end(), acceptKey.begin());
-	std::copy(m_webSocketGUID.begin(), m_webSocketGUID.end(), acceptKey.begin() + webSocketKeySize);
+	std::copy(WEB_SOCKET_GUID.begin(), WEB_SOCKET_GUID.end(), acceptKey.begin() + webSocketKeySize);
 
 	MSAPI::Sha1 sha1;
 	sha1.Update(std::span<const uint8_t>{ reinterpret_cast<const uint8_t*>(acceptKey.data()), acceptKeySize });
-	const auto hash{ sha1.Final<MSAPI::Sha1::doNotReset>() };
+	const auto hash{ sha1.Final<MSAPI::Sha1::DO_NOT_RESET>() };
 	const auto acceptKeyHash{ MSAPI::Helper::Base64Encode(
 		std::span<const int8_t>{ reinterpret_cast<const int8_t*>(hash.data()), hash.size() }, bufferEncode) };
 

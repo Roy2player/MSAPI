@@ -21,7 +21,7 @@ Additional life time block scoping should be used to release guard as soon as po
 ```cpp
 ... code of method before accessing the data ...
 {
-    MSAPI::Lock::AtomicRW<MSAPI::Lock::write>::Guard _{ m_dataLock };
+    MSAPI::Lock::AtomicRW<MSAPI::Lock::WRITE>::Guard _{ m_dataLock };
     m_data.erase(key);
 }
 ... code of method after accessing the data ...
@@ -34,7 +34,7 @@ Smart pointers from standard library should must be used to split the global and
 
 std::shared_ptr<ConnectionRelatedData> data;
 {
-    MSAPI::Lock::AtomicRW<MSAPI::Lock::read>::Guard _{ m_dataLock };
+    MSAPI::Lock::AtomicRW<MSAPI::Lock::READ>::Guard _{ m_dataLock };
     const auto it{ m_data.find(key) };
     if (it != m_data.end()) {
         data = it->second;
@@ -47,7 +47,7 @@ if (data == nullptr) [[unlikely]] {
 }
 
 {
-  MSAPI::Lock::AtomicRW<MSAPI::Lock::write>::Guard _{ data->GetLock() };
+  MSAPI::Lock::AtomicRW<MSAPI::Lock::WRITE>::Guard _{ data->GetLock() };
   data->HandleAnyOperation();
 }
 

@@ -20,6 +20,7 @@
 #define MSAPI_TEST_INL
 
 #include "../help/helper.h"
+#include "../help/lock.inl"
 #include "../help/log.h"
 #include "../help/table.h"
 #include <thread>
@@ -57,12 +58,16 @@ concept has_to_string = requires(T t) {
 };
 
 /**************************
- * @brief Class for registration compare tests, save their results and whole test time duration from creating Test
- * object to destroying it. Results will be printed in INFO level logs and in standard output after removing Test
- * object. Standard output message format: "Passed/Failed, elapsed wall time: X ns".
+ * @brief Registers assertions and reports elapsed wall time from construction to destruction. Results appear in
+ * INFO logs and standard output as "Passed/Failed, elapsed wall time: X ns".
  *
- * @todo Currently that class cannot be used for performance check as here are a lot of memory allocation which
- * alway will impact a result. So, when log level greater than INFO, no allocation must exist.
+ * @attention Callers synchronize assertion operands and getter data, and finish all calls before destruction.
+ * Comparison and formatting callbacks must not reenter the same Test instance.
+ *
+ * @note Concurrent assertions share one serialized timer; measurements are not per-thread benchmarks.
+ *
+ * @concurrency Yes. Assertion registration, logging, timer updates, and result inspection use one internal lock.
+ * Wait invokes user getters and polls outside that lock.
  */
 class Test {
 private:
@@ -70,24 +75,34 @@ private:
 	int32_t m_passedCounter{};
 	Timer m_timer;
 	Timer m_totalTimer;
+	MSAPI::Lock::Atomic m_lock;
 
 	static constexpr std::string_view m_patternPassed{ "\033[0;32mPASSED: \033[0m{}. {} ns" };
 	static constexpr std::string_view m_patternFailed{ "\033[0;31mFAILED: \033[0m{}. Actual: {}. Expected: {}. {} ns" };
 
 public:
 	/**************************
-	 * @brief Print in INFO level logs results of all tests.
+	 * @brief Reports the final assertion counters and elapsed time, or the absence of assertions.
+	 *
+	 * @locking Lock m_lock.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE ~Test();
 
 	/**************************
 	 * @tparam T Boolean or integer type.
 	 *
-	 * @return 0 (true) if there is at least one test and all tests passed successfully, 1 (false) otherwise.
+	 * @locking Lock m_lock.
+	 *
+	 * @return True for bool or 0 for integers if at least one assertion exists and all passed. Returns false for
+	 * bool or 1 for integers otherwise.
+	 *
+	 * @test Yes.
 	 */
 	template <typename T>
 		requires(std::is_same_v<T, bool> || MSAPI::is_integer_type<T>)
-	FORCE_INLINE [[nodiscard]] T Passed() const;
+	FORCE_INLINE [[nodiscard]] T Passed() noexcept;
 
 	/**************************
 	 * @brief Registers the assertion of couple values and save result.
@@ -100,7 +115,11 @@ public:
 	 * @param expected Expected value.
 	 * @param name Assertion name.
 	 *
+	 * @locking Lock in AssertImpl call.
+	 *
 	 * @return True if assertion passed successfully, false otherwise.
+	 *
+	 * @test Yes.
 	 *
 	 * @todo Iterate under array like data and additionally print index of first different element.
 	 */
@@ -109,19 +128,26 @@ public:
 	FORCE_INLINE [[nodiscard]] bool Assert(T&& actual, S&& expected, const std::string_view name);
 
 	/**************************
-	 * @brief Wait for particular condition and register result, repeating each 100 microseconds.
+	 * @brief Polls a getter in 100-microsecond steps and registers one final assertion result.
+	 *
+	 * @attention Getter calls and operand evaluation require caller-provided synchronization. Silent comparisons
+	 * do not register assertions. Getter execution time and scheduling may extend the requested polling budget.
 	 *
 	 * @tparam T Type of expected value.
 	 * @tparam F Any invocable type which returns comparable with T type.
 	 * @tparam Args Any types of arguments for F.
 	 *
-	 * @param waitTime Maximum amount of time to wait match in microseconds.
+	 * @param waitTime Polling budget in microseconds; a zero budget still checks the getter.
 	 * @param getter Function to access current value to be compared.
 	 * @param expected Expected value.
 	 * @param name Condition name for logs.
 	 * @param args Arguments for getter.
 	 *
+	 * @locking Lock in AssertImpl call. Getter calls and polling delays occur outside it.
+	 *
 	 * @return True if getter returned expected value before time is out, false otherwise.
+	 *
+	 * @test Yes.
 	 */
 	template <typename T, typename F, typename... Args>
 		requires std::invocable<F, Args...>
@@ -145,7 +171,11 @@ private:
 	 * @param expected Expected value.
 	 * @param name Assertion name.
 	 *
+	 * @locking Lock m_lock.
+	 *
 	 * @return True if assertion passed successfully, false otherwise.
+	 *
+	 * @test Yes.
 	 *
 	 * @todo Iterate under array like data and additionally print index of first different element.
 	 */
@@ -160,6 +190,7 @@ Definitions
 
 FORCE_INLINE Test::~Test()
 {
+	const MSAPI::Lock::Atomic::Guard _{ m_lock };
 	if (m_counter > 0) {
 		const auto nanoseconds{ Timer::Duration{ Timer{} - m_totalTimer }.GetNanoseconds() };
 		if (m_passedCounter == m_counter) {
@@ -182,8 +213,9 @@ FORCE_INLINE Test::~Test()
 
 template <typename T>
 	requires(std::is_same_v<T, bool> || MSAPI::is_integer_type<T>)
-FORCE_INLINE [[nodiscard]] T Test::Passed() const
+FORCE_INLINE [[nodiscard]] T Test::Passed() noexcept
 {
+	const MSAPI::Lock::Atomic::Guard _{ m_lock };
 	if constexpr (std::is_same_v<T, bool>) {
 		return m_counter == m_passedCounter && m_counter > 0;
 	}
@@ -203,6 +235,7 @@ template <bool Policy, typename T, typename S>
 	requires comparable<T, S>
 FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const std::string_view name)
 {
+	const MSAPI::Lock::Atomic::Guard _{ m_lock };
 	if constexpr (Policy == COUNT) {
 		++m_counter;
 	}
@@ -226,8 +259,8 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 	}
 	else if constexpr (is_integer_type_optional<N>) {
-		if (const bool valuesPresented{ actual.has_value() && expected.has_value() };
-			!valuesPresented || static_cast<G>(actual.value()) == static_cast<G>(expected.value())) [[likely]] {
+		if (actual.has_value() == expected.has_value()
+			&& (!actual.has_value() || static_cast<G>(actual.value()) == static_cast<G>(expected.value()))) [[likely]] {
 
 			isPassed = true;
 		}
@@ -250,8 +283,10 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 	}
 	else if constexpr (is_float_type_optional<N>) {
-		if (const bool valuesPresented{ actual.has_value() && expected.has_value() }; !valuesPresented
-			|| MSAPI::Helper::FloatEqual(static_cast<G>(actual.value()), static_cast<G>(expected.value()))) [[likely]] {
+		if (actual.has_value() == expected.has_value()
+			&& (!actual.has_value()
+				|| MSAPI::Helper::FloatEqual(static_cast<G>(actual.value()), static_cast<G>(expected.value()))))
+			[[likely]] {
 
 			isPassed = true;
 		}

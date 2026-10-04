@@ -444,6 +444,11 @@ namespace Object {
  * Side: client.
  *
  * @concurrency Yes.
+ *
+ * @purging Streams are stored from assignment until they fail or close. FailStreamsForConnectionId releases all streams
+ * of one connection together with its pending close confirmations, it is not called automatically, so it should be
+ * called on disconnection. A stream closed by the client is moved to close confirmations and released when the
+ * distributor confirms the closure.
  */
 class IHandlerBase {
 private:
@@ -510,7 +515,8 @@ public:
 	virtual void HandleStreamFailed(uint64_t streamId, Issue issue) noexcept = 0;
 
 	/**************************
-	 * @brief Removes all streams related to connection id and call HandleStreamFailed for each.
+	 * @brief Removes all streams related to connection id and calls HandleStreamFailed for each. Drops pending close
+	 * confirmations of the connection, as they cannot be received after the connection is lost.
 	 *
 	 * @param connectionId Connection id.
 	 *
@@ -952,7 +958,12 @@ constexpr static inline bool CLEANUP_OUTSIDE{ false };
  *
  * @tparam FObjects Types of filters which distributor can handle.
  *
- * @concurency Yes.
+ * @concurrency Yes.
+ *
+ * @purging Streams are stored from opening until they are closed by the client, removed on a sending error, or released
+ * by ClearActiveStreamsForConnectionId for one connection. That call is not made automatically, so it should be called
+ * on disconnection. Stop fails and releases all streams together with the per-object-hash containers, which are
+ * otherwise kept for the distributor lifetime. The destructor calls Stop.
  *
  * @todo Currently only one filter type is supported for one stream, need to support multiple filters with different
  * logical operations.
@@ -1166,6 +1177,8 @@ private:
 	 * @brief Contains all streams data for particular stream object hash.
 	 *
 	 * @concurrency Yes.
+	 *
+	 * @purging RemoveStream releases one stream. The object itself is released only by Distributor::Stop.
 	 */
 	class Streams {
 	private:
@@ -1674,34 +1687,37 @@ FORCE_INLINE void IHandlerBase::FailStreamsForConnectionId(const uint64_t connec
 	std::vector<StreamConnectionId> streamKeys;
 
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_streamConnectionIdToStreamLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_streamConnectionIdToStreamLock };
 
 		for (const auto& [key, stream] : m_streamConnectionIdToStream) {
 			if (key.GetConnectionId() == connectionId) {
 				streamKeys.emplace_back(key);
 
 				// Friendship access
-				const Lock::AtomicRW::Guard<Lock::write> _{ stream->m_lock };
+				const Lock::AtomicRW::Guard<Lock::WRITE> _{ stream->m_lock };
 				stream->m_state = State::Failed;
 			}
 		}
 	}
 
-	if (streamKeys.empty()) {
-		return;
+	const bool hasStreams{ !streamKeys.empty() };
+	auto size{ streamKeys.size() };
+	if (hasStreams) {
+		LOG_PROTOCOL_NEW("Client starts failing {} stream(s) for connection id: {}", size, connectionId);
 	}
 
-	auto size{ streamKeys.size() };
-	LOG_PROTOCOL_NEW("Client starts failing {} stream(s) for connection id: {}", size, connectionId);
-
+	uint64_t droppedConfirmations [[indeterminate]];
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamLock };
 
+		// Closure confirmations cannot be received after the connection is lost
+		droppedConfirmations = std::erase_if(m_closeConfirmation,
+			[connectionId](const StreamConnectionId& key) { return key.GetConnectionId() == connectionId; });
+
+		// Streams closed or reassigned after collection are not failed
 		for (size_t index{}; index < size;) {
-			const auto key{ streamKeys[index] };
-			const auto it{ m_streamConnectionIdToStream.find(key) };
+			const auto it{ m_streamConnectionIdToStream.find(streamKeys[index]) };
 			if (it == m_streamConnectionIdToStream.end()) {
-				m_closeConfirmation.erase(key);
 				streamKeys[index] = std::move(streamKeys.back());
 				--size;
 				continue;
@@ -1710,6 +1726,15 @@ FORCE_INLINE void IHandlerBase::FailStreamsForConnectionId(const uint64_t connec
 			m_streamConnectionIdToStream.erase(it);
 			++index;
 		}
+	}
+
+	if (droppedConfirmations > 0) {
+		LOG_PROTOCOL_NEW("Client dropped {} pending close confirmation(s) for connection id: {}", droppedConfirmations,
+			connectionId);
+	}
+
+	if (!hasStreams) {
+		return;
 	}
 
 	if (size == 0) [[unlikely]] {
@@ -1741,7 +1766,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::SetStream(
 
 	do {
 		// Friendship access
-		const Lock::AtomicRW::Guard<Lock::write> _{ stream->m_lock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ stream->m_lock };
 		if (stream->m_connectionData != nullptr) {
 			alreadyAssigned = true;
 			previousConnectionId = stream->m_connectionData->GetConnectionId();
@@ -1772,7 +1797,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::SetStream(
 
 	bool isSuccess [[indeterminate]];
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamLock };
 		if (alreadyAssigned) {
 			m_streamConnectionIdToStream.erase(StreamConnectionId{ streamId, previousConnectionId });
 		}
@@ -1807,7 +1832,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::Collect(
 
 	StreamBase* stream{ nullptr };
 	do {
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_streamConnectionIdToStreamLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_streamConnectionIdToStreamLock };
 		const auto it{ m_streamConnectionIdToStream.find(streamConnectionId) };
 		if (it == m_streamConnectionIdToStream.end()) [[unlikely]] {
 			break;
@@ -1847,7 +1872,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::Collect(
 				break;
 			}
 
-			const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamLock };
+			const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamLock };
 			if (m_closeConfirmation.erase(streamConnectionId) == 1) [[likely]] {
 				return true;
 			}
@@ -1901,7 +1926,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::Collect(
 	switch (state->state) {
 	case State::Opened: {
 		// Friendship access
-		const Lock::AtomicRW::Guard<Lock::write> _{ stream->m_lock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ stream->m_lock };
 		stream->m_isSnapshotDone = false;
 		stream->m_state = State::Opened;
 	}
@@ -1910,7 +1935,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::Collect(
 		return true;
 	case State::Done: {
 		// Friendship access
-		const Lock::AtomicRW::Guard<Lock::write> _{ stream->m_lock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ stream->m_lock };
 		stream->m_isSnapshotDone = true;
 	}
 
@@ -1918,7 +1943,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::Collect(
 		return true;
 	case State::Failed: {
 		// Friendship access
-		const Lock::AtomicRW::Guard<Lock::write> _{ stream->m_lock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ stream->m_lock };
 		stream->m_state = state->state;
 	}
 
@@ -1926,7 +1951,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::Collect(
 		return true;
 	case State::Closed: {
 		// Friendship access
-		const Lock::AtomicRW::Guard<Lock::write> _{ stream->m_lock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ stream->m_lock };
 		stream->m_state = state->state;
 	}
 		return true;
@@ -2042,7 +2067,7 @@ template <typename Object, typename FObject>
 	requires std::is_class_v<Object> && std::is_class_v<FObject>
 FORCE_INLINE [[nodiscard]] StreamBase::StateData Stream<Object, FObject>::GetStateData() noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_lock };
+	const Lock::AtomicRW::Guard<Lock::READ> _{ m_lock };
 	return { m_state, m_isSnapshotDone };
 }
 
@@ -2050,7 +2075,7 @@ template <typename Object, typename FObject>
 	requires std::is_class_v<Object> && std::is_class_v<FObject>
 FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Stream<Object, FObject>::GetConnectionData() noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_lock };
+	const Lock::AtomicRW::Guard<Lock::READ> _{ m_lock };
 	return m_connectionData;
 }
 
@@ -2087,7 +2112,7 @@ FORCE_INLINE [[nodiscard]] bool Stream<Object, FObject>::SetFilter(FO&& filter) 
 	const auto streamId{ m_id.load(std::memory_order_relaxed) };
 	State state [[indeterminate]];
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_lock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_lock };
 		state = m_state;
 	}
 
@@ -2100,7 +2125,7 @@ FORCE_INLINE [[nodiscard]] bool Stream<Object, FObject>::SetFilter(FO&& filter) 
 		return false;
 	} while (false);
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_filterLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_filterLock };
 
 	auto& filterValue{ (m_filter = std::forward<FO>(filter)).value() };
 	// Friendship access
@@ -2122,14 +2147,14 @@ FORCE_INLINE [[nodiscard]] bool Stream<Object, FObject>::Open(const Type type) n
 		return false;
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_lock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_lock };
 
 	if (m_connectionData == nullptr) [[unlikely]] {
 		LOG_PROTOCOL_NEW("Client tries to open stream id {} without connection", streamId);
 		return false;
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_filterLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_filterLock };
 
 	if (!m_filter.has_value()) [[unlikely]] {
 		LOG_PROTOCOL_NEW("Client tries to open stream id {} without filter", streamId);
@@ -2172,7 +2197,7 @@ FORCE_INLINE void Stream<Object, FObject>::Close() noexcept
 	const auto oldId{ m_id.load(std::memory_order_relaxed) };
 	uint64_t newId [[indeterminate]];
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_lock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_lock };
 
 		if (m_connectionData == nullptr) [[unlikely]] {
 			LOG_PROTOCOL_NEW("Client tries to close stream id {} without connection", oldId);
@@ -2200,7 +2225,7 @@ FORCE_INLINE void Stream<Object, FObject>::Close() noexcept
 	const auto connectionId{ m_connectionData->GetConnectionId() };
 	StreamConnectionId oldKey{ oldId, connectionId };
 	// Friendship access
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_handler.m_streamConnectionIdToStreamLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_handler.m_streamConnectionIdToStreamLock };
 	m_handler.m_streamConnectionIdToStream.erase(oldKey);
 	m_handler.m_closeConfirmation.emplace(std::move(oldKey));
 	// Connection id is set and association is required
@@ -2399,7 +2424,7 @@ template <typename... FObjects>
 FORCE_INLINE void Distributor<FObjects...>::Streams::RemoveStream(const StreamConnectionId key) noexcept
 {
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 		m_streamConnectionIdToStreamData.erase(key);
 	}
 
@@ -2412,7 +2437,7 @@ FORCE_INLINE void Distributor<FObjects...>::Streams::AddSteam(StreamConnectionId
 	std::shared_ptr<Distributor<FObjects...>::StreamData> streamData /* copy as moved */) noexcept
 {
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 		m_streamConnectionIdToStreamData.emplace(std::move(key), std::move(streamData));
 	}
 
@@ -2458,7 +2483,7 @@ template <typename... FObjects>
 FORCE_INLINE void Distributor<FObjects...>::Stop() noexcept
 {
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 		auto begin{ m_streamConnectionIdToStreamData.begin() };
 		const auto end{ m_streamConnectionIdToStreamData.end() };
 		if (begin == end) {
@@ -2483,7 +2508,7 @@ FORCE_INLINE void Distributor<FObjects...>::Stop() noexcept
 		}
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_streamObjectHashToStreamsLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamObjectHashToStreamsLock };
 	m_streamObjectHashToStreams.clear();
 }
 
@@ -2494,7 +2519,7 @@ FORCE_INLINE void Distributor<FObjects...>::ClearActiveStreamsForConnectionId(co
 	std::vector<StreamConnectionId> streamKeys;
 
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_streamConnectionIdToStreamDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_streamConnectionIdToStreamDataLock };
 
 		for (const auto& [key, streamData] : m_streamConnectionIdToStreamData) {
 			if (key.GetConnectionId() == connectionId) {
@@ -2511,7 +2536,7 @@ FORCE_INLINE void Distributor<FObjects...>::ClearActiveStreamsForConnectionId(co
 	LOG_PROTOCOL_NEW("Distributor starts removing {} stream(s) for connection id: {}", size, connectionId);
 
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 
 		for (size_t index{}; index < size;) {
 			const auto key{ streamKeys[index] };
@@ -2557,7 +2582,7 @@ FORCE_INLINE void Distributor<FObjects...>::StreamExternalAction(
 		const StreamStateResponse state{ State::Closed };
 		std::shared_ptr<StreamData> streamData;
 		{
-			const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+			const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 			const auto it{ m_streamConnectionIdToStreamData.find(streamConnectionId) };
 			if (it != m_streamConnectionIdToStreamData.end()) [[likely]] {
 				streamData = it->second;
@@ -2612,7 +2637,7 @@ void Distributor<FObjects...>::Collect(
 		std::shared_ptr<Streams> streams;
 		{
 			{
-				const Lock::AtomicRW::Guard<Lock::read> _{ m_streamObjectHashToStreamsLock };
+				const Lock::AtomicRW::Guard<Lock::READ> _{ m_streamObjectHashToStreamsLock };
 				const auto it{ m_streamObjectHashToStreams.find(streamObjectHash) };
 				if (it != m_streamObjectHashToStreams.end()) [[likely]] {
 					streams = it->second;
@@ -2621,7 +2646,7 @@ void Distributor<FObjects...>::Collect(
 
 			if (streams == nullptr) [[unlikely]] {
 				streams = std::make_shared<Streams>();
-				const Lock::AtomicRW::Guard<Lock::write> _{ m_streamObjectHashToStreamsLock };
+				const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamObjectHashToStreamsLock };
 				m_streamObjectHashToStreams.emplace(streamObjectHash, streams);
 			}
 		}
@@ -2635,7 +2660,7 @@ void Distributor<FObjects...>::Collect(
 		if (streamType == Type::SnapshotAndLive || isFilterNotEmpty) {
 			std::pair<typename std::decay_t<decltype(m_streamConnectionIdToStreamData)>::iterator, bool> result;
 			{
-				const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+				const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 				result = m_streamConnectionIdToStreamData.emplace(streamConnectionId, streamData);
 			}
 
@@ -2656,7 +2681,7 @@ void Distributor<FObjects...>::Collect(
 		}
 
 		if (isFilterNotEmpty) {
-			const Lock::AtomicRW::Guard<Lock::write> _{ streamData->GetLock() };
+			const Lock::AtomicRW::Guard<Lock::WRITE> _{ streamData->GetLock() };
 			streamData->template SetFilter<FObject>(*filter);
 			LOG_PROTOCOL_NEW("Waiting filter objects for new stream id: {}, connection id: {}. {}", streamId,
 				connectionId, streamData->ToString());
@@ -2664,7 +2689,7 @@ void Distributor<FObjects...>::Collect(
 		}
 
 		{
-			const Lock::AtomicRW::Guard<Lock::write> _{ streamData->GetLock() };
+			const Lock::AtomicRW::Guard<Lock::WRITE> _{ streamData->GetLock() };
 			streamData->template SetFilter<FObject>(*filter);
 			LOG_PROTOCOL_NEW("Instantly open new stream id: {}, connection id: {}. {}", streamId, connectionId,
 				streamData->ToString());
@@ -2698,7 +2723,7 @@ void Distributor<FObjects...>::Collect(
 
 	std::shared_ptr<StreamData> streamData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_streamConnectionIdToStreamDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_streamConnectionIdToStreamDataLock };
 		const auto it{ m_streamConnectionIdToStreamData.find(streamConnectionId) };
 		if (it != m_streamConnectionIdToStreamData.end()) [[likely]] {
 			streamData = it->second;
@@ -2720,7 +2745,7 @@ void Distributor<FObjects...>::Collect(
 		Issue issue [[indeterminate]];
 		bool isActive [[indeterminate]];
 		{
-			const Lock::AtomicRW::Guard<Lock::write> _{ streamData->GetLock() };
+			const Lock::AtomicRW::Guard<Lock::WRITE> _{ streamData->GetLock() };
 			issue = streamData->template SetFilterObject<FObject>(static_cast<const FObject*>(object));
 			streams = &(streamData->GetStreams());
 			isActive = streamData->IsActive();
@@ -2731,7 +2756,7 @@ void Distributor<FObjects...>::Collect(
 			streams->RemoveStream(streamConnectionId);
 
 			{
-				const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+				const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 				m_streamConnectionIdToStreamData.erase(streamConnectionId);
 			}
 
@@ -2754,7 +2779,7 @@ void Distributor<FObjects...>::Collect(
 				streams->RemoveStream(streamConnectionId);
 
 				{
-					const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+					const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 					m_streamConnectionIdToStreamData.erase(streamConnectionId);
 				}
 				return;
@@ -2768,7 +2793,7 @@ void Distributor<FObjects...>::Collect(
 				streams->RemoveStream(streamConnectionId);
 
 				{
-					const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+					const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 					m_streamConnectionIdToStreamData.erase(streamConnectionId);
 				}
 				return;
@@ -2784,7 +2809,7 @@ void Distributor<FObjects...>::Collect(
 				streams->RemoveStream(streamConnectionId);
 
 				{
-					const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+					const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 					m_streamConnectionIdToStreamData.erase(streamConnectionId);
 				}
 			}
@@ -2803,7 +2828,7 @@ void Distributor<FObjects...>::Collect(
 	streamData->GetStreams().RemoveStream(streamConnectionId);
 
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 		m_streamConnectionIdToStreamData.erase(streamConnectionId);
 	}
 
@@ -2830,7 +2855,7 @@ template <template <typename> typename Container, typename Object>
 	auto& connection{ streamData.GetConnection() };
 	Streams* streams [[indeterminate]];
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ streamData.GetLock() };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ streamData.GetLock() };
 		if (!streamData.IsActive()) [[unlikely]] {
 			LOG_PROTOCOL_NEW(
 				"Stream id: {} is not active. Connection id: {}", streamData.GetStreamId(), connection.GetId());
@@ -2850,7 +2875,7 @@ template <template <typename> typename Container, typename Object>
 		streams->RemoveStream(streamConnectionId);
 
 		{
-			const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+			const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 			m_streamConnectionIdToStreamData.erase(streamConnectionId);
 		}
 
@@ -2869,7 +2894,7 @@ template <template <typename> typename Container, typename Object>
 				streams->RemoveStream(streamConnectionId);
 
 				{
-					const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+					const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 					m_streamConnectionIdToStreamData.erase(streamConnectionId);
 				}
 
@@ -2887,7 +2912,7 @@ template <template <typename> typename Container, typename Object>
 			streams->RemoveStream(streamConnectionId);
 
 			{
-				const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+				const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 				m_streamConnectionIdToStreamData.erase(streamConnectionId);
 			}
 
@@ -2918,7 +2943,7 @@ void Distributor<FObjects...>::SendNewObject(
 	std::shared_ptr<Streams> streams;
 	const auto objectHash{ typeid(Object).hash_code() };
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_streamObjectHashToStreamsLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_streamObjectHashToStreamsLock };
 		const auto it{ m_streamObjectHashToStreams.find(objectHash) };
 		if (it == m_streamObjectHashToStreams.end()) {
 			return;
@@ -2929,7 +2954,7 @@ void Distributor<FObjects...>::SendNewObject(
 
 	std::vector<StreamConnectionId> toRemove;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ streams->GetLock() };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ streams->GetLock() };
 		const auto& streamsContainer{ streams->GetStreams() };
 		if (streamsContainer.empty()) {
 			LOG_PROTOCOL_NEW("No active streams for object hash: {}", objectHash);
@@ -2949,7 +2974,7 @@ void Distributor<FObjects...>::SendNewObject(
 			streams->RemoveStream(key);
 
 			{
-				const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+				const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 				m_streamConnectionIdToStreamData.erase(key);
 			}
 		}
@@ -2967,7 +2992,7 @@ template <typename Object, bool CleanupPolicy>
 	auto& connection{ streamData.GetConnection() };
 	Streams* streams [[indeterminate]];
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ streamData.GetLock() };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ streamData.GetLock() };
 		if (!streamData.IsActive()) [[unlikely]] {
 			LOG_PROTOCOL_NEW(
 				"Stream id: {} is not active. Connection id: {}", streamData.GetStreamId(), connection.GetId());
@@ -2988,7 +3013,7 @@ template <typename Object, bool CleanupPolicy>
 			streams->RemoveStream(streamConnectionId);
 
 			{
-				const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+				const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 				m_streamConnectionIdToStreamData.erase(streamConnectionId);
 			}
 		}
@@ -3009,7 +3034,7 @@ template <typename Object, bool CleanupPolicy>
 				streams->RemoveStream(streamConnectionId);
 
 				{
-					const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+					const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 					m_streamConnectionIdToStreamData.erase(streamConnectionId);
 				}
 			}
@@ -3030,7 +3055,7 @@ template <typename Object, bool CleanupPolicy>
 			streams->RemoveStream(streamConnectionId);
 
 			{
-				const Lock::AtomicRW::Guard<Lock::write> _{ m_streamConnectionIdToStreamDataLock };
+				const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
 				m_streamConnectionIdToStreamData.erase(streamConnectionId);
 			}
 		}

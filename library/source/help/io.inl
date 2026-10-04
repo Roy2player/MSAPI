@@ -25,6 +25,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
+#include <iterator>
 #include <string>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
@@ -49,7 +50,7 @@ struct FileGuard {
 	 *
 	 * @attention Check value member for success after calling.
 	 *
-	 * @tparam T Type of path.
+	 * @tparam PathType Type of path.
 	 *
 	 * @param path Full path to file.
 	 * @param flags File access flags.
@@ -57,9 +58,9 @@ struct FileGuard {
 	 *
 	 * @test Yes.
 	 */
-	template <typename T>
-		requires StringableView<T>
-	FORCE_INLINE FileGuard(T path, int32_t flags, int32_t mode) noexcept;
+	template <typename PathType>
+		requires StringableView<PathType>
+	FORCE_INLINE FileGuard(PathType path, int32_t flags, int32_t mode) noexcept;
 
 	/**************************
 	 * @test Yes.
@@ -109,15 +110,15 @@ struct DirGuard {
 	 *
 	 * @attention Check value member for success after calling.
 	 *
-	 * @tparam T Type of path.
+	 * @tparam PathType Type of path.
 	 *
 	 * @param path Full path to directory.
 	 *
 	 * @test Yes.
 	 */
-	template <typename T>
-		requires StringableView<T>
-	FORCE_INLINE DirGuard(T path) noexcept;
+	template <typename PathType>
+		requires StringableView<PathType>
+	FORCE_INLINE DirGuard(PathType path) noexcept;
 
 	/**************************
 	 * @test Yes.
@@ -161,8 +162,8 @@ struct DirGuard {
  *
  * @attention Directories in path must exist.
  *
- * @tparam T Type of current name.
- * @tparam S Type of new name.
+ * @tparam CurrentPathType Type of current name.
+ * @tparam NewPathType Type of new name.
  *
  * @param currentName Full path of current name.
  * @param newName Full path of new name.
@@ -171,24 +172,24 @@ struct DirGuard {
  *
  * @test Yes.
  */
-template <typename T, typename S>
-	requires StringableView<T> && StringableView<S>
-FORCE_INLINE [[nodiscard]] bool Rename(T currentName, S newName);
+template <typename CurrentPathType, typename NewPathType>
+	requires StringableView<CurrentPathType> && StringableView<NewPathType>
+FORCE_INLINE [[nodiscard]] bool Rename(CurrentPathType currentName, NewPathType newName);
 
 /**************************
  * @brief Check if file or directory exists by access function.
  *
  * @param path Full path.
  *
- * @tparam T Type of path.
+ * @tparam PathType Type of path.
  *
  * @return True if path exists, false otherwise and error is printed.
  *
  * @test Yes.
  */
-template <typename T>
-	requires StringableView<T>
-FORCE_INLINE [[nodiscard]] bool HasPath(T path);
+template <typename PathType>
+	requires StringableView<PathType>
+FORCE_INLINE [[nodiscard]] bool HasPath(PathType path);
 
 /**************************
  * @brief Suggest flags for open() function. Default flags are O_WRONLY and O_CREAT.
@@ -210,7 +211,7 @@ consteval int32_t SuggestFlags(const bool append);
  * @tparam Mode File access mode in octal format, default is 0644.
  * @tparam Multiple Call is part of multiple save operations, default is false.
  * @tparam T Type of object.
- * @tparam S Type of path or file descriptor.
+ * @tparam PathType Type of path or file descriptor.
  *
  * @param object Object for saving.
  * @param pathOrFd Full path to file or file descriptor.
@@ -219,16 +220,16 @@ consteval int32_t SuggestFlags(const bool append);
  *
  * @test Yes.
  */
-template <bool Append = false, int32_t Mode = 0644, bool Multiple = false, typename T, typename S>
+template <bool Append = false, int32_t Mode = 0644, bool Multiple = false, typename T, typename PathType>
 	requires((std::is_pointer_v<std::remove_cvref_t<T>> || std::is_reference_v<T>)
-		&& (std::is_same_v<S, int32_t> || StringableView<S>))
-FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, S pathOrFd);
+		&& (std::is_same_v<PathType, int32_t> || StringableView<PathType>))
+FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, PathType pathOrFd);
 
-constexpr bool append = true;
-constexpr bool overwrite = false;
+constexpr bool APPEND{ true };
+constexpr bool OVERWRITE{ false };
 
-constexpr bool multiple = true;
-constexpr bool single = false;
+constexpr bool MULTIPLE{ true };
+constexpr bool SINGLE{ false };
 
 /**************************
  * @brief Save array of binary data in file.
@@ -238,7 +239,7 @@ constexpr bool single = false;
  * @tparam Append If true, data will be appended to the file and overwritten otherwise, default is false.
  * @tparam Mode File access mode in octal format, default is 0644.
  * @tparam T Type of forward container.
- * @tparam S Type of path or file descriptor.
+ * @tparam PathType Type of path or file descriptor.
  *
  * @param objects Forward container of objects for saving.
  * @param pathOrFd Full path to file or file descriptor.
@@ -247,9 +248,37 @@ constexpr bool single = false;
  *
  * @test Yes.
  */
-template <bool Append = false, int32_t Mode = 0644, typename T, typename S>
-	requires(std::forward_iterator<typename T::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>))
-FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, S pathOrFd);
+template <bool Append = false, int32_t Mode = 0644, typename T, typename PathType>
+	requires(
+		std::forward_iterator<typename T::iterator> && (std::is_same_v<PathType, int32_t> || StringableView<PathType>))
+FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, PathType pathOrFd);
+
+/**************************
+ * @brief Saves binary records from a half-open forward iterator range.
+ *
+ * @attention Empty ranges create or truncate files in overwrite mode and preserve existing bytes in append mode.
+ * A failed save may leave partial output, as with the container interface.
+ *
+ * @tparam Append Appends records if true and overwrites otherwise, default is false.
+ * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam Iterator Forward iterator yielding records or pointers to records.
+ * @tparam Sentinel End sentinel compatible with Iterator.
+ * @tparam PathType Type of path or file descriptor.
+ *
+ * @param begin First record to save.
+ * @param end End of the records to save, excluded from the range.
+ * @param pathOrFd Full file path or valid file descriptor.
+ *
+ * @pre The range is valid and remains unchanged during the call. Parent directories exist.
+ *
+ * @return True if all records were saved, false otherwise.
+ *
+ * @test Yes.
+ */
+template <bool Append = false, int32_t Mode = 0644, std::forward_iterator Iterator,
+	std::sentinel_for<Iterator> Sentinel, typename PathType>
+	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+FORCE_INLINE [[nodiscard]] bool SaveBinaries(Iterator begin, Sentinel end, PathType pathOrFd);
 
 /**************************
  * @brief Save binary data in file at specific offset.
@@ -258,7 +287,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, S pathOrFd);
  *
  * @tparam Mode File access mode in octal format, default is 0644.
  * @tparam T Type of object.
- * @tparam S Type of path or file descriptor.
+ * @tparam PathType Type of path or file descriptor.
  *
  * @param object Object for saving.
  * @param pathOrFd Full path to file or file descriptor.
@@ -268,9 +297,9 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, S pathOrFd);
  *
  * @test Yes.
  */
-template <int32_t Mode = 0644, typename T, typename S>
-	requires(std::is_same_v<S, int32_t> || StringableView<S>)
-FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, S pathOrFd, int64_t offset);
+template <int32_t Mode = 0644, typename T, typename PathType>
+	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, PathType pathOrFd, int64_t offset);
 
 /**************************
  * @brief Suggest maximum size of primitive string representation for SavePrimitives function.
@@ -300,7 +329,7 @@ consteval uint64_t SuggestPsm();
  * integer types > 8 bytes, for another types this value is calculated automatically.
  * @tparam T Type of forward container.
  * @tparam TT Type of primitive object.
- * @tparam S Type of path or file descriptor.
+ * @tparam PathType Type of path or file descriptor.
  *
  * @param objects Forward container of primitive types for saving.
  * @param pathOrFd Full path to file or file descriptor.
@@ -311,10 +340,43 @@ consteval uint64_t SuggestPsm();
  * @test Yes.
  */
 template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint64_t PSM = 32,
-	template <typename> typename T, typename TT, typename S>
-	requires(std::forward_iterator<typename T<TT>::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>)
+	template <typename> typename T, typename TT, typename PathType>
+	requires(std::forward_iterator<typename T<TT>::iterator>
+		&& (std::is_same_v<PathType, int32_t> || StringableView<PathType>)
 		&& (std::is_integral_v<TT> || std::is_floating_point_v<TT>))
-[[nodiscard]] bool SavePrimitives(const T<TT>& objects, S pathOrFd, char separator);
+[[nodiscard]] bool SavePrimitives(const T<TT>& objects, PathType pathOrFd, char separator);
+
+/**************************
+ * @brief Saves primitive values from a half-open forward iterator range.
+ *
+ * @attention Empty ranges are a successful no-op: no file is opened, truncated, or appended to.
+ * Formatting, separators, and append newlines match the container interface.
+ *
+ * @tparam Append Appends text if true and overwrites otherwise, default is false.
+ * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam Buffer Internal formatting buffer size, default is 512.
+ * @tparam PSM Maximum size of primitive string representation, default and minimum is 32. Used for FP > 4 bytes and
+ * integer types > 8 bytes, for another types this value is calculated automatically.
+ * @tparam Iterator Forward iterator whose value type is integral or floating-point.
+ * @tparam Sentinel End sentinel compatible with Iterator.
+ * @tparam PathType Type of path or file descriptor.
+ *
+ * @param begin First value to save.
+ * @param end End of the values to save, excluded from the range.
+ * @param pathOrFd Full file path or valid file descriptor.
+ * @param separator Separator between values.
+ *
+ * @pre The range is valid and remains unchanged during the call. Parent directories exist for nonempty saves.
+ *
+ * @return True if the values were saved or the range is empty, false otherwise.
+ *
+ * @test Yes.
+ */
+template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint64_t PSM = 32,
+	std::forward_iterator Iterator, std::sentinel_for<Iterator> Sentinel, typename PathType>
+	requires((std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+		&& (std::is_integral_v<std::iter_value_t<Iterator>> || std::is_floating_point_v<std::iter_value_t<Iterator>>))
+FORCE_INLINE [[nodiscard]] bool SavePrimitives(Iterator begin, Sentinel end, PathType pathOrFd, char separator);
 
 /**************************
  * @brief Save string in file.
@@ -324,7 +386,7 @@ template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint6
  * @tparam Append If true, data will be appended to the file with new line separator, and overwritten otherwise. Default
  * is false.
  * @tparam Mode File access mode in octal format, default is 0644.
- * @tparam T Type of path.
+ * @tparam PathType Type of path.
  *
  * @param str String for saving.
  * @param path Full path to file.
@@ -333,15 +395,15 @@ template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint6
  *
  * @test Yes.
  */
-template <bool Append = false, int32_t Mode = 0644, typename T>
-	requires StringableView<T>
-FORCE_INLINE [[nodiscard]] bool SaveStr(std::string_view str, T path);
+template <bool Append = false, int32_t Mode = 0644, typename PathType>
+	requires StringableView<PathType>
+FORCE_INLINE [[nodiscard]] bool SaveStr(std::string_view str, PathType path);
 
 /**************************
  * @brief Read binary data from file.
  *
  * @tparam T Type of object.
- * @tparam S Type of path.
+ * @tparam PathType Type of path.
  *
  * @param ptr Pointer to buffer.
  * @param path Full path to file.
@@ -350,27 +412,30 @@ FORCE_INLINE [[nodiscard]] bool SaveStr(std::string_view str, T path);
  *
  * @test Yes.
  */
-template <typename T, typename S>
-	requires StringableView<S>
-[[nodiscard]] bool ReadBinary(T* object, S path);
+template <typename T, typename PathType>
+	requires StringableView<PathType>
+[[nodiscard]] bool ReadBinary(T* object, PathType path);
 
 /**************************
  * @brief Read array of binary data from file.
+ *
+ * @attention Records are appended to the container one by one. On failure, the container keeps the records read before
+ * the failure.
  *
  * @param container Container for reading data.
  * @param path Full path to file.
  *
  * @tparam T Type of forward container.
  * @tparam S Type of object.
- * @tparam N Type of path.
+ * @tparam PathType Type of path.
  *
  * @return True if read was successful, false otherwise.
  *
  * @test Yes.
  */
-template <template <typename> typename T, typename S, typename N>
-	requires StringableView<N>
-[[nodiscard]] bool ReadBinaries(T<S>& container, N path);
+template <template <typename> typename T, typename S, typename PathType>
+	requires StringableView<PathType>
+[[nodiscard]] bool ReadBinaries(T<S>& container, PathType path);
 
 /**************************
  * @brief Read string until end of the file.
@@ -378,15 +443,15 @@ template <template <typename> typename T, typename S, typename N>
  * @param str String for reading.
  * @param path Full path to file.
  *
- * @tparam T Type of path.
+ * @tparam PathType Type of path.
  *
  * @return True if read was successful, false otherwise.
  *
  * @test Yes.
  */
-template <typename T>
-	requires StringableView<T>
-FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, T path);
+template <typename PathType>
+	requires StringableView<PathType>
+FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, PathType path);
 
 /**************************
  * @brief Remove file or directory with all its content.
@@ -409,16 +474,16 @@ template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(std::str
  * @param from Full path to source file.
  * @param to Full path to file to copy.
  *
- * @tparam T Type of source path.
- * @tparam S Type of destination path.
+ * @tparam SourcePathType Type of source path.
+ * @tparam DestinationPathType Type of destination path.
  *
  * @return True if copying was successful, false otherwise.
  *
  * @test Yes.
  */
-template <typename T, typename S>
-	requires StringableView<T> && StringableView<S>
-[[nodiscard]] bool CopyFile(T from, S to);
+template <typename SourcePathType, typename DestinationPathType>
+	requires StringableView<SourcePathType> && StringableView<DestinationPathType>
+[[nodiscard]] bool CopyFile(SourcePathType from, DestinationPathType to);
 
 /**************************
  * @brief Create directory with all parent directories.
@@ -426,16 +491,16 @@ template <typename T, typename S>
  * @param path Full path to directory.
  *
  * @tparam Mode Directory access mode in octal format, default is 0755.
- * @tparam T Type of path.
+ * @tparam PathType Type of path.
  * @tparam Buffer Size of internal buffer, default is 512.
  *
  * @return True if directory was created, false otherwise.
  *
  * @test Yes.
  */
-template <int32_t Mode = 0755, typename T, uint64_t Buffer = 512>
-	requires StringableView<T>
-FORCE_INLINE [[nodiscard]] bool CreateDir(T path);
+template <int32_t Mode = 0755, typename PathType, uint64_t Buffer = 512>
+	requires StringableView<PathType>
+FORCE_INLINE [[nodiscard]] bool CreateDir(PathType path);
 
 /**************************
  * @brief Linux file types enumeration.
@@ -469,7 +534,7 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileTyp
  *
  * @tparam FT Type of file to search.
  * @tparam T Type of container with strings.
- * @tparam S Type of path or opened directory.
+ * @tparam PathOrDirType Type of path or opened directory.
  *
  * @param container Container to store results.
  * @param pathOrDir Full path for parsing file names or opened directory.
@@ -478,9 +543,9 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileTyp
  *
  * @test Yes.
  */
-template <FileType FT, template <typename> typename T, typename S>
-	requires(StringableView<S> || std::is_same_v<S, DIR*>)
-FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, S pathOrDir);
+template <FileType FT, template <typename> typename T, typename PathOrDirType>
+	requires(StringableView<PathOrDirType> || std::is_same_v<PathOrDirType, DIR*>)
+FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, PathOrDirType pathOrDir);
 
 /*---------------------------------------------------------------------------------
 Definitions
@@ -490,9 +555,9 @@ Definitions
 FileGuard
 ---------------------------------------------------------------------------------*/
 
-template <typename T>
-	requires StringableView<T>
-FORCE_INLINE FileGuard::FileGuard(const T path, const int32_t flags, const int32_t mode) noexcept
+template <typename PathType>
+	requires StringableView<PathType>
+FORCE_INLINE FileGuard::FileGuard(const PathType path, const int32_t flags, const int32_t mode) noexcept
 	: value{ open(CString(path), flags, mode) }
 {
 }
@@ -521,9 +586,9 @@ FORCE_INLINE void FileGuard::Clear()
 DirGuard
 ---------------------------------------------------------------------------------*/
 
-template <typename T>
-	requires StringableView<T>
-FORCE_INLINE DirGuard::DirGuard(const T path) noexcept
+template <typename PathType>
+	requires StringableView<PathType>
+FORCE_INLINE DirGuard::DirGuard(const PathType path) noexcept
 	: value{ opendir(CString(path)) }
 {
 }
@@ -553,9 +618,9 @@ FORCE_INLINE void DirGuard::Clear()
 Global
 ---------------------------------------------------------------------------------*/
 
-template <typename T, typename S>
-	requires StringableView<T> && StringableView<S>
-FORCE_INLINE [[nodiscard]] bool Rename(const T currentName, const S newName)
+template <typename CurrentPathType, typename NewPathType>
+	requires StringableView<CurrentPathType> && StringableView<NewPathType>
+FORCE_INLINE [[nodiscard]] bool Rename(const CurrentPathType currentName, const NewPathType newName)
 {
 	if (rename(CString(currentName), CString(newName)) == 0) [[likely]] {
 		LOG_DEBUG_NEW("Renaming from {} to {} is successful", currentName, newName);
@@ -566,9 +631,9 @@ FORCE_INLINE [[nodiscard]] bool Rename(const T currentName, const S newName)
 	return false;
 }
 
-template <typename T>
-	requires StringableView<T>
-FORCE_INLINE [[nodiscard]] bool HasPath(const T path)
+template <typename PathType>
+	requires StringableView<PathType>
+FORCE_INLINE [[nodiscard]] bool HasPath(const PathType path)
 {
 	if (access(CString(path), F_OK) == 0) [[likely]] {
 		return true;
@@ -595,15 +660,15 @@ consteval int32_t SuggestFlags(const bool append)
 	return flags;
 }
 
-template <bool Append, int32_t Mode, bool Multiple, typename T, typename S>
+template <bool Append, int32_t Mode, bool Multiple, typename T, typename PathType>
 	requires((std::is_pointer_v<std::remove_cvref_t<T>> || std::is_reference_v<T>)
-		&& (std::is_same_v<S, int32_t> || StringableView<S>))
-FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, const S pathOrFd)
+		&& (std::is_same_v<PathType, int32_t> || StringableView<PathType>))
+FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, const PathType pathOrFd)
 {
 	FileGuard fd{};
 	int32_t file;
 
-	if constexpr (StringableView<S>) {
+	if constexpr (StringableView<PathType>) {
 		fd = FileGuard{ pathOrFd, SuggestFlags(Append), Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
@@ -673,14 +738,15 @@ FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, const S pathOrFd)
 	return true;
 }
 
-template <bool Append, int32_t Mode, typename T, typename S>
-	requires(std::forward_iterator<typename T::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>))
-FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const S pathOrFd)
+template <bool Append, int32_t Mode, std::forward_iterator Iterator, std::sentinel_for<Iterator> Sentinel,
+	typename PathType>
+	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+FORCE_INLINE [[nodiscard]] bool SaveBinaries(Iterator begin, const Sentinel end, const PathType pathOrFd)
 {
 	FileGuard fd{};
 	int32_t file;
 
-	if constexpr (StringableView<S>) {
+	if constexpr (StringableView<PathType>) {
 		fd = FileGuard{ pathOrFd, SuggestFlags(Append), Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
@@ -713,16 +779,19 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const S pathOrFd)
 		}
 	}
 
-	uint64_t savedItems{ 0 };
-	for (const auto& item : objects) {
-		if (SaveBinary<append, Mode, multiple>(item, file)) {
+	uint64_t savedItems{};
+	uint64_t totalItems{};
+	for (; begin != end; ++begin) {
+		const auto& item{ *begin };
+		++totalItems;
+		if (SaveBinary<APPEND, Mode, MULTIPLE>(item, file)) {
 			++savedItems;
 		}
 	}
 
-	if (savedItems != objects.size()) [[unlikely]] {
+	if (savedItems != totalItems) [[unlikely]] {
 		LOG_WARNING_NEW(
-			"Saved items {} is not equal to total items {} for file: {}.", savedItems, objects.size(), pathOrFd);
+			"Saved items {} is not equal to total items {} for file: {}.", savedItems, totalItems, pathOrFd);
 		return false;
 	}
 
@@ -730,14 +799,22 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const S pathOrFd)
 	return true;
 }
 
-template <int32_t Mode, typename T, typename S>
-	requires(std::is_same_v<S, int32_t> || StringableView<S>)
-FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd, const int64_t offset)
+template <bool Append, int32_t Mode, typename T, typename PathType>
+	requires(
+		std::forward_iterator<typename T::iterator> && (std::is_same_v<PathType, int32_t> || StringableView<PathType>))
+FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, const PathType pathOrFd)
+{
+	return SaveBinaries<Append, Mode>(objects.begin(), objects.end(), pathOrFd);
+}
+
+template <int32_t Mode, typename T, typename PathType>
+	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const PathType pathOrFd, const int64_t offset)
 {
 	FileGuard fd{};
 	int32_t file;
 
-	if constexpr (StringableView<S>) {
+	if constexpr (StringableView<PathType>) {
 		fd = FileGuard{ pathOrFd, O_RDWR | O_CREAT, Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
@@ -756,7 +833,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const S pathOrFd,
 		return false;
 	}
 
-	return SaveBinary<overwrite, Mode, multiple>(std::forward<T>(object), file);
+	return SaveBinary<OVERWRITE, Mode, MULTIPLE>(std::forward<T>(object), file);
 }
 
 template <typename T, uint64_t PSM>
@@ -810,23 +887,25 @@ consteval uint64_t SuggestPsm()
 	return std::max(PSM, 32ul);
 }
 
-template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, template <typename> typename T, typename TT,
-	typename S>
-	requires(std::forward_iterator<typename T<TT>::iterator> && (std::is_same_v<S, int32_t> || StringableView<S>)
-		&& (std::is_integral_v<TT> || std::is_floating_point_v<TT>))
-[[nodiscard]] bool SavePrimitives(const T<TT>& objects, const S pathOrFd, const char separator)
+template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, std::forward_iterator Iterator,
+	std::sentinel_for<Iterator> Sentinel, typename PathType>
+	requires((std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+		&& (std::is_integral_v<std::iter_value_t<Iterator>> || std::is_floating_point_v<std::iter_value_t<Iterator>>))
+FORCE_INLINE [[nodiscard]] bool SavePrimitives(
+	Iterator begin, const Sentinel end, const PathType pathOrFd, const char separator)
 {
-	constexpr uint64_t suggestedPsm{ SuggestPsm<TT, PSM>() };
+	using Value = std::iter_value_t<Iterator>;
+	constexpr uint64_t suggestedPsm{ SuggestPsm<Value, PSM>() };
 	static_assert(Buffer > suggestedPsm, "Buffer size must be greater than suggestedPsm");
 
-	if (objects.empty()) {
+	if (begin == end) {
 		return true;
 	}
 
 	FileGuard fd{};
 	int32_t file;
 
-	if constexpr (StringableView<S>) {
+	if constexpr (StringableView<PathType>) {
 		fd = FileGuard{ pathOrFd, SuggestFlags(Append), Mode };
 		if (fd.value == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Can't open file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
@@ -854,7 +933,7 @@ template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, template <ty
 			}
 		}
 	}
-	else if constexpr (std::is_same_v<S, int32_t>) {
+	else if constexpr (std::is_same_v<PathType, int32_t>) {
 		if (ftruncate(file, 0) == -1) [[unlikely]] {
 			LOG_ERROR_NEW("Failed to truncate file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
@@ -866,36 +945,35 @@ template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, template <ty
 		}
 	}
 
-	auto begin{ objects.begin() };
-	auto end{ objects.end() };
-
 	char buffer[Buffer];
 	uint64_t offset{};
+	uint64_t savedItems{ 1 };
 	char* writtenEnd;
 
 #define TMP_MSAPI_IO_SAVE_PRIMITIVES                                                                                   \
-	if constexpr (std::is_integral_v<TT>) {                                                                            \
-		writtenEnd = std::format_to(buffer + offset, "{}", *begin);                                                    \
+	if constexpr (std::is_integral_v<Value>) {                                                                         \
+		writtenEnd = std::format_to(buffer + offset, "{}", static_cast<Value>(*begin));                                \
 	}                                                                                                                  \
-	else if constexpr (std::is_floating_point_v<TT>) {                                                                 \
-		if constexpr (std::is_same_v<TT, float>) {                                                                     \
-			writtenEnd = std::format_to(buffer + offset, "{:.9f}", *begin);                                            \
+	else if constexpr (std::is_floating_point_v<Value>) {                                                              \
+		if constexpr (std::is_same_v<Value, float>) {                                                                  \
+			writtenEnd = std::format_to(buffer + offset, "{:.9f}", static_cast<Value>(*begin));                        \
 		}                                                                                                              \
-		else if constexpr (std::is_same_v<TT, double>) {                                                               \
-			writtenEnd = std::format_to(buffer + offset, "{:.17f}", *begin);                                           \
+		else if constexpr (std::is_same_v<Value, double>) {                                                            \
+			writtenEnd = std::format_to(buffer + offset, "{:.17f}", static_cast<Value>(*begin));                       \
 		}                                                                                                              \
 		else {                                                                                                         \
-			writtenEnd = std::format_to(buffer + offset, "{:.21Lf}", *begin);                                          \
+			writtenEnd = std::format_to(buffer + offset, "{:.21Lf}", static_cast<Value>(*begin));                      \
 		}                                                                                                              \
 	}                                                                                                                  \
 	else {                                                                                                             \
-		static_assert(sizeof(TT) + 1 == 0, "Type of object to save must be primitive");                                \
+		static_assert(sizeof(Value) + 1 == 0, "Type of object to save must be primitive");                             \
 	}                                                                                                                  \
 	offset += UINT64(writtenEnd - (buffer + offset));
 
 	TMP_MSAPI_IO_SAVE_PRIMITIVES;
 
 	while (++begin != end) {
+		++savedItems;
 		buffer[offset] = separator;
 		++offset;
 
@@ -924,13 +1002,23 @@ template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, template <ty
 #undef TMP_MSAPI_IO_BUFFER_FLUSH
 #undef TMP_MSAPI_IO_SAVE_PRIMITIVES
 
-	LOG_DEBUG_NEW("Saved file {} with {} items", pathOrFd, objects.size());
+	LOG_DEBUG_NEW("Saved file {} with {} items", pathOrFd, savedItems);
 	return true;
 }
 
-template <bool Append, int32_t Mode, typename T>
-	requires StringableView<T>
-FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const T path)
+template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, template <typename> typename T, typename TT,
+	typename PathType>
+	requires(std::forward_iterator<typename T<TT>::iterator>
+		&& (std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+		&& (std::is_integral_v<TT> || std::is_floating_point_v<TT>))
+[[nodiscard]] bool SavePrimitives(const T<TT>& objects, const PathType pathOrFd, const char separator)
+{
+	return SavePrimitives<Append, Mode, Buffer, PSM>(objects.begin(), objects.end(), pathOrFd, separator);
+}
+
+template <bool Append, int32_t Mode, typename PathType>
+	requires StringableView<PathType>
+FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const PathType path)
 {
 	FileGuard fd{ path, SuggestFlags(Append), Mode };
 
@@ -975,9 +1063,9 @@ FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const T path
 	return true;
 }
 
-template <typename T, typename S>
-	requires StringableView<S>
-[[nodiscard]] bool ReadBinary(T* const object, const S path)
+template <typename T, typename PathType>
+	requires StringableView<PathType>
+[[nodiscard]] bool ReadBinary(T* const object, const PathType path)
 {
 	if (!HasPath(path)) [[unlikely]] {
 		LOG_ERROR_NEW("Can't find file to read data: {}", path);
@@ -1005,9 +1093,9 @@ template <typename T, typename S>
 	return true;
 }
 
-template <template <typename> typename T, typename S, typename N>
-	requires StringableView<N>
-[[nodiscard]] bool ReadBinaries(T<S>& container, const N path)
+template <template <typename> typename T, typename S, typename PathType>
+	requires StringableView<PathType>
+[[nodiscard]] bool ReadBinaries(T<S>& container, const PathType path)
 {
 	if (!HasPath(path)) [[unlikely]] {
 		LOG_ERROR_NEW("Can't find file to read data: {}", path);
@@ -1054,9 +1142,9 @@ template <template <typename> typename T, typename S, typename N>
 	return true;
 }
 
-template <typename T>
-	requires StringableView<T>
-FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, const T path)
+template <typename PathType>
+	requires StringableView<PathType>
+FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, const PathType path)
 {
 	if (!HasPath(path)) [[unlikely]] {
 		LOG_ERROR_NEW("Can't find file to read data: {}", path);
@@ -1083,7 +1171,7 @@ FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, const T path)
 
 	const auto size{ UINT64(st.st_size) };
 	str.resize(size);
-	uint64_t totalRead{ 0 };
+	uint64_t totalRead{};
 	char* const buffer{ str.data() };
 
 	while (totalRead < size) {
@@ -1209,9 +1297,9 @@ template <uint64_t Buffer> FORCE_INLINE [[nodiscard]] bool Remove(const std::str
 	return true;
 }
 
-template <typename T, typename S>
-	requires StringableView<T> && StringableView<S>
-[[nodiscard]] bool CopyFile(const T from, const S to)
+template <typename SourcePathType, typename DestinationPathType>
+	requires StringableView<SourcePathType> && StringableView<DestinationPathType>
+[[nodiscard]] bool CopyFile(const SourcePathType from, const DestinationPathType to)
 {
 	FileGuard fdFrom{ from, O_RDONLY, 0 };
 	if (fdFrom.value == -1) [[unlikely]] {
@@ -1271,9 +1359,9 @@ template <typename T, typename S>
 	return true;
 }
 
-template <int32_t Mode, typename T, uint64_t Buffer>
-	requires StringableView<T>
-FORCE_INLINE [[nodiscard]] bool CreateDir(const T path)
+template <int32_t Mode, typename PathType, uint64_t Buffer>
+	requires StringableView<PathType>
+FORCE_INLINE [[nodiscard]] bool CreateDir(const PathType path)
 {
 	const char* const cpath{ CString(path) };
 	if (cpath == nullptr || cpath[0] == '\0') [[unlikely]] {
@@ -1366,14 +1454,14 @@ FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileTyp
 	}
 }
 
-template <FileType FT, template <typename> typename T, typename S>
-	requires(StringableView<S> || std::is_same_v<S, DIR*>)
-FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S pathOrDir)
+template <FileType FT, template <typename> typename T, typename PathOrDirType>
+	requires(StringableView<PathOrDirType> || std::is_same_v<PathOrDirType, DIR*>)
+FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const PathOrDirType pathOrDir)
 {
 	DirGuard dd;
 	DIR* dirPtr;
 
-	if constexpr (StringableView<S>) {
+	if constexpr (StringableView<PathOrDirType>) {
 		dd = DirGuard{ pathOrDir };
 		dirPtr = dd.value;
 
@@ -1409,7 +1497,7 @@ FORCE_INLINE [[nodiscard]] bool List(T<std::string>& container, const S pathOrDi
 		}
 	}
 
-	if constexpr (std::is_same_v<S, DIR*>) {
+	if constexpr (std::is_same_v<PathOrDirType, DIR*>) {
 		rewinddir(dirPtr);
 	}
 

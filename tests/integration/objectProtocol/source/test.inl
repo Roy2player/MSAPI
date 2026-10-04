@@ -734,7 +734,7 @@ FORCE_INLINE [[nodiscard]] bool ObjectProtocol()
 	// Reopen failed stream and check its state reflection
 	client.Clear();
 	{
-		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ distributor.GetDistributionLock() };
+		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ distributor.GetDistributionLock() };
 
 		RETURN_IF_FALSE(t.Assert(client.GetInstrumentStream().SetConnectionData(clientToDistributorConnectionData),
 			true, "Instrument stream is reassigned to distributor again"));

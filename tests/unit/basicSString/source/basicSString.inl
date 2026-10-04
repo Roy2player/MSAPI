@@ -59,6 +59,8 @@
  * 10. Hash
  * 11. Different capacity comparison
  * 12. Formatter
+ * 13. Clear and Empty
+ * 14. Null terminate
  */
 
 #ifndef MSAPI_UNIT_TEST_BASIC_SSTRING_INL
@@ -518,6 +520,75 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			else {
 				static_assert(sizeof(Type) + 1 == 0, "Unsupported type");
 			}
+		}
+
+		// 13. Clear and Empty
+		{
+			MSAPI::BasicSString<Type, 41> clearedString;
+			const auto* const bufferPtr{ clearedString.GetBuffer() };
+			RETURN_IF_FALSE(t.Assert(clearedString.Empty(), true, "Default string is empty"));
+
+			clearedString.Clear();
+			RETURN_IF_FALSE(t.Assert(clearedString.Empty(), true, "Cleared default string is empty"));
+			RETURN_IF_FALSE(t.Assert(clearedString.GetSize(), 0, "Cleared default string size is expected"));
+
+			clearedString = std::basic_string_view<Type>{ source.data(), 31 };
+			RETURN_IF_FALSE(t.Assert(clearedString.Empty(), false, "Filled string is not empty"));
+
+			clearedString.Clear();
+			RETURN_IF_FALSE(t.Assert(clearedString.Empty(), true, "Cleared string is empty"));
+			RETURN_IF_FALSE(t.Assert(clearedString.GetSize(), 0, "Cleared string size is expected"));
+			RETURN_IF_FALSE(t.Assert(clearedString.Get().size(), 0, "Cleared string view size is expected"));
+			RETURN_IF_FALSE(t.Assert(clearedString.GetCapacity(), 41, "Cleared string capacity is expected"));
+			RETURN_IF_FALSE(t.Assert(clearedString.GetBuffer(), bufferPtr, "Buffer pointer is not changed"));
+
+			clearedString += std::basic_string_view<Type>{ source.data(), 3 };
+			RETURN_IF_FALSE(t.Assert(clearedString.GetSize(), 3, "Append after clear size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(clearedString.Get().data(), source.data(), 3 * sizeof(Type)), 0,
+				"Append after clear content is expected"));
+		}
+
+		// 14. Null terminate
+		{
+			MSAPI::BasicSString<Type, 41> terminatedString;
+			auto* const buffer{ terminatedString.GetBuffer() };
+			for (size_t index{}; index < terminatedString.GetCapacity(); ++index) {
+				buffer[index] = Type{ '1' };
+			}
+
+			RETURN_IF_FALSE(t.Assert(terminatedString.NullTerminate(), true, "Empty string is null terminated"));
+			RETURN_IF_FALSE(
+				t.Assert(buffer[0] == Type{ '\0' }, true, "Empty string null terminator is at first position"));
+			RETURN_IF_FALSE(t.Assert(terminatedString.GetSize(), 0, "Empty string size is not changed"));
+
+			terminatedString = std::basic_string_view<Type>{ source.data(), 3 };
+			RETURN_IF_FALSE(t.Assert(terminatedString.NullTerminate(), true, "String is null terminated"));
+			RETURN_IF_FALSE(
+				t.Assert(buffer[3] == Type{ '\0' }, true, "Null terminator is right after meaningful data"));
+			RETURN_IF_FALSE(t.Assert(buffer[4] == Type{ '1' }, true, "Data after null terminator is not changed"));
+			RETURN_IF_FALSE(t.Assert(terminatedString.GetSize(), 3, "Size is not changed"));
+			RETURN_IF_FALSE(t.Assert(
+				memcmp(terminatedString.Get().data(), source.data(), 3 * sizeof(Type)), 0, "Content is not changed"));
+			RETURN_IF_FALSE(t.Assert(terminatedString.UpdateSize(), 3, "Size update stops at null terminator"));
+
+			terminatedString = std::basic_string_view<Type>{ source.data(), 40 };
+			RETURN_IF_FALSE(
+				t.Assert(terminatedString.NullTerminate(), true, "String is null terminated at last position"));
+			RETURN_IF_FALSE(t.Assert(buffer[40] == Type{ '\0' }, true, "Null terminator is at last position"));
+			RETURN_IF_FALSE(t.Assert(terminatedString.GetSize(), 40, "Size is not changed at last position"));
+
+			for (size_t index{}; index < terminatedString.GetCapacity(); ++index) {
+				buffer[index] = Type{ '1' };
+			}
+			RETURN_IF_FALSE(t.Assert(terminatedString.UpdateSize(), 41, "Full buffer size is expected"));
+			RETURN_IF_FALSE(t.Assert(terminatedString.NullTerminate(), false, "Full string is not null terminated"));
+			RETURN_IF_FALSE(t.Assert(buffer[40] == Type{ '1' }, true, "Full string last character is not changed"));
+			RETURN_IF_FALSE(t.Assert(terminatedString.GetSize(), 41, "Full string size is not changed"));
+
+			terminatedString.Clear();
+			RETURN_IF_FALSE(t.Assert(terminatedString.NullTerminate(), true, "Cleared string is null terminated"));
+			RETURN_IF_FALSE(
+				t.Assert(buffer[0] == Type{ '\0' }, true, "Cleared string null terminator is at first position"));
 		}
 
 		return true;
