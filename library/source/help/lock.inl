@@ -600,9 +600,16 @@ template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMu
 	if (ret != 0) {
 		switch (ret) {
 		case EBUSY: // trywrlock and tryrdlock
-			LOG_DEBUG_NEW("Mutex name \"{}\": The read lock could not be locked because a writer holds the lock, "
-						  "error EBUSY",
-				namedMutex.name);
+			if constexpr (Wr) {
+				LOG_DEBUG_NEW("Mutex name \"{}\": The write lock could not be locked because a reader or a writer "
+							  "holds the lock, error EBUSY",
+					namedMutex.name);
+			}
+			else {
+				LOG_DEBUG_NEW("Mutex name \"{}\": The read lock could not be locked because a writer holds the lock, "
+							  "error EBUSY",
+					namedMutex.name);
+			}
 			return false;
 		case EINVAL: // rdlock, tryrdlock, wrlock and trywrlock
 			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": The value specified by mutex is invalid, error EINVAL");

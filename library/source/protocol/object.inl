@@ -444,6 +444,11 @@ namespace Object {
  * Side: client.
  *
  * @concurrency Yes.
+ *
+ * @purging Streams are stored from assignment until they fail or close. FailStreamsForConnectionId releases all streams
+ * of one connection together with its pending close confirmations, it is not called automatically, so it should be
+ * called on disconnection. A stream closed by the client is moved to close confirmations and released when the
+ * distributor confirms the closure.
  */
 class IHandlerBase {
 private:
@@ -510,7 +515,8 @@ public:
 	virtual void HandleStreamFailed(uint64_t streamId, Issue issue) noexcept = 0;
 
 	/**************************
-	 * @brief Removes all streams related to connection id and call HandleStreamFailed for each.
+	 * @brief Removes all streams related to connection id and calls HandleStreamFailed for each. Drops pending close
+	 * confirmations of the connection, as they cannot be received after the connection is lost.
 	 *
 	 * @param connectionId Connection id.
 	 *
@@ -952,7 +958,12 @@ constexpr static inline bool CLEANUP_OUTSIDE{ false };
  *
  * @tparam FObjects Types of filters which distributor can handle.
  *
- * @concurency Yes.
+ * @concurrency Yes.
+ *
+ * @purging Streams are stored from opening until they are closed by the client, removed on a sending error, or released
+ * by ClearActiveStreamsForConnectionId for one connection. That call is not made automatically, so it should be called
+ * on disconnection. Stop fails and releases all streams together with the per-object-hash containers, which are
+ * otherwise kept for the distributor lifetime. The destructor calls Stop.
  *
  * @todo Currently only one filter type is supported for one stream, need to support multiple filters with different
  * logical operations.
@@ -1166,6 +1177,8 @@ private:
 	 * @brief Contains all streams data for particular stream object hash.
 	 *
 	 * @concurrency Yes.
+	 *
+	 * @purging RemoveStream releases one stream. The object itself is released only by Distributor::Stop.
 	 */
 	class Streams {
 	private:
@@ -1687,21 +1700,24 @@ FORCE_INLINE void IHandlerBase::FailStreamsForConnectionId(const uint64_t connec
 		}
 	}
 
-	if (streamKeys.empty()) {
-		return;
+	const bool hasStreams{ !streamKeys.empty() };
+	auto size{ streamKeys.size() };
+	if (hasStreams) {
+		LOG_PROTOCOL_NEW("Client starts failing {} stream(s) for connection id: {}", size, connectionId);
 	}
 
-	auto size{ streamKeys.size() };
-	LOG_PROTOCOL_NEW("Client starts failing {} stream(s) for connection id: {}", size, connectionId);
-
+	uint64_t droppedConfirmations [[indeterminate]];
 	{
 		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamLock };
 
+		// Closure confirmations cannot be received after the connection is lost
+		droppedConfirmations = std::erase_if(m_closeConfirmation,
+			[connectionId](const StreamConnectionId& key) { return key.GetConnectionId() == connectionId; });
+
+		// Streams closed or reassigned after collection are not failed
 		for (size_t index{}; index < size;) {
-			const auto key{ streamKeys[index] };
-			const auto it{ m_streamConnectionIdToStream.find(key) };
+			const auto it{ m_streamConnectionIdToStream.find(streamKeys[index]) };
 			if (it == m_streamConnectionIdToStream.end()) {
-				m_closeConfirmation.erase(key);
 				streamKeys[index] = std::move(streamKeys.back());
 				--size;
 				continue;
@@ -1710,6 +1726,15 @@ FORCE_INLINE void IHandlerBase::FailStreamsForConnectionId(const uint64_t connec
 			m_streamConnectionIdToStream.erase(it);
 			++index;
 		}
+	}
+
+	if (droppedConfirmations > 0) {
+		LOG_PROTOCOL_NEW("Client dropped {} pending close confirmation(s) for connection id: {}", droppedConfirmations,
+			connectionId);
+	}
+
+	if (!hasStreams) {
+		return;
 	}
 
 	if (size == 0) [[unlikely]] {

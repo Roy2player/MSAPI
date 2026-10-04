@@ -50,6 +50,10 @@ Declarations
  *
  * @concurrency Yes. Internally locking methods must not be called while holding GetLock. Destruction requires
  * all callers and guards to have finished.
+ *
+ * @purging Objects accumulate in memory through EmplaceBack and Load and are never released automatically. Clear
+ * empties the container and makes the next Save rewrite the data file with the objects stored by then, so objects
+ * cleared from memory are also removed from the data file.
  */
 template <template <typename> typename Container, typename Type>
 	requires std::is_trivially_copyable_v<Type>

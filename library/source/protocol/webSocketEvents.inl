@@ -360,6 +360,12 @@ concept DataT = std::is_same_v<std::string_view, T> || std::is_convertible_v<T, 
  * @tparam EventType Type of the distributed events.
  * @tparam Filter Type of the filter.
  * @tparam Impl Type with Handle implementation.
+ *
+ * @purging Events accumulate per connection and filter until they are answered, interrupted by the client, or purged.
+ * Each connection is limited separately by its EventsData: when the limit is exceeded, the oldest events are purged in
+ * a bunch sized by the purging coefficient. FailActiveEvents fails and releases events of all connections,
+ * ClearActiveEventsForConnectionId releases all events of one connection without failing them. Events of a closed
+ * connection are not released automatically, so ClearActiveEventsForConnectionId should be called on disconnection.
  */
 template <typename Module, typename EventType, typename Filter, typename Impl> class Distributor {
 public:
@@ -369,6 +375,10 @@ public:
 
 	/**************************
 	 * @brief Events under same filter.
+	 *
+	 * @purging EraseEvent, EraseEventsByTimestamps, EraseEvents, and FailEvents release events and decrease the stored
+	 * events size of the owning EventsData. The emptied object stays in EventsData until FailActiveEvents or release of
+	 * the whole EventsData.
 	 */
 	class Events {
 	private:
@@ -469,8 +479,13 @@ public:
 	};
 
 	/**************************
-	 * @brief Collection of events by their filter under same connection id, controls events limit Default events size
+	 * @brief Collection of events by their filter under same connection id, controls events limit. Default events size
 	 * limit is 1024 and purging coefficient is 30%.
+	 *
+	 * @purging CheckLimitAndPurge releases the oldest events when the stored size exceeds the limit, in a bunch of the
+	 * exceeding size plus the limit multiplied by the purging coefficient. If stored events are fewer than expected,
+	 * all events are failed and released. FailActiveEvents fails and releases all events together with their per-filter
+	 * containers. EraseEventsByFilter and EraseEvent release events but keep the per-filter containers.
 	 */
 	class EventsData {
 	private:
@@ -506,8 +521,8 @@ public:
 		/**************************
 		 * @todo Add static asserts in future test.
 		 */
-		static constexpr inline bool lookup{ true };
-		static constexpr inline bool create{ false };
+		static constexpr inline bool LOOKUP{ true };
+		static constexpr inline bool CREATE{ false };
 
 		/**************************
 		 * @attention Read locks structure. Write locks structure and create new events structure for filter if does not
@@ -793,6 +808,9 @@ public:
  * @brief Distributor of single events.
  *
  * @tparam Module Type of the authorization module.
+ *
+ * @purging Only delayed single events are stored. Each one is released when CheckDelayed sends data for its filter
+ * successfully, when the client interrupts it, or by the base distributor purging.
  */
 template <typename Module>
 class SinglesDistributor : public Distributor<Module, Single, IdentityFilter, SinglesDistributor<Module>> {
@@ -846,6 +864,9 @@ private:
  * @brief Distributor of stream events.
  *
  * @tparam Module Type of the authorization module.
+ *
+ * @purging Each accepted stream event is stored and is not released by sending data. It is released when the client
+ * interrupts it or by the base distributor purging.
  */
 template <typename Module>
 class StreamsDistributor : public Distributor<Module, Stream, IdentityFilter, StreamsDistributor<Module>> {
@@ -1678,7 +1699,7 @@ Distributor<Module, EventType, Filter, Impl>::GetEventsArray(const filter_t& fil
 	std::vector<std::shared_ptr<Events>> eventsArray;
 	const Lock::AtomicRW::Guard<Lock::READ> _{ m_connectionToEventsDataLock };
 	for (const auto& [connectionId, eventsData] : m_connectionIdToEventsData) {
-		events = eventsData->template GetEvents<EventsData::lookup>(filter);
+		events = eventsData->template GetEvents<EventsData::LOOKUP>(filter);
 		if (events.get()) {
 			// Interraction with events is required locking, same as for checking on empty
 			// That is worth to lock once at the usage cycle
@@ -1753,7 +1774,7 @@ FORCE_INLINE void SinglesDistributor<Module>::Handle(const uint64_t id, const ui
 	case HandleResult::Delay: {
 		const std::shared_ptr<typename base_t::EventsData> eventsData{ this->GetEventsData(connectionId) };
 		const std::shared_ptr<typename base_t::Events> events{
-			eventsData->template GetEvents<base_t::EventsData::create>(
+			eventsData->template GetEvents<base_t::EventsData::CREATE>(
 				typename base_t::filter_t{ hash, std::move(filter) })
 		};
 
@@ -1794,7 +1815,7 @@ FORCE_INLINE void StreamsDistributor<Module>::Handle(const uint64_t id, const ui
 		stream->SendState(Stream::State::Opened);
 		const std::shared_ptr<typename base_t::EventsData> eventsData{ this->GetEventsData(connectionId) };
 		const std::shared_ptr<typename base_t::Events> events{
-			eventsData->template GetEvents<base_t::EventsData::create>(
+			eventsData->template GetEvents<base_t::EventsData::CREATE>(
 				typename base_t::filter_t{ hash, std::move(filter) })
 		};
 		events->AddEvent(stream);

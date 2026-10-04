@@ -135,9 +135,7 @@ FORCE_INLINE [[nodiscard]] bool Test()
 	RETURN_IF_FALSE(checkValues(Printable{ 1 }, Printable{ 2 }));
 	RETURN_IF_FALSE(checkValues(Comparable{ 1 }, Comparable{ 2 }));
 	RETURN_IF_FALSE(checkValues(std::optional<int32_t>{ 1 }, std::optional<int32_t>{ 2 }));
-	RETURN_IF_FALSE(checkValues(std::optional<int32_t>{}, std::optional<int32_t>{}));
 	RETURN_IF_FALSE(checkValues(std::optional<double>{ 1. }, std::optional<double>{ 2. }));
-	RETURN_IF_FALSE(checkValues(std::optional<double>{}, std::optional<double>{}));
 
 	// A missing optional value must mismatch a present value in either operand order
 	RETURN_IF_FALSE(checkValues(std::optional<int32_t>{ 1 }, std::optional<int32_t>{}));

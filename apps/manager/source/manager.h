@@ -595,7 +595,7 @@ private:
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
-		MSAPI::Protocol::Standard::Data parametersUpdate{ MSAPI::Protocol::Standard::cipherActionModify };
+		MSAPI::Protocol::Standard::Data parametersUpdate{ MSAPI::Protocol::Standard::CIPHER_ACTION_MODIFY };
 		size_t key;
 		for (const auto& [keyStr, node] : parameters->GetKeysAndValues()) {
 			const auto error{ std::from_chars(keyStr.data(), keyStr.data() + keyStr.size(), key).ec };

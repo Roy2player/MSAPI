@@ -48,7 +48,7 @@ namespace HTTP {
  */
 class Data {
 private:
-	static inline constexpr std::string_view m_webSocketGUID{ "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" };
+	static inline constexpr std::string_view WEB_SOCKET_GUID{ "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" };
 	std::map<std::string, std::string, std::less<>> m_headersMap;
 	std::string m_messageType;
 	std::string m_url;
