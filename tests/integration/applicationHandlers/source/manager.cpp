@@ -176,7 +176,7 @@ void Manager::SendMetadataResponse()
 
 	const std::string metadata{ "{\"metadata\":true}" };
 
-	MSAPI::Protocol::Standard::Data metadataData{ MSAPI::Protocol::Standard::cipherMetadataResponse };
+	MSAPI::Protocol::Standard::Data metadataData{ MSAPI::Protocol::Standard::CIPHER_METADATA_RESPONSE };
 	metadataData.SetData(0, metadata);
 	MSAPI::Protocol::Standard::Send(m_activeConnection->GetConnection(), metadataData);
 }
@@ -188,7 +188,7 @@ void Manager::SendParametersResponse()
 		return;
 	}
 
-	MSAPI::Protocol::Standard::Data data{ MSAPI::Protocol::Standard::cipherParametersResponse };
+	MSAPI::Protocol::Standard::Data data{ MSAPI::Protocol::Standard::CIPHER_PARAMETERS_RESPONSE };
 	data.SetData(505050, 960.960964);
 	MSAPI::Protocol::Standard::Send(m_activeConnection->GetConnection(), data);
 }

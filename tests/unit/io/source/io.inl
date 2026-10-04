@@ -21,6 +21,10 @@
 
 #include "../../../../library/source/help/io.inl"
 #include "../../../../library/source/test/test.inl"
+#include <array>
+#include <forward_list>
+#include <list>
+#include <ranges>
 
 namespace MSAPI {
 
@@ -45,11 +49,11 @@ Definitions
 
 FORCE_INLINE [[nodiscard]] bool Io()
 {
-	static_assert(IO::append, "Append global is true");
-	static_assert(!IO::overwrite, "Overwrite global is false");
+	static_assert(IO::APPEND, "Append global is true");
+	static_assert(!IO::OVERWRITE, "Overwrite global is false");
 
-	static_assert(IO::multiple, "Multiple global is true");
-	static_assert(!IO::single, "Single global is false");
+	static_assert(IO::MULTIPLE, "Multiple global is true");
+	static_assert(!IO::SINGLE, "Single global is false");
 
 	static_assert(IO::SuggestFlags(true) == (O_WRONLY | O_CREAT | O_APPEND), "SuggestFlags true failed");
 	static_assert(IO::SuggestFlags(false) == (O_WRONLY | O_CREAT | O_TRUNC), "SuggestFlags false failed");
@@ -141,7 +145,7 @@ FORCE_INLINE [[nodiscard]] bool Io()
 		RETURN_IF_FALSE(t.Assert(readData, testData, "Read data should be equal to saved data"));
 
 		RETURN_IF_FALSE(
-			t.Assert(IO::SaveStr<IO::append>("2 Some test data is here", path1V), true, "Overwrite str to file"));
+			t.Assert(IO::SaveStr<IO::APPEND>("2 Some test data is here", path1V), true, "Overwrite str to file"));
 		testData += "\n2 Some test data is here";
 		RETURN_IF_FALSE(t.Assert(IO::ReadStr(readData, path1V), true, "Read str from file"));
 		RETURN_IF_FALSE(t.Assert(readData, testData, "Read data should be equal to saved data"));
@@ -274,7 +278,7 @@ FORCE_INLINE [[nodiscard]] bool Io()
 			RETURN_IF_FALSE(t.Assert(readData, testData, "Read data should be equal to saved data"));
 
 			constexpr std::string_view sectionSeparator{ "==================================================" };
-			RETURN_IF_FALSE(t.Assert(IO::SaveStr<IO::append>(sectionSeparator, pathPrimitivesV), true,
+			RETURN_IF_FALSE(t.Assert(IO::SaveStr<IO::APPEND>(sectionSeparator, pathPrimitivesV), true,
 				"Overwrite primitives file with some other data"));
 			std::format_to(std::back_inserter(testData), "\n{}", sectionSeparator);
 
@@ -286,13 +290,13 @@ FORCE_INLINE [[nodiscard]] bool Io()
 			RETURN_IF_FALSE(
 				t.Assert(readData, testData, "Read data from copied primitives file should be equal to saved data"));
 
-			RETURN_IF_FALSE(t.Assert(IO::SaveStr<IO::append>(readData, pathPrimitivesV), true,
+			RETURN_IF_FALSE(t.Assert(IO::SaveStr<IO::APPEND>(readData, pathPrimitivesV), true,
 				"Append copied primitives data to original primitives file"));
 			std::format_to(std::back_inserter(testData), "\n{}", readData);
 			RETURN_IF_FALSE(t.Assert(IO::ReadStr(readData, pathPrimitivesV), true, "Read str from primitives file"));
 			RETURN_IF_FALSE(t.Assert(readData, testData, "Read data should be equal to saved data"));
 
-			RETURN_IF_FALSE(t.Assert(IO::SavePrimitives<IO::append>(data, pathPrimitivesV, ','), true,
+			RETURN_IF_FALSE(t.Assert(IO::SavePrimitives<IO::APPEND>(data, pathPrimitivesV, ','), true,
 				"Append primitives to primitives file"));
 			std::format_to(std::back_inserter(testData), "\n{}", testDataCopy);
 			RETURN_IF_FALSE(t.Assert(IO::ReadStr(readData, pathPrimitivesV), true, "Read str from primitives file"));
@@ -302,6 +306,12 @@ FORCE_INLINE [[nodiscard]] bool Io()
 				t.Assert(IO::SavePrimitives(data, pathPrimitivesV, ','), true, "Overwrite primitives file"));
 			RETURN_IF_FALSE(t.Assert(IO::ReadStr(readData, pathPrimitivesV), true, "Read str from primitives file"));
 			RETURN_IF_FALSE(t.Assert(readData, testDataCopy, "Read data should be equal to saved data"));
+
+			// Iterator pairs preserve whole-container formatting without changing the existing save interface.
+			RETURN_IF_FALSE(t.Assert(IO::SavePrimitives(data.cbegin(), data.cend(), pathPrimitivesV, ','), true,
+				"Save primitive iterator range"));
+			RETURN_IF_FALSE(t.Assert(IO::ReadStr(readData, pathPrimitivesV), true, "Read primitive iterator range"));
+			RETURN_IF_FALSE(t.Assert(readData, testDataCopy, "Primitive iterator formatting matches container"));
 
 			testData.clear();
 			std::format_to(std::back_inserter(testData), "{}", _S(dataD[0]));
@@ -459,13 +469,13 @@ FORCE_INLINE [[nodiscard]] bool Io()
 			RETURN_IF_FALSE(t.Assert(o2, o1, "Read struct should be equal to saved struct"));
 			TestStruct o3{};
 			RETURN_IF_FALSE(
-				t.Assert(IO::SaveBinary<IO::append>(&o3, o3PathOrFd), true, "Save binary struct in append mode"));
+				t.Assert(IO::SaveBinary<IO::APPEND>(&o3, o3PathOrFd), true, "Save binary struct in append mode"));
 			RETURN_IF_FALSE(t.Assert(IO::ReadBinary(&o2, o3Path), true, "Read binary struct from append file"));
 			RETURN_IF_FALSE(t.Assert(o2, o3, "Read struct from append file should be equal to saved struct"));
 			vec.push_back(o3);
 			vec.push_back(o3);
 			RETURN_IF_FALSE(
-				t.Assert(IO::SaveBinary<IO::append>(&o3, o3PathOrFd), true, "Save binary struct in append mode"));
+				t.Assert(IO::SaveBinary<IO::APPEND>(&o3, o3PathOrFd), true, "Save binary struct in append mode"));
 			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(vecRead, o3Path), true, "Read binaries from append file"));
 			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Read structs from append file should be equal to saved structs"));
 			vec.erase(vec.end() - 1);
@@ -485,7 +495,14 @@ FORCE_INLINE [[nodiscard]] bool Io()
 			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(vecRead, vecPath), true, "Read binaries"));
 			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Read binaries should be equal to saved binaries"));
 
-			for (uint64_t i{ 0 }; i < vec.size(); i += 256) {
+			// Iterator pairs preserve the same binary format for paths and open descriptors.
+			RETURN_IF_FALSE(
+				t.Assert(IO::SaveBinaries(vec.cbegin(), vec.cend(), vecPathOrFd), true, "Save binary iterator range"));
+			vecRead.clear();
+			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(vecRead, vecPath), true, "Read binary iterator range"));
+			RETURN_IF_FALSE(t.Assert(vecRead == vec, true, "Binary iterator format matches container"));
+
+			for (uint64_t i{}; i < vec.size(); i += 256) {
 				using S = typename decltype(vec)::value_type;
 				S v{};
 				vec[i] = v;
@@ -605,6 +622,168 @@ FORCE_INLINE [[nodiscard]] bool Io()
 		std::set<TestStruct> setRead;
 		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(setRead, pathSetV), true, "Read binaries to set"));
 		RETURN_IF_FALSE(t.Assert(setRead, set, "Read set should be equal to saved set"));
+	}
+
+	{
+		// Half-open binary ranges exclude surrounding elements and retain append/overwrite semantics.
+		const std::array<int32_t, 5> values{ 11, 22, 33, 44, 55 };
+		const std::vector<int32_t> selected{ 22, 33, 44 };
+		const auto rangePath{ path + "binaryRanges" };
+		std::vector<int32_t> actual;
+
+		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries(values.data() + 1, values.data() + 4, rangePath.c_str()), true,
+			"Save raw-pointer binary subrange"));
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, rangePath.c_str()), true, "Read binary subrange"));
+		RETURN_IF_FALSE(t.Assert(actual == selected, true, "Binary subrange excludes endpoints"));
+		RETURN_IF_FALSE(
+			t.Assert(IO::SaveBinaries<IO::APPEND>(values.cbegin() + 1, values.cbegin() + 4, rangePath.c_str()), true,
+				"Append binary const-iterator subrange"));
+		actual.clear();
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, rangePath.c_str()), true, "Read appended binary range"));
+		RETURN_IF_FALSE(t.Assert(actual == std::vector<int32_t>{ 22, 33, 44, 22, 33, 44 }, true,
+			"Appended binary ranges contain only selected records"));
+
+		// Forward-only and distinct-sentinel ranges use the same interface.
+		const std::forward_list<int32_t> linked{ 11, 22, 33, 44, 55 };
+		RETURN_IF_FALSE(
+			t.Assert(IO::SaveBinaries(std::next(linked.cbegin()), std::next(linked.cbegin(), 4), rangePath.c_str()),
+				true, "Save forward-only binary subrange"));
+		actual.clear();
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, rangePath.c_str()), true, "Read forward-only records"));
+		RETURN_IF_FALSE(t.Assert(actual == selected, true, "Forward-only binary payloads"));
+		RETURN_IF_FALSE(t.Assert(
+			IO::SaveBinaries(std::counted_iterator{ values.data() + 1, 3 }, std::default_sentinel, rangePath.c_str()),
+			true, "Save binary distinct sentinel"));
+		actual.clear();
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, rangePath.c_str()), true, "Read distinct-sentinel records"));
+		RETURN_IF_FALSE(t.Assert(actual == selected, true, "Distinct-sentinel binary payloads"));
+
+		// Lazy values and pointer records serialize payload bytes, not adapters or addresses.
+		int64_t predicateCalls{};
+		auto filtered{ values | std::views::filter([&predicateCalls](const int32_t value) {
+			++predicateCalls;
+			return value % 22 == 0;
+		}) | std::views::transform([](const int32_t value) { return value * 10; }) };
+
+		RETURN_IF_FALSE(t.Assert(
+			IO::SaveBinaries(filtered.begin(), filtered.end(), rangePath.c_str()), true, "Save lazy binary range"));
+		RETURN_IF_FALSE(t.Assert(predicateCalls, values.size(), "Binary iterator save evaluates filter once"));
+		actual.clear();
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, rangePath.c_str()), true, "Read lazy binary payloads"));
+		RETURN_IF_FALSE(t.Assert(actual == std::vector<int32_t>{ 220, 440 }, true, "Lazy binary selection"));
+		const std::array<const int32_t*, 3> pointers{ &values[1], &values[2], &values[3] };
+		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries(pointers.cbegin(), pointers.cend(), rangePath.c_str()), true,
+			"Save pointer-record iterator range"));
+		actual.clear();
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, rangePath.c_str()), true, "Read pointed-to records"));
+		RETURN_IF_FALSE(t.Assert(actual == selected, true, "Pointer records contain payloads"));
+		RETURN_IF_FALSE(t.Assert(IO::ReadStr(testData, rangePath.c_str()), true, "Snapshot pointer record bytes"));
+		RETURN_IF_FALSE(t.Assert(testData.size(), selected.size() * sizeof(int32_t), "Range binary record size"));
+		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries<IO::APPEND>(values.begin(), values.begin(), rangePath.c_str()), true,
+			"Empty binary append"));
+		RETURN_IF_FALSE(t.Assert(IO::ReadStr(readData, rangePath.c_str()), true, "Read empty binary append"));
+		RETURN_IF_FALSE(t.Assert(readData, testData, "Empty binary append preserves bytes"));
+		RETURN_IF_FALSE(t.Assert(
+			IO::SaveBinaries(values.begin(), values.begin(), rangePath.c_str()), true, "Empty binary overwrite"));
+		RETURN_IF_FALSE(t.Assert(IO::ReadStr(readData, rangePath.c_str()), true, "Read empty binary overwrite"));
+		RETURN_IF_FALSE(t.Assert(readData.empty(), true, "Empty binary overwrite truncates"));
+
+		// Descriptor ranges honor modes without taking ownership of the caller's descriptor.
+		IO::FileGuard file{ rangePath.c_str(), O_RDWR | O_CREAT, 0644 };
+		RETURN_IF_FALSE(t.Assert(file.value != -1, true, "Open binary range descriptor"));
+		RETURN_IF_FALSE(t.Assert(
+			IO::SaveBinaries(values.begin(), values.end(), file.value), true, "Save full binary descriptor range"));
+		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries(values.begin() + 1, values.begin() + 2, file.value), true,
+			"Overwrite binary descriptor with shorter range"));
+		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries<IO::APPEND>(values.begin() + 2, values.begin() + 4, file.value), true,
+			"Append binary descriptor range"));
+		actual.clear();
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, rangePath.c_str()), true, "Read descriptor range modes"));
+		RETURN_IF_FALSE(t.Assert(actual == selected, true, "Binary descriptor overwrite and append"));
+		RETURN_IF_FALSE(t.Assert(fcntl(file.value, F_GETFD) != -1, true, "Binary range descriptor remains open"));
+		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries(values.begin(), values.end(), int32_t{ -1 }), false,
+			"Binary range rejects invalid descriptor"));
+		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries(values.begin(), values.end(), (path + "missing/range").c_str()),
+			false, "Binary range rejects missing parent"));
+	}
+
+	{
+		// Compare iterator formatting with the unchanged container overload across primitive types and iterators.
+		const auto testPrimitiveRange{ [&t, &path](auto& values, const std::string_view name) -> bool {
+			using Value = typename std::remove_cvref_t<decltype(values)>::value_type;
+			const auto rangePath{ path + std::string{ name } };
+			const auto expectedPath{ rangePath + "Expected" };
+			const auto begin{ std::next(values.begin()) };
+			const auto end{ std::next(values.begin(), 4) };
+			const std::vector<Value> selected{ begin, end };
+			std::string expected;
+			std::string actual;
+
+			RETURN_IF_FALSE(t.Assert(
+				IO::SavePrimitives(selected, expectedPath.c_str(), ';'), true, "Save primitive range baseline"));
+			RETURN_IF_FALSE(t.Assert(IO::ReadStr(expected, expectedPath.c_str()), true, "Read primitive baseline"));
+			RETURN_IF_FALSE(
+				t.Assert(IO::SavePrimitives<IO::OVERWRITE, 0644, 64, 32>(begin, end, rangePath.c_str(), ';'), true,
+					"Save primitive subrange with custom buffer"));
+			RETURN_IF_FALSE(t.Assert(IO::ReadStr(actual, rangePath.c_str()), true, "Read primitive subrange"));
+			RETURN_IF_FALSE(t.Assert(actual, expected, "Primitive subrange matches container format"));
+			RETURN_IF_FALSE(t.Assert(
+				IO::SavePrimitives(std::counted_iterator{ begin, 3 }, std::default_sentinel, rangePath.c_str(), ';'),
+				true, "Save primitive distinct sentinel"));
+			RETURN_IF_FALSE(t.Assert(IO::ReadStr(actual, rangePath.c_str()), true, "Read primitive sentinel range"));
+			RETURN_IF_FALSE(t.Assert(actual, expected, "Primitive sentinel matches container format"));
+
+			IO::FileGuard file{ rangePath.c_str(), O_RDWR | O_CREAT, 0644 };
+			RETURN_IF_FALSE(t.Assert(file.value != -1, true, "Open primitive range descriptor"));
+			RETURN_IF_FALSE(t.Assert(
+				IO::SavePrimitives(begin, end, file.value, ';'), true, "Overwrite primitive descriptor range"));
+			RETURN_IF_FALSE(t.Assert(IO::SavePrimitives<IO::APPEND>(begin, end, file.value, ';'), true,
+				"Append primitive descriptor range"));
+			RETURN_IF_FALSE(t.Assert(IO::ReadStr(actual, rangePath.c_str()), true, "Read primitive descriptor modes"));
+			RETURN_IF_FALSE(t.Assert(actual, expected + "\n" + expected, "Primitive descriptor append newline"));
+			RETURN_IF_FALSE(t.Assert(IO::SavePrimitives<IO::APPEND>(begin, end, rangePath.c_str(), ';'), true,
+				"Append primitive path range"));
+			RETURN_IF_FALSE(t.Assert(IO::ReadStr(actual, rangePath.c_str()), true, "Read primitive path append"));
+			RETURN_IF_FALSE(
+				t.Assert(actual, expected + "\n" + expected + "\n" + expected, "Primitive path append newline"));
+			RETURN_IF_FALSE(t.Assert(
+				IO::SavePrimitives(begin, end, rangePath.c_str(), ';'), true, "Overwrite shorter primitive range"));
+			RETURN_IF_FALSE(t.Assert(IO::SavePrimitives(begin, begin, file.value, ';'), true,
+				"Empty primitive descriptor overwrite is a no-op"));
+			RETURN_IF_FALSE(t.Assert(IO::SavePrimitives<IO::APPEND>(begin, begin, rangePath.c_str(), ';'), true,
+				"Empty primitive path append is a no-op"));
+			RETURN_IF_FALSE(
+				t.Assert(IO::ReadStr(actual, rangePath.c_str()), true, "Read after empty primitive ranges"));
+			RETURN_IF_FALSE(t.Assert(actual, expected, "Empty primitive ranges preserve bytes"));
+
+			const auto absentPath{ rangePath + "Empty" };
+			RETURN_IF_FALSE(t.Assert(IO::SavePrimitives(begin, begin, absentPath.c_str(), ';'), true,
+				"Empty primitive range succeeds without file creation"));
+			RETURN_IF_FALSE(t.Assert(IO::HasPath(absentPath.c_str()), false, "Empty primitive range creates no file"));
+			RETURN_IF_FALSE(t.Assert(fcntl(file.value, F_GETFD) != -1, true, "Primitive descriptor remains open"));
+			RETURN_IF_FALSE(t.Assert(IO::SavePrimitives(begin, end, int32_t{ -1 }, ';'), false,
+				"Primitive range rejects invalid descriptor"));
+
+			return true;
+		} };
+
+		std::array<int32_t, 5> integers{ -10, -2, 0, 7, 99 };
+		RETURN_IF_FALSE(testPrimitiveRange(integers, "rangeInt"));
+
+		std::list<double> doubles{ -10., -1. / 7., 0., 2. / 3., 99. };
+		RETURN_IF_FALSE(testPrimitiveRange(doubles, "rangeDouble"));
+
+		std::forward_list<float> floats{ -10.f, -1.f / 7.f, 0.f, 2.f / 3.f, 99.f };
+		RETURN_IF_FALSE(testPrimitiveRange(floats, "rangeFloat"));
+
+		std::array<long double, 5> longDoubles{ -10.L, -1.L / 7.L, 0.L, 2.L / 3.L, 99.L };
+		RETURN_IF_FALSE(testPrimitiveRange(longDoubles, "rangeLongDouble"));
+
+		std::vector<bool> bits{ true, false, true, false, true };
+		RETURN_IF_FALSE(testPrimitiveRange(bits, "rangeBoolProxy"));
+
+		std::array<char, 5> characters{ 'a', 'b', 'c', 'd', 'e' };
+		RETURN_IF_FALSE(testPrimitiveRange(characters, "rangeChar"));
 	}
 
 	{

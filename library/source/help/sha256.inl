@@ -59,8 +59,8 @@ public:
 	 */
 	FORCE_INLINE void Update(std::span<const uint8_t> data) noexcept;
 
-	static constexpr inline bool reset{ true };
-	static constexpr inline bool doNotReset{ false };
+	static constexpr inline bool RESET{ true };
+	static constexpr inline bool DO_NOT_RESET{ false };
 
 	/**************************
 	 * @brief Finalize the hash and return the 32-byte digest.

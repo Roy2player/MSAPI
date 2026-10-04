@@ -432,6 +432,12 @@ FORCE_INLINE void Send(Connection& connection, const Data& data);
  * - Ping messages are answered back with same data and opposite masking policy.
  *
  * Use MSAPI_HANDLER_WEBSOCKET_PRESET macro to reserve and collect WebSocket message.
+ *
+ * @purging Fragments of continuation messages accumulate per connection until the message is completed. They are purged
+ * automatically in FIFO order when the fragmented data limit is exceeded or reduced by SetFragmentedDataLimit, and
+ * fragments stored for a connection are purged when it sends a new initial fragment. Clear releases all stored
+ * fragments and counters, ClearConnection releases fragments of one connection. Fragments of a closed connection are
+ * not released automatically, so ClearConnection should be called on disconnection.
  */
 class IHandler {
 public:

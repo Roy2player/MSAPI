@@ -654,7 +654,7 @@ FORCE_INLINE [[nodiscard]] bool Account<G>::IsLogonAllowed(
 	hash.Update(std::span<const uint8_t>{ reinterpret_cast<const uint8_t*>(password.data()), password.size() });
 
 	// Password verification uses memcmp which is not timing-safe and could be vulnerable to timing attacks
-	if (memcmp(hash.Final<Sha256::doNotReset>().data(), m_password, PASSWORD_HASH_SIZE) != 0) {
+	if (memcmp(hash.Final<Sha256::DO_NOT_RESET>().data(), m_password, PASSWORD_HASH_SIZE) != 0) {
 		error = "Invalid login or password";
 		return false;
 	}
@@ -710,7 +710,7 @@ template <Gradable G>
 	Sha256 hash;
 	hash.Update(std::span<const uint8_t>{ m_salt, SALT_SIZE });
 	hash.Update(std::span<const uint8_t>{ reinterpret_cast<const uint8_t*>(newPassword.data()), newPassword.size() });
-	const auto digits{ hash.Final<Sha256::doNotReset>() };
+	const auto digits{ hash.Final<Sha256::DO_NOT_RESET>() };
 
 	if (memcmp(m_password, digits.data(), PASSWORD_HASH_SIZE) == 0) {
 		return false;
@@ -787,7 +787,7 @@ FORCE_INLINE Module<A, G>::AccountData& Module<A, G>::AccountData::operator=(Acc
 
 template <Accountable A, Gradable G> FORCE_INLINE Module<A, G>::AccountData::~AccountData() noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::write> _{ *m_rwLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ *m_rwLock };
 }
 
 template <Accountable A, Gradable G> FORCE_INLINE A& Module<A, G>::AccountData::GetAccount() noexcept
@@ -857,7 +857,7 @@ template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G
 	}
 
 	LOG_DEBUG("Starting authorization module");
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_loginHashToAccountDataLock };
 	if (m_dataPath.empty()) {
 		m_dataPath.resize(512);
 		Helper::GetExecutableDir(m_dataPath);
@@ -925,8 +925,8 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::Stop()
 	LOG_DEBUG("Stopping authorization module");
 	m_logoutEvent.Stop();
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_loginHashToAccountDataLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_logonConnectionIdToAccountDataLock };
 	const Timer timestamp{};
 
 	for (auto& [connectionId, accountData] : m_logonConnectionIdToAccountData) {
@@ -1002,7 +1002,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::RegisterAccount(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	typename std::unordered_map<uint64_t, std::shared_ptr<AccountData>>::iterator loginHashToDataIt;
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_loginHashToAccountDataLock };
 		if (m_loginHashToAccountData.find(loginHash) != m_loginHashToAccountData.end()) {
 			error = "Account with this login already exists";
 			return false;
@@ -1026,7 +1026,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::RegisterAccount(
 	if (!accountData->Save()) [[unlikely]] {
 		error = "Account registration failed";
 		accountDataLock.WriteUnlock();
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_loginHashToAccountDataLock };
 		m_loginHashToAccountData.erase(loginHashToDataIt);
 		return false;
 	}
@@ -1041,7 +1041,7 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::DeleteAccou
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_loginHashToAccountDataLock };
 		const auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			LOG_DEBUG_NEW("Cannot find account with login: {}", login);
@@ -1052,11 +1052,11 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::DeleteAccou
 		m_loginHashToAccountData.erase(accountDataIt);
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 
 	if (const auto connectionId{ accountData->GetConnectionId() }; connectionId.has_value()) {
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_logonConnectionIdToAccountDataLock };
 		const auto connectionidValue{ connectionId.value() };
 		m_logonConnectionIdToAccountData.erase(connectionidValue);
 		accountData->ClearConnectionId();
@@ -1087,7 +1087,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountLogin(
 	const auto newLoginHash{ std::hash<std::string_view>{}(newLogin) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_loginHashToAccountDataLock };
 		auto oldAccountDataIt{ m_loginHashToAccountData.find(oldLoginHash) };
 		if (oldAccountDataIt == m_loginHashToAccountData.end()) {
 			LOG_DEBUG_NEW("Cannot find account with login {}", oldLogin);
@@ -1104,14 +1104,14 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountLogin(
 		m_loginHashToAccountData.erase(oldAccountDataIt);
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	accountData->GetAccount().SetLogin(newLogin);
 	if (!accountData->Save()) [[unlikely]] {
 		error = "Account modification failed";
 		accountData->GetAccount().SetLogin(oldLogin);
 
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_loginHashToAccountDataLock };
 		m_loginHashToAccountData.emplace(oldLoginHash, accountData);
 		m_loginHashToAccountData.erase(newLoginHash);
 
@@ -1125,7 +1125,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountLogin(
 	if (!IO::Rename(accountData->GetDataPath().c_str(), newLoginPath.c_str())) [[unlikely]] {
 		accountData->GetAccount().SetLogin(oldLogin);
 
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_loginHashToAccountDataLock };
 		m_loginHashToAccountData.emplace(oldLoginHash, accountData);
 		m_loginHashToAccountData.erase(newLoginHash);
 
@@ -1148,7 +1148,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountPassword(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_loginHashToAccountDataLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1157,7 +1157,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountPassword(
 		accountData = accountDataIt->second;
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	if (!accountData->GetAccount().IsInitialized()) [[unlikely]] {
 		error = "Account is not initialized";
@@ -1200,7 +1200,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountGrade(const std::stri
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_loginHashToAccountDataLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1209,7 +1209,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::ModifyAccountGrade(const std::stri
 		accountData = accountDataIt->second;
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	const auto oldGrade{ accountData->GetAccount().GetGrade() };
 	if (oldGrade == newGrade) {
@@ -1238,7 +1238,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::SetAccountActivatedState(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_loginHashToAccountDataLock };
 		auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1247,7 +1247,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::SetAccountActivatedState(
 		accountData = accountDataIt->second;
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	if (accountData->GetAccount().IsActive() == isActivated) {
 		OnAccountActivity(*accountData, timestamp,
@@ -1256,7 +1256,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::SetAccountActivatedState(
 	}
 
 	if (const auto connectionId{ accountData->GetConnectionId() }; !isActivated && connectionId.has_value()) {
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_logonConnectionIdToAccountDataLock };
 		const auto connectionidValue{ connectionId.value() };
 		m_logonConnectionIdToAccountData.erase(connectionidValue);
 		accountData->ClearConnectionId();
@@ -1285,7 +1285,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::LogonConnection(
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_loginHashToAccountDataLock };
 		const auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			error = "Invalid login or password";
@@ -1295,7 +1295,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::LogonConnection(
 		accountData = accountDataIt->second;
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	if (!accountData->GetAccount().IsLogonAllowed(password, error)) {
 		OnAccountActivity(*accountData, timestamp,
@@ -1320,7 +1320,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::LogonConnection(
 	}
 
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_logonConnectionIdToAccountDataLock };
 		if (m_logonConnectionIdToAccountData.find(connectionId) != m_logonConnectionIdToAccountData.end()) {
 			error = "Connection is already logged-on with another account";
 			OnAccountActivity(*accountData, timestamp,
@@ -1341,7 +1341,7 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::LogoutConne
 {
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_logonConnectionIdToAccountDataLock };
 		const auto it{ m_logonConnectionIdToAccountData.find(connectionId) };
 		if (it == m_logonConnectionIdToAccountData.end()) {
 			LOG_DEBUG_NEW("Connection id {} is not logged-on, cannot logout", connectionId);
@@ -1352,7 +1352,7 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::LogoutConne
 		m_logonConnectionIdToAccountData.erase(it);
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	accountData->ClearConnectionId();
 	OnAccountActivity(
@@ -1364,7 +1364,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const uint64_t con
 {
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_logonConnectionIdToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_logonConnectionIdToAccountDataLock };
 		const auto it{ m_logonConnectionIdToAccountData.find(connectionId) };
 		if (it == m_logonConnectionIdToAccountData.end()) {
 			return false;
@@ -1373,7 +1373,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const uint64_t con
 		accountData = it->second;
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	// Checking of account states is not needed here, as only logged-on accounts are stored in
 	// m_logonConnectionIdToAccountData
@@ -1387,14 +1387,14 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const uint64_t con
 template <Accountable A, Gradable G>
 FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetRegisteredAccountsSize() noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
+	const Lock::AtomicRW::Guard<Lock::READ> _{ m_loginHashToAccountDataLock };
 	return m_loginHashToAccountData.size();
 }
 
 template <Accountable A, Gradable G>
 FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetLogonConnectionsSize() noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_logonConnectionIdToAccountDataLock };
+	const Lock::AtomicRW::Guard<Lock::READ> _{ m_logonConnectionIdToAccountDataLock };
 	return m_logonConnectionIdToAccountData.size();
 }
 
@@ -1405,7 +1405,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::BlockAccountTill(const std::string
 	const auto loginHash{ std::hash<std::string_view>{}(login) };
 	std::shared_ptr<AccountData> accountData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_loginHashToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_loginHashToAccountDataLock };
 		const auto accountDataIt{ m_loginHashToAccountData.find(loginHash) };
 		if (accountDataIt == m_loginHashToAccountData.end()) {
 			return false;
@@ -1416,7 +1416,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::BlockAccountTill(const std::string
 
 	const bool block{ blockedTill > now };
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ accountData->GetRWLock() };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ accountData->GetRWLock() };
 	const Timer timestamp{};
 	auto& account{ accountData->GetAccount() };
 	const auto oldBlockedTill{ account.GetBlockedTill() };
@@ -1435,7 +1435,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::BlockAccountTill(const std::string
 
 		if (oldBlockedTill <= now) {
 			if (const auto connectionId{ accountData->GetConnectionId() }; connectionId.has_value()) {
-				const Lock::AtomicRW::Guard<Lock::write> _{ m_logonConnectionIdToAccountDataLock };
+				const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_logonConnectionIdToAccountDataLock };
 				if (auto it{ m_logonConnectionIdToAccountData.find(connectionId.value()) };
 					it != m_logonConnectionIdToAccountData.end()) {
 					m_logonConnectionIdToAccountData.erase(it);
@@ -1609,7 +1609,7 @@ FORCE_INLINE void Module<A, G>::HandleEvent([[maybe_unused]] const Timer::Event&
 	const Timer now{};
 	std::vector<uint64_t> connectionIdsToLogout;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_logonConnectionIdToAccountDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_logonConnectionIdToAccountDataLock };
 		for (auto it{ m_logonConnectionIdToAccountData.begin() }; it != m_logonConnectionIdToAccountData.end(); it++) {
 			if (it->second->GetLastActivity() + m_logoutTimeout < now) {
 				connectionIdsToLogout.push_back(it->first);

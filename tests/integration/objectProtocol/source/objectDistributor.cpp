@@ -65,7 +65,7 @@ void ObjectDistributor::SetInstrument(const InstrumentStructure& instrument)
 {
 	LOG_DEBUG("New instrument is added");
 	{
-		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_distributionLock };
+		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_distributionLock };
 		Distributor::SendNewObject(instrument, m_predicateForInstrument);
 	}
 	m_instruments.emplace(instrument);
@@ -75,7 +75,7 @@ void ObjectDistributor::SetOrder(const OrderStructure& order)
 {
 	LOG_DEBUG("New order is added");
 	{
-		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_distributionLock };
+		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_distributionLock };
 		Distributor::SendNewObject(order, m_predicateForOrder);
 	}
 	m_orders.emplace(order);
@@ -87,7 +87,7 @@ void ObjectDistributor::HandleNewStreamOpened(
 	const auto streamObjectHash{ streamData.GetStreamObjectHash() };
 
 	{
-		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_distributionLock };
+		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_distributionLock };
 
 		if (typeid(InstrumentStructure).hash_code() == streamObjectHash) {
 			(void)Distributor::SendObjectsToStream(streamData, m_instruments, m_predicateForInstrument);
