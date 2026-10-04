@@ -476,10 +476,15 @@ FORCE_INLINE [[nodiscard]] uint64_t Connection::Recv(void* const buffer, const u
 		}
 
 		if (flags & MSG_PEEK) {
+			// EWOULDBLOCK is the same error as EAGAIN on Linux
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				LOG_DEBUG_NEW("Non-blocking recv returned EAGAIN or EWOULDBLOCK, connection id: {}", m_id);
+				LOG_DEBUG_NEW("Non-blocking recv returned EAGAIN/EWOULDBLOCK, connection id: {}", m_id);
 				continue;
 			}
+		}
+
+		if (!m_isUsable.load()) {
+			return 0;
 		}
 
 		m_isUsable.store(false, std::memory_order_release);

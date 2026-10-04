@@ -786,7 +786,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 	AddPthreadAttributes(attr);
 
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_idToConnectionDataRWLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_idToConnectionDataRWLock };
 		for (const auto& [id, data] : m_idToConnectionData) {
 			Protocol::Standard::SendActionHello(data->GetConnection());
 		}
@@ -804,7 +804,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 				m_listenIpStr = "";
 				m_listenPort = 0;
 				LOG_DEBUG("Server state is Stopping, wait for pthreads to be finished");
-				const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_alivePthreadsRWLock };
+				const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_alivePthreadsRWLock };
 				pthread_attr_destroy(&attr);
 				LOG_DEBUG("All pthreads are finished, server is stopped");
 				m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
@@ -835,7 +835,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 
 	LOG_ERROR_NEW("Unexpected exit from the main accepting loop, server state: {}, connections counter: {}",
 		EnumToString(m_state.load(std::memory_order_acquire)), GetConnectionsCount());
-	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::write> _{ m_alivePthreadsRWLock };
+	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_alivePthreadsRWLock };
 	pthread_attr_destroy(&attr);
 	(void)close(m_listeningSocket);
 	m_listeningSocket = -1;
@@ -873,11 +873,11 @@ FORCE_INLINE void Server::Stop() noexcept
 	}
 
 	{
-		const MSAPI::Lock::AtomicRW::Guard<Lock::write> _{ m_closingConnectionsLock };
+		const MSAPI::Lock::AtomicRW::Guard<Lock::WRITE> _{ m_closingConnectionsLock };
 		std::shared_ptr<Connection::Data> connectionData;
 		do {
 			{
-				const Lock::AtomicRW::Guard<Lock::read> _{ m_idToConnectionDataRWLock };
+				const Lock::AtomicRW::Guard<Lock::READ> _{ m_idToConnectionDataRWLock };
 				if (m_idToConnectionData.empty()) {
 					break;
 				}
@@ -980,13 +980,13 @@ FORCE_INLINE void Server::RecvLoop(const std::shared_ptr<Connection::Data>& conn
 		return;
 	}
 
-	const MSAPI::Lock::AtomicRW::Guard<Lock::read> _{ m_closingConnectionsLock };
+	const MSAPI::Lock::AtomicRW::Guard<Lock::READ> _{ m_closingConnectionsLock };
 	Close<RECONNECTION_IS_POSSIBLE>(connectionData, connectionData->GetDoReconnection());
 }
 
 FORCE_INLINE [[nodiscard]] uint64_t Server::GetConnectionsCount() noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_idToConnectionDataRWLock };
+	const Lock::AtomicRW::Guard<Lock::READ> _{ m_idToConnectionDataRWLock };
 	return m_idToConnectionData.size();
 }
 
@@ -1024,7 +1024,7 @@ FORCE_INLINE [[nodiscard]] bool Server::SetMlockallCurrentFuture() noexcept
 FORCE_INLINE std::shared_ptr<Connection::Data> Server::GetConnectionData(const uint64_t id) noexcept
 {
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_idToConnectionDataRWLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_idToConnectionDataRWLock };
 		const auto it{ m_idToConnectionData.find(id) };
 		if (it != m_idToConnectionData.end()) [[likely]] {
 			return it->second;
@@ -1133,7 +1133,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::CreatePthre
 	std::unique_ptr<Connection>&& connection, SString<16>&& ipStr, const pthread_attr_t& pthreadAttr, const uint32_t ip,
 	const uint16_t port, const bool doReconnection) noexcept
 {
-	const MSAPI::Lock::AtomicRW::Guard<Lock::read> guard{ m_closingConnectionsLock };
+	const MSAPI::Lock::AtomicRW::Guard<Lock::READ> _{ m_closingConnectionsLock };
 
 	const auto id{ connection->GetId() };
 
@@ -1152,7 +1152,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::CreatePthre
 	}
 
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_idToConnectionDataRWLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_idToConnectionDataRWLock };
 		const auto [it, isSuccess] = m_idToConnectionData.emplace(id, connectionData);
 		if (!isSuccess) [[unlikely]] {
 			LOG_ERROR_NEW("Failed attempt to save data for {} connection id: {}", Connection::EnumToString(Type), id);
@@ -1239,7 +1239,7 @@ FORCE_INLINE void Server::Close(const std::shared_ptr<Connection::Data>& connect
 	case Connection::Type::Outcome:
 	case Connection::Type::Manager: {
 		{
-			const Lock::AtomicRW::Guard<Lock::write> _{ m_idToConnectionDataRWLock };
+			const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_idToConnectionDataRWLock };
 			m_idToConnectionData.erase(id);
 		}
 
@@ -1277,7 +1277,7 @@ FORCE_INLINE void Server::Close(const std::shared_ptr<Connection::Data>& connect
 		return;
 	case Connection::Type::Income: {
 		{
-			const Lock::AtomicRW::Guard<Lock::write> _{ m_idToConnectionDataRWLock };
+			const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_idToConnectionDataRWLock };
 			m_idToConnectionData.erase(id);
 		}
 
@@ -1286,7 +1286,7 @@ FORCE_INLINE void Server::Close(const std::shared_ptr<Connection::Data>& connect
 			std::shared_ptr<IpLimits> ipLimits;
 			do {
 				{
-					const Lock::AtomicRW::Guard<Lock::read> _{ m_ipToLimitsRWLock };
+					const Lock::AtomicRW::Guard<Lock::READ> _{ m_ipToLimitsRWLock };
 					const auto it{ m_ipToLimits.find(std::hash<std::string_view>{}(ipStr)) };
 					if (it != m_ipToLimits.end()) [[likely]] {
 						ipLimits = it->second;
@@ -1294,7 +1294,7 @@ FORCE_INLINE void Server::Close(const std::shared_ptr<Connection::Data>& connect
 				}
 
 				if (ipLimits != nullptr) [[likely]] {
-					const Lock::AtomicRW::Guard<Lock::write> _{ ipLimits->GetLock() };
+					const Lock::AtomicRW::Guard<Lock::WRITE> _{ ipLimits->GetLock() };
 					(void)ipLimits->RemoveConnectionId(id);
 					break;
 				}
@@ -1309,7 +1309,7 @@ FORCE_INLINE void Server::Close(const std::shared_ptr<Connection::Data>& connect
 		return;
 	default: {
 		{
-			const Lock::AtomicRW::Guard<Lock::write> _{ m_idToConnectionDataRWLock };
+			const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_idToConnectionDataRWLock };
 			m_idToConnectionData.erase(id);
 		}
 		LOG_WARNING_NEW("Unexpected type of connection is closed, id: {}, ip: {}. Active connections counter: {}", id,
@@ -1325,7 +1325,7 @@ FORCE_INLINE [[nodiscard]] bool Server::RegisterConnectionFromIp(const uint64_t 
 	do {
 		const auto ipHash{ ip.Hash() };
 		{
-			const Lock::AtomicRW::Guard<Lock::read> _{ m_ipToLimitsRWLock };
+			const Lock::AtomicRW::Guard<Lock::READ> _{ m_ipToLimitsRWLock };
 			const auto it{ m_ipToLimits.find(ipHash) };
 			if (it != m_ipToLimits.end()) {
 				ipLimits = it->second;
@@ -1333,7 +1333,7 @@ FORCE_INLINE [[nodiscard]] bool Server::RegisterConnectionFromIp(const uint64_t 
 			}
 		}
 
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_ipToLimitsRWLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_ipToLimitsRWLock };
 		ipLimits = std::make_shared<IpLimits>(m_maxConnectionsOneIp);
 		m_ipToLimits.emplace(ipHash, ipLimits);
 	} while (false);
@@ -1341,7 +1341,7 @@ FORCE_INLINE [[nodiscard]] bool Server::RegisterConnectionFromIp(const uint64_t 
 	bool result [[indeterminate]];
 	uint64_t connectionsCount [[indeterminate]];
 	{
-		const Lock::AtomicRW::Guard<Lock::write> _{ ipLimits->GetLock() };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ ipLimits->GetLock() };
 		result = ipLimits->AddConnectionId(id);
 		connectionsCount = ipLimits->GetConnectionsCount();
 	}

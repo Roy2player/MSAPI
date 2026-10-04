@@ -1126,7 +1126,7 @@ template <typename Universal>
 	requires EventTypePtrT<Universal, EventType>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::AddEvent(Universal&& event) noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_eventsLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_eventsLock };
 	const Timer timestamp{};
 	const auto result{ m_events.emplace(timestamp, std::forward<Universal>(event)) };
 	if (!result.second) [[unlikely]] {
@@ -1142,7 +1142,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::AddEvent
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::FailEvents(const std::string_view error)
 {
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_eventsLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_eventsLock };
 	const auto size{ m_events.size() };
 	if (size == 0) {
 		return;
@@ -1159,7 +1159,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::FailEven
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::EraseEvents()
 {
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_eventsLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_eventsLock };
 	const auto size{ m_events.size() };
 	if (size == 0) {
 		return;
@@ -1174,7 +1174,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::EraseEve
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::EraseEvent(const Timer timestamp) noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_eventsLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_eventsLock };
 	if (m_events.erase(timestamp) == 0) [[unlikely]] {
 		LOG_WARNING_NEW("Events with timestamp {} is not erased, connection id: {}", timestamp.ToString(),
 			m_data.GetConnectionId());
@@ -1192,7 +1192,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::EraseEve
 	const Container<Timer>& timestamps)
 {
 	int32_t erased{};
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_eventsLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_eventsLock };
 	for (const auto timestamp : timestamps) {
 		if (m_events.erase(timestamp) == 0) [[unlikely]] {
 			LOG_WARNING_NEW("Events with timestamp: {} is not erased, connection id: {}", timestamp.ToString(),
@@ -1244,7 +1244,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<typename Distributor<Module, EventTyp
 Distributor<Module, EventType, Filter, Impl>::EventsData::GetEvents(const filter_t& filter) noexcept
 {
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_filterToEventsLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_filterToEventsLock };
 		auto it{ m_filterToEvents.find(filter) };
 		if (it != m_filterToEvents.end()) {
 			return it->second;
@@ -1252,7 +1252,7 @@ Distributor<Module, EventType, Filter, Impl>::EventsData::GetEvents(const filter
 	}
 
 	if constexpr (!Lookup) {
-		const Lock::AtomicRW::Guard<Lock::write> _{ m_filterToEventsLock };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_filterToEventsLock };
 		return m_filterToEvents.emplace(filter, std::make_shared<Events>(*this)).first->second;
 	}
 	else {
@@ -1266,7 +1266,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EventsData::Fail
 {
 	std::shared_ptr<Events> events;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_filterToEventsLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_filterToEventsLock };
 		auto it{ m_filterToEvents.find(filter) };
 		if (it == m_filterToEvents.end()) {
 			return;
@@ -1282,7 +1282,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EventsData::Eras
 {
 	std::shared_ptr<Events> events;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_filterToEventsLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_filterToEventsLock };
 		auto it{ m_filterToEvents.find(filter) };
 		if (it == m_filterToEvents.end()) {
 			return;
@@ -1298,10 +1298,10 @@ FORCE_INLINE [[nodiscard]] bool Distributor<Module, EventType, Filter, Impl>::Ev
 	const uint64_t id) noexcept
 {
 	Timer targetTimestamp{ 0 };
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_filterToEventsLock };
+	const Lock::AtomicRW::Guard<Lock::READ> _{ m_filterToEventsLock };
 	for (auto& [filter, events] : m_filterToEvents) {
 		{
-			const Lock::AtomicRW::Guard<Lock::read> _{ events->GetLock() };
+			const Lock::AtomicRW::Guard<Lock::READ> _{ events->GetLock() };
 			const auto& items{ events->Get() };
 			for (const auto& [timestamp, event] : items) {
 				if (event->GetId() == id) {
@@ -1324,12 +1324,12 @@ template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EventsData::FailActiveEvents(
 	const std::string_view error)
 {
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_filterToEventsLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_filterToEventsLock };
 	auto eventsBegin{ m_filterToEvents.begin() };
 	auto eventsEnd{ m_filterToEvents.end() };
 
 	for (; eventsBegin != eventsEnd;) {
-		const Lock::AtomicRW::Guard<Lock::write> _{ eventsBegin->second->GetLock() };
+		const Lock::AtomicRW::Guard<Lock::WRITE> _{ eventsBegin->second->GetLock() };
 		const auto& events{ eventsBegin->second->Get() };
 		for (const auto& [timestamp, event] : events) {
 			SendFailed(event->GetId(), event->GetConnectionData()->GetConnection(), error);
@@ -1433,9 +1433,9 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EventsData::Chec
 
 	std::map<Timer, std::shared_ptr<Events>> sortedEvents;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_filterToEventsLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_filterToEventsLock };
 		for (auto& [filter, events] : m_filterToEvents) {
-			const Lock::AtomicRW::Guard<Lock::read> _{ events->GetLock() };
+			const Lock::AtomicRW::Guard<Lock::READ> _{ events->GetLock() };
 			for (auto& [timestamp, event] : events->Get()) {
 				sortedEvents.emplace(timestamp, events);
 			}
@@ -1459,7 +1459,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EventsData::Chec
 		--toBePurged;
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_filterToEventsLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_filterToEventsLock };
 	for (auto& [events, timestamps] : sortedTimestamps) {
 		events->EraseEventsByTimestamps(timestamps);
 	}
@@ -1493,7 +1493,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Collect(
 
 	std::shared_ptr<typename EventType::base_t::handlerData_t> handlerData;
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_hashToHandlerDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_hashToHandlerDataLock };
 		const auto it{ m_hashToHandlerData.find(hash) };
 		if (it == m_hashToHandlerData.end()) {
 			SendFailed(id, connectionData->GetConnection(), "Unknown hash of the event");
@@ -1531,7 +1531,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::SetHandlerWithPe
 	static_assert(std::is_integral_v<int16_t> && std::is_integral_v<std::underlying_type_t<typename Module::grade_t>>,
 		"Grade type category is expected");
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_hashToHandlerDataLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_hashToHandlerDataLock };
 	m_hashToHandlerData.emplace(hash,
 		std::make_shared<typename EventType::base_t::handlerData_t>(std::move(handler), static_cast<int16_t>(grade)));
 }
@@ -1542,14 +1542,14 @@ template <typename Handler>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::SetHandlerWithoutPermissions(
 	const uint64_t hash, Handler&& handler)
 {
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_hashToHandlerDataLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_hashToHandlerDataLock };
 	m_hashToHandlerData.emplace(hash, std::make_shared<typename EventType::base_t::handlerData_t>(std::move(handler)));
 }
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::FailActiveEvents(const std::string_view error)
 {
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_connectionToEventsDataLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_connectionToEventsDataLock };
 	auto eventsDataBegin{ m_connectionIdToEventsData.begin() };
 	auto eventsDataEnd{ m_connectionIdToEventsData.end() };
 
@@ -1563,7 +1563,7 @@ template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::ClearActiveEventsForConnectionId(
 	const uint64_t connectionId)
 {
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_connectionToEventsDataLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_connectionToEventsDataLock };
 	m_connectionIdToEventsData.erase(connectionId);
 }
 
@@ -1591,7 +1591,7 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 	size_t maxUidsSize{};
 	std::vector<Destination> destinations;
 	for (auto& events : eventsArray) {
-		const Lock::AtomicRW::Guard<Lock::read> _{ events->GetLock() };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ events->GetLock() };
 		const auto& items{ events->Get() };
 		auto begin{ items.begin() };
 		const auto end{ items.end() };
@@ -1659,14 +1659,14 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<typename Distributor<Module, EventTyp
 Distributor<Module, EventType, Filter, Impl>::GetEventsData(const uint64_t connectionId) noexcept
 {
 	{
-		const Lock::AtomicRW::Guard<Lock::read> _{ m_connectionToEventsDataLock };
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_connectionToEventsDataLock };
 		auto it{ m_connectionIdToEventsData.find(connectionId) };
 		if (it != m_connectionIdToEventsData.end()) {
 			return it->second;
 		}
 	}
 
-	const Lock::AtomicRW::Guard<Lock::write> _{ m_connectionToEventsDataLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_connectionToEventsDataLock };
 	return m_connectionIdToEventsData.emplace(connectionId, std::make_shared<EventsData>(connectionId)).first->second;
 }
 
@@ -1676,7 +1676,7 @@ Distributor<Module, EventType, Filter, Impl>::GetEventsArray(const filter_t& fil
 {
 	std::shared_ptr<Events> events;
 	std::vector<std::shared_ptr<Events>> eventsArray;
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_connectionToEventsDataLock };
+	const Lock::AtomicRW::Guard<Lock::READ> _{ m_connectionToEventsDataLock };
 	for (const auto& [connectionId, eventsData] : m_connectionIdToEventsData) {
 		events = eventsData->template GetEvents<EventsData::lookup>(filter);
 		if (events.get()) {
@@ -1693,7 +1693,7 @@ template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::FailEventsOnConnectionsByFilter(
 	const filter_t& filter, const std::string_view error)
 {
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_connectionToEventsDataLock };
+	const Lock::AtomicRW::Guard<Lock::READ> _{ m_connectionToEventsDataLock };
 	for (const auto& [connectionId, eventsData] : m_connectionIdToEventsData) {
 		eventsData->FailEventsByFilter(filter, error);
 	}
@@ -1702,7 +1702,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::FailEventsOnConn
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::EraseEventsOnConnectionsByFilter(const filter_t& filter)
 {
-	const Lock::AtomicRW::Guard<Lock::read> _{ m_connectionToEventsDataLock };
+	const Lock::AtomicRW::Guard<Lock::READ> _{ m_connectionToEventsDataLock };
 	for (const auto& [connectionId, eventsData] : m_connectionIdToEventsData) {
 		eventsData->EraseEventsByFilter(filter);
 	}

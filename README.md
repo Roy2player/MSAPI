@@ -60,11 +60,12 @@ See [CMakeListsCommonOptions.txt](library/build/CMakeListsCommonOptions.txt) for
 - [**Meta:**](library/source/help/meta.inl) Static enum translation, type helpers, and compile-time utilities.
 - [**SHA256:**](library/source/help/sha256.inl) SHA-256 hashing implementation.
 - [**SHA1:**](library/source/help/sha1.inl) SHA-1 hashing implementation.
-- [**Static string:**](library/source/help/basicSString.inl) Functional static string container.
+- [**Static string:**](library/source/help/basicSString.inl) Functional static string container with explicit null termination.
+- [**Persistence:**](library/source/help/persistence.inl) Thread-safe single-type container persisted on disk in binary format, with incremental appending, full rewriting, and a manual timestamp.
 
 ### [Testing Framework](library/source/test/)
 
-Unit and integration test utilities with ability to run servers as daemons.
+Unit and integration test utilities with thread-safe assertions and ability to run servers as daemons.
 
 ## 🖥️ Frontend
 

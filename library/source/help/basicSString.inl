@@ -36,6 +36,8 @@ concept BasicSStringConcept = Capacity > 2 && (std::is_same_v<Type, char> || std
 /**************************
  * @brief Functional static string container.
  *
+ * @attention Meaningful data is never null terminated, null terminator is written only by explicit NullTerminate call.
+ *
  * @note Minimum meaningful size for static string is 3: two characters and null terminator.
  *
  * @tparam Type Character type.
@@ -238,6 +240,36 @@ public:
 	FORCE_INLINE [[nodiscard]] size_t GetSize() const noexcept;
 
 	/**************************
+	 * @brief Resets size of meaningful data to zero.
+	 *
+	 * @attention Buffer content is not modified.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE void Clear() noexcept;
+
+	/**************************
+	 * @return True if there is no meaningful data, false otherwise.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE [[nodiscard]] bool Empty() const noexcept;
+
+	/**************************
+	 * @brief Writes null terminator right after meaningful data if there is space for it.
+	 *
+	 * @attention Size of meaningful data is not modified.
+	 *
+	 * @return True if null terminator is written, false if size is equal to capacity.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE [[nodiscard]] bool NullTerminate() noexcept;
+
+	/**************************
+	 * @attention View is not null terminated, NullTerminate must be called explicitly before view data is used as
+	 * C-style string.
+	 *
 	 * @return View on meaningful data.
 	 *
 	 * @test Yes.
@@ -409,6 +441,32 @@ template <typename Type, size_t Capacity>
 FORCE_INLINE [[nodiscard]] size_t BasicSString<Type, Capacity>::GetSize() const noexcept
 {
 	return m_size;
+}
+
+template <typename Type, size_t Capacity>
+	requires BasicSStringConcept<Type, Capacity>
+FORCE_INLINE void BasicSString<Type, Capacity>::Clear() noexcept
+{
+	m_size = 0;
+}
+
+template <typename Type, size_t Capacity>
+	requires BasicSStringConcept<Type, Capacity>
+FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::Empty() const noexcept
+{
+	return m_size == 0;
+}
+
+template <typename Type, size_t Capacity>
+	requires BasicSStringConcept<Type, Capacity>
+FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::NullTerminate() noexcept
+{
+	if (m_size >= Capacity) [[unlikely]] {
+		return false;
+	}
+
+	m_buffer[m_size] = Type{ '\0' };
+	return true;
 }
 
 template <typename Type, size_t Capacity>

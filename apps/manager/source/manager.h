@@ -238,7 +238,7 @@ private:
 		auto backIt{ std::back_inserter(out) };
 		std::format_to(backIt, "[");
 		{
-			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_hashToInstalledAppDataLock };
 			if (!m_hashToInstalledAppData.empty()) {
 				auto it{ m_hashToInstalledAppData.begin() };
 				const auto end{ m_hashToInstalledAppData.end() };
@@ -272,7 +272,7 @@ private:
 			return MSAPI::Protocol::WebSocket::Events::HandleResult::Fail;
 		}
 
-		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_hashToInstalledAppDataLock };
+		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_hashToInstalledAppDataLock };
 		const auto it{ m_hashToInstalledAppData.find(*appType) };
 		if (it == m_hashToInstalledAppData.end()) {
 			out = std::format("Metadata request contains unknown appType: {}", *appType);
@@ -461,7 +461,7 @@ private:
 
 		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 		{
-			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
@@ -493,7 +493,7 @@ private:
 
 		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 		{
-			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
@@ -525,7 +525,7 @@ private:
 
 		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 		{
-			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
@@ -564,7 +564,7 @@ private:
 
 		std::shared_ptr<CreatedAppData> createdAppData;
 		{
-			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_portToCreatedAppLock };
 			const auto it{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (it == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} is not found", *port);
@@ -692,7 +692,7 @@ private:
 
 					std::shared_ptr<std::vector<MSAPI::StandardType::Type>> columns;
 					{
-						const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_tableIdToColumnsLock };
+						const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_tableIdToColumnsLock };
 						const auto it{ m_tableIdToColumns.find(key) };
 						if (it == m_tableIdToColumns.end()) [[unlikely]] {
 							LOG_ERROR_NEW("Columns for table with id: {} are not found, app with port: {}", key, *port);
@@ -830,7 +830,7 @@ private:
 		auto backIt{ std::back_inserter(out) };
 		std::format_to(backIt, "{{\"created\":[");
 		{
-			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_portToCreatedAppLock };
 			if (!m_portToCreatedApp.empty()) {
 				auto it{ m_portToCreatedApp.begin() };
 				const auto end{ m_portToCreatedApp.end() };
@@ -860,7 +860,7 @@ private:
 
 		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 		{
-			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::read> _{ m_portToCreatedAppLock };
+			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_portToCreatedAppLock };
 			const auto createdAppDataIt{ m_portToCreatedApp.find(static_cast<uint16_t>(*port)) };
 			if (createdAppDataIt == m_portToCreatedApp.end()) {
 				out = std::format("App on port {} does not exist", *port);

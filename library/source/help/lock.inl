@@ -36,7 +36,12 @@ concept MutexT = std::is_same_v<T, pthread_mutex_t> || std::is_same_v<T, pthread
 /**************************
  * @brief Struct to contain mutex with name.
  *
+ * @attention Construction does not initialize the POSIX lock. Call MutexInit before using it and MutexDestroy
+ * only after all owners and waiters finish.
+ *
  * @tparam T Mutex or rwlock.
+ *
+ * @concurrency Yes, after initialization. Callers manage initialization and lifetime.
  */
 template <MutexT T> struct NamedMutex {
 	T mutex;
@@ -47,7 +52,9 @@ template <MutexT T> struct NamedMutex {
 	 *
 	 * @param name Mutex name.
 	 *
-	 * @todo Add tests coverage.
+	 * @locking Is not required.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE NamedMutex(std::string&& name) noexcept;
 };
@@ -68,25 +75,36 @@ concept MutexAndParams
  * @param namedMutex Named mutex.
  * @param mutexattr Pointer to attributes or nullptr.
  *
+ * @pre The POSIX lock is not already initialized or in use.
+ *
+ * @locking Is not required.
+ *
  * @return True if mutex initialized successfully, false if any errors occurred.
  *
- * @todo Add tests coverage.
+ * @test Yes.
+ *
+ * @todo Cover custom attributes and initialization failures.
  */
 template <typename T, typename S>
 	requires MutexAndParams<T, S>
 FORCE_INLINE [[nodiscard]] bool MutexInit(NamedMutex<T>& namedMutex, const S mutexattr);
 
 /**************************
- * @brief Destroy mutex and print error if any occurred. Calls inside MutexLock() and MutexUnlock()
- * before.
+ * @brief Destroys an initialized POSIX mutex and reports errors without locking it.
  *
  * @tparam T Mutex or rwlock.
  *
  * @param namedMutex Named mutex.
  *
+ * @pre The mutex is unlocked and has no remaining owners or waiters.
+ *
+ * @locking Is not required.
+ *
  * @return True if mutex destroyed successfully, false if any errors occurred.
  *
- * @todo Add tests coverage.
+ * @test Yes.
+ *
+ * @todo Cover valid, reproducible destruction failures.
  */
 template <typename T> FORCE_INLINE [[nodiscard]] bool MutexDestroy(NamedMutex<T>& namedMutex);
 
@@ -95,23 +113,23 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexDestroy(NamedMutex<T>
  *
  * @param namedMutex Named mutex.
  *
+ * @pre The mutex is initialized and recursion follows its POSIX attribute contract.
+ *
+ * @locking Locks namedMutex.mutex.
+ *
  * @return True if mutex locked successfully, false if any errors occurred.
  *
- * @todo Add tests coverage.
+ * @test Yes.
+ *
+ * @todo Cover recoverable lock errors.
  */
 FORCE_INLINE [[nodiscard]] bool MutexLock(NamedMutex<pthread_mutex_t>& namedMutex);
 
-constexpr bool write{ true };
-constexpr bool read{ false };
+constexpr bool WRITE{ true };
+constexpr bool READ{ false };
 
-static_assert(write, "Lock \"write\" must be true");
-static_assert(!read, "Lock \"read\" must be false");
-
-constexpr bool tryLock{ true };
-constexpr bool doLock{ false };
-
-static_assert(tryLock, "Lock \"tryLock\" must be true");
-static_assert(!doLock, "Lock \"doLock\" must be false");
+constexpr bool TRY_LOCK{ true };
+constexpr bool DO_LOCK{ false };
 
 /**************************
  * @brief Lock read write mutex and print error if any occurred.
@@ -121,9 +139,15 @@ static_assert(!doLock, "Lock \"doLock\" must be false");
  *
  * @param namedMutex Named mutex.
  *
+ * @pre The lock is initialized. Blocking calls must not attempt to upgrade a held read lock.
+ *
+ * @locking Locks namedMutex.mutex in the requested mode.
+ *
  * @return True if mutex locked successfully, false if any errors occurred or try lock and mutex busy.
  *
- * @todo Add tests coverage.
+ * @test Yes.
+ *
+ * @todo Cover recoverable errors other than a busy try-lock.
  */
 template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMutex<pthread_rwlock_t>& namedMutex);
 
@@ -134,14 +158,24 @@ template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMu
  *
  * @param namedMutex Named mutex.
  *
+ * @pre The calling thread owns the initialized lock.
+ *
+ * @locking Unlocks namedMutex.mutex.
+ *
  * @return True if mutex is unlocked successfully, false if any errors occurred.
  *
- * @todo Add tests coverage.
+ * @test Yes.
+ *
+ * @todo Cover valid, reproducible unlock failures.
  */
 template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>& namedMutex);
 
 /**************************
- * @brief Resource acquisition is initialization (RAII) Guard for locking and unlocking mutex.
+ * @brief RAII guard that locks the mutex on construction and unlocks it on destruction.
+ *
+ * @attention The initialized named mutex outlives the guard. Guard lifetime defines the protected access scope.
+ *
+ * @concurrency Yes. Follows the underlying initialized POSIX mutex contract.
  */
 class Guard {
 private:
@@ -153,7 +187,11 @@ public:
 	 *
 	 * @param namedMutex Named mutex.
 	 *
-	 * @todo Add tests coverage.
+	 * @pre The named mutex is initialized and can be locked by the calling thread.
+	 *
+	 * @locking Locks namedMutex.mutex.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE Guard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept;
 
@@ -165,7 +203,9 @@ public:
 	/**************************
 	 * @brief Destroy the Guard object, unlock mutex.
 	 *
-	 * @todo Add tests coverage.
+	 * @locking Unlocks the named mutex owned by this guard.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE ~Guard() noexcept;
 };
@@ -173,9 +213,11 @@ public:
 class AtomicRW;
 
 /**************************
- * @brief Resource acquisition is initialization (RAII) Guard for locking and unlocking read/write mutex.
+ * @brief RAII guard that locks the read/write mutex on construction and unlocks it on destruction.
  *
  * @tparam Wr True for write lock, false for read lock.
+ *
+ * @concurrency Yes. Follows the initialized POSIX RW-lock contract; the named mutex outlives the guard.
  */
 template <bool Wr> class GuardRW {
 private:
@@ -185,10 +227,13 @@ public:
 	/**************************
 	 * @brief Construct a new Guard RW object, lock mutex.
 	 *
-	 * @param mutex Pointer to mutex.
-	 * @param name Mutex name for logging.
+	 * @param namedMutex Initialized named RW mutex.
 	 *
-	 * @todo Add tests coverage.
+	 * @pre The calling thread can lock the requested mode without a read-to-write upgrade.
+	 *
+	 * @locking Locks namedMutex.mutex in the Wr mode.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept;
 
@@ -200,18 +245,28 @@ public:
 	/**************************
 	 * @brief Destroy the Guard RW object, unlock mutex.
 	 *
-	 * @todo Add tests coverage.
+	 * @locking Unlocks the named RW mutex owned by this guard.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE ~GuardRW() noexcept;
 };
 
 /**************************
  * @brief Atomic lock based on std::atomic_flag.
+ *
+ * @attention Locking is nonrecursive. Owners unlock before re-locking it; all users finish before
+ * destruction. No fairness or starvation-freedom guarantee is provided.
+ *
+ * @concurrency Yes. Locking uses acquire memory ordering and unlocking uses release memory ordering to publish
+ * protected writes to subsequent successful lock operations.
  */
 class Atomic {
 public:
 	/**************************
-	 * @brief Resource acquisition is initialization (RAII) Guard for locking and unlocking atomic lock.
+	 * @brief RAII guard that locks the atomic lock on construction and unlocks it on destruction.
+	 *
+	 * @concurrency Yes. The owning lock outlives the guard; guard lifetime defines exclusive protected access.
 	 */
 	class Guard {
 	private:
@@ -223,7 +278,9 @@ public:
 		 *
 		 * @param atomicLock Atomic lock.
 		 *
-		 * @todo Add tests coverage.
+		 * @locking Locks atomicLock without recursive ownership.
+		 *
+		 * @test Yes.
 		 */
 		FORCE_INLINE Guard(Atomic& atomicLock) noexcept;
 
@@ -235,7 +292,9 @@ public:
 		/**************************
 		 * @brief Destroy the Guard object, unlock atomic lock.
 		 *
-		 * @todo Add tests coverage.
+		 * @locking Unlocks the lock owned by this guard.
+		 *
+		 * @test Yes.
 		 */
 		FORCE_INLINE ~Guard() noexcept;
 	};
@@ -254,39 +313,58 @@ public:
 	/**************************
 	 * @brief Wait for lock is false and set it to true.
 	 *
-	 * @todo Add tests coverage.
+	 * @pre The calling thread does not already own the lock.
+	 *
+	 * @locking Locks exclusively using acquire memory ordering.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE void Lock() noexcept;
 
 	/**************************
 	 * @brief Try to set lock to true.
 	 *
+	 * @locking Attempts to lock exclusively without waiting, using acquire memory ordering. Failure leaves
+	 * existing ownership unchanged.
+	 *
 	 * @return True if lock was false and now is true, false if lock was true.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE bool TryLock() noexcept;
 
 	/**************************
 	 * @brief Set lock to false and notify one thread.
 	 *
-	 * @todo Add tests coverage.
+	 * @pre The calling thread owns the lock.
+	 *
+	 * @locking Unlocks using release memory ordering. Notification does not select a guaranteed next owner.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE void Unlock() noexcept;
 
-	// Allow AtomicRW to access private members.
+	// Allow AtomicRW to access private members
 	friend class AtomicRW;
 };
 
 /**************************
  * @brief Atomic read/write lock based on std::atomic and Atomic for write operations.
+ *
+ * @attention Locking is nonrecursive and read-to-write upgrades are not supported. The lock outlives all
+ * owners and waiters. No fairness or starvation-freedom guarantee is provided.
+ *
+ * @concurrency Yes. Locking uses acquire memory ordering and unlocking uses release memory ordering to publish
+ * protected writes to subsequent successful lock operations.
  */
 class AtomicRW {
 public:
 	/**************************
-	 * @brief Resource acquisition is initialization (RAII) Guard for locking and unlocking atomic read/write lock.
+	 * @brief RAII guard that locks the atomic read/write lock on construction and unlocks it on destruction.
 	 *
 	 * @tparam Wr True for write lock, false for read lock.
+	 *
+	 * @concurrency Yes. Guard lifetime defines protected access; the owning lock outlives the guard.
 	 */
 	template <bool Wr> class Guard {
 	private:
@@ -298,7 +376,11 @@ public:
 		 *
 		 * @param atomicRWLock Atomic read/write lock.
 		 *
-		 * @todo Add tests coverage.
+		 * @pre The calling thread does not already hold this lock in either mode.
+		 *
+		 * @locking Locks atomicRWLock in the Wr mode.
+		 *
+		 * @test Yes.
 		 */
 		FORCE_INLINE Guard(AtomicRW& atomicRWLock) noexcept;
 
@@ -310,7 +392,9 @@ public:
 		/**************************
 		 * @brief Destroy the Guard object, unlock atomic read/write lock.
 		 *
-		 * @todo Add tests coverage.
+		 * @locking Unlocks the mode owned by this guard.
+		 *
+		 * @test Yes.
 		 */
 		FORCE_INLINE ~Guard() noexcept;
 	};
@@ -330,28 +414,44 @@ public:
 	/**************************
 	 * @brief Lock for read, wait if write lock is set.
 	 *
-	 * @todo Add tests coverage.
+	 * @pre The calling thread does not already hold this lock in either mode.
+	 *
+	 * @locking Briefly locks the writer gate to register a reader, then keeps the read lock held.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE void ReadLock() noexcept;
 
 	/**************************
 	 * @brief Unlock for read and notify one thread.
 	 *
-	 * @todo Add tests coverage.
+	 * @pre The calling thread holds a read lock.
+	 *
+	 * @locking Unlocks one reader using release memory ordering and notifies a waiting writer.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE void ReadUnlock() noexcept;
 
 	/**************************
-	 * @brief Lock for write, wait if write lock is not set and then wait for all read locks to be released.
+	 * @brief Locks for writing, waiting for another writer to unlock and for all readers to unlock.
 	 *
-	 * @todo Add tests coverage.
+	 * @pre The calling thread does not already hold this lock in either mode.
+	 *
+	 * @locking Locks the writer gate and waits for registered readers to unlock, then keeps the write lock held.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE void WriteLock() noexcept;
 
 	/**************************
 	 * @brief Unlock for write and notify all threads.
 	 *
-	 * @todo Add tests coverage.
+	 * @pre The calling thread holds exclusive ownership.
+	 *
+	 * @locking Unlocks the writer gate using release memory ordering and notifies its waiters.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE void WriteUnlock() noexcept;
 };
@@ -460,9 +560,9 @@ FORCE_INLINE [[nodiscard]] bool MutexLock(NamedMutex<pthread_mutex_t>& namedMute
 				  "calling thread's priority is higher than the mutex's current priority ceiling, error EINVAL");
 			return false;
 		case EAGAIN:
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": The mutex could not be acquired, because the maximum number of recursive locks for mutex has "
-				  "been exceeded, error EAGAIN");
+			LOG_ERROR_NEW("Mutex name \"{}\": The mutex could not be locked, because the maximum number of recursive "
+						  "locks for mutex has been exceeded, error EAGAIN",
+				namedMutex.name);
 			return false;
 		case EDEADLK:
 			LOG_ERROR("Mutex name \"" + namedMutex.name
@@ -500,16 +600,17 @@ template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMu
 	if (ret != 0) {
 		switch (ret) {
 		case EBUSY: // trywrlock and tryrdlock
-			LOG_DEBUG("Mutex name \"" + namedMutex.name
-				+ "\": The read lock could not be acquired because a writer holds the lock, error EBUSY");
+			LOG_DEBUG_NEW("Mutex name \"{}\": The read lock could not be locked because a writer holds the lock, "
+						  "error EBUSY",
+				namedMutex.name);
 			return false;
 		case EINVAL: // rdlock, tryrdlock, wrlock and trywrlock
 			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": The value specified by mutex is invalid, error EINVAL");
 			return false;
 		case EAGAIN: // rdlock and tryrdlock
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": The mutex could not be acquired, because the maximum number of recursive locks for mutex has "
-				  "been exceeded, error EAGAIN");
+			LOG_ERROR_NEW("Mutex name \"{}\": The mutex could not be locked, because the maximum number of recursive "
+						  "locks for mutex has been exceeded, error EAGAIN",
+				namedMutex.name);
 			return false;
 		case EDEADLK: // rdlock, wrlock and trywrlock
 			LOG_ERROR("Mutex name \"" + namedMutex.name
@@ -543,9 +644,9 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>&
 			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": The current thread does not own the mutex, error EPERM");
 			return false;
 		case EAGAIN: // Only for pthread_mutex_t
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": The mutex could not be acquired, because the maximum number of recursive locks for mutex has "
-				  "been exceeded, error EAGAIN");
+			LOG_ERROR_NEW("Mutex name \"{}\": The mutex could not be unlocked, because the maximum number of recursive "
+						  "locks for mutex has been exceeded, error EAGAIN",
+				namedMutex.name);
 			return false;
 		case EINVAL:
 			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": The value specified by mutex is invalid, error EINVAL");
@@ -579,7 +680,7 @@ template <bool Wr>
 FORCE_INLINE GuardRW<Wr>::GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept
 	: m_namedMutex{ namedMutex }
 {
-	(void)MutexRWLock<Wr, doLock>(m_namedMutex);
+	(void)MutexRWLock<Wr, DO_LOCK>(m_namedMutex);
 }
 
 template <bool Wr> FORCE_INLINE GuardRW<Wr>::~GuardRW() noexcept { (void)MutexUnlock(m_namedMutex); }
@@ -647,11 +748,9 @@ AtomicRW
 
 FORCE_INLINE void AtomicRW::ReadLock() noexcept
 {
-	if (m_writeLock.m_lock.test()) {
-		m_writeLock.m_lock.wait(true, std::memory_order_relaxed);
-	}
-
+	m_writeLock.Lock();
 	m_lock.fetch_add(1, std::memory_order_acquire);
+	m_writeLock.Unlock();
 }
 
 FORCE_INLINE void AtomicRW::ReadUnlock() noexcept
