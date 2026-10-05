@@ -16,7 +16,7 @@ description: "Locking patterns and thread-safety requirements"
 
 ## Lock fields and constness
 
-- Locking must not force a method to be non-constant. A method which does not change the logical state of the abstraction is `const`, even if it locks.
+- Locking must not force a method to be non-const. A method which does not change the logical state of the abstraction is `const`, even if it locks.
 - Each lock field held by value, like `MSAPI::Lock::Atomic` or `MSAPI::Lock::AtomicRW`, is declared `mutable`. Getters returning a reference to such lock are `const`.
 
 ```cpp
