@@ -14,6 +14,26 @@ description: "Locking patterns and thread-safety requirements"
 - Abstraction should not be internally protected (e.g. each method is protected by its own lock) in case, when it expected to be accessed together with other methods of the same abstraction - the synchronization should be done outside of the abstraction by the usage of internal abstraction lock.
 - If internal locking of the abstraction is a choice, the reasons should be described in abstraction tag `@concurrency` and each call marked by the comment `// Read/Write lock inside`.
 
+## Lock fields and constness
+
+- Locking must not force a method to be non-const. A method which does not change the logical state of the abstraction is `const`, even if it locks.
+- Each lock field held by value, like `MSAPI::Lock::Atomic` or `MSAPI::Lock::AtomicRW`, is declared `mutable`. Getters returning a reference to such lock are `const`.
+
+```cpp
+class Data {
+private:
+    std::map<uint64_t, Value> m_values;
+    mutable MSAPI::Lock::AtomicRW m_valuesLock;
+
+public:
+    FORCE_INLINE [[nodiscard]] uint64_t GetSize() const noexcept
+    {
+        const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_valuesLock };
+        return m_values.size();
+    }
+};
+```
+
 ## Access
 
 Additional life time block scoping should be used to release guard as soon as possible. Example:

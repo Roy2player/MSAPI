@@ -36,7 +36,7 @@ private:
 
 	MSAPI::ActionsCounter m_unhandledActions;
 	uint64_t m_lastConnectionId{};
-	MSAPI::Lock::AtomicRW m_distributionLock;
+	mutable MSAPI::Lock::AtomicRW m_distributionLock;
 
 public:
 	ObjectDistributor();
@@ -74,7 +74,10 @@ public:
 		return m_unhandledActions.GetActionsNumber();
 	}
 
-	FORCE_INLINE [[nodiscard]] MSAPI::Lock::AtomicRW& GetDistributionLock() noexcept { return m_distributionLock; }
+	FORCE_INLINE [[nodiscard]] MSAPI::Lock::AtomicRW& GetDistributionLock() const noexcept
+	{
+		return m_distributionLock;
+	}
 
 private:
 	std::function<bool(const MSAPI::Protocol::Object::FilterBase* filter, const InstrumentStructure& instrument)>

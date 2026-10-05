@@ -58,7 +58,7 @@ private:
 private:
 	T m_application;
 	pthread_t m_pthread;
-	Lock::Atomic m_pthreadLock;
+	mutable Lock::Atomic m_pthreadLock;
 	// { port, domain }
 	std::map<uint64_t, std::pair<uint16_t, std::string>> m_connectionsDataToId;
 	AppData m_appData;

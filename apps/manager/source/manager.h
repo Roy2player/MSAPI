@@ -74,7 +74,7 @@ private:
 	class PortGenerator {
 	private:
 		std::set<uint16_t> m_ports;
-		MSAPI::Lock::Atomic m_portsLock;
+		mutable MSAPI::Lock::Atomic m_portsLock;
 		std::mt19937 m_mersenne;
 		const int32_t m_limit{ 50000 };
 
@@ -185,11 +185,11 @@ private:
 private:
 	std::string m_webSourcesPath;
 	std::map<size_t, std::shared_ptr<InstalledAppData>> m_hashToInstalledAppData;
-	MSAPI::Lock::AtomicRW m_hashToInstalledAppDataLock;
+	mutable MSAPI::Lock::AtomicRW m_hashToInstalledAppDataLock;
 	std::map<uint16_t, std::shared_ptr<CreatedAppData>> m_portToCreatedApp;
-	MSAPI::Lock::AtomicRW m_portToCreatedAppLock;
+	mutable MSAPI::Lock::AtomicRW m_portToCreatedAppLock;
 	std::map<size_t, std::shared_ptr<std::vector<MSAPI::StandardType::Type>>> m_tableIdToColumns;
-	MSAPI::Lock::AtomicRW m_tableIdToColumnsLock;
+	mutable MSAPI::Lock::AtomicRW m_tableIdToColumnsLock;
 	MSAPI::Authorization::Base::Module<> m_authorizationModule;
 	MSAPI::Protocol::WebSocket::Events::SinglesDistributor<MSAPI::Authorization::Base::Module<>> m_singlesDistributor{
 		m_authorizationModule
@@ -233,7 +233,7 @@ public:
 
 private:
 	FORCE_INLINE [[nodiscard]] MSAPI::Protocol::WebSocket::Events::HandleResult FillInstalledApps(
-		std::string& out, [[maybe_unused]] const MSAPI::Protocol::WebSocket::Events::Single& single)
+		std::string& out, [[maybe_unused]] const MSAPI::Protocol::WebSocket::Events::Single& single) const
 	{
 		auto backIt{ std::back_inserter(out) };
 		std::format_to(backIt, "[");
@@ -264,7 +264,7 @@ private:
 	}
 
 	FORCE_INLINE [[nodiscard]] MSAPI::Protocol::WebSocket::Events::HandleResult FillMetadata(
-		std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single)
+		std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) const
 	{
 		const auto* appType{ single.GetJson().GetValueType<uint64_t>("appType") };
 		if (appType == nullptr) {
@@ -825,7 +825,7 @@ private:
 	}
 
 	FORCE_INLINE MSAPI::Protocol::WebSocket::Events::HandleResult FillCreatedApps(
-		std::string& out, [[maybe_unused]] const MSAPI::Protocol::WebSocket::Events::Stream& stream)
+		std::string& out, [[maybe_unused]] const MSAPI::Protocol::WebSocket::Events::Stream& stream) const
 	{
 		auto backIt{ std::back_inserter(out) };
 		std::format_to(backIt, "{{\"created\":[");

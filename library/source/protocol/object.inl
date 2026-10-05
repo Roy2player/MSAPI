@@ -308,7 +308,7 @@ protected:
 	std::atomic<uint64_t> m_id;
 	const uint64_t m_objectHash;
 	std::shared_ptr<Connection::Data> m_connectionData;
-	Lock::AtomicRW m_lock;
+	mutable Lock::AtomicRW m_lock;
 	State m_state{ State::Closed };
 	bool m_isSnapshotDone{};
 
@@ -454,7 +454,7 @@ class IHandlerBase {
 private:
 	const Application& m_application;
 	std::unordered_map<StreamConnectionId, StreamBase*> m_streamConnectionIdToStream;
-	Lock::AtomicRW m_streamConnectionIdToStreamLock;
+	mutable Lock::AtomicRW m_streamConnectionIdToStreamLock;
 	std::unordered_set<StreamConnectionId> m_closeConfirmation;
 
 public:
@@ -825,7 +825,7 @@ class Stream : public StreamBase {
 private:
 	IHandler<Object>& m_handler;
 	std::optional<Filter<FObject>> m_filter;
-	Lock::AtomicRW m_filterLock;
+	mutable Lock::AtomicRW m_filterLock;
 
 public:
 	/**************************
@@ -858,7 +858,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] StreamBase::StateData GetStateData() noexcept;
+	FORCE_INLINE [[nodiscard]] StreamBase::StateData GetStateData() const noexcept;
 
 	/**************************
 	 * @locking Read lock inside.
@@ -867,7 +867,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> GetConnectionData() noexcept;
+	FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> GetConnectionData() const noexcept;
 
 	/**************************
 	 * @brief Set related connection data.
@@ -992,7 +992,7 @@ public:
 	class StreamData {
 	private:
 		std::variant<std::monostate, Filter<FObjects>...> m_filter;
-		Lock::AtomicRW m_lock;
+		mutable Lock::AtomicRW m_lock;
 		const std::shared_ptr<Connection::Data> m_connectionData;
 		const std::shared_ptr<Streams> m_streams;
 		const uint64_t m_streamId;
@@ -1148,7 +1148,7 @@ public:
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() noexcept;
+		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() const noexcept;
 
 		/**************************
 		 * @locking External read lock is required.
@@ -1183,7 +1183,7 @@ private:
 	class Streams {
 	private:
 		std::unordered_map<StreamConnectionId, std::shared_ptr<StreamData>> m_streamConnectionIdToStreamData;
-		Lock::AtomicRW m_streamConnectionIdToStreamDataLock;
+		mutable Lock::AtomicRW m_streamConnectionIdToStreamDataLock;
 
 	public:
 		FORCE_INLINE Streams() noexcept = default;
@@ -1224,7 +1224,7 @@ private:
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() noexcept;
+		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() const noexcept;
 
 		/**************************
 		 * @locking External read lock is required.
@@ -1240,11 +1240,11 @@ private:
 private:
 	const Application& m_application;
 	std::unordered_map<StreamConnectionId, std::shared_ptr<StreamData>> m_streamConnectionIdToStreamData;
-	Lock::AtomicRW m_streamConnectionIdToStreamDataLock;
+	mutable Lock::AtomicRW m_streamConnectionIdToStreamDataLock;
 	// TODO: Here can be stored handler, inside streams
 	// TODO: Stream data can have reference on it. Is should be constant without additional lock
 	std::unordered_map<uint64_t, std::shared_ptr<Streams>> m_streamObjectHashToStreams;
-	Lock::AtomicRW m_streamObjectHashToStreamsLock;
+	mutable Lock::AtomicRW m_streamObjectHashToStreamsLock;
 
 public:
 	/**************************
@@ -2065,7 +2065,7 @@ FORCE_INLINE Stream<Object, FObject>::~Stream() noexcept
 
 template <typename Object, typename FObject>
 	requires std::is_class_v<Object> && std::is_class_v<FObject>
-FORCE_INLINE [[nodiscard]] StreamBase::StateData Stream<Object, FObject>::GetStateData() noexcept
+FORCE_INLINE [[nodiscard]] StreamBase::StateData Stream<Object, FObject>::GetStateData() const noexcept
 {
 	const Lock::AtomicRW::Guard<Lock::READ> _{ m_lock };
 	return { m_state, m_isSnapshotDone };
@@ -2073,7 +2073,7 @@ FORCE_INLINE [[nodiscard]] StreamBase::StateData Stream<Object, FObject>::GetSta
 
 template <typename Object, typename FObject>
 	requires std::is_class_v<Object> && std::is_class_v<FObject>
-FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Stream<Object, FObject>::GetConnectionData() noexcept
+FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Stream<Object, FObject>::GetConnectionData() const noexcept
 {
 	const Lock::AtomicRW::Guard<Lock::READ> _{ m_lock };
 	return m_connectionData;
@@ -2393,7 +2393,7 @@ FORCE_INLINE void Distributor<FObjects...>::StreamData::UnsetActive() noexcept
 
 template <typename... FObjects>
 	requires(std::is_class_v<FObjects> && ...)
-FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Distributor<FObjects...>::StreamData::GetLock() noexcept
+FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Distributor<FObjects...>::StreamData::GetLock() const noexcept
 {
 	return m_lock;
 }
@@ -2446,7 +2446,7 @@ FORCE_INLINE void Distributor<FObjects...>::Streams::AddSteam(StreamConnectionId
 
 template <typename... FObjects>
 	requires(std::is_class_v<FObjects> && ...)
-FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Distributor<FObjects...>::Streams::GetLock() noexcept
+FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Distributor<FObjects...>::Streams::GetLock() const noexcept
 {
 	return m_streamConnectionIdToStreamDataLock;
 }

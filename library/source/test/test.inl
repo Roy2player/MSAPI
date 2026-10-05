@@ -75,7 +75,7 @@ private:
 	int32_t m_passedCounter{};
 	Timer m_timer;
 	Timer m_totalTimer;
-	MSAPI::Lock::Atomic m_lock;
+	mutable MSAPI::Lock::Atomic m_lock;
 
 	static constexpr std::string_view m_patternPassed{ "\033[0;32mPASSED: \033[0m{}. {} ns" };
 	static constexpr std::string_view m_patternFailed{ "\033[0;31mFAILED: \033[0m{}. Actual: {}. Expected: {}. {} ns" };
@@ -102,7 +102,7 @@ public:
 	 */
 	template <typename T>
 		requires(std::is_same_v<T, bool> || MSAPI::is_integer_type<T>)
-	FORCE_INLINE [[nodiscard]] T Passed() noexcept;
+	FORCE_INLINE [[nodiscard]] T Passed() const noexcept;
 
 	/**************************
 	 * @brief Registers the assertion of couple values and save result.
@@ -213,7 +213,7 @@ FORCE_INLINE Test::~Test()
 
 template <typename T>
 	requires(std::is_same_v<T, bool> || MSAPI::is_integer_type<T>)
-FORCE_INLINE [[nodiscard]] T Test::Passed() noexcept
+FORCE_INLINE [[nodiscard]] T Test::Passed() const noexcept
 {
 	const MSAPI::Lock::Atomic::Guard _{ m_lock };
 	if constexpr (std::is_same_v<T, bool>) {

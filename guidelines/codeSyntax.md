@@ -44,6 +44,7 @@ description: "Syntax and declaration rules"
 - Use `class` for all class declarations, public or protected fields fields are prohibited.
 - Use `explicit` for all constructors that can be called with a single argument.
 - Explicitly mark copy and move constructors and assignment operators as `= default` or `= delete`.
+- Use `mutable` only for lock fields, see [Concurrency](concurrency.md#lock-fields-and-constness).
 
 #### Enum
 

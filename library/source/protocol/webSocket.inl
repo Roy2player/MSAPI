@@ -471,7 +471,7 @@ private:
 	double m_storedFragmentedDataLimitMb{ 10. };
 	std::unordered_map<uint64_t, FragmentedData> m_connectionIdToFragmentedData;
 	std::map<Timer, FragmentedData*> m_timerToFragmentedData;
-	Lock::Atomic m_fragmentedDataLock;
+	mutable Lock::Atomic m_fragmentedDataLock;
 
 public:
 	/**************************

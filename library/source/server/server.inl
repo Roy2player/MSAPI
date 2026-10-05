@@ -115,7 +115,7 @@ private:
 	class IpLimits {
 	private:
 		std::unordered_set<uint64_t> m_connectionsId;
-		Lock::AtomicRW m_lock;
+		mutable Lock::AtomicRW m_lock;
 		uint64_t m_maxConnections{ 1 };
 
 	public:
@@ -184,18 +184,18 @@ private:
 		 *
 		 * @todo Add tests coverage.
 		 */
-		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() noexcept;
+		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() const noexcept;
 	};
 
 private:
 	std::unordered_map<uint64_t, std::shared_ptr<Connection::Data>> m_idToConnectionData;
-	Lock::AtomicRW m_idToConnectionDataRWLock;
+	mutable Lock::AtomicRW m_idToConnectionDataRWLock;
 	std::unordered_map<uint64_t, std::shared_ptr<IpLimits>> m_ipToLimits;
-	Lock::AtomicRW m_ipToLimitsRWLock;
+	mutable Lock::AtomicRW m_ipToLimitsRWLock;
 
-	Lock::AtomicRW m_closingConnectionsLock;
-	Lock::Atomic m_serverAcceptingLoop;
-	Lock::AtomicRW m_alivePthreadsRWLock;
+	mutable Lock::AtomicRW m_closingConnectionsLock;
+	mutable Lock::Atomic m_serverAcceptingLoop;
+	mutable Lock::AtomicRW m_alivePthreadsRWLock;
 
 	SString<16> m_listenIp;
 	std::string m_listenIpStr; // TODO: SString should be instead
@@ -362,7 +362,7 @@ public:
 	 *
 	 * @todo When parameters become atomic, the connections counter should the one instead of that getter.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t GetConnectionsCount() noexcept;
+	FORCE_INLINE [[nodiscard]] uint64_t GetConnectionsCount() const noexcept;
 
 	/**************************
 	 * @brief Set pthread attributes for new pthreads. This function is called before creating new pthreads and sets the
@@ -397,7 +397,7 @@ protected:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE std::shared_ptr<Connection::Data> GetConnectionData(uint64_t id) noexcept;
+	FORCE_INLINE std::shared_ptr<Connection::Data> GetConnectionData(uint64_t id) const noexcept;
 
 	/**************************
 	 * @brief Handler for income data to be processed further.
@@ -658,7 +658,7 @@ FORCE_INLINE [[nodiscard]] bool Server::IpLimits::SetMaxConnections(const uint64
 	return true;
 }
 
-FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Server::IpLimits::GetLock() noexcept { return m_lock; }
+FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Server::IpLimits::GetLock() const noexcept { return m_lock; }
 
 /*---------------------------------------------------------------------------------
 Server
@@ -984,7 +984,7 @@ FORCE_INLINE void Server::RecvLoop(const std::shared_ptr<Connection::Data>& conn
 	Close<RECONNECTION_IS_POSSIBLE>(connectionData, connectionData->GetDoReconnection());
 }
 
-FORCE_INLINE [[nodiscard]] uint64_t Server::GetConnectionsCount() noexcept
+FORCE_INLINE [[nodiscard]] uint64_t Server::GetConnectionsCount() const noexcept
 {
 	const Lock::AtomicRW::Guard<Lock::READ> _{ m_idToConnectionDataRWLock };
 	return m_idToConnectionData.size();
@@ -1021,7 +1021,7 @@ FORCE_INLINE [[nodiscard]] bool Server::SetMlockallCurrentFuture() noexcept
 	return true;
 }
 
-FORCE_INLINE std::shared_ptr<Connection::Data> Server::GetConnectionData(const uint64_t id) noexcept
+FORCE_INLINE std::shared_ptr<Connection::Data> Server::GetConnectionData(const uint64_t id) const noexcept
 {
 	{
 		const Lock::AtomicRW::Guard<Lock::READ> _{ m_idToConnectionDataRWLock };

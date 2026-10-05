@@ -383,7 +383,7 @@ public:
 	class Events {
 	private:
 		std::map<Timer, std::shared_ptr<EventType>> m_events;
-		Lock::AtomicRW m_eventsLock;
+		mutable Lock::AtomicRW m_eventsLock;
 		EventsData& m_data;
 
 	public:
@@ -466,7 +466,7 @@ public:
 		 *
 		 * @todo Add tests coverage.
 		 */
-		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() noexcept;
+		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() const noexcept;
 
 		/**************************
 		 * @attention Is assumed to be used under structure locking.
@@ -491,7 +491,7 @@ public:
 	private:
 		const uint64_t m_connectionId;
 		std::map<filter_t, std::shared_ptr<Events>> m_filterToEvents;
-		Lock::AtomicRW m_filterToEventsLock;
+		mutable Lock::AtomicRW m_filterToEventsLock;
 		std::atomic<int32_t> m_limit{ 1024 };
 		std::atomic<float> m_purgingCoefficient{ 0.3f };
 		std::atomic<int32_t> m_eventsSize{};
@@ -654,9 +654,9 @@ public:
 private:
 	Module& m_authorization;
 	std::unordered_map<uint64_t, std::shared_ptr<typename EventType::base_t::handlerData_t>> m_hashToHandlerData;
-	Lock::AtomicRW m_hashToHandlerDataLock;
+	mutable Lock::AtomicRW m_hashToHandlerDataLock;
 	std::unordered_map<uint64_t, std::shared_ptr<EventsData>> m_connectionIdToEventsData;
-	Lock::AtomicRW m_connectionToEventsDataLock;
+	mutable Lock::AtomicRW m_connectionToEventsDataLock;
 
 public:
 	/**************************
@@ -778,7 +778,8 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE [[nodiscard]] std::vector<std::shared_ptr<Events>> GetEventsArray(const filter_t& filter) noexcept;
+	FORCE_INLINE [[nodiscard]] std::vector<std::shared_ptr<Events>> GetEventsArray(
+		const filter_t& filter) const noexcept;
 
 	/**************************
 	 * @brief Fail events by filter on each connection.
@@ -1230,7 +1231,8 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Events::EraseEve
 }
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
-FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Distributor<Module, EventType, Filter, Impl>::Events::GetLock() noexcept
+FORCE_INLINE [[nodiscard]] Lock::AtomicRW&
+Distributor<Module, EventType, Filter, Impl>::Events::GetLock() const noexcept
 {
 	return m_eventsLock;
 }
@@ -1693,7 +1695,7 @@ Distributor<Module, EventType, Filter, Impl>::GetEventsData(const uint64_t conne
 
 template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE [[nodiscard]] std::vector<std::shared_ptr<typename Distributor<Module, EventType, Filter, Impl>::Events>>
-Distributor<Module, EventType, Filter, Impl>::GetEventsArray(const filter_t& filter) noexcept
+Distributor<Module, EventType, Filter, Impl>::GetEventsArray(const filter_t& filter) const noexcept
 {
 	std::shared_ptr<Events> events;
 	std::vector<std::shared_ptr<Events>> eventsArray;

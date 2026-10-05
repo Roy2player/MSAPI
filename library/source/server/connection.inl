@@ -234,8 +234,8 @@ private:
 							  const int32_t flags) noexcept {
 		return static_cast<int64_t>(send(fd, buffer, size, flags));
 	} };
-	Lock::Atomic m_recvLock;
-	Lock::Atomic m_sendLock;
+	mutable Lock::Atomic m_recvLock;
+	mutable Lock::Atomic m_sendLock;
 	std::atomic<bool> m_isUsable{ true };
 	bool m_isClosed{};
 
