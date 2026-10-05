@@ -28,7 +28,7 @@ class ModifyApp extends View {
 		}
 
 		this.m_appType = parameters.appType;
-		this.m_viewPortParameter = parameters.viewPortParameter;
+		this.m_viewNodePortParameter = parameters.viewPortParameter;
 
 		let metadata = MetadataCollector.GetAppMetadata(this.m_appType);
 		if (!metadata) {
@@ -36,7 +36,7 @@ class ModifyApp extends View {
 			return false;
 		}
 
-		let inputs = this.m_view.querySelector(".inputs");
+		let inputs = this.m_viewSpecificNode.querySelector(".inputs");
 		if (!inputs) {
 			console.error("No inputs to fill app parameters");
 			return false;
@@ -249,17 +249,17 @@ class ModifyApp extends View {
 						this.m_title += ": " + this.m_appType + " on port " + this.m_port;
 					}
 					isTitleUpdated = true;
-					this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+					this.m_viewNode.querySelector(".title > span").textContent = this.m_title;
 				}
 
 				displayParameters(this, parameters);
 			},
 			handleFailed : (error) => { this.DisplayErrorMessage(error); },
-			viewUid : this.m_uid,
+			viewId : this.m_id,
 			data : { "port" : this.m_port, "filter" : this.m_port }
 		});
 
-		this.m_view.querySelector(".button").addEventListener("click", async () => {
+		this.m_viewSpecificNode.querySelector(".button").addEventListener("click", async () => {
 			this.HideErrorMessage();
 			if (!View.ValidateInputs(containerWithInputs)) {
 				return;
@@ -271,7 +271,7 @@ class ModifyApp extends View {
 				}
 			}
 
-			this.m_parentView.classList.add("loading");
+			this.m_contentNode.classList.add("loading");
 			let newParameters
 				= View.ParseInputs(containerWithInputs, false, MetadataCollector.GetAppMetadata(this.m_appType));
 			for (const table of this.m_tables.values()) {
@@ -279,12 +279,12 @@ class ModifyApp extends View {
 			}
 			new WebSocketSingle({
 				event : Helper.StringHash32Uint("modify"),
-				handleResponse : (response) => { this.m_parentView.classList.remove("loading"); },
+				handleResponse : (response) => { this.m_contentNode.classList.remove("loading"); },
 				handleFailed : (error) => {
-					this.m_parentView.classList.remove("loading");
+					this.m_contentNode.classList.remove("loading");
 					this.DisplayErrorMessage(error);
 				},
-				viewUid : this.m_uid,
+				viewId : this.m_id,
 				data : { "parameters" : newParameters, "port" : this.m_port, "filter" : this.m_port }
 			});
 		});

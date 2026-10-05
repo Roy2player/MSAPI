@@ -31,7 +31,7 @@ class InstalledApps extends View {
 		}
 
 		this.m_grid = new Grid({
-			parent : this.m_view,
+			parent : this.m_viewSpecificNode,
 			indexColumnId : 5,
 			columns : [ 1, 5 ],
 			postAddRowFunction : (rowObject) => {
@@ -52,7 +52,7 @@ class InstalledApps extends View {
 						event : Helper.StringHash32Uint("getMetadata"),
 						handleResponse : (metadata) => { MetadataCollector.AddAppMetadata(app.type, metadata); },
 						handleFailed : (error) => { this.DisplayErrorMessage(error); },
-						viewUid : this.m_uid,
+						viewId : this.m_id,
 						data : {
 							"appType" : Helper.StringHash32Uint(app.type),
 							"filter" : Helper.StringHash32Uint(app.type)
@@ -70,10 +70,10 @@ class InstalledApps extends View {
 			event : Helper.StringHash32Uint("installedApp"),
 			handleResponse : handleResponse,
 			handleFailed : (error) => {
-				this.m_parentView.classList.remove("loading");
+				this.m_contentNode.classList.remove("loading");
 				this.DisplayErrorMessage(error);
 			},
-			viewUid : this.m_uid
+			viewId : this.m_id
 		});
 
 		return true;

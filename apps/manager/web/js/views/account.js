@@ -110,7 +110,7 @@ class Account extends View {
 
 	SwitchTemplate()
 	{
-		let currentTemplate = this.m_view.querySelector(":first-child");
+		let currentTemplate = this.m_viewSpecificNode.querySelector(":first-child");
 		if (currentTemplate) {
 			currentTemplate.remove();
 		}
@@ -118,9 +118,9 @@ class Account extends View {
 		if (Account.m_isAuthorized) {
 			const template = document.createElement("template");
 			template.innerHTML = Account.authorizedTemplate;
-			this.m_view.appendChild(template.content.cloneNode(true));
+			this.m_viewSpecificNode.appendChild(template.content.cloneNode(true));
 
-			let infoForm = this.m_view.querySelector(".info");
+			let infoForm = this.m_viewSpecificNode.querySelector(".info");
 			if (!infoForm) {
 				console.warn("Info form is not found");
 				return false;
@@ -146,7 +146,7 @@ class Account extends View {
 
 			let newLogin = "";
 			modifyButton.addEventListener("click", () => {
-				this.m_parentView.classList.add("loading");
+				this.m_contentNode.classList.add("loading");
 				this.HideErrorMessage();
 
 				let data = View.ParseInputs(infoForm, true);
@@ -159,7 +159,7 @@ class Account extends View {
 				}
 
 				const handleResponse = (response) => {
-					this.m_parentView.classList.remove("loading");
+					this.m_contentNode.classList.remove("loading");
 					this.HideErrorMessage();
 
 					let noErrors = true;
@@ -190,20 +190,20 @@ class Account extends View {
 					event : Helper.StringHash32Uint("modifyAccount"),
 					handleResponse : handleResponse,
 					handleFailed : (error) => {
-						this.m_parentView.classList.remove("loading");
+						this.m_contentNode.classList.remove("loading");
 						this.DisplayErrorMessage(error);
 					},
 					data : data,
-					viewUid : this.m_uid
+					viewId : this.m_id
 				});
 			});
 
 			logoutButton.addEventListener("click", () => {
-				this.m_parentView.classList.add("loading");
+				this.m_contentNode.classList.add("loading");
 				this.HideErrorMessage();
 
 				const handleResponse = (response) => {
-					this.m_parentView.classList.remove("loading");
+					this.m_contentNode.classList.remove("loading");
 					this.HideErrorMessage();
 					Account.m_isAuthorized = false;
 					Account.m_login = "";
@@ -214,25 +214,25 @@ class Account extends View {
 					event : Helper.StringHash32Uint("logout"),
 					handleResponse : handleResponse,
 					handleFailed : (error) => {
-						this.m_parentView.classList.remove("loading");
+						this.m_contentNode.classList.remove("loading");
 						this.DisplayErrorMessage(error);
 					},
-					viewUid : this.m_uid
+					viewId : this.m_id
 				});
 			});
 
 			login.value = Account.m_login;
 
-			Dynamic.InitTriggers(this.m_view);
+			Dynamic.InitTriggers(this.m_viewSpecificNode);
 
 			return true;
 		}
 
 		const template = document.createElement("template");
 		template.innerHTML = Account.unauthorizedTemplate;
-		this.m_view.appendChild(template.content.cloneNode(true));
+		this.m_viewSpecificNode.appendChild(template.content.cloneNode(true));
 
-		let loginForm = this.m_view.querySelector(".contentSwitch > .login");
+		let loginForm = this.m_viewSpecificNode.querySelector(".contentSwitch > .login");
 		if (!loginForm) {
 			console.warn("Login form is not found");
 			return false;
@@ -244,7 +244,7 @@ class Account extends View {
 			return false;
 		}
 
-		let loginSwitch = this.m_view.querySelector(".switch > .logic");
+		let loginSwitch = this.m_viewSpecificNode.querySelector(".switch > .logic");
 		if (!loginSwitch) {
 			console.warn("Login switch button is not found");
 			return false;
@@ -256,7 +256,7 @@ class Account extends View {
 			return false;
 		}
 
-		let signupForm = this.m_view.querySelector(".contentSwitch > .signup");
+		let signupForm = this.m_viewSpecificNode.querySelector(".contentSwitch > .signup");
 		if (!signupForm) {
 			console.warn("Signup form is not found");
 			return false;
@@ -278,11 +278,11 @@ class Account extends View {
 		Dynamic.InitForm(signupForm);
 
 		loginButton.addEventListener("click", () => {
-			this.m_parentView.classList.add("loading");
+			this.m_contentNode.classList.add("loading");
 			this.HideErrorMessage();
 
 			const handleResponse = (response) => {
-				this.m_parentView.classList.remove("loading");
+				this.m_contentNode.classList.remove("loading");
 				this.HideErrorMessage();
 				Account.m_isAuthorized = true;
 				Account.m_login = loginNameInput.value;
@@ -293,20 +293,20 @@ class Account extends View {
 				event : Helper.StringHash32Uint("login"),
 				handleResponse : handleResponse,
 				handleFailed : (error) => {
-					this.m_parentView.classList.remove("loading");
+					this.m_contentNode.classList.remove("loading");
 					this.DisplayErrorMessage(error);
 				},
 				data : View.ParseInputs(loginForm, true),
-				viewUid : this.m_uid
+				viewId : this.m_id
 			});
 		});
 
 		signupButton.addEventListener("click", () => {
-			this.m_parentView.classList.add("loading");
+			this.m_contentNode.classList.add("loading");
 			this.HideErrorMessage();
 
 			const handleResponse = (response) => {
-				this.m_parentView.classList.remove("loading");
+				this.m_contentNode.classList.remove("loading");
 				this.HideErrorMessage();
 				loginNameInput.value = signupLoginInput.value;
 				Dynamic.ClearForm(signupForm);
@@ -317,15 +317,15 @@ class Account extends View {
 				event : Helper.StringHash32Uint("register"),
 				handleResponse : handleResponse,
 				handleFailed : (error) => {
-					this.m_parentView.classList.remove("loading");
+					this.m_contentNode.classList.remove("loading");
 					this.DisplayErrorMessage(error);
 				},
 				data : View.ParseInputs(signupForm, true),
-				viewUid : this.m_uid
+				viewId : this.m_id
 			});
 		});
 
-		Dynamic.InitTriggers(this.m_view);
+		Dynamic.InitTriggers(this.m_viewSpecificNode);
 
 		return true;
 	}

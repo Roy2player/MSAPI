@@ -40,15 +40,15 @@ class AppView extends View {
 		iframe.style.height = "100%";
 		iframe.style.border = "none";
 
-		this.m_view.appendChild(iframe);
-		this.m_view.classList.add("loading");
+		this.m_viewSpecificNode.appendChild(iframe);
+		this.m_contentNode.classList.add("loading");
 
 		iframe.addEventListener("load", () => {
 			try {
 				const urlObj = new URL(iframe.src, window.location.origin);
 				iframe.contentWindow.postMessage(
-					{ type : "init", uid : this.m_uid, origin : window.location.origin }, urlObj.origin);
-				this.m_view.classList.remove("loading");
+					{ type : "init", id : this.m_id, origin : window.location.origin }, urlObj.origin);
+				this.m_contentNode.classList.remove("loading");
 			}
 			catch (e) {
 				console.error("Failed to postMessage to iframe:", e);
@@ -69,7 +69,7 @@ class AppView extends View {
 						this.m_title += ": " + this.m_appType + " on port " + this.m_port;
 					}
 					isTitleUpdated = true;
-					this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+					this.m_viewNode.querySelector(".title > span").textContent = this.m_title;
 				}
 
 				const state = parameters["2000002"];
@@ -80,14 +80,14 @@ class AppView extends View {
 					}
 
 					if (state != appState) {
-						this.m_view.classList.add("loading");
+						this.m_contentNode.classList.add("loading");
 						iframe.src = url + (url.includes("?") ? "&" : "?") + "reloaded=" + Date.now();
 					}
 					appState = state;
 				}
 			},
 			handleFailed : (error) => { this.DisplayErrorMessage(error); },
-			viewUid : this.m_uid,
+			viewId : this.m_id,
 			data : { "port" : this.m_port, "filter" : this.m_port }
 		});
 

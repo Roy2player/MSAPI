@@ -188,7 +188,7 @@ class GridChecking {
 	static CheckColumnsInOrder(grid, columns)
 	{
 		testRunner.Assert(grid.m_columnByOrder.size, columns.length);
-		testRunner.Assert(grid.m_view.querySelectorAll('.header .cell').length, columns.length);
+		testRunner.Assert(grid.m_viewSpecificNode.querySelectorAll('.header .cell').length, columns.length);
 
 		for (let index = 0; index < columns.length; index++) {
 			const columnObject = grid.m_columnByOrder.get(columns[index].order);
@@ -284,8 +284,8 @@ class GridChecking {
 
 						const views = document.querySelectorAll('.views > .view');
 						const tableView = views[views.length - 1];
-						const viewUid = +tableView.getAttribute('uid');
-						const tableViewInstance = createdViews.get(viewUid);
+						const viewId = +tableView.getAttribute('id');
+						const tableViewInstance = createdViews.get(viewId);
 
 						await TestRunner.WaitFor(() => tableViewInstance.m_created, 'Table view is created');
 						testRunner.Assert(tableView.querySelector('.tableWrapper').classList.contains('const'), true);
@@ -375,7 +375,7 @@ class GridChecking {
 
 	static async CheckColumnHeaders(grid, values)
 	{
-		const columnHeaders = grid.m_view.querySelectorAll('.header .cell');
+		const columnHeaders = grid.m_viewSpecificNode.querySelectorAll('.header .cell');
 		testRunner.Assert(columnHeaders.length, values.length);
 		for (let index = 0; index < values.length; index++) {
 			if (values[index].sorting == null || values[index].align == null || values[index].isFilterActive == null
@@ -426,36 +426,36 @@ class GridChecking {
 				await TestRunner.WaitFor(() => View.GetCreatedViews().size > sizeBefore, 'Settings view is created');
 
 				const views = document.querySelectorAll('.views > .view');
-				settingsView = View.GetCreatedViews().get(+views[views.length - 1].getAttribute('uid'));
+				settingsView = View.GetCreatedViews().get(+views[views.length - 1].getAttribute('id'));
 			}
 
 			testRunner.Assert(
-				settingsView.m_parentView.querySelector('.title > span').innerHTML, "Manage column settings");
-			const sortingAscending = settingsView.m_view.querySelector('.ascending');
+				settingsView.m_viewNode.querySelector('.title > span').innerHTML, "Manage column settings");
+			const sortingAscending = settingsView.m_viewSpecificNode.querySelector('.ascending');
 			testRunner.Assert(sortingAscending != null, true);
 			testRunner.Assert(
 				sortingAscending.classList.contains('active'), values[index].sorting == Grid.SORTING_TYPE.ascending);
 			testRunner.Assert(sortingAscending.classList.contains('action'), true);
-			const sortingNone = settingsView.m_view.querySelector('.none');
+			const sortingNone = settingsView.m_viewSpecificNode.querySelector('.none');
 			testRunner.Assert(sortingNone != null, true);
 			testRunner.Assert(
 				sortingNone.classList.contains('active'), values[index].sorting == Grid.SORTING_TYPE.none);
 			testRunner.Assert(sortingNone.classList.contains('action'), true);
-			const sortingDescending = settingsView.m_view.querySelector('.descending');
+			const sortingDescending = settingsView.m_viewSpecificNode.querySelector('.descending');
 			testRunner.Assert(sortingDescending != null, true);
 			testRunner.Assert(
 				sortingDescending.classList.contains('active'), values[index].sorting == Grid.SORTING_TYPE.descending);
 			testRunner.Assert(sortingDescending.classList.contains('action'), true);
 
-			const alignLeft = settingsView.m_view.querySelector('.alignLeft');
+			const alignLeft = settingsView.m_viewSpecificNode.querySelector('.alignLeft');
 			testRunner.Assert(alignLeft != null, true);
 			testRunner.Assert(alignLeft.classList.contains('active'), values[index].align == Grid.ALIGN_TYPE.left);
 			testRunner.Assert(alignLeft.classList.contains('action'), true);
-			const alignCenter = settingsView.m_view.querySelector('.alignCenter');
+			const alignCenter = settingsView.m_viewSpecificNode.querySelector('.alignCenter');
 			testRunner.Assert(alignCenter != null, true);
 			testRunner.Assert(alignCenter.classList.contains('active'), values[index].align == Grid.ALIGN_TYPE.center);
 			testRunner.Assert(alignCenter.classList.contains('action'), true);
-			const alignRight = settingsView.m_view.querySelector('.alignRight');
+			const alignRight = settingsView.m_viewSpecificNode.querySelector('.alignRight');
 			testRunner.Assert(alignRight != null, true);
 			testRunner.Assert(alignRight.classList.contains('active'), values[index].align == Grid.ALIGN_TYPE.right);
 			testRunner.Assert(alignRight.classList.contains('action'), true);
@@ -464,7 +464,7 @@ class GridChecking {
 
 			GridChecking.CheckColumnAlignment({ grid, columnId, align : values[index].align });
 
-			const filterInView = settingsView.m_view.querySelector('.filter');
+			const filterInView = settingsView.m_viewSpecificNode.querySelector('.filter');
 			testRunner.Assert(filterInView != null, true);
 			testRunner.Assert(filterInView.classList.contains('active'), values[index].isFilterActive,
 				`Column id is ${columnObject.id}`);
@@ -481,11 +481,11 @@ class GridChecking {
 			select.dispatchEvent(new Event("click"));
 			await TestRunner.WaitFor(() => View.GetCreatedViews().size > sizeBefore, 'Select view is created');
 			const views = document.querySelectorAll('.views > .view');
-			const selectView = View.GetCreatedViews().get(+views[views.length - 1].getAttribute('uid'));
-			selectView.m_view.querySelector('.options > div').dispatchEvent(new Event("click"));
+			const selectView = View.GetCreatedViews().get(+views[views.length - 1].getAttribute('id'));
+			selectView.m_viewSpecificNode.querySelector('.options > div').dispatchEvent(new Event("click"));
 			await TestRunner.WaitFor(() => View.GetCreatedViews().size == sizeBefore, 'Select view is destroyed');
-			testRunner.Assert(selectView.m_parentView.parentView == null, true);
-			testRunner.Assert(settingsView.m_parentView != null, true);
+			testRunner.Assert(selectView.m_viewNode.parentView == null, true);
+			testRunner.Assert(settingsView.m_viewNode != null, true);
 
 			if (values[index].settingsView == null) {
 				document.dispatchEvent(new Event("click"));
@@ -506,7 +506,7 @@ class GridChecking {
 			headers.get(columnId)[property] = value;
 		};
 
-		const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${columnId}"]`);
+		const headerCell = grid.m_viewSpecificNode.querySelector(`.header .cell[parameter-id="${columnId}"]`);
 		testRunner.Assert(headerCell != null, true);
 		if (inView) {
 			const sizeBefore = View.GetCreatedViews().size;
@@ -553,7 +553,7 @@ class GridChecking {
 
 			if (filters) {
 				const filteredBefore = GridChecking.SizeOfFilteredRows(grid);
-				await GridChecking.SetFilters(settingsView.getAttribute('uid'), filters);
+				await GridChecking.SetFilters(settingsView.getAttribute('id'), filters);
 				const filteredAfter = GridChecking.SizeOfFilteredRows(grid);
 				fillPropertyInData('filters', filters);
 
@@ -743,7 +743,7 @@ testRunner.Test('Create and modify grid', async () => {
 	testRunner.Assert(grid.m_indexColumnId, scalar_parameter);
 	testRunner.Assert(grid.m_postAddRowFunction, undefined);
 	testRunner.Assert(grid.m_postUpdateRowFunction, undefined);
-	testRunner.Assert(grid.m_view, body.querySelector('.grid'));
+	testRunner.Assert(grid.m_viewSpecificNode, body.querySelector('.grid'));
 	testRunner.Assert(grid.m_header, body.querySelector('.grid').querySelector('.header'));
 	GridChecking.CheckColumnsInOrder(grid, [
 		{ name : 'Start trading time delay', order : 0 }, { name : 'Active minimum trend strike mode', order : 1 },
@@ -1114,7 +1114,7 @@ testRunner.Test('Create and modify grid', async () => {
 
 	TestRunner.Step('Destroy grid');
 	grid.Destructor();
-	testRunner.Assert(grid.m_view, null);
+	testRunner.Assert(grid.m_viewSpecificNode, null);
 	testRunner.Assert(grid.m_columnByOrder, null);
 	testRunner.Assert(grid.m_visibleRows, null);
 	testRunner.Assert(grid.m_rowByIndexValue, null);
@@ -1157,7 +1157,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	testRunner.Assert(grid.m_indexColumnId, timer_parameter);
 	testRunner.Assert(grid.m_postAddRowFunction !== undefined, true);
 	testRunner.Assert(grid.m_postUpdateRowFunction !== undefined, true);
-	testRunner.Assert(grid.m_view, body.querySelector('.grid'));
+	testRunner.Assert(grid.m_viewSpecificNode, body.querySelector('.grid'));
 	testRunner.Assert(grid.m_header, body.querySelector('.grid').querySelector('.header'));
 	GridChecking.CheckColumnsInOrder(grid, [
 		{ name : 'Timer', order : 0 }, { name : 'Active minimum trend strike mode', order : 1 },
@@ -1393,7 +1393,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 
 	TestRunner.Step('Destroy grid');
 	grid.Destructor();
-	testRunner.Assert(grid.m_view, null);
+	testRunner.Assert(grid.m_viewSpecificNode, null);
 	testRunner.Assert(grid.m_columnByOrder, null);
 	testRunner.Assert(grid.m_visibleRows, null);
 	testRunner.Assert(grid.m_rowByIndexValue, null);
@@ -1411,7 +1411,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 	testRunner.Assert(grid.m_indexColumnId, timer_parameter);
 	testRunner.Assert(grid.m_postAddRowFunction == undefined, true);
 	testRunner.Assert(grid.m_postUpdateRowFunction == undefined, true);
-	testRunner.Assert(grid.m_view, body.querySelector('.grid'));
+	testRunner.Assert(grid.m_viewSpecificNode, body.querySelector('.grid'));
 	testRunner.Assert(grid.m_header, body.querySelector('.grid').querySelector('.header'));
 	GridChecking.CheckColumnsInOrder(grid, [
 		{ name : 'Timer', order : 0 }, { name : 'Active minimum trend strike mode', order : 1 },
@@ -1909,7 +1909,8 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 
 		TestRunner.Step(`Remove column with active filters`);
 		{
-			const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${optional_scalar_parameter}"]`);
+			const headerCell
+				= grid.m_viewSpecificNode.querySelector(`.header .cell[parameter-id="${optional_scalar_parameter}"]`);
 			testRunner.Assert(headerCell != null, true);
 			const sizeBefore = View.GetCreatedViews().size;
 			headerCell.querySelector(`.settings`).dispatchEvent(new Event("click"));
@@ -1980,7 +1981,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 
 	TestRunner.Step('Destroy grid');
 	grid.Destructor();
-	testRunner.Assert(grid.m_view, null);
+	testRunner.Assert(grid.m_viewSpecificNode, null);
 	testRunner.Assert(grid.m_columnByOrder, null);
 	testRunner.Assert(grid.m_visibleRows, null);
 	testRunner.Assert(grid.m_rowByIndexValue, null);
@@ -1999,7 +2000,7 @@ testRunner.Test('Test table type, its view logic', async () => {
 	testRunner.Assert(grid.m_indexColumnId, scalar_parameter);
 	testRunner.Assert(grid.m_postAddRowFunction, undefined);
 	testRunner.Assert(grid.m_postUpdateRowFunction, undefined);
-	testRunner.Assert(grid.m_view, body.querySelector('.grid'));
+	testRunner.Assert(grid.m_viewSpecificNode, body.querySelector('.grid'));
 	testRunner.Assert(grid.m_header, body.querySelector('.grid').querySelector('.header'));
 	GridChecking.CheckColumnsInOrder(grid, [
 		{ name : 'Commissions', order : 0 }, { name : 'Create', order : 1 }, { name : 'Object identifier', order : 2 }
@@ -2036,7 +2037,7 @@ testRunner.Test('Test table type, its view logic', async () => {
 
 	TestRunner.Step('Check, that there is not settings button for table and system parameters');
 	for (let parameter of [table_parameter_1, system_create_parameter]) {
-		const headerCell = grid.m_view.querySelector(`.header .cell[parameter-id="${parameter}"]`);
+		const headerCell = grid.m_viewSpecificNode.querySelector(`.header .cell[parameter-id="${parameter}"]`);
 		testRunner.Assert(headerCell != null, true);
 		testRunner.Assert(headerCell.querySelector(`.settings`), null);
 	}
@@ -2044,7 +2045,8 @@ testRunner.Test('Test table type, its view logic', async () => {
 	{
 		TestRunner.Step('Open table view for first and second rows');
 		GridChecking.RenderAllRows(grid);
-		const tableCells = grid.m_view.querySelectorAll(`.row:not(.header) .cell[parameter-id="${table_parameter_1}"]`);
+		const tableCells
+			= grid.m_viewSpecificNode.querySelectorAll(`.row:not(.header) .cell[parameter-id="${table_parameter_1}"]`);
 		testRunner.Assert(tableCells.length, 2);
 
 		const viewsBefore = View.GetCreatedViews().size;
@@ -2056,27 +2058,30 @@ testRunner.Test('Test table type, its view logic', async () => {
 		let tableView1 = views[viewsBefore];
 		let tableView2 = views[viewsBefore + 1];
 
-		TableChecker.CheckValues(testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), []);
-		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'), []);
+		TableChecker.CheckValues(
+			testRunner, tableView1.m_viewSpecificNode.querySelectorAll('.row:not(.new) input'), []);
+		TableChecker.CheckValues(
+			testRunner, tableView2.m_viewSpecificNode.querySelectorAll('.row:not(.new) input'), []);
 
 		TestRunner.Step('Update table parameter for first row');
 		GridChecking.AddOrUpdateRow(
 			grid, { [table_parameter_1] : { "Rows" : [ [ 1n, 0.1 ] ] }, [scalar_parameter] : 0n });
 		TableChecker.CheckValues(
-			testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
-		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'), []);
+			testRunner, tableView1.m_viewSpecificNode.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
+		TableChecker.CheckValues(
+			testRunner, tableView2.m_viewSpecificNode.querySelectorAll('.row:not(.new) input'), []);
 
 		TestRunner.Step('Update table parameter for second row');
 		GridChecking.AddOrUpdateRow(
 			grid, { [table_parameter_1] : { "Rows" : [ [ 2n, 0.2 ], [ 3n, 0.44 ] ] }, [scalar_parameter] : 1n });
 		TableChecker.CheckValues(
-			testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
-		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'),
+			testRunner, tableView1.m_viewSpecificNode.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
+		TableChecker.CheckValues(testRunner, tableView2.m_viewSpecificNode.querySelectorAll('.row:not(.new) input'),
 			[ "Share", "0.2", "Currency", "0.44" ]);
 
 		TestRunner.Step('Close table views');
-		tableView1.m_parentView.querySelector('.close').dispatchEvent(new Event("click"));
-		tableView2.m_parentView.querySelector('.close').dispatchEvent(new Event("click"));
+		tableView1.m_viewNode.querySelector('.close').dispatchEvent(new Event("click"));
+		tableView2.m_viewNode.querySelector('.close').dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => View.GetCreatedViews().size == viewsBefore);
 		testRunner.Assert(Grid.GetTablesViewsNumber(), 2);
 
@@ -2092,8 +2097,8 @@ testRunner.Test('Test table type, its view logic', async () => {
 		tableView1 = views[viewsBefore];
 		tableView2 = views[viewsBefore + 1];
 		TableChecker.CheckValues(
-			testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
-		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'),
+			testRunner, tableView1.m_viewSpecificNode.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
+		TableChecker.CheckValues(testRunner, tableView2.m_viewSpecificNode.querySelectorAll('.row:not(.new) input'),
 			[ "Share", "0.2", "Currency", "0.44" ]);
 		testRunner.Assert(Grid.GetTablesViewsNumber(), 2);
 	}
@@ -2116,7 +2121,7 @@ testRunner.Test('Test virtualized pool navigation, sorting and filtering', async
 	const keydown = (key) => {
 		const event = new Event('keydown');
 		Object.defineProperty(event, 'key', { value : key });
-		grid.m_pool.m_parentNode.dispatchEvent(event);
+		grid.m_pool.m_viewsNode.dispatchEvent(event);
 	};
 
 	keydown('Home');
@@ -2211,7 +2216,7 @@ testRunner.Test('Test pool keyboard navigation after partial scroll', async () =
 	const keydown = (key) => {
 		const event = new Event('keydown');
 		Object.defineProperty(event, 'key', { value : key });
-		grid.m_pool.m_parentNode.dispatchEvent(event);
+		grid.m_pool.m_viewsNode.dispatchEvent(event);
 	};
 
 	TestRunner.Step('Arrow keys move pool on first press after partial wheel scroll');
