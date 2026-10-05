@@ -735,7 +735,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 
 	m_addr.sin_addr.s_addr = htobe32(ip);
 	if (!Helper::GetStringIp(m_addr.sin_addr, m_listenIp)) [[unlikely]] {
-		m_listenIp = std::string_view{ "unknown" };
+		(void)m_listenIp.Copy(std::string_view{ "unknown" });
 	}
 
 	m_listenIpStr = m_listenIp.Get();
@@ -747,7 +747,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 
 	m_listeningSocket = Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (m_listeningSocket == -1) [[unlikely]] {
-		m_listenIp = "";
+		m_listenIp.Clear();
 		m_listenIpStr = "";
 		m_listenPort = 0;
 		LOG_ERROR("Socket constructor error, starting is interrupted");
@@ -758,7 +758,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 	if (!Bind(m_listeningSocket, &m_addr)) [[unlikely]] {
 		(void)close(m_listeningSocket);
 		m_listeningSocket = -1;
-		m_listenIp = "";
+		m_listenIp.Clear();
 		m_listenIpStr = "";
 		m_listenPort = 0;
 		LOG_ERROR("Bind constructor error, starting is interrupted");
@@ -769,7 +769,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 	if (!Listen(m_listeningSocket)) [[unlikely]] {
 		(void)close(m_listeningSocket);
 		m_listeningSocket = -1;
-		m_listenIp = "";
+		m_listenIp.Clear();
 		m_listenIpStr = "";
 		m_listenPort = 0;
 		LOG_ERROR("Listen constructor error, starting is interrupted");
@@ -800,7 +800,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 			state = m_state.load(std::memory_order_acquire);
 
 			if (state == State::Stopping) [[unlikely]] {
-				m_listenIp = "";
+				m_listenIp.Clear();
 				m_listenIpStr = "";
 				m_listenPort = 0;
 				LOG_DEBUG("Server state is Stopping, wait for pthreads to be finished");
@@ -823,7 +823,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 			}
 
 			if (!Helper::GetStringIp(clientAddr.sin_addr, clientIp)) [[unlikely]] {
-				clientIp = std::string_view{ "unknown" };
+				(void)clientIp.Copy(std::string_view{ "unknown" });
 			}
 			(void)CreatePthread<Connection::Type::Income>(
 				std::move(newConnection), std::move(clientIp), attr, ip, port, /*doReconnection=*/false);
@@ -839,7 +839,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 	pthread_attr_destroy(&attr);
 	(void)close(m_listeningSocket);
 	m_listeningSocket = -1;
-	m_listenIp = "";
+	m_listenIp.Clear();
 	m_listenIpStr = "";
 	m_listenPort = 0;
 	m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
@@ -1059,7 +1059,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 
 	SString<16> ipStr;
 	if (!Helper::GetStringIp(addr.sin_addr, ipStr)) [[unlikely]] {
-		ipStr = std::string_view{ "unknown" };
+		(void)ipStr.Copy(std::string_view{ "unknown" });
 	}
 
 	if (m_state.load(std::memory_order_acquire) == State::Stopping) [[unlikely]] {

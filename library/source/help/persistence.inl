@@ -197,9 +197,10 @@ public:
 			return;
 		}
 
-		m_path = dir;
-		if (addSeparator) {
-			m_path += "/";
+		if (!m_path.Copy(dir) || (addSeparator && !m_path.Concatenate(std::string_view{ "/" }))) [[unlikely]] {
+			LOG_ERROR_NEW("Failed to build persistence directory path, directory: \"{}\"", dir);
+			m_path.Clear();
+			return;
 		}
 
 		if (!m_path.NullTerminate() || (!MSAPI::IO::HasPath(m_path.Get()) && !MSAPI::IO::CreateDir(m_path.Get())))
@@ -209,14 +210,11 @@ public:
 			return;
 		}
 
-		m_path += ".";
-		m_path += name;
+		if (!m_path.Concatenate(std::string_view{ "." }) || !m_path.Concatenate(name) || !m_path.NullTerminate()
+			|| !m_timestampPath.Copy(m_path.Get()) || !m_timestampPath.Concatenate(SUFFIX)
+			|| !m_timestampPath.NullTerminate()) [[unlikely]] {
 
-		m_timestampPath = m_path;
-		m_timestampPath += SUFFIX;
-
-		if (!m_path.NullTerminate() || !m_timestampPath.NullTerminate()) [[unlikely]] {
-			LOG_ERROR_NEW("Failed to null terminate persistence paths, path: \"{}\"", m_path.Get());
+			LOG_ERROR_NEW("Failed to build persistence paths, path: \"{}\"", m_path.Get());
 			m_path.Clear();
 			m_timestampPath.Clear();
 			return;
