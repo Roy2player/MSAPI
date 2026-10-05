@@ -240,7 +240,7 @@ private:
 	/**************************
 	 * @brief Contains account data along with additional control information.
 	 *
-	 * @concurrency External synchronization is required.
+	 * @concurrency Yes.
 	 */
 	class AccountData {
 	private:
