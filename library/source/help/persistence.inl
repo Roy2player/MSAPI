@@ -160,7 +160,7 @@ private:
 	MSAPI::Timer m_timestamp{ 0 };
 	MSAPI::SString<512> m_path;
 	MSAPI::SString<512> m_timestampPath;
-	MSAPI::Lock::AtomicRW m_lock;
+	mutable MSAPI::Lock::AtomicRW m_lock;
 	bool m_fullRewrite{};
 
 public:
@@ -352,7 +352,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] MSAPI::Timer GetTimestamp() noexcept
+	FORCE_INLINE [[nodiscard]] MSAPI::Timer GetTimestamp() const noexcept
 	{
 		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_lock };
 		return m_timestamp;
@@ -390,7 +390,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] MSAPI::Lock::AtomicRW& GetLock() noexcept { return m_lock; }
+	FORCE_INLINE [[nodiscard]] MSAPI::Lock::AtomicRW& GetLock() const noexcept { return m_lock; }
 
 	/**************************
 	 * @brief Emplaces an uncached object at the end of the container.

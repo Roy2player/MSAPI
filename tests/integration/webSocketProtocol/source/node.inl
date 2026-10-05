@@ -28,10 +28,10 @@ class Node : public MSAPI::Server, MSAPI::Protocol::HTTP::IHandler, public MSAPI
 private:
 	std::unordered_map<std::shared_ptr<MSAPI::Connection::Data>, std::vector<MSAPI::Protocol::WebSocket::Data>>
 		m_connectionDataToWebSocketData;
-	MSAPI::Lock::Atomic m_webSocketDataLock;
+	mutable MSAPI::Lock::Atomic m_webSocketDataLock;
 	std::unordered_map<std::shared_ptr<MSAPI::Connection::Data>, std::vector<MSAPI::Protocol::HTTP::Data>>
 		m_connectionDataToHttpData;
-	MSAPI::Lock::Atomic m_httpDataLock;
+	mutable MSAPI::Lock::Atomic m_httpDataLock;
 
 public:
 	FORCE_INLINE Node() noexcept
@@ -107,7 +107,7 @@ public:
 	}
 
 	FORCE_INLINE [[nodiscard]] const std::vector<MSAPI::Protocol::HTTP::Data>* GetHttpData(
-		const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
+		const std::shared_ptr<MSAPI::Connection::Data>& connectionData) const
 	{
 		MSAPI::Lock::Atomic::Guard _{ m_httpDataLock };
 		if (const auto it{ m_connectionDataToHttpData.find(connectionData) }; it != m_connectionDataToHttpData.end()) {
@@ -117,7 +117,7 @@ public:
 		return {};
 	}
 
-	FORCE_INLINE [[nodiscard]] std::shared_ptr<MSAPI::Connection::Data> DetectConnection(const std::string& key)
+	FORCE_INLINE [[nodiscard]] std::shared_ptr<MSAPI::Connection::Data> DetectConnection(const std::string& key) const
 	{
 		MSAPI::Lock::Atomic::Guard _{ m_httpDataLock };
 		for (const auto& [connectionData, dataVector] : m_connectionDataToHttpData) {

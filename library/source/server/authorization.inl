@@ -238,7 +238,7 @@ private:
 	private:
 		A m_account;
 		std::string m_dataPath;
-		std::unique_ptr<Lock::AtomicRW> m_rwLock;
+		mutable Lock::AtomicRW m_rwLock;
 		std::optional<uint64_t> m_connectionId;
 		Timer m_lastActivity{ 0 };
 
@@ -251,25 +251,10 @@ private:
 		 */
 		FORCE_INLINE explicit AccountData(A&& account, std::string&& dataPath) noexcept;
 
-		FORCE_INLINE AccountData() noexcept = default;
 		AccountData(const AccountData&) = delete;
+		AccountData(AccountData&&) = delete;
 		AccountData& operator=(const AccountData&) = delete;
-
-		/**************************
-		 * @brief Move constructor for AccountData.
-		 *
-		 * @param other The other AccountData object to move from.
-		 */
-		FORCE_INLINE AccountData(AccountData&& other) noexcept;
-
-		/**************************
-		 * @brief Move assignment operator for AccountData.
-		 *
-		 * @param other The other AccountData object to move from.
-		 *
-		 * @return Reference to this AccountData object.
-		 */
-		FORCE_INLINE AccountData& operator=(AccountData&& other) noexcept;
+		AccountData& operator=(AccountData&&) = delete;
 
 		/**************************
 		 * @brief Destroy the AccountData object, acquiring a write lock to ensure all operations are completed.
@@ -322,7 +307,7 @@ private:
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE Lock::AtomicRW& GetRWLock() noexcept;
+		FORCE_INLINE Lock::AtomicRW& GetRWLock() const noexcept;
 
 		/**************************
 		 * @brief Save the account data to its associated file.
@@ -353,9 +338,9 @@ private:
 
 private:
 	std::unordered_map<uint64_t, std::shared_ptr<AccountData>> m_logonConnectionIdToAccountData;
-	Lock::AtomicRW m_logonConnectionIdToAccountDataLock;
+	mutable Lock::AtomicRW m_logonConnectionIdToAccountDataLock;
 	std::unordered_map<uint64_t, std::shared_ptr<AccountData>> m_loginHashToAccountData;
-	Lock::AtomicRW m_loginHashToAccountDataLock;
+	mutable Lock::AtomicRW m_loginHashToAccountDataLock;
 	std::string m_dataPath;
 	Timer::Event m_logoutEvent{ this };
 	Timer::Duration m_logoutTimeout{ Timer::Duration::CreateHours(12) };
@@ -538,14 +523,14 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t GetRegisteredAccountsSize() noexcept;
+	FORCE_INLINE [[nodiscard]] uint64_t GetRegisteredAccountsSize() const noexcept;
 
 	/**************************
 	 * @return The number of active logon connections.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t GetLogonConnectionsSize() noexcept;
+	FORCE_INLINE [[nodiscard]] uint64_t GetLogonConnectionsSize() const noexcept;
 
 	/**************************
 	 * @brief Block or unblock the account till the specified time. If block an active account, it logouts from its
@@ -757,37 +742,12 @@ template <Accountable A, Gradable G>
 FORCE_INLINE Module<A, G>::AccountData::AccountData(A&& account, std::string&& dataPath) noexcept
 	: m_account{ std::forward<A>(account) }
 	, m_dataPath{ std::move(dataPath) }
-	, m_rwLock{ std::make_unique<Lock::AtomicRW>() }
 {
-}
-
-template <Accountable A, Gradable G>
-FORCE_INLINE Module<A, G>::AccountData::AccountData(AccountData&& other) noexcept
-	: m_account{ std::move(other.m_account) }
-	, m_dataPath{ std::move(other.m_dataPath) }
-	, m_rwLock{ std::move(other.m_rwLock) }
-	, m_connectionId{ other.m_connectionId }
-	, m_lastActivity{ other.m_lastActivity }
-{
-}
-
-template <Accountable A, Gradable G>
-FORCE_INLINE Module<A, G>::AccountData& Module<A, G>::AccountData::operator=(AccountData&& other) noexcept
-{
-	if (this != &other) {
-		m_account = std::move(other.m_account);
-		m_dataPath = std::move(other.m_dataPath);
-		m_rwLock = std::move(other.m_rwLock);
-		m_connectionId = other.m_connectionId;
-		m_lastActivity = other.m_lastActivity;
-	}
-
-	return *this;
 }
 
 template <Accountable A, Gradable G> FORCE_INLINE Module<A, G>::AccountData::~AccountData() noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::WRITE> _{ *m_rwLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_rwLock };
 }
 
 template <Accountable A, Gradable G> FORCE_INLINE A& Module<A, G>::AccountData::GetAccount() noexcept
@@ -818,9 +778,9 @@ template <Accountable A, Gradable G> FORCE_INLINE Timer Module<A, G>::AccountDat
 	return m_lastActivity;
 }
 
-template <Accountable A, Gradable G> FORCE_INLINE Lock::AtomicRW& Module<A, G>::AccountData::GetRWLock() noexcept
+template <Accountable A, Gradable G> FORCE_INLINE Lock::AtomicRW& Module<A, G>::AccountData::GetRWLock() const noexcept
 {
-	return *m_rwLock.get();
+	return m_rwLock;
 }
 
 template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G>::AccountData::Save() const
@@ -1385,14 +1345,14 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const uint64_t con
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetRegisteredAccountsSize() noexcept
+FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetRegisteredAccountsSize() const noexcept
 {
 	const Lock::AtomicRW::Guard<Lock::READ> _{ m_loginHashToAccountDataLock };
 	return m_loginHashToAccountData.size();
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetLogonConnectionsSize() noexcept
+FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetLogonConnectionsSize() const noexcept
 {
 	const Lock::AtomicRW::Guard<Lock::READ> _{ m_logonConnectionIdToAccountDataLock };
 	return m_logonConnectionIdToAccountData.size();
