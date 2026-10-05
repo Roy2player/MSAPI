@@ -364,6 +364,12 @@ template <typename Type, size_t Capacity>
 	requires BasicSStringConcept<Type, Capacity>
 FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::Copy(const std::basic_string_view<Type> view) noexcept
 {
+	// Empty view can hold nullptr, which must not be passed to memcpy
+	if (view.empty()) [[unlikely]] {
+		m_size = 0;
+		return true;
+	}
+
 	return Copy(view.data(), view.size());
 }
 
@@ -391,6 +397,11 @@ template <typename Type, size_t Capacity>
 FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::Concatenate(
 	const std::basic_string_view<Type> view) noexcept
 {
+	// Empty view can hold nullptr, which must not be passed to memcpy
+	if (view.empty()) [[unlikely]] {
+		return true;
+	}
+
 	return Concatenate(view.data(), view.size());
 }
 

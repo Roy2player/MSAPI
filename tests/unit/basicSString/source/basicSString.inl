@@ -55,6 +55,7 @@
  * 7.4. Concatenate overflow copies as much as possible
  * 7.5. Concatenate to full string
  * 7.6. Concatenate overflow from pointer
+ * 7.7. Copy and Concatenate with empty default view
  * 8. Different capacity construction and assignment
  * 9. Equality and inequality
  * 10. Hash
@@ -80,6 +81,16 @@ namespace Unit {
 /*---------------------------------------------------------------------------------
 Declarations
 ---------------------------------------------------------------------------------*/
+
+/**************************
+ * @brief Checks if value can be appended to string by operator+=. Template parameters keep the expression dependent, so
+ * missing operator results in false instead of compilation error.
+ *
+ * @tparam String Type of string.
+ * @tparam Value Type of appended value.
+ */
+template <typename String, typename Value>
+concept AppendableByOperator = requires(String string, Value value) { string += value; };
 
 /**************************
  * @brief Unit test for BasicSString class.
@@ -370,10 +381,12 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 				"Assignment from greater capacity is not available");
 			static_assert(std::is_constructible_v<SString42, const SString41&>, "Construction from smaller capacity");
 			static_assert(std::is_assignable_v<SString42&, const SString41&>, "Assignment from smaller capacity");
+			static_assert(AppendableByOperator<std::basic_string<Type>, View>, "Concept detects existing operator");
+			static_assert(!AppendableByOperator<SString41, View>, "Append operator with view is not available");
 			static_assert(
-				!requires(SString41 string, View view) { string += view; }, "Append operator is not available");
-			static_assert(
-				!requires(SString41 string, SString41 other) { string += other; }, "Append operator is not available");
+				!AppendableByOperator<SString41, SString41>, "Append operator with same capacity is not available");
+			static_assert(!AppendableByOperator<SString41, SString42>,
+				"Append operator with different capacity is not available");
 		}
 
 		// 7.1. Concatenate with a string view
@@ -456,6 +469,21 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			RETURN_IF_FALSE(t.Assert(concatenatedString.GetSize(), 32, "Overflow concatenation size is capacity"));
 			RETURN_IF_FALSE(t.Assert(memcmp(concatenatedString.Get().data(), source.data(), 32 * sizeof(Type)), 0,
 				"Overflow concatenation copies fitting part"));
+		}
+
+		// 7.7. Copy and Concatenate with empty default view
+		{
+			MSAPI::BasicSString<Type, 41> emptyViewString;
+			RETURN_IF_FALSE(t.Assert(emptyViewString.Copy(source.data(), 3), true, "Copy is success"));
+			RETURN_IF_FALSE(t.Assert(emptyViewString.Concatenate(std::basic_string_view<Type>{}), true,
+				"Empty default view concatenation is success"));
+			RETURN_IF_FALSE(
+				t.Assert(emptyViewString.GetSize(), 3, "Empty default view concatenation does not change size"));
+			RETURN_IF_FALSE(t.Assert(memcmp(emptyViewString.Get().data(), source.data(), 3 * sizeof(Type)), 0,
+				"Empty default view concatenation does not change content"));
+			RETURN_IF_FALSE(t.Assert(
+				emptyViewString.Copy(std::basic_string_view<Type>{}), true, "Empty default view copy is success"));
+			RETURN_IF_FALSE(t.Assert(emptyViewString.Empty(), true, "Empty default view copy empties string"));
 		}
 
 		// 8. Different capacity construction and assignment
