@@ -29,10 +29,10 @@
  * 2.10. Check buffer reflection on third copy
  * 2.11. Check size reflection on size update with string copied from source with null termination inside
  * 2.12. Check buffer reflection on size update with string copied from source with null termination inside
- * 2.13. Check size reflection on attempt to overflow copy from
- * 2.14. Check buffer reflection on attempt to overflow copy from
- * 2.15. Check size reflection on second attempt to overflow copy from
- * 2.16. Check buffer reflection on second attempt to overflow copy from
+ * 2.13. Check size reflection on truncated overflow copy from view
+ * 2.14. Check buffer reflection on truncated overflow copy from view
+ * 2.15. Check size reflection on truncated overflow copy from pointer
+ * 2.16. Check buffer reflection on truncated overflow copy from pointer
  * 2.17. Check size reflection on maximum copy
  * 2.18. Check buffer reflection on maximum copy
  * 2.19. Final state check
@@ -48,12 +48,13 @@
  * 5.2. Move constructor
  * 5.3. Copy assignment constructor
  * 5.4. Move assignment constructor
- * 6. String view assignment
- * 6.1. String view constructor
- * 7.1. Append via operator+= with a string view
- * 7.2. Append via operator+= with another instance of same capacity
- * 7.3. Append via operator+= with an instance of different capacity
- * 7.4. Append via operator+= overflow preserves destination
+ * 6. Implicit operations which can run out of space are not available
+ * 7.1. Concatenate with a string view
+ * 7.2. Concatenate with another instance of same capacity
+ * 7.3. Concatenate with an instance of different capacity
+ * 7.4. Concatenate overflow copies as much as possible
+ * 7.5. Concatenate to full string
+ * 7.6. Concatenate overflow from pointer
  * 8. Different capacity construction and assignment
  * 9. Equality and inequality
  * 10. Hash
@@ -61,6 +62,7 @@
  * 12. Formatter
  * 13. Clear and Empty
  * 14. Null terminate
+ * 15. Pop back
  */
 
 #ifndef MSAPI_UNIT_TEST_BASIC_SSTRING_INL
@@ -127,7 +129,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			RETURN_IF_FALSE(t.Assert(value.size(), 0, "Size of value is expected"));
 
 			// 2.3. Check size reflection on zero copy
-			RETURN_IF_FALSE(t.Assert(sstring41.CopyFrom(source.data(), 0), true, "Copy is sucsseed"));
+			RETURN_IF_FALSE(t.Assert(sstring41.Copy(source.data(), 0), true, "Copy is sucsseed"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetSize(), 0, "Size after copy is expected"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetCapacity(), 41, "Capacity is expected"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetBuffer(), bufferPtr, "Buffer pointer is not changed"));
@@ -137,7 +139,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			RETURN_IF_FALSE(t.Assert(value.size(), 0, "Size of value is expected"));
 
 			// 2.5. Check size reflection on copy
-			RETURN_IF_FALSE(t.Assert(sstring41.CopyFrom(source.data(), 3), true, "Copy is sucsseed"));
+			RETURN_IF_FALSE(t.Assert(sstring41.Copy(source.data(), 3), true, "Copy is sucsseed"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetSize(), 3, "Size after copy is expected"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetBuffer(), bufferPtr, "Buffer pointer is not changed"));
 
@@ -148,8 +150,8 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 				t.Assert(memcmp(value.data(), source.data(), 3 * sizeof(Type)), 0, "Content of value is expected"));
 
 			// 2.7. Check size reflection on second copy
-			RETURN_IF_FALSE(t.Assert(
-				sstring41.CopyFrom(std::basic_string_view<Type>{ source.data(), 31 }), true, "Copy is sucsseed"));
+			RETURN_IF_FALSE(
+				t.Assert(sstring41.Copy(std::basic_string_view<Type>{ source.data(), 31 }), true, "Copy is sucsseed"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetSize(), 31, "Size after copy is expected"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetBuffer(), bufferPtr, "Buffer pointer is not changed"));
 
@@ -160,8 +162,8 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 				t.Assert(memcmp(value.data(), source.data(), 31 * sizeof(Type)), 0, "Content of value is expected"));
 
 			// 2.9. Check size reflection on third copy
-			RETURN_IF_FALSE(t.Assert(
-				sstring41.CopyFrom(std::basic_string_view<Type>{ source.data(), 33 }), true, "Copy is sucsseed"));
+			RETURN_IF_FALSE(
+				t.Assert(sstring41.Copy(std::basic_string_view<Type>{ source.data(), 33 }), true, "Copy is sucsseed"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetSize(), 33, "Size after copy is expected"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetBuffer(), bufferPtr, "Buffer pointer is not changed"));
 
@@ -182,32 +184,33 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			RETURN_IF_FALSE(
 				t.Assert(memcmp(value.data(), source.data(), 32 * sizeof(Type)), 0, "Content of value is expected"));
 
-			// 2.13. Check size reflection on attempt to overflow copy from
-			RETURN_IF_FALSE(
-				t.Assert(sstring41.CopyFrom(std::basic_string_view<Type>{ source.data(), source.size() + 1 }), false,
-					"Copy is failed"));
-			RETURN_IF_FALSE(t.Assert(sstring41.GetSize(), 32, "Size after failed copy is expected"));
+			// 2.13. Check size reflection on truncated overflow copy from view
+			RETURN_IF_FALSE(t.Assert(sstring41.Copy(std::basic_string_view<Type>{ source.data(), source.size() + 1 }),
+				false, "Overflow copy reports truncation"));
+			RETURN_IF_FALSE(t.Assert(sstring41.GetSize(), 41, "Size after truncated copy is capacity"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetBuffer(), bufferPtr, "Buffer pointer is not changed"));
 
-			// 2.14. Check buffer reflection on attempt to overflow copy from
+			// 2.14. Check buffer reflection on truncated overflow copy from view
 			value = sstring41.Get();
-			RETURN_IF_FALSE(t.Assert(value.size(), 32, "Size of value is expected"));
+			RETURN_IF_FALSE(t.Assert(value.size(), 41, "Size of value is expected"));
 			RETURN_IF_FALSE(
-				t.Assert(memcmp(value.data(), source.data(), 32 * sizeof(Type)), 0, "Content of value is expected"));
+				t.Assert(memcmp(value.data(), source.data(), 41 * sizeof(Type)), 0, "Content of value is expected"));
 
-			// 2.15. Check size reflection on second attempt to overflow copy from
-			RETURN_IF_FALSE(t.Assert(sstring41.CopyFrom(source.data(), source.size() + 1), false, "Copy is failed"));
-			RETURN_IF_FALSE(t.Assert(sstring41.GetSize(), 32, "Size after failed copy is expected"));
+			// 2.15. Check size reflection on truncated overflow copy from pointer
+			RETURN_IF_FALSE(t.Assert(sstring41.Copy(source.data(), 3), true, "Copy is sucsseed"));
+			RETURN_IF_FALSE(
+				t.Assert(sstring41.Copy(source.data(), source.size() + 1), false, "Overflow copy reports truncation"));
+			RETURN_IF_FALSE(t.Assert(sstring41.GetSize(), 41, "Size after truncated copy is capacity"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetBuffer(), bufferPtr, "Buffer pointer is not changed"));
 
-			// 2.16. Check buffer reflection on second attempt to overflow copy from
+			// 2.16. Check buffer reflection on truncated overflow copy from pointer
 			value = sstring41.Get();
-			RETURN_IF_FALSE(t.Assert(value.size(), 32, "Size of value is expected"));
+			RETURN_IF_FALSE(t.Assert(value.size(), 41, "Size of value is expected"));
 			RETURN_IF_FALSE(
-				t.Assert(memcmp(value.data(), source.data(), 32 * sizeof(Type)), 0, "Content of value is expected"));
+				t.Assert(memcmp(value.data(), source.data(), 41 * sizeof(Type)), 0, "Content of value is expected"));
 
 			// 2.17. Check size reflection on maximum copy
-			RETURN_IF_FALSE(t.Assert(sstring41.CopyFrom(source.data(), source.size()), true, "Copy is sucsseed"));
+			RETURN_IF_FALSE(t.Assert(sstring41.Copy(source.data(), source.size()), true, "Copy is sucsseed"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetSize(), source.size(), "Size after copy is expected"));
 			RETURN_IF_FALSE(t.Assert(sstring41.GetBuffer(), bufferPtr, "Buffer pointer is not changed"));
 
@@ -289,7 +292,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 		{
 			MSAPI::BasicSString<Type, 41> sourceString;
 			RETURN_IF_FALSE(
-				t.Assert(sourceString.CopyFrom(source.data(), 31), true, "Copy constructor source copy is success"));
+				t.Assert(sourceString.Copy(source.data(), 31), true, "Copy constructor source copy is success"));
 
 			auto copiedString{ sourceString };
 			RETURN_IF_FALSE(
@@ -307,7 +310,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 		{
 			MSAPI::BasicSString<Type, 41> sourceString;
 			RETURN_IF_FALSE(
-				t.Assert(sourceString.CopyFrom(source.data(), 31), true, "Move constructor source copy is success"));
+				t.Assert(sourceString.Copy(source.data(), 31), true, "Move constructor source copy is success"));
 
 			auto movedString{ std::move(sourceString) };
 			RETURN_IF_FALSE(t.Assert(movedString.GetSize(), 31, "Move constructor size is expected"));
@@ -322,7 +325,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 		{
 			MSAPI::BasicSString<Type, 41> sourceString;
 			RETURN_IF_FALSE(
-				t.Assert(sourceString.CopyFrom(source.data(), 31), true, "Copy assignment source copy is success"));
+				t.Assert(sourceString.Copy(source.data(), 31), true, "Copy assignment source copy is success"));
 			MSAPI::BasicSString<Type, 41> assignedString;
 			assignedString = sourceString;
 
@@ -341,7 +344,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 		{
 			MSAPI::BasicSString<Type, 41> sourceString;
 			RETURN_IF_FALSE(
-				t.Assert(sourceString.CopyFrom(source.data(), 31), true, "Move assignment source copy is success"));
+				t.Assert(sourceString.Copy(source.data(), 31), true, "Move assignment source copy is success"));
 			MSAPI::BasicSString<Type, 41> assignedString;
 			assignedString = std::move(sourceString);
 
@@ -353,126 +356,137 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 				"Move assignment content is expected"));
 		}
 
-		// 6. String view assignment
+		// 6. Implicit operations which can run out of space are not available
 		{
-			MSAPI::BasicSString<Type, 41> assignedString;
-			assignedString = std::basic_string_view<Type>{ source.data(), 31 };
+			using SString41 = MSAPI::BasicSString<Type, 41>;
+			using SString42 = MSAPI::BasicSString<Type, 42>;
+			using View = std::basic_string_view<Type>;
 
-			RETURN_IF_FALSE(t.Assert(assignedString.GetSize(), 31, "String view assignment size is expected"));
-			RETURN_IF_FALSE(t.Assert(memcmp(assignedString.Get().data(), source.data(), 31 * sizeof(Type)), 0,
-				"String view assignment content is expected"));
+			static_assert(!std::is_constructible_v<SString41, View>, "Construction from view is not available");
+			static_assert(!std::is_assignable_v<SString41&, View>, "Assignment from view is not available");
+			static_assert(!std::is_constructible_v<SString41, const SString42&>,
+				"Construction from greater capacity is not available");
+			static_assert(!std::is_assignable_v<SString41&, const SString42&>,
+				"Assignment from greater capacity is not available");
+			static_assert(std::is_constructible_v<SString42, const SString41&>, "Construction from smaller capacity");
+			static_assert(std::is_assignable_v<SString42&, const SString41&>, "Assignment from smaller capacity");
+			static_assert(
+				!requires(SString41 string, View view) { string += view; }, "Append operator is not available");
+			static_assert(
+				!requires(SString41 string, SString41 other) { string += other; }, "Append operator is not available");
 		}
 
-		// 6.1. String view constructor
+		// 7.1. Concatenate with a string view
 		{
-			const MSAPI::BasicSString<Type, 41> constructedString{ std::basic_string_view<Type>{ source.data(), 31 } };
+			MSAPI::BasicSString<Type, 41> concatenatedString;
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Copy(source.data(), 3), true, "Copy is success"));
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Concatenate(std::basic_string_view<Type>{ source.data(), 31 }),
+				true, "String view concatenation is success"));
 
-			RETURN_IF_FALSE(t.Assert(constructedString.GetSize(), 31, "String view constructor size is expected"));
-			RETURN_IF_FALSE(t.Assert(memcmp(constructedString.Get().data(), source.data(), 31 * sizeof(Type)), 0,
-				"String view constructor content is expected"));
+			RETURN_IF_FALSE(t.Assert(concatenatedString.GetSize(), 34, "String view concatenation size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(concatenatedString.Get().data(), source.data(), 3 * sizeof(Type)), 0,
+				"String view concatenation preserves existing content"));
+			RETURN_IF_FALSE(t.Assert(memcmp(concatenatedString.Get().data() + 3, source.data(), 31 * sizeof(Type)), 0,
+				"String view concatenation content is expected"));
 		}
 
-		// 7.1. Append via operator+= with a string view
+		// 7.2. Concatenate with another instance of same capacity
 		{
-			MSAPI::BasicSString<Type, 41> appendedString;
-			appendedString = std::basic_string_view<Type>{ source.data(), 3 };
-			appendedString += std::basic_string_view<Type>{ source.data(), 31 };
-
-			RETURN_IF_FALSE(t.Assert(appendedString.GetSize(), 34, "String view append size is expected"));
-			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data(), source.data(), 3 * sizeof(Type)), 0,
-				"String view append preserves existing content"));
-			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data() + 3, source.data(), 31 * sizeof(Type)), 0,
-				"String view append content is expected"));
-		}
-
-		// 7.2. Append via operator+= with another instance of same capacity
-		{
-			MSAPI::BasicSString<Type, 41> appendedString;
-			appendedString = std::basic_string_view<Type>{ source.data(), 3 };
+			MSAPI::BasicSString<Type, 41> concatenatedString;
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Copy(source.data(), 3), true, "Copy is success"));
 			MSAPI::BasicSString<Type, 41> otherString;
-			otherString = std::basic_string_view<Type>{ source.data(), 31 };
-			appendedString += otherString;
+			RETURN_IF_FALSE(t.Assert(otherString.Copy(source.data(), 31), true, "Copy is success"));
+			RETURN_IF_FALSE(t.Assert(
+				concatenatedString.Concatenate(otherString.Get()), true, "Same capacity concatenation is success"));
 
-			RETURN_IF_FALSE(t.Assert(appendedString.GetSize(), 34, "Same capacity append size is expected"));
-			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data() + 3, source.data(), 31 * sizeof(Type)), 0,
-				"Same capacity append content is expected"));
+			RETURN_IF_FALSE(t.Assert(concatenatedString.GetSize(), 34, "Same capacity concatenation size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(concatenatedString.Get().data() + 3, source.data(), 31 * sizeof(Type)), 0,
+				"Same capacity concatenation content is expected"));
 		}
 
-		// 7.3. Append via operator+= with an instance of different capacity
+		// 7.3. Concatenate with an instance of different capacity
 		{
-			MSAPI::BasicSString<Type, 41> appendedString;
-			appendedString = std::basic_string_view<Type>{ source.data(), 3 };
+			MSAPI::BasicSString<Type, 41> concatenatedString;
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Copy(source.data(), 3), true, "Copy is success"));
 			MSAPI::BasicSString<Type, 42> otherString;
-			otherString = std::basic_string_view<Type>{ source.data(), 31 };
-			appendedString += otherString;
+			RETURN_IF_FALSE(t.Assert(otherString.Copy(source.data(), 31), true, "Copy is success"));
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Concatenate(otherString.Get()), true,
+				"Different capacity concatenation is success"));
 
-			RETURN_IF_FALSE(t.Assert(appendedString.GetSize(), 34, "Different capacity append size is expected"));
-			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data() + 3, source.data(), 31 * sizeof(Type)), 0,
-				"Different capacity append content is expected"));
+			RETURN_IF_FALSE(
+				t.Assert(concatenatedString.GetSize(), 34, "Different capacity concatenation size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(concatenatedString.Get().data() + 3, source.data(), 31 * sizeof(Type)), 0,
+				"Different capacity concatenation content is expected"));
 		}
 
-		// 7.4. Append via operator+= overflow preserves destination
+		// 7.4. Concatenate overflow copies as much as possible
 		{
-			MSAPI::BasicSString<Type, 32> appendedString;
-			appendedString = std::basic_string_view<Type>{ source.data(), 3 };
+			MSAPI::BasicSString<Type, 32> concatenatedString;
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Copy(source.data(), 3), true, "Copy is success"));
 			MSAPI::BasicSString<Type, 41> otherString;
-			otherString = std::basic_string_view<Type>{ source.data(), 31 };
-			appendedString += otherString;
+			RETURN_IF_FALSE(t.Assert(otherString.Copy(source.data(), 31), true, "Copy is success"));
+			RETURN_IF_FALSE(t.Assert(
+				concatenatedString.Concatenate(otherString.Get()), false, "Overflow concatenation reports truncation"));
 
-			RETURN_IF_FALSE(t.Assert(appendedString.GetSize(), 3, "Overflow append preserves destination size"));
-			RETURN_IF_FALSE(t.Assert(memcmp(appendedString.Get().data(), source.data(), 3 * sizeof(Type)), 0,
-				"Overflow append preserves destination content"));
+			RETURN_IF_FALSE(t.Assert(concatenatedString.GetSize(), 32, "Overflow concatenation size is capacity"));
+			RETURN_IF_FALSE(t.Assert(memcmp(concatenatedString.Get().data(), source.data(), 3 * sizeof(Type)), 0,
+				"Overflow concatenation preserves existing content"));
+			RETURN_IF_FALSE(t.Assert(memcmp(concatenatedString.Get().data() + 3, source.data(), 29 * sizeof(Type)), 0,
+				"Overflow concatenation copies fitting part"));
+		}
+
+		// 7.5. Concatenate to full string
+		{
+			MSAPI::BasicSString<Type, 32> concatenatedString;
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Copy(source.data(), 32), true, "Copy is success"));
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Concatenate(std::basic_string_view<Type>{}), true,
+				"Empty concatenation to full string is success"));
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Concatenate(std::basic_string_view<Type>{ source.data(), 1 }),
+				false, "Concatenation to full string reports truncation"));
+			RETURN_IF_FALSE(t.Assert(concatenatedString.GetSize(), 32, "Full string size is not changed"));
+			RETURN_IF_FALSE(t.Assert(memcmp(concatenatedString.Get().data(), source.data(), 32 * sizeof(Type)), 0,
+				"Full string content is not changed"));
+		}
+
+		// 7.6. Concatenate overflow from pointer
+		{
+			MSAPI::BasicSString<Type, 32> concatenatedString;
+			RETURN_IF_FALSE(t.Assert(concatenatedString.Concatenate(source.data(), source.size()), false,
+				"Overflow concatenation from pointer reports truncation"));
+			RETURN_IF_FALSE(t.Assert(concatenatedString.GetSize(), 32, "Overflow concatenation size is capacity"));
+			RETURN_IF_FALSE(t.Assert(memcmp(concatenatedString.Get().data(), source.data(), 32 * sizeof(Type)), 0,
+				"Overflow concatenation copies fitting part"));
 		}
 
 		// 8. Different capacity construction and assignment
 		{
 			MSAPI::BasicSString<Type, 41> sourceString;
-			sourceString = std::basic_string_view<Type>{ source.data(), 31 };
+			RETURN_IF_FALSE(t.Assert(sourceString.Copy(source.data(), 41), true, "Copy is success"));
 
 			const MSAPI::BasicSString<Type, 42> constructedString{ sourceString };
 			RETURN_IF_FALSE(
-				t.Assert(constructedString.GetSize(), 31, "Different capacity constructor size is expected"));
-			RETURN_IF_FALSE(t.Assert(memcmp(constructedString.Get().data(), source.data(), 31 * sizeof(Type)), 0,
+				t.Assert(constructedString.GetSize(), 41, "Different capacity constructor size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(constructedString.Get().data(), source.data(), 41 * sizeof(Type)), 0,
 				"Different capacity constructor content is expected"));
 
 			MSAPI::BasicSString<Type, 42> assignedString;
+			RETURN_IF_FALSE(t.Assert(assignedString.Copy(source.data(), 3), true, "Copy is success"));
 			assignedString = sourceString;
-			RETURN_IF_FALSE(t.Assert(assignedString.GetSize(), 31, "Different capacity assignment size is expected"));
-			RETURN_IF_FALSE(t.Assert(memcmp(assignedString.Get().data(), source.data(), 31 * sizeof(Type)), 0,
+			RETURN_IF_FALSE(t.Assert(assignedString.GetSize(), 41, "Different capacity assignment size is expected"));
+			RETURN_IF_FALSE(t.Assert(memcmp(assignedString.Get().data(), source.data(), 41 * sizeof(Type)), 0,
 				"Different capacity assignment content is expected"));
-
-			const MSAPI::BasicSString<Type, 41> reverseConstructedString{ assignedString };
-			RETURN_IF_FALSE(
-				t.Assert(reverseConstructedString.GetSize(), 31, "Reverse capacity constructor size is expected"));
-			RETURN_IF_FALSE(t.Assert(memcmp(reverseConstructedString.Get().data(), source.data(), 31 * sizeof(Type)), 0,
-				"Reverse capacity constructor content is expected"));
-
-			MSAPI::BasicSString<Type, 41> reverseAssignedString;
-			reverseAssignedString = assignedString;
-			RETURN_IF_FALSE(
-				t.Assert(reverseAssignedString.GetSize(), 31, "Reverse capacity assignment size is expected"));
-			RETURN_IF_FALSE(t.Assert(memcmp(reverseAssignedString.Get().data(), source.data(), 31 * sizeof(Type)), 0,
-				"Reverse capacity assignment content is expected"));
-
-			MSAPI::BasicSString<Type, 42> oversizedSourceString;
-			oversizedSourceString = std::basic_string_view<Type>{ source.data(), 33 };
-			MSAPI::BasicSString<Type, 32> overflowAssignedString;
-			overflowAssignedString = std::basic_string_view<Type>{ source.data(), 3 };
-			overflowAssignedString = oversizedSourceString;
-			RETURN_IF_FALSE(t.Assert(
-				overflowAssignedString.GetSize(), 3, "Different capacity overflow assignment preserves destination"));
 		}
 
 		// 9. Equality and inequality
 		{
 			MSAPI::BasicSString<Type, 41> firstString;
 			MSAPI::BasicSString<Type, 41> secondString;
-			firstString = std::basic_string_view<Type>{ source.data(), 31 };
-			secondString = std::basic_string_view<Type>{ source.data(), 31 };
+			RETURN_IF_FALSE(t.Assert(firstString.Copy(source.data(), 31), true, "Copy is success"));
+			RETURN_IF_FALSE(t.Assert(secondString.Copy(source.data(), 31), true, "Copy is success"));
 
 			RETURN_IF_FALSE(t.Assert(firstString == secondString, true, "Equal strings are equal"));
 			RETURN_IF_FALSE(t.Assert(firstString != secondString, false, "Equal strings are not different"));
-			secondString = std::basic_string_view<Type>{ source.data(), 30 };
+			RETURN_IF_FALSE(t.Assert(secondString.Copy(source.data(), 30), true, "Copy is success"));
 			RETURN_IF_FALSE(t.Assert(firstString == secondString, false, "Different strings are not equal"));
 			RETURN_IF_FALSE(t.Assert(firstString != secondString, true, "Different strings are different"));
 		}
@@ -480,7 +494,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 		// 10. Hash
 		{
 			MSAPI::BasicSString<Type, 41> hashedString;
-			hashedString = std::basic_string_view<Type>{ source.data(), 31 };
+			RETURN_IF_FALSE(t.Assert(hashedString.Copy(source.data(), 31), true, "Copy is success"));
 
 			RETURN_IF_FALSE(t.Assert(hashedString.Hash(), std::hash<std::basic_string_view<Type>>{}(hashedString.Get()),
 				"Hash is based on string view"));
@@ -490,14 +504,14 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 		{
 			MSAPI::BasicSString<Type, 41> smallerString;
 			MSAPI::BasicSString<Type, 42> largerString;
-			smallerString = std::basic_string_view<Type>{ source.data(), 31 };
-			largerString = std::basic_string_view<Type>{ source.data(), 31 };
+			RETURN_IF_FALSE(t.Assert(smallerString.Copy(source.data(), 31), true, "Copy is success"));
+			RETURN_IF_FALSE(t.Assert(largerString.Copy(source.data(), 31), true, "Copy is success"));
 
 			RETURN_IF_FALSE(t.Assert(smallerString == largerString, true, "Different capacities are equal"));
 			RETURN_IF_FALSE(t.Assert(largerString == smallerString, true, "Reverse different capacities are equal"));
 			RETURN_IF_FALSE(
 				t.Assert(smallerString != largerString, false, "Equal different capacities are not different"));
-			largerString = std::basic_string_view<Type>{ source.data(), 30 };
+			RETURN_IF_FALSE(t.Assert(largerString.Copy(source.data(), 30), true, "Copy is success"));
 			RETURN_IF_FALSE(t.Assert(smallerString == largerString, false, "Different capacities are not equal"));
 			RETURN_IF_FALSE(t.Assert(smallerString != largerString, true, "Different capacities are different"));
 		}
@@ -505,7 +519,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 		// 12. Formatter
 		{
 			MSAPI::BasicSString<Type, 41> formattedString;
-			formattedString = std::basic_string_view<Type>{ source.data(), 31 };
+			RETURN_IF_FALSE(t.Assert(formattedString.Copy(source.data(), 31), true, "Copy is success"));
 
 			if constexpr (std::is_same_v<Type, char>) {
 				const auto formatResult{ std::format("{}", formattedString) };
@@ -532,7 +546,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			RETURN_IF_FALSE(t.Assert(clearedString.Empty(), true, "Cleared default string is empty"));
 			RETURN_IF_FALSE(t.Assert(clearedString.GetSize(), 0, "Cleared default string size is expected"));
 
-			clearedString = std::basic_string_view<Type>{ source.data(), 31 };
+			RETURN_IF_FALSE(t.Assert(clearedString.Copy(source.data(), 31), true, "Copy is success"));
 			RETURN_IF_FALSE(t.Assert(clearedString.Empty(), false, "Filled string is not empty"));
 
 			clearedString.Clear();
@@ -542,10 +556,10 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			RETURN_IF_FALSE(t.Assert(clearedString.GetCapacity(), 41, "Cleared string capacity is expected"));
 			RETURN_IF_FALSE(t.Assert(clearedString.GetBuffer(), bufferPtr, "Buffer pointer is not changed"));
 
-			clearedString += std::basic_string_view<Type>{ source.data(), 3 };
-			RETURN_IF_FALSE(t.Assert(clearedString.GetSize(), 3, "Append after clear size is expected"));
+			RETURN_IF_FALSE(t.Assert(clearedString.Concatenate(source.data(), 3), true, "Concatenation after clear"));
+			RETURN_IF_FALSE(t.Assert(clearedString.GetSize(), 3, "Concatenation after clear size is expected"));
 			RETURN_IF_FALSE(t.Assert(memcmp(clearedString.Get().data(), source.data(), 3 * sizeof(Type)), 0,
-				"Append after clear content is expected"));
+				"Concatenation after clear content is expected"));
 		}
 
 		// 14. Null terminate
@@ -561,7 +575,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 				t.Assert(buffer[0] == Type{ '\0' }, true, "Empty string null terminator is at first position"));
 			RETURN_IF_FALSE(t.Assert(terminatedString.GetSize(), 0, "Empty string size is not changed"));
 
-			terminatedString = std::basic_string_view<Type>{ source.data(), 3 };
+			RETURN_IF_FALSE(t.Assert(terminatedString.Copy(source.data(), 3), true, "Copy is success"));
 			RETURN_IF_FALSE(t.Assert(terminatedString.NullTerminate(), true, "String is null terminated"));
 			RETURN_IF_FALSE(
 				t.Assert(buffer[3] == Type{ '\0' }, true, "Null terminator is right after meaningful data"));
@@ -571,7 +585,7 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 				memcmp(terminatedString.Get().data(), source.data(), 3 * sizeof(Type)), 0, "Content is not changed"));
 			RETURN_IF_FALSE(t.Assert(terminatedString.UpdateSize(), 3, "Size update stops at null terminator"));
 
-			terminatedString = std::basic_string_view<Type>{ source.data(), 40 };
+			RETURN_IF_FALSE(t.Assert(terminatedString.Copy(source.data(), 40), true, "Copy is success"));
 			RETURN_IF_FALSE(
 				t.Assert(terminatedString.NullTerminate(), true, "String is null terminated at last position"));
 			RETURN_IF_FALSE(t.Assert(buffer[40] == Type{ '\0' }, true, "Null terminator is at last position"));
@@ -589,6 +603,33 @@ FORCE_INLINE [[nodiscard]] bool BasicSString()
 			RETURN_IF_FALSE(t.Assert(terminatedString.NullTerminate(), true, "Cleared string is null terminated"));
 			RETURN_IF_FALSE(
 				t.Assert(buffer[0] == Type{ '\0' }, true, "Cleared string null terminator is at first position"));
+		}
+
+		// 15. Pop back
+		{
+			MSAPI::BasicSString<Type, 41> poppedString;
+			const auto* const buffer{ poppedString.GetBuffer() };
+			poppedString.PopBack();
+			RETURN_IF_FALSE(t.Assert(poppedString.GetSize(), 0, "Empty string size is not changed by pop back"));
+
+			// Last character differs from null terminator to detect buffer modifications
+			const Type lastCharacter{ 'x' };
+			RETURN_IF_FALSE(t.Assert(poppedString.Copy(source.data(), 40), true, "Copy is success"));
+			RETURN_IF_FALSE(t.Assert(poppedString.Concatenate(&lastCharacter, 1), true, "Concatenation is success"));
+			RETURN_IF_FALSE(t.Assert(poppedString.NullTerminate(), false, "Full string is not null terminated"));
+			poppedString.PopBack();
+			RETURN_IF_FALSE(t.Assert(poppedString.GetSize(), 40, "Popped string size is expected"));
+			RETURN_IF_FALSE(t.Assert(buffer[40] == lastCharacter, true, "Popped character is not modified in buffer"));
+			RETURN_IF_FALSE(t.Assert(memcmp(poppedString.Get().data(), source.data(), 40 * sizeof(Type)), 0,
+				"Popped string content is expected"));
+			RETURN_IF_FALSE(t.Assert(poppedString.NullTerminate(), true, "Popped string is null terminated"));
+			RETURN_IF_FALSE(t.Assert(buffer[40] == Type{ '\0' }, true, "Null terminator is at last position"));
+
+			RETURN_IF_FALSE(t.Assert(poppedString.Copy(source.data(), 1), true, "Copy is success"));
+			poppedString.PopBack();
+			RETURN_IF_FALSE(t.Assert(poppedString.Empty(), true, "Popped single character string is empty"));
+			poppedString.PopBack();
+			RETURN_IF_FALSE(t.Assert(poppedString.GetSize(), 0, "Emptied string size is not changed by pop back"));
 		}
 
 		return true;

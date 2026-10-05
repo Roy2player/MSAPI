@@ -37,6 +37,9 @@ concept BasicSStringConcept = Capacity > 2 && (std::is_same_v<Type, char> || std
  * @brief Functional static string container.
  *
  * @attention Meaningful data is never null terminated, null terminator is written only by explicit NullTerminate call.
+ * Data can be written only by methods which report lack of space by boolean result: Copy and Concatenate. They copy
+ * as much data as fits into capacity and return false if the data is truncated. Construction and assignment from other
+ * instance are allowed only if its capacity is not greater, so they can not run out of space.
  *
  * @note Minimum meaningful size for static string is 3: two characters and null terminator.
  *
@@ -69,34 +72,31 @@ public:
 	FORCE_INLINE BasicSString(const BasicSString&) noexcept = default;
 
 	/**************************
-	 * @attention Copy is silently interrupted and instance is left empty if other size is greater than capacity.
+	 * @brief Copy meaningful data of other instance, which always fits because its capacity is not greater.
 	 *
-	 * @test Yes.
-	 */
-	template <size_t OtherCapacity> FORCE_INLINE BasicSString(const BasicSString<Type, OtherCapacity>& other) noexcept;
-
-	/**************************
-	 * @attention Copy is silently interrupted and instance is left empty if other size is greater than capacity.
+	 * @tparam OtherCapacity The maximum length of other instance.
 	 *
-	 * @test Yes.
-	 */
-	FORCE_INLINE explicit BasicSString(std::basic_string_view<Type> other) noexcept;
-
-	/**************************
-	 * @attention Copy is silently interrupted and previous content is preserved if other size is greater than
-	 * capacity.
-	 *
-	 * @test Yes.
-	 */
-	FORCE_INLINE BasicSString& operator=(std::basic_string_view<Type> other) noexcept;
-
-	/**************************
-	 * @attention Copy is silently interrupted and previous content is preserved if other size is greater than
-	 * capacity.
+	 * @param other Instance to copy data from.
 	 *
 	 * @test Yes.
 	 */
 	template <size_t OtherCapacity>
+		requires(OtherCapacity <= Capacity)
+	FORCE_INLINE BasicSString(const BasicSString<Type, OtherCapacity>& other) noexcept;
+
+	/**************************
+	 * @brief Copy meaningful data of other instance, which always fits because its capacity is not greater.
+	 *
+	 * @tparam OtherCapacity The maximum length of other instance.
+	 *
+	 * @param other Instance to copy data from.
+	 *
+	 * @return Reference to this instance.
+	 *
+	 * @test Yes.
+	 */
+	template <size_t OtherCapacity>
+		requires(OtherCapacity <= Capacity)
 	FORCE_INLINE BasicSString& operator=(const BasicSString<Type, OtherCapacity>& other) noexcept;
 
 	/**************************
@@ -108,37 +108,6 @@ public:
 	 * @test Yes.
 	 */
 	FORCE_INLINE BasicSString& operator=(BasicSString&&) noexcept = default;
-
-	/**************************
-	 * @brief Append data from view to the end of meaningful data via AppendFrom.
-	 *
-	 * @attention Append is silently interrupted and previous content is preserved if resulting size is greater than
-	 * capacity.
-	 *
-	 * @param other Data to be appended.
-	 *
-	 * @return Reference to this instance.
-	 *
-	 * @test Yes.
-	 */
-	FORCE_INLINE BasicSString& operator+=(const std::basic_string_view<Type> other) noexcept;
-
-	/**************************
-	 * @brief Append meaningful data of other instance to the end of meaningful data via AppendFrom.
-	 *
-	 * @attention Append is silently interrupted and previous content is preserved if resulting size is greater than
-	 * capacity.
-	 *
-	 * @tparam OtherCapacity The maximum length of other instance.
-	 *
-	 * @param other Instance to append data from.
-	 *
-	 * @return Reference to this instance.
-	 *
-	 * @test Yes.
-	 */
-	template <size_t OtherCapacity>
-	FORCE_INLINE BasicSString& operator+=(const BasicSString<Type, OtherCapacity>& other) noexcept;
 
 	/**************************
 	 * @test Yes.
@@ -177,6 +146,7 @@ public:
 
 	/**************************
 	 * @brief Copy n characters, or n * sizeof(Type) bytes, from source to internal buffer and set size accordingly.
+	 * Only the first capacity characters are copied if size is greater than capacity.
 	 *
 	 * @attention Does not check if null terminator is before the end.
 	 *
@@ -185,50 +155,53 @@ public:
 	 *
 	 * @pre source != nullptr.
 	 *
-	 * @return True on copy, false if size is greater than capacity.
+	 * @return True if all data is copied, false if size is greater than capacity and data is truncated.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool CopyFrom(const Type* const source, const size_t size) noexcept;
+	FORCE_INLINE [[nodiscard]] bool Copy(const Type* const source, const size_t size) noexcept;
 
 	/**************************
-	 * @brief Copy data from source to internal buffer and set size accordingly.
+	 * @brief Copy data from source to internal buffer and set size accordingly. Only the first capacity characters are
+	 * copied if view size is greater than capacity.
 	 *
 	 * @param view Data to be copied.
 	 *
-	 * @return True on copy, false if view size is greater than capacity.
+	 * @return True if all data is copied, false if view size is greater than capacity and data is truncated.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool CopyFrom(const std::basic_string_view<Type> view) noexcept;
+	FORCE_INLINE [[nodiscard]] bool Copy(const std::basic_string_view<Type> view) noexcept;
 
 	/**************************
-	 * @brief Copy n characters, or n * sizeof(Type) bytes, from source to the end of internal buffer and set size
-	 * accordingly.
+	 * @brief Copy n characters, or n * sizeof(Type) bytes, from source to the end of meaningful data and set size
+	 * accordingly. Only the characters fitting into the remaining capacity are copied if resulting size is greater than
+	 * capacity.
 	 *
 	 * @attention Does not check if null terminator is before the end.
 	 *
-	 * @param source Append from.
-	 * @param size Size to append.
+	 * @param source Concatenate from.
+	 * @param size Size to concatenate.
 	 *
 	 * @pre source != nullptr.
 	 *
-	 * @return True on append, false if resulting size is greater than capacity.
+	 * @return True if all data is concatenated, false if resulting size is greater than capacity and data is truncated.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool AppendFrom(const Type* const source, const size_t size) noexcept;
+	FORCE_INLINE [[nodiscard]] bool Concatenate(const Type* const source, const size_t size) noexcept;
 
 	/**************************
-	 * @brief Append data from source to the end of internal buffer and set size accordingly.
+	 * @brief Copy data from view to the end of meaningful data and set size accordingly. Only the characters fitting
+	 * into the remaining capacity are copied if resulting size is greater than capacity.
 	 *
-	 * @param view Data to be appended.
+	 * @param view Data to be concatenated.
 	 *
-	 * @return True on append, false if resulting size is greater than capacity.
+	 * @return True if all data is concatenated, false if resulting size is greater than capacity and data is truncated.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool AppendFrom(const std::basic_string_view<Type> view) noexcept;
+	FORCE_INLINE [[nodiscard]] bool Concatenate(const std::basic_string_view<Type> view) noexcept;
 
 	/**************************
 	 * @attention Size is expected to be updated by specific method on C-style buffer writing.
@@ -249,6 +222,16 @@ public:
 	FORCE_INLINE void Clear() noexcept;
 
 	/**************************
+	 * @brief Removes the last character of meaningful data, e.g. to free space for null terminator in fully filled
+	 * string.
+	 *
+	 * @attention Buffer content is not modified. Does nothing if there is no meaningful data.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE void PopBack() noexcept;
+
+	/**************************
 	 * @return True if there is no meaningful data, false otherwise.
 	 *
 	 * @test Yes.
@@ -258,7 +241,8 @@ public:
 	/**************************
 	 * @brief Writes null terminator right after meaningful data if there is space for it.
 	 *
-	 * @attention Size of meaningful data is not modified.
+	 * @attention Size of meaningful data is not modified. PopBack can free space for null terminator in fully filled
+	 * string.
 	 *
 	 * @return True if null terminator is written, false if size is equal to capacity.
 	 *
@@ -301,53 +285,22 @@ Definitions
 template <typename Type, size_t Capacity>
 	requires BasicSStringConcept<Type, Capacity>
 template <size_t OtherCapacity>
+	requires(OtherCapacity <= Capacity)
 FORCE_INLINE BasicSString<Type, Capacity>::BasicSString(const BasicSString<Type, OtherCapacity>& other) noexcept
 {
-	(void)CopyFrom(other.Get());
-}
-
-template <typename Type, size_t Capacity>
-	requires BasicSStringConcept<Type, Capacity>
-FORCE_INLINE BasicSString<Type, Capacity>::BasicSString(const std::basic_string_view<Type> other) noexcept
-{
-	(void)CopyFrom(other);
-}
-
-template <typename Type, size_t Capacity>
-	requires BasicSStringConcept<Type, Capacity>
-FORCE_INLINE BasicSString<Type, Capacity>& BasicSString<Type, Capacity>::operator=(
-	const std::basic_string_view<Type> other) noexcept
-{
-	(void)CopyFrom(other);
-	return *this;
+	// Can not be truncated, other capacity is not greater
+	(void)Copy(other.Get());
 }
 
 template <typename Type, size_t Capacity>
 	requires BasicSStringConcept<Type, Capacity>
 template <size_t OtherCapacity>
+	requires(OtherCapacity <= Capacity)
 FORCE_INLINE BasicSString<Type, Capacity>& BasicSString<Type, Capacity>::operator=(
 	const BasicSString<Type, OtherCapacity>& other) noexcept
 {
-	(void)CopyFrom(other.Get());
-	return *this;
-}
-
-template <typename Type, size_t Capacity>
-	requires BasicSStringConcept<Type, Capacity>
-FORCE_INLINE BasicSString<Type, Capacity>& BasicSString<Type, Capacity>::operator+=(
-	const std::basic_string_view<Type> other) noexcept
-{
-	(void)AppendFrom(other);
-	return *this;
-}
-
-template <typename Type, size_t Capacity>
-	requires BasicSStringConcept<Type, Capacity>
-template <size_t OtherCapacity>
-FORCE_INLINE BasicSString<Type, Capacity>& BasicSString<Type, Capacity>::operator+=(
-	const BasicSString<Type, OtherCapacity>& other) noexcept
-{
-	(void)AppendFrom(other.Get());
+	// Can not be truncated, other capacity is not greater
+	(void)Copy(other.Get());
 	return *this;
 }
 
@@ -393,11 +346,12 @@ FORCE_INLINE [[nodiscard]] size_t BasicSString<Type, Capacity>::UpdateSize() noe
 
 template <typename Type, size_t Capacity>
 	requires BasicSStringConcept<Type, Capacity>
-FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::CopyFrom(
-	const Type* const source, const size_t size) noexcept
+FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::Copy(const Type* const source, const size_t size) noexcept
 {
 	if (size > Capacity) [[unlikely]] {
-		LOG_WARNING_NEW("Is interrupted because capacity: {} < requested copy size: {}", Capacity, size);
+		LOG_WARNING_NEW("Is truncated because capacity: {} < requested copy size: {}", Capacity, size);
+		(void)memcpy(m_buffer.data(), source, Capacity * sizeof(Type));
+		m_size = Capacity;
 		return false;
 	}
 
@@ -408,18 +362,22 @@ FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::CopyFrom(
 
 template <typename Type, size_t Capacity>
 	requires BasicSStringConcept<Type, Capacity>
-FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::CopyFrom(const std::basic_string_view<Type> view) noexcept
+FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::Copy(const std::basic_string_view<Type> view) noexcept
 {
-	return CopyFrom(view.data(), view.size());
+	return Copy(view.data(), view.size());
 }
 
 template <typename Type, size_t Capacity>
 	requires BasicSStringConcept<Type, Capacity>
-FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::AppendFrom(
+FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::Concatenate(
 	const Type* const source, const size_t size) noexcept
 {
-	if (m_size + size > Capacity) [[unlikely]] {
-		LOG_WARNING_NEW("Is interrupted because capacity: {} < requested resulting size: {}", Capacity, m_size + size);
+	// Compared with remaining space to avoid overflow of resulting size
+	if (const auto available{ Capacity - m_size }; size > available) [[unlikely]] {
+		LOG_WARNING_NEW(
+			"Is truncated because capacity: {} < requested resulting size: {} + {}", Capacity, m_size, size);
+		(void)memcpy(m_buffer.data() + m_size, source, available * sizeof(Type));
+		m_size = Capacity;
 		return false;
 	}
 
@@ -430,10 +388,10 @@ FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::AppendFrom(
 
 template <typename Type, size_t Capacity>
 	requires BasicSStringConcept<Type, Capacity>
-FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::AppendFrom(
+FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::Concatenate(
 	const std::basic_string_view<Type> view) noexcept
 {
-	return AppendFrom(view.data(), view.size());
+	return Concatenate(view.data(), view.size());
 }
 
 template <typename Type, size_t Capacity>
@@ -448,6 +406,17 @@ template <typename Type, size_t Capacity>
 FORCE_INLINE void BasicSString<Type, Capacity>::Clear() noexcept
 {
 	m_size = 0;
+}
+
+template <typename Type, size_t Capacity>
+	requires BasicSStringConcept<Type, Capacity>
+FORCE_INLINE void BasicSString<Type, Capacity>::PopBack() noexcept
+{
+	if (m_size == 0) [[unlikely]] {
+		return;
+	}
+
+	--m_size;
 }
 
 template <typename Type, size_t Capacity>
