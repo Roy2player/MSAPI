@@ -66,13 +66,15 @@ template <typename T>
 concept Gradable = std::is_enum_v<T> && sizeof(T) == 2;
 
 /**************************
- * @brief Account class representing a user account, can be used as a base to extended functionality.
+ * @brief Account class representing a user account that can be extended with additional functionality.
  * - Deactivated by default. Deactivated accounts cannot logon.
  * - Not initialized by default. Initialized on first password set. Uninitialized account cannot logon.
  * - Can be blocked until a specific time.
  * - Password is stored as SHA-256(salt + password), where salt is randomly generated on first password set.
  *
  * @tparam G Type of grade enumeration.
+ *
+ * @concurrency No.
  */
 template <Gradable G = Grade> class Account {
 private:
@@ -224,6 +226,10 @@ concept Accountable = std::is_base_of_v<Account<>, T>;
  *
  * @tparam A Type of account class.
  * @tparam G Type of grade.
+ *
+ * @concurrency Yes.
+ *
+ * @todo Check the concurrency model of internal module state.
  */
 template <Accountable A = Account<Grade>, Gradable G = Grade> class Module : protected Timer::Event::IHandler {
 public:
@@ -233,12 +239,14 @@ public:
 private:
 	/**************************
 	 * @brief Contains account data along with additional control information.
+	 *
+	 * @concurrency Yes.
 	 */
 	class AccountData {
 	private:
 		A m_account;
 		std::string m_dataPath;
-		std::unique_ptr<Lock::AtomicRW> m_rwLock;
+		mutable Lock::AtomicRW m_rwLock;
 		std::optional<uint64_t> m_connectionId;
 		Timer m_lastActivity{ 0 };
 
@@ -248,37 +256,28 @@ private:
 		 *
 		 * @param account The account object.
 		 * @param dataPath The file path where the account data is stored.
+		 *
+		 * @locking Is not required.
 		 */
 		FORCE_INLINE explicit AccountData(A&& account, std::string&& dataPath) noexcept;
 
-		FORCE_INLINE AccountData() noexcept = default;
 		AccountData(const AccountData&) = delete;
+		AccountData(AccountData&&) = delete;
 		AccountData& operator=(const AccountData&) = delete;
+		AccountData& operator=(AccountData&&) = delete;
 
 		/**************************
-		 * @brief Move constructor for AccountData.
+		 * @brief Destroy the AccountData object after ongoing operations complete.
 		 *
-		 * @param other The other AccountData object to move from.
-		 */
-		FORCE_INLINE AccountData(AccountData&& other) noexcept;
-
-		/**************************
-		 * @brief Move assignment operator for AccountData.
-		 *
-		 * @param other The other AccountData object to move from.
-		 *
-		 * @return Reference to this AccountData object.
-		 */
-		FORCE_INLINE AccountData& operator=(AccountData&& other) noexcept;
-
-		/**************************
-		 * @brief Destroy the AccountData object, acquiring a write lock to ensure all operations are completed.
+		 * @locking Write lock m_rwLock.
 		 *
 		 * @test Yes.
 		 */
 		FORCE_INLINE ~AccountData() noexcept;
 
 		/**************************
+		 * @locking External read or write lock is required, according to the account access.
+		 *
 		 * @return Reference to the account object.
 		 *
 		 * @test Yes.
@@ -286,6 +285,8 @@ private:
 		FORCE_INLINE A& GetAccount() noexcept;
 
 		/**************************
+		 * @locking External read lock is required.
+		 *
 		 * @return Const reference to the file path where the account data is stored.
 		 *
 		 * @test Yes.
@@ -297,6 +298,8 @@ private:
 		 *
 		 * @param newDataPath The new file path.
 		 *
+		 * @locking External write lock is required.
+		 *
 		 * @test Yes.
 		 */
 		FORCE_INLINE void SetDataPath(std::string&& newDataPath) noexcept;
@@ -306,11 +309,15 @@ private:
 		 *
 		 * @param timer The new last activity timestamp.
 		 *
+		 * @locking External write lock is required.
+		 *
 		 * @test Yes.
 		 */
 		FORCE_INLINE void UpdateLastActivity(Timer timer) noexcept;
 
 		/**************************
+		 * @locking External read lock is required.
+		 *
 		 * @return The last activity timestamp.
 		 *
 		 * @test Yes.
@@ -318,14 +325,18 @@ private:
 		FORCE_INLINE Timer GetLastActivity() const noexcept;
 
 		/**************************
+		 * @locking Is not required.
+		 *
 		 * @return Reference to the read-write lock for this account data.
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE Lock::AtomicRW& GetRWLock() noexcept;
+		FORCE_INLINE Lock::AtomicRW& GetRWLock() const noexcept;
 
 		/**************************
 		 * @brief Save the account data to its associated file.
+		 *
+		 * @locking External read lock is required.
 		 *
 		 * @return True if the save operation was successful, false otherwise.
 		 *
@@ -337,15 +348,21 @@ private:
 		 * @brief Set the connection id associated with this account.
 		 *
 		 * @param connectionId The connection identifier.
+		 *
+		 * @locking External write lock is required.
 		 */
 		FORCE_INLINE void SetConnectionId(uint64_t connectionId) noexcept;
 
 		/**************************
-		 * @brief Clears associated connection id;
+		 * @brief Clear the associated connection id.
+		 *
+		 * @locking External write lock is required.
 		 */
 		FORCE_INLINE void ClearConnectionId() noexcept;
 
 		/**************************
+		 * @locking External read lock is required.
+		 *
 		 * @return The connection identifier associated with this account, empty in case if no active connection.
 		 */
 		FORCE_INLINE std::optional<uint64_t> GetConnectionId() const noexcept;
@@ -353,9 +370,9 @@ private:
 
 private:
 	std::unordered_map<uint64_t, std::shared_ptr<AccountData>> m_logonConnectionIdToAccountData;
-	Lock::AtomicRW m_logonConnectionIdToAccountDataLock;
+	mutable Lock::AtomicRW m_logonConnectionIdToAccountDataLock;
 	std::unordered_map<uint64_t, std::shared_ptr<AccountData>> m_loginHashToAccountData;
-	Lock::AtomicRW m_loginHashToAccountDataLock;
+	mutable Lock::AtomicRW m_loginHashToAccountDataLock;
 	std::string m_dataPath;
 	Timer::Event m_logoutEvent{ this };
 	Timer::Duration m_logoutTimeout{ Timer::Duration::CreateHours(12) };
@@ -364,17 +381,26 @@ private:
 
 public:
 	/**************************
+	 * @locking Is not required.
+	 *
 	 * @test Yes.
 	 */
 	FORCE_INLINE Module() noexcept = default;
 
+	/**************************
+	 * @brief Destroy the module.
+	 *
+	 * @locking Is not required.
+	 */
 	FORCE_INLINE ~Module() noexcept override = default;
 
 	/**************************
-	 * @brief Loading existing accounts from the {executable}/../data/accounts/ directory.
+	 * @brief Load existing accounts from the {executable}/../data/accounts/ directory.
 	 * - Uninitialized accounts are not loaded.
 	 * - If the accounts data directory does not exist, it will be created with permissions 0750.
-	 * - On failure to read any account data file, the starting will stop.
+	 * - On failure to read any account data file, starting stops.
+	 *
+	 * @locking Write lock m_loginHashToAccountDataLock inside.
 	 *
 	 * @return True if starting is successful, false otherwise.
 	 *
@@ -383,14 +409,19 @@ public:
 	FORCE_INLINE [[nodiscard]] bool Start();
 
 	/**************************
-	 * @brief Stop the module, stopping the logout event and acquiring write locks, logout all connections and set
-	 * started flag to false, reset start time.
+	 * @brief Stop the module, stop the logout event, log out all connections, clear the started flag, and reset the
+	 * start time.
+	 *
+	 * @locking Write lock m_loginHashToAccountDataLock, then write lock m_logonConnectionIdToAccountDataLock inside.
+	 * AccountData destruction acquires its m_rwLock.
 	 *
 	 * @test Yes.
 	 */
 	FORCE_INLINE void Stop();
 
 	/**************************
+	 * @locking Is not required.
+	 *
 	 * @return True if the module is started, false otherwise.
 	 *
 	 * @test Yes.
@@ -402,10 +433,14 @@ public:
 	 * automatically.
 	 *
 	 * @param duration The duration to set as the logout timeout.
+	 *
+	 * @locking Is not required.
 	 */
 	FORCE_INLINE void SetLogoutTimeout(Timer::Duration duration);
 
 	/**************************
+	 * @locking Is not required.
+	 *
 	 * @return The current logout timeout duration.
 	 */
 	FORCE_INLINE [[nodiscard]] Timer::Duration GetLogoutTimeout() const noexcept;
@@ -417,6 +452,9 @@ public:
 	 * @param login The login for the new account.
 	 * @param password The password for the new account.
 	 * @param error Reference to a string to store error message if registration fails.
+	 *
+	 * @locking Write lock m_loginHashToAccountDataLock during insertion and rollback; write lock AccountData::m_rwLock
+	 * during account update and save.
 	 *
 	 * @return True if registration is successful, false otherwise.
 	 *
@@ -431,6 +469,9 @@ public:
 	 *
 	 * @param login The login of the account to delete.
 	 *
+	 * @locking Write lock m_loginHashToAccountDataLock, then write lock AccountData::m_rwLock. Write lock
+	 * m_logonConnectionIdToAccountDataLock when removing an active connection.
+	 *
 	 * @test Yes.
 	 */
 	FORCE_INLINE void DeleteAccount(std::string_view login);
@@ -443,6 +484,9 @@ public:
 	 * @param oldLogin The current login of the account.
 	 * @param newLogin The new login to set for the account.
 	 * @param error Reference to a string to store error message if modification fails.
+	 *
+	 * @locking Write lock m_loginHashToAccountDataLock during index lookup and update, and write lock
+	 * AccountData::m_rwLock during account changes.
 	 *
 	 * @return True if the login modification is successful, false otherwise.
 	 *
@@ -460,6 +504,8 @@ public:
 	 * @param newPassword The new password to set for the account.
 	 * @param error Reference to a string to store error message if modification fails.
 	 *
+	 * @locking Read lock m_loginHashToAccountDataLock, then write lock AccountData::m_rwLock.
+	 *
 	 * @return True if the password modification is successful, false otherwise.
 	 *
 	 * @test Yes.
@@ -474,6 +520,8 @@ public:
 	 *
 	 * @param login The login of the account.
 	 * @param newGrade The new grade to set for the account.
+	 *
+	 * @locking Read lock m_loginHashToAccountDataLock, then write lock AccountData::m_rwLock.
 	 *
 	 * @return True if the grade modification is successful, false otherwise.
 	 *
@@ -490,6 +538,9 @@ public:
 	 * @param login The login of the account.
 	 * @param isActivated True to activate the account, false to deactivate.
 	 *
+	 * @locking Read lock m_loginHashToAccountDataLock, then write lock AccountData::m_rwLock. Write lock
+	 * m_logonConnectionIdToAccountDataLock when logging out an active connection.
+	 *
 	 * @return True if the activation state modification is successful, false otherwise.
 	 *
 	 * @test Yes.
@@ -505,6 +556,9 @@ public:
 	 * @param password The password of the account.
 	 * @param error Reference to a string to store error message if logon fails.
 	 *
+	 * @locking Read lock m_loginHashToAccountDataLock, then write lock AccountData::m_rwLock and
+	 * m_logonConnectionIdToAccountDataLock.
+	 *
 	 * @return True if logon is successful, false otherwise.
 	 *
 	 * @test Yes.
@@ -517,6 +571,8 @@ public:
 	 *
 	 * @param connectionId Id of connection.
 	 *
+	 * @locking Write lock m_logonConnectionIdToAccountDataLock, then write lock AccountData::m_rwLock.
+	 *
 	 * @test Yes.
 	 */
 	FORCE_INLINE void LogoutConnection(uint64_t connectionId);
@@ -527,6 +583,8 @@ public:
 	 * @param connectionId connectionId Id of connection.
 	 * @param requiredGrade The required grade for access.
 	 *
+	 * @locking Read lock m_logonConnectionIdToAccountDataLock, then write lock AccountData::m_rwLock.
+	 *
 	 * @return True if the connection has the required access grade, false otherwise.
 	 *
 	 * @test Yes.
@@ -534,18 +592,22 @@ public:
 	FORCE_INLINE [[nodiscard]] bool IsAccessGranted(uint64_t connectionId, G requiredGrade);
 
 	/**************************
+	 * @locking Read lock m_loginHashToAccountDataLock inside.
+	 *
 	 * @return The number of registered accounts.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t GetRegisteredAccountsSize() noexcept;
+	FORCE_INLINE [[nodiscard]] uint64_t GetRegisteredAccountsSize() const noexcept;
 
 	/**************************
+	 * @locking Read lock m_logonConnectionIdToAccountDataLock inside.
+	 *
 	 * @return The number of active logon connections.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t GetLogonConnectionsSize() noexcept;
+	FORCE_INLINE [[nodiscard]] uint64_t GetLogonConnectionsSize() const noexcept;
 
 	/**************************
 	 * @brief Block or unblock the account till the specified time. If block an active account, it logouts from its
@@ -557,6 +619,9 @@ public:
 	 * @param login The login of the account.
 	 * @param blockedTill The time till which the account is blocked. If less than or equal to current time, the
 	 * account will be unblocked.
+	 *
+	 * @locking Read lock m_loginHashToAccountDataLock, then write lock AccountData::m_rwLock. Write lock
+	 * m_logonConnectionIdToAccountDataLock when logging out an active connection.
 	 *
 	 * @return True if the block/unblock operation is successful, false otherwise.
 	 *
@@ -572,6 +637,8 @@ protected:
 	 * @param login The login to check.
 	 * @param error Reference to a string to store error message if requirements are not met.
 	 *
+	 * @locking Is not required.
+	 *
 	 * @return True if the login meets the requirements, false otherwise.
 	 *
 	 * @test Yes.
@@ -586,6 +653,8 @@ protected:
 	 * @param password The password to check.
 	 * @param error Reference to a string to store error message if requirements are not met.
 	 *
+	 * @locking Is not required.
+	 *
 	 * @return True if the password meets the requirements, false otherwise.
 	 *
 	 * @test Yes.
@@ -598,6 +667,8 @@ protected:
 	 *
 	 * @param login The login string to check.
 	 * @param error Reference to a string to store error message if the login is not safe.
+	 *
+	 * @locking Is not required.
 	 *
 	 * @return True if the login is safe, false otherwise.
 	 *
@@ -612,12 +683,19 @@ protected:
 	 * @param timestamp The timestamp of the activity.
 	 * @param description Description of the activity.
 	 *
+	 * @locking External write lock AccountData::m_rwLock is required.
+	 *
 	 * @test Yes.
 	 */
 	FORCE_INLINE void OnAccountActivity(AccountData& accountData, Timer timestamp, std::string_view description);
 
 private:
 	// Timer::Event
+	/**************************
+	 * @brief Handle the periodic inactive-connection check.
+	 *
+	 * @locking Read lock m_logonConnectionIdToAccountDataLock inside.
+	 */
 	FORCE_INLINE void HandleEvent([[maybe_unused]] const Timer::Event& event) final;
 };
 
@@ -757,37 +835,12 @@ template <Accountable A, Gradable G>
 FORCE_INLINE Module<A, G>::AccountData::AccountData(A&& account, std::string&& dataPath) noexcept
 	: m_account{ std::forward<A>(account) }
 	, m_dataPath{ std::move(dataPath) }
-	, m_rwLock{ std::make_unique<Lock::AtomicRW>() }
 {
-}
-
-template <Accountable A, Gradable G>
-FORCE_INLINE Module<A, G>::AccountData::AccountData(AccountData&& other) noexcept
-	: m_account{ std::move(other.m_account) }
-	, m_dataPath{ std::move(other.m_dataPath) }
-	, m_rwLock{ std::move(other.m_rwLock) }
-	, m_connectionId{ other.m_connectionId }
-	, m_lastActivity{ other.m_lastActivity }
-{
-}
-
-template <Accountable A, Gradable G>
-FORCE_INLINE Module<A, G>::AccountData& Module<A, G>::AccountData::operator=(AccountData&& other) noexcept
-{
-	if (this != &other) {
-		m_account = std::move(other.m_account);
-		m_dataPath = std::move(other.m_dataPath);
-		m_rwLock = std::move(other.m_rwLock);
-		m_connectionId = other.m_connectionId;
-		m_lastActivity = other.m_lastActivity;
-	}
-
-	return *this;
 }
 
 template <Accountable A, Gradable G> FORCE_INLINE Module<A, G>::AccountData::~AccountData() noexcept
 {
-	const Lock::AtomicRW::Guard<Lock::WRITE> _{ *m_rwLock };
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_rwLock };
 }
 
 template <Accountable A, Gradable G> FORCE_INLINE A& Module<A, G>::AccountData::GetAccount() noexcept
@@ -818,9 +871,9 @@ template <Accountable A, Gradable G> FORCE_INLINE Timer Module<A, G>::AccountDat
 	return m_lastActivity;
 }
 
-template <Accountable A, Gradable G> FORCE_INLINE Lock::AtomicRW& Module<A, G>::AccountData::GetRWLock() noexcept
+template <Accountable A, Gradable G> FORCE_INLINE Lock::AtomicRW& Module<A, G>::AccountData::GetRWLock() const noexcept
 {
-	return *m_rwLock.get();
+	return m_rwLock;
 }
 
 template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G>::AccountData::Save() const
@@ -1385,14 +1438,14 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::IsAccessGranted(const uint64_t con
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetRegisteredAccountsSize() noexcept
+FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetRegisteredAccountsSize() const noexcept
 {
 	const Lock::AtomicRW::Guard<Lock::READ> _{ m_loginHashToAccountDataLock };
 	return m_loginHashToAccountData.size();
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetLogonConnectionsSize() noexcept
+FORCE_INLINE [[nodiscard]] uint64_t Module<A, G>::GetLogonConnectionsSize() const noexcept
 {
 	const Lock::AtomicRW::Guard<Lock::READ> _{ m_logonConnectionIdToAccountDataLock };
 	return m_logonConnectionIdToAccountData.size();
