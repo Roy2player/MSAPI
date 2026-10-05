@@ -79,7 +79,6 @@
 #include "client.h"
 #include "manager.h"
 #include <memory>
-#include <sys/resource.h>
 
 namespace MSAPI {
 
@@ -178,8 +177,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 	RETURN_IF_FALSE(t.Assert(manager.Manager::GetParameters(),
 		"Parameters:\n{\n\tSeconds between try to connect(1000001) : 1\n\tLimit of attempts to connection(1000002) : "
 		"1000\n\tLimit of connections from one IP(1000003) : 5\n\tRecv buffer "
-		"size limit(1000004) : 10485760\n\tServer state(1000005) const : Running\n\tMax connections(1000006) const "
-		": 4096\n\tListen IP(1000007) const : 127.0.0.1\n\tListen port(1000008) const : "
+		"size limit(1000004) : 10485760\n\tServer state(1000005) const : Running\n\tListen IP(1000006) const : "
+		"127.0.0.1\n\tListen port(1000007) const : "
 			+ _S(managerPtr->GetPort())
 			+ "\n\tName(2000001) const : Manager\n\tApplication state(2000002) const : Paused\n}",
 		"Server default parameters"));
@@ -266,9 +265,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		"IP\",\"type\":\"Uint64\",\"min\":1},\"1000004\":{\"name\":\"Recv buffer size "
 		"limit\",\"type\":\"Uint64\",\"min\":1024}},\"const\":{\"1000005\":{\"name\":\"Server "
 		"state\",\"type\":\"Int8\",\"stringInterpretations\":{\"0\":\"Undefined\",\"1\":"
-		"\"Running\",\"2\":\"Stopped\",\"3\":\"Stopping\"}},\"1000006\":{\"name\":\"Max "
-		"connections\",\"type\":\"Int32\"},\"1000007\":{\"name\":\"Listen "
-		"IP\",\"type\":\"String\"},\"1000008\":{\"name\":\"Listen "
+		"\"Running\",\"2\":\"Stopped\",\"3\":\"Stopping\"}},\"1000006\":{\"name\":\"Listen "
+		"IP\",\"type\":\"String\"},\"1000007\":{\"name\":\"Listen "
 		"port\",\"type\":\"Uint16\"},\"2000001\":{\"name\":\"Name\",\"type\":\"String\"},\"2000002\":{\"name\":"
 		"\"Application "
 		"state\",\"type\":\"Int16\",\"stringInterpretations\":{\"0\":\"Undefined\",\"1\":\"Paused\",\"2\":\"Running\"}}"
@@ -405,8 +403,6 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 				"Parameter 1000006 is in response"));
 			RETURN_IF_FALSE(t.Assert(parametersResponse.find(1000007) != parametersResponse.end(), true,
 				"Parameter 1000007 is in response"));
-			RETURN_IF_FALSE(t.Assert(parametersResponse.find(1000008) != parametersResponse.end(), true,
-				"Parameter 1000008 is in response"));
 			RETURN_IF_FALSE(t.Assert(parametersResponse.find(2000001) != parametersResponse.end(), true,
 				"Parameter 2000001 is in response"));
 			RETURN_IF_FALSE(t.Assert(parametersResponse.find(2000002) != parametersResponse.end(), true,

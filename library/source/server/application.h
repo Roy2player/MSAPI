@@ -689,9 +689,8 @@ protected:
 	 *		Limit of connections from one IP(1000003) : 5
 	 *		Recv buffer size limit(1000004) : 10485760
 	 *		Server state(1000005) const : Running
-	 *		Max connections(1000006) const : 4096
-	 *		Listen IP(1000007) const : 127.0.0.1
-	 *		Listen port(1000008) const : 60328
+	 *		Listen IP(1000006) const : 127.0.0.1
+	 *		Listen port(1000007) const : 60328
 	 *		Name(2000001) const : Distributor
 	 *		Application state(2000002) const : Paused
 	 * }

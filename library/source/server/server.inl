@@ -67,9 +67,8 @@ Declarations
  * - Const parameter 1000004 "Recv buffer size limit" is a limit of buffer for recv function inside connection
  * request handler. Default is 8 megabytes, minimum is 1024 bytes. Will be applied for newly allocated buffers.
  * - Const parameter 1000005 "Server state" is a state of server.
- * - Const parameter 1000006 "Max connections" is a SOMAXCONN number.
- * - Const parameter 1000007 "Listen IP" is a IP address of server to listen after starting.
- * - Const parameter 1000008 "Listen port" is a port of server to listen after starting.
+ * - Const parameter 1000006 "Listen IP" is a IP address of server to listen after starting.
+ * - Const parameter 1000007 "Listen port" is a port of server to listen after starting.
  *
  * Server state is internal variable which can be used for check server state and can't be managed outside. Each time
  * server becomes Stopped, the internal stopped state counter is increased.
@@ -213,11 +212,9 @@ private:
 	// TODO: remove when application parameters will be atomic values
 	State m_stateTmp{ State::Stopped };
 
-	static inline constexpr int32_t m_somaxconn{ SOMAXCONN };
-
 public:
 	/**************************
-	 * @brief Construct a new Server object, registration parameters.
+	 * @brief Construct a new Server object, raise soft RLIMIT_NOFILE limit to hard limit, registration parameters.
 	 *
 	 * @locking Is not required.
 	 *
@@ -251,8 +248,8 @@ public:
 	 * all connections. Wait for all pthreads to be finished on interruption, increase stopped state counter and set
 	 * state to Stopped.
 	 *
-	 * @attention Interrupted when the server enters the Stopping state, socket initialization fails, or the listen
-	 * connection limit is reached. Startup errors leave the server restartable.
+	 * @attention Interrupted when the server enters the Stopping state or socket initialization fails. Startup errors
+	 * leave the server restartable.
 	 *
 	 * @locking Holds lock on m_serverAcceptingLoop, read lock on m_idToConnectionDataRWLock on hello sending and write
 	 * lock m_alivePthreadsRWLock on interruption.
@@ -690,14 +687,32 @@ FORCE_INLINE Server::Server() noexcept
 {
 	static_assert(CHAR_BIT == 8, "CHAR_BIT is not 8");
 
+	rlimit limits{};
+	if (getrlimit(RLIMIT_NOFILE, &limits) != 0) [[unlikely]] {
+		LOG_WARNING_NEW("Failed to get RLIMIT_NOFILE. Error №{}: {}", errno, std::strerror(errno));
+	}
+	else if (limits.rlim_cur < limits.rlim_max) {
+		const auto softLimit{ limits.rlim_cur };
+		limits.rlim_cur = limits.rlim_max;
+		if (setrlimit(RLIMIT_NOFILE, &limits) != 0) [[unlikely]] {
+			LOG_WARNING_NEW("Failed to raise RLIMIT_NOFILE, soft limit: {}, hard limit: {}. Error №{}: {}", softLimit,
+				limits.rlim_max, errno, std::strerror(errno));
+		}
+		else {
+			LOG_DEBUG_NEW("RLIMIT_NOFILE soft limit is raised from: {} to hard limit: {}", softLimit, limits.rlim_max);
+		}
+	}
+	else {
+		LOG_DEBUG_NEW("RLIMIT_NOFILE limit is already at its maximum: {}", limits.rlim_max);
+	}
+
 	RegisterParameter(1000001, { "Seconds between try to connect", &m_secondsBetweenTryToConnect, 1 });
 	RegisterParameter(1000002, { "Limit of attempts to connection", &m_limitConnectAttempts, 1 });
 	RegisterParameter(1000003, { "Limit of connections from one IP", &m_maxConnectionsOneIp, 1 });
 	RegisterParameter(1000004, { "Recv buffer size limit", &m_recvBufferSizeLimit, 1024 });
 	RegisterConstParameter(1000005, { "Server state", &m_stateTmp, &EnumToString });
-	RegisterConstParameter(1000006, { "Max connections", &m_somaxconn });
-	RegisterConstParameter(1000007, { "Listen IP", &m_listenIpStr });
-	RegisterConstParameter(1000008, { "Listen port", &m_listenPort });
+	RegisterConstParameter(1000006, { "Listen IP", &m_listenIpStr });
+	RegisterConstParameter(1000007, { "Listen port", &m_listenPort });
 }
 
 FORCE_INLINE Server::~Server() noexcept
@@ -794,54 +809,38 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 
 	sockaddr_in clientAddr{ 0, 0, 0, 0 };
 	SString<16> clientIp;
-	do {
-		while (GetConnectionsCount() < m_somaxconn) {
-			auto newConnection{ Accept(m_listeningSocket, &clientAddr) };
-			state = m_state.load(std::memory_order_acquire);
+	while (true) {
+		auto newConnection{ Accept(m_listeningSocket, &clientAddr) };
+		state = m_state.load(std::memory_order_acquire);
 
-			if (state == State::Stopping) [[unlikely]] {
-				m_listenIp.Clear();
-				m_listenIpStr = "";
-				m_listenPort = 0;
-				LOG_DEBUG("Server state is Stopping, wait for pthreads to be finished");
-				const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_alivePthreadsRWLock };
-				pthread_attr_destroy(&attr);
-				LOG_DEBUG("All pthreads are finished, server is stopped");
-				m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
-				m_state.store(State::Stopped, std::memory_order_release);
-				m_stateTmp = State::Stopped;
-				return;
-			}
-
-			if (state != State::Running) [[unlikely]] {
-				LOG_DEBUG_NEW("Server state: {}, continue to accept new connections", EnumToString(state));
-				continue;
-			}
-
-			if (newConnection == nullptr) [[unlikely]] {
-				continue;
-			}
-
-			if (!Helper::GetStringIp(clientAddr.sin_addr, clientIp)) [[unlikely]] {
-				(void)clientIp.Copy(std::string_view{ "unknown" });
-			}
-			(void)CreatePthread<Connection::Type::Income>(
-				std::move(newConnection), std::move(clientIp), attr, ip, port, /*doReconnection=*/false);
+		if (state == State::Stopping) [[unlikely]] {
+			break;
 		}
 
-		LOG_INFO("Server can't accept new connection, limit: " + _S(m_somaxconn) + " is reached. Sleep for 10 seconds");
-		std::this_thread::sleep_for(std::chrono::seconds(10));
-	} while (m_somaxconn >= GetConnectionsCount());
+		if (state != State::Running) [[unlikely]] {
+			LOG_DEBUG_NEW("Server state: {}, continue to accept new connections", EnumToString(state));
+			continue;
+		}
 
-	LOG_ERROR_NEW("Unexpected exit from the main accepting loop, server state: {}, connections counter: {}",
-		EnumToString(m_state.load(std::memory_order_acquire)), GetConnectionsCount());
-	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_alivePthreadsRWLock };
-	pthread_attr_destroy(&attr);
-	(void)close(m_listeningSocket);
-	m_listeningSocket = -1;
+		if (newConnection == nullptr) [[unlikely]] {
+			continue;
+		}
+
+		if (!Helper::GetStringIp(clientAddr.sin_addr, clientIp)) [[unlikely]] {
+			(void)clientIp.Copy(std::string_view{ "unknown" });
+		}
+
+		(void)CreatePthread<Connection::Type::Income>(
+			std::move(newConnection), std::move(clientIp), attr, ip, port, /*doReconnection=*/false);
+	}
+
 	m_listenIp.Clear();
 	m_listenIpStr = "";
 	m_listenPort = 0;
+	LOG_DEBUG("Server state is Stopping, wait for pthreads to be finished");
+	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_alivePthreadsRWLock };
+	pthread_attr_destroy(&attr);
+	LOG_DEBUG("All pthreads are finished, server is stopped");
 	m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
 	m_state.store(State::Stopped, std::memory_order_release);
 	m_stateTmp = State::Stopped;

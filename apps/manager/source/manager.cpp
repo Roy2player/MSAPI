@@ -363,7 +363,7 @@ void Manager::HandleModifyRequest(const std::map<size_t, std::variant<standardTy
 void Manager::HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
 	const std::map<size_t, std::variant<standardTypes>>& parameters)
 {
-	const auto portIt{ parameters.find(1000008) };
+	const auto portIt{ parameters.find(1000007) };
 	if (portIt == parameters.end()) {
 		LOG_WARNING_NEW("Parameters update without port, connection id: {}", connectionData->GetConnectionId());
 		return;
