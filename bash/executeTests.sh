@@ -24,7 +24,7 @@ ExitIfError $?
 
 # Unit tests under tests/unit/
 declare -a unit_tests=("dataHeader" "application" "objectData" "standardData" "html" "json" "table" "helper" "timer" "io" "sha256"
-	"authorization" "sha1" "basicSString" "persistence" "test" "lock" "server")
+	"authorization" "sha1" "basicSString" "persistence" "test" "lock" "server" "connection")
 
 for i in "${unit_tests[@]}"; do
     RunCommand "cmake -DCMAKE_BUILD_TYPE=${MSAPI_BUILD_PROFILE} ${options} -B ${MSAPI_PATH}/tests/unit/${i}/build ${MSAPI_PATH}/tests/unit/${i}/build \
@@ -35,7 +35,7 @@ for i in "${unit_tests[@]}"; do
 	ExitIfError $?
 
 	projectName=$(grep "project(" "${MSAPI_PATH}/tests/unit/${i}/build/CMakeLists.txt" | cut -d ' ' -f 1 | cut -d '(' -f 2)
-	RunCommand "sudo ${MSAPI_PATH}/tests/unit/${i}/build/${projectName}" "execute MSAPI ${projectName} test"
+	RunCommand "${MSAPI_PATH}/tests/unit/${i}/build/${projectName}" "execute MSAPI ${projectName} test"
 	ExitIfError $?
 done
 
@@ -51,7 +51,7 @@ for i in "${tests[@]}"; do
 	ExitIfError $?
 
 	projectName=$(grep "project(" "${MSAPI_PATH}/tests/integration/${i}/build/CMakeLists.txt" | cut -d ' ' -f 1 | cut -d '(' -f 2)
-	RunCommand "sudo ${MSAPI_PATH}/tests/integration/${i}/build/${projectName}" "execute MSAPI ${projectName} test"
+	RunCommand "${MSAPI_PATH}/tests/integration/${i}/build/${projectName}" "execute MSAPI ${projectName} test"
 	ExitIfError $?
 done
 

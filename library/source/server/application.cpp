@@ -639,7 +639,7 @@ void Application::Collect(const std::shared_ptr<Connection::Data>& connectionDat
 			return;
 		}
 
-		//! Wrap into GenerateMetadata function to avoid code duplication and mess
+		// TODO: Wrap into GenerateMetadata function to avoid code duplication and mess
 		std::format_to(std::back_inserter(m_metadata), "{{\"mutable\":{{");
 
 #define TMP_MSAPI_APPLICATION_NAME_PART                                                                                \

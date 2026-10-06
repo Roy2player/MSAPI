@@ -15,7 +15,7 @@
  *
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
- * @brief Unit test for Server IP limits.
+ * @brief Unit test for Server IP limits and connection data lifetime.
  *
  * 1.1. IP limits: connection ids are added up to the maximum, the next one is rejected;
  * 1.2. IP limits: duplicate connection id is rejected even if there is free space;
@@ -28,7 +28,9 @@
  * 2.2. Server: connections from another IP are limited independently;
  * 2.3. Server: unregistered connection frees space for a new one, duplicate connection id is denied;
  * 2.4. Server: unregistering from unknown IP and unknown connection id does not change limits;
- * 2.5. Server: changed limit of connections from one IP is applied to a new IP.
+ * 2.5. Server: changed limit of connections from one IP is applied to a new IP;
+ * 3.1. Server: income connection data is released after peer closes connection and pthread recv loop is finished,
+ * connection is removed from server and IP limits.
  */
 
 #ifndef MSAPI_UNIT_TEST_SERVER_INL
@@ -36,6 +38,8 @@
 
 #include "../../../../library/source/server/server.inl"
 #include "../../../../library/source/test/test.inl"
+#include <fcntl.h>
+#include <sys/socket.h>
 
 namespace MSAPI {
 
@@ -116,10 +120,31 @@ public:
 	 * @locking Is not required.
 	 */
 	FORCE_INLINE void SetMaxConnectionsOneIp(uint64_t value) noexcept;
+
+	/**************************
+	 * @brief Create income connection with pthread recv loop via Server::CreatePthread.
+	 *
+	 * @param socket Connected socket, ownership is transferred to the connection.
+	 * @param ip IP address.
+	 * @param attr Initialized pthread attributes.
+	 *
+	 * @locking Perform locking in Server::CreatePthread call.
+	 *
+	 * @return Connection data on success, nullptr otherwise.
+	 */
+	FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> CreateIncomeConnection(
+		int32_t socket, std::string_view ip, const pthread_attr_t& attr) noexcept;
+
+	/**************************
+	 * @locking Perform locking in Server::GetConnectionsCount call.
+	 *
+	 * @return Count of server connections.
+	 */
+	FORCE_INLINE [[nodiscard]] uint64_t GetConnectionsCount() const noexcept;
 };
 
 /**************************
- * @brief Unit test for Server IP limits.
+ * @brief Unit test for Server IP limits and connection data lifetime.
  *
  * @return True if all tests passed and false if something went wrong.
  */
@@ -182,6 +207,25 @@ FORCE_INLINE void ServerObserver::SetMaxConnectionsOneIp(const uint64_t value) n
 {
 	// Friend access
 	m_server.m_maxConnectionsOneIp = value;
+}
+
+FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> ServerObserver::CreateIncomeConnection(
+	const int32_t socket, const std::string_view ip, const pthread_attr_t& attr) noexcept
+{
+	SString<16> ipStr;
+	if (!ipStr.Copy(ip)) [[unlikely]] {
+		return {};
+	}
+
+	// Friend access
+	return m_server.CreatePthread<Connection::Type::Income>(
+		std::make_unique<Connection>(socket), std::move(ipStr), attr, /*ip=*/0, /*port=*/0, /*doReconnection=*/false);
+}
+
+FORCE_INLINE [[nodiscard]] uint64_t ServerObserver::GetConnectionsCount() const noexcept
+{
+	// Friend access
+	return m_server.GetConnectionsCount();
 }
 
 FORCE_INLINE [[nodiscard]] bool Server()
@@ -297,6 +341,38 @@ FORCE_INLINE [[nodiscard]] bool Server()
 		"Connection over changed limit from third IP is denied"));
 	RETURN_IF_FALSE(t.Assert(observer.GetConnectionsCountFromIp(THIRD_IP), std::optional<uint64_t>{ 2 },
 		"Count of connections from third IP is changed limit"));
+
+	// 3.1. Server: income connection data is released after peer closes connection and pthread recv loop is finished
+	{
+		constexpr std::string_view FOURTH_IP{ "172.16.0.1" };
+		int32_t sockets[2]{};
+		RETURN_IF_FALSE(t.Assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0, "Socket pair is created"));
+		pthread_attr_t attr;
+		RETURN_IF_FALSE(t.Assert(MSAPI::Server::AddPthreadAttributes(attr), true, "Pthread attributes are created"));
+
+		std::weak_ptr<Connection::Data> weakConnectionData;
+		{
+			const auto connectionData{ observer.CreateIncomeConnection(sockets[0], FOURTH_IP, attr) };
+			(void)pthread_attr_destroy(&attr);
+			RETURN_IF_FALSE(t.Assert(connectionData != nullptr, true, "Income connection is created"));
+			weakConnectionData = connectionData;
+		}
+		RETURN_IF_FALSE(t.Assert(observer.GetConnectionsCount(), 1, "Connection is saved in server"));
+		RETURN_IF_FALSE(t.Assert(observer.GetConnectionsCountFromIp(FOURTH_IP), std::optional<uint64_t>{ 1 },
+			"Connection is registered in IP limits"));
+		RETURN_IF_FALSE(t.Assert(
+			weakConnectionData.expired(), false, "Connection data is alive while pthread recv loop is running"));
+
+		// Peer closing finishes the pthread recv loop
+		(void)close(sockets[1]);
+		RETURN_IF_FALSE(t.Wait(
+			1000000, [&weakConnectionData]() { return weakConnectionData.expired(); }, true,
+			"Connection data is released after pthread recv loop is finished"));
+		RETURN_IF_FALSE(t.Assert(observer.GetConnectionsCount(), 0, "Connection is removed from server"));
+		RETURN_IF_FALSE(t.Assert(observer.GetConnectionsCountFromIp(FOURTH_IP), std::optional<uint64_t>{ 0 },
+			"Connection is unregistered from IP limits"));
+		RETURN_IF_FALSE(t.Assert(fcntl(sockets[0], F_GETFD) == -1 && errno == EBADF, true, "Descriptor is closed"));
+	}
 
 	return t.Passed<bool>();
 }

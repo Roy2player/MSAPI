@@ -98,14 +98,11 @@ Declarations
  * @concurrency Yes.
  *
  * @todo Application class should be based on the Server class, not vice versa.
- * @todo Improve UID generation. Way with std::atomic counter is thread safe, but performance overhead is sensitive in
- * some cases. Way with int generation + check in container even worse. Probably it should be UID generator with two
- * uint64_t values. UPD the performance overhead on atomic synchronization must be proved first and result documented.
- *
  * @todo m_listenIpStr should be replaced by SString.
  * @todo Parameters m_maxConnectionsOneIp, m_limitConnectAttempts, m_recvBufferSizeLimit, m_secondsBetweenTryToConnect
  * and m_listenPort should be atomic.
  * @todo m_stateTmp should be removed when application parameters will be atomic values.
+ * @todo Add global connections limit.
  */
 class Server : public Application {
 public:
@@ -844,18 +841,13 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		auto newConnection{ Accept(m_listeningSocket, &clientAddr) };
 		state = m_state.load(std::memory_order_acquire);
 
+		// Not handed over connection is closed by its destructor
 		if (state == State::Stopping) [[unlikely]] {
-			if (newConnection != nullptr) {
-				newConnection->Close();
-			}
 			break;
 		}
 
 		if (state != State::Running) [[unlikely]] {
 			LOG_DEBUG_NEW("Server state: {}, continue to accept new connections", EnumToString(state));
-			if (newConnection != nullptr) {
-				newConnection->Close();
-			}
 			continue;
 		}
 
@@ -1169,7 +1161,6 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 	if (!AddPthreadAttributes(attr)) [[unlikely]] {
 		LOG_ERROR_NEW("Connection id: {} to: {}:{} is closed, pthread attributes are not created",
 			newConnection->GetId(), ipStr, port);
-		newConnection->Close();
 		return {};
 	}
 
@@ -1207,10 +1198,12 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::CreatePthre
 
 	const auto connectionData{ std::make_shared<Connection::Data>(
 		std::move(connection), std::move(ipStr), ip, port, Type, doReconnection) };
-	if (!connectionData->SetPthreadRecvLoop([this, connectionData]() { PthreadRecvLoop<Type>(connectionData); }))
-		[[unlikely]] {
+	// Connection is closed by its destructor on failure paths, as connectionData is the only owner of the connection
+	// data. Recv loop function receives connection data from pthread to not own it, see Connection::Data::Trampoline
+	if (!connectionData->SetPthreadRecvLoop([this](const std::shared_ptr<Connection::Data>& data) {
+			(void)PthreadRecvLoop<Type>(data);
+		})) [[unlikely]] {
 
-		connectionData->GetConnection().Close();
 		if constexpr (Type == Connection::Type::Income) {
 			UnregisterConnectionFromIp(id, connectionData->GetIpStr());
 		}
@@ -1225,7 +1218,6 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::CreatePthre
 
 	if (!isSaved) [[unlikely]] {
 		LOG_ERROR_NEW("Failed attempt to save data for {} connection id: {}", Connection::EnumToString(Type), id);
-		connectionData->GetConnection().Close();
 		if constexpr (Type == Connection::Type::Income) {
 			UnregisterConnectionFromIp(id, connectionData->GetIpStr());
 		}
@@ -1234,12 +1226,16 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::CreatePthre
 
 	LOG_INFO_NEW("New {} connection id: {}", Connection::EnumToString(Type), id);
 	uint64_t pthreadId [[indeterminate]];
+	// Pthread owns a reference on connection data until its recv loop is finished, ownership is transferred on success
+	auto pthreadConnectionData{ std::make_unique<std::shared_ptr<Connection::Data>>(connectionData) };
 	while (true) {
 		m_alivePthreadsRWLock.ReadLock();
 		const auto result{ pthread_create(
-			&pthreadId, &pthreadAttr, &Connection::Data::Trampoline, connectionData->GetPthreadRecvLoop()) };
+			&pthreadId, &pthreadAttr, &Connection::Data::Trampoline, pthreadConnectionData.get()) };
 
-		if (result == 0 && connectionData->SetPthreadId(pthreadId)) [[likely]] {
+		if (result == 0) [[likely]] {
+			(void)pthreadConnectionData.release();
+			connectionData->SetPthreadId(pthreadId);
 			LOG_DEBUG_NEW("Pthread is created successfully, {} connection id: {}", Connection::EnumToString(Type), id);
 			return connectionData;
 		}

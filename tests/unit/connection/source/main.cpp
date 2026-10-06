@@ -1,6 +1,6 @@
 /**************************
  * @file        main.cpp
- * @date        2025-11-20
+ * @date        2026-10-06
  * @author      maks.angels@mail.ru
  * @copyright   © 2021–2026 Maksim Andreevich Leonov
  *
@@ -17,7 +17,8 @@
  */
 
 #include "../../../../library/source/help/io.inl"
-#include "objectData.inl"
+#include "../../../../library/source/server/connection.inl"
+#include "connection.inl"
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
@@ -41,10 +42,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	}
 
 	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::INFO);
-	MSAPI::logger.SetName("UTObjectData");
+	MSAPI::logger.SetName("UTConnection");
 	MSAPI::logger.SetToFile(true);
 	MSAPI::logger.SetToConsole(false);
 	MSAPI::logger.Start();
 
-	return static_cast<int>(!MSAPI::Test::Unit::ObjectData());
+	return static_cast<int>(!MSAPI::Test::Unit::Connection());
 }
