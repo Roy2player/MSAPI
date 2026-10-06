@@ -61,7 +61,7 @@ public:
 	class Data {
 	private:
 		const std::unique_ptr<Connection> m_connection;
-		std::function<void()> m_pthreadRecvLoop;
+		std::function<void(const std::shared_ptr<Data>&)> m_pthreadRecvLoop;
 		SString<16> m_ipStr;
 		uint64_t m_pthreadId{};
 		const uint32_t m_ip;
@@ -80,7 +80,7 @@ public:
 		 * @param type Type of connection.
 		 * @param doReconnection If reconnection is required for this connection.
 		 *
-		 * @todo Add tests coverage.
+		 * @test Yes.
 		 */
 		FORCE_INLINE explicit Data(std::unique_ptr<Connection>&& connection, SString<16>&& ipStr, uint32_t ip,
 			uint16_t port, Type type, bool doReconnection) noexcept;
@@ -165,7 +165,8 @@ public:
 
 	private:
 		/**************************
-		 * @brief Set the Pthread Recv Loop object
+		 * @brief Set the pthread receive loop function, which is called by Trampoline with the connection data owned by
+		 * the pthread.
 		 *
 		 * @param func Pthread receive loop function.
 		 *
@@ -174,19 +175,10 @@ public:
 		 *
 		 * @return True on success and false if already set.
 		 *
-		 * @todo Add tests coverage.
+		 * @test Yes.
 		 */
-		FORCE_INLINE [[nodiscard]] bool SetPthreadRecvLoop(std::function<void()>&& func) noexcept;
-
-		/**************************
-		 * @locking Synchronization is not required. It is assumed that the function is set only once right after
-		 * structure is created and does not change during the lifetime of the connection data.
-		 *
-		 * @return Pointer to the pthread receive loop function.
-		 *
-		 * @todo Add tests coverage.
-		 */
-		FORCE_INLINE [[nodiscard]] std::function<void()>* GetPthreadRecvLoop() noexcept;
+		FORCE_INLINE [[nodiscard]] bool SetPthreadRecvLoop(
+			std::function<void(const std::shared_ptr<Data>&)>&& func) noexcept;
 
 		/**************************
 		 * @brief Set the pthread ID for this connection data. Does not allow changing the ID once it has been set.
@@ -196,27 +188,26 @@ public:
 		 * @locking Synchronization is not required. It is assumed that the pthread ID is set only once right after
 		 * pthread is created and does not change during the lifetime of the connection data.
 		 *
-		 * @return True on success and false if already set.
-		 *
 		 * @todo Add tests coverage.
 		 */
-		FORCE_INLINE [[nodiscard]] bool SetPthreadId(uint64_t id) noexcept;
+		FORCE_INLINE void SetPthreadId(uint64_t id) noexcept;
 
 		/**************************
 		 * @brief Callable trampoline function for pthread creation. It is required because pthread_create expects a
 		 * function pointer with a specific signature, and we want to use a member function of Data as the
-		 * thread entry point.
+		 * thread entry point. Takes ownership of the passed connection data reference, calls the pthread receive loop
+		 * function with it and releases the reference when the loop is finished, so the connection data lives at
+		 * least as long as the pthread uses it.
 		 *
-		 * @param data Pointer to lambda with PthreadRecvLoop function for specific connection data.
+		 * @param data Pointer to heap allocated std::shared_ptr<Data>, ownership of the pointer is transferred.
 		 *
-		 * @pre data != nullptr, must point to a valid std::function<void()> object.
-		 * @pre Pointed std::function<void()> life must exceed the lifetime of the pthread.
+		 * @pre data != nullptr, the pointed connection data has pthread receive loop function set.
 		 *
 		 * @locking Synchronization is not required.
 		 *
 		 * @return Always nullptr.
 		 *
-		 * @todo Add tests coverage.
+		 * @test Yes.
 		 */
 		FORCE_INLINE [[nodiscard]] static void* Trampoline(void* data) noexcept;
 
@@ -237,7 +228,7 @@ private:
 	mutable Lock::Atomic m_recvLock;
 	mutable Lock::Atomic m_sendLock;
 	std::atomic<bool> m_isUsable{ true };
-	bool m_isClosed{};
+	std::atomic<bool> m_isClosed{};
 
 	static inline std::atomic<uint64_t> m_counter{};
 
@@ -247,7 +238,7 @@ public:
 	 *
 	 * @param connection Socket connection.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE Connection(int32_t connection) noexcept;
 
@@ -260,6 +251,15 @@ public:
 	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE Connection(uint64_t id, int32_t connection) noexcept;
+
+	/**************************
+	 * @brief Destroy the connection object, close connection if it is not closed yet.
+	 *
+	 * @locking Perform locking in Close call.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE ~Connection() noexcept;
 
 	Connection(const Connection& other) = delete;
 	Connection(Connection&& other) = delete;
@@ -341,13 +341,13 @@ public:
 	FORCE_INLINE [[nodiscard]] uint64_t GetId() const noexcept;
 
 	/**************************
-	 * @brief Shutdown and close connection. Is not concurrency safe and won't be called on closed connection.
+	 * @brief Shutdown and close connection. Only the first call closes the connection, next calls do nothing.
 	 *
 	 * @locking Lock m_recvLock and m_sendLock inside.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
-	FORCE_INLINE void Close();
+	FORCE_INLINE void Close() noexcept;
 
 	/**************************
 	 * @locking Is not required.
@@ -378,18 +378,18 @@ FORCE_INLINE Connection::Data::Data(std::unique_ptr<Connection>&& connection, SS
 {
 }
 
-FORCE_INLINE [[nodiscard]] bool Connection::Data::SetPthreadId(const uint64_t id) noexcept
+FORCE_INLINE void Connection::Data::SetPthreadId(const uint64_t id) noexcept
 {
 	if (m_pthreadId != 0) [[unlikely]] {
 		LOG_WARNING_NEW("Pthread id: {} cannot be changed for connection id: {}", m_pthreadId, m_connection->GetId());
-		return false;
+		return;
 	}
 
 	m_pthreadId = id;
-	return true;
 }
 
-FORCE_INLINE [[nodiscard]] bool Connection::Data::SetPthreadRecvLoop(std::function<void()>&& func) noexcept
+FORCE_INLINE [[nodiscard]] bool Connection::Data::SetPthreadRecvLoop(
+	std::function<void(const std::shared_ptr<Data>&)>&& func) noexcept
 {
 	if (m_pthreadRecvLoop != nullptr) [[unlikely]] {
 		LOG_WARNING_NEW("Pthread recv loop cannot be changed for connection id: {}", m_connection->GetId());
@@ -398,11 +398,6 @@ FORCE_INLINE [[nodiscard]] bool Connection::Data::SetPthreadRecvLoop(std::functi
 
 	m_pthreadRecvLoop = std::move(func);
 	return true;
-}
-
-FORCE_INLINE [[nodiscard]] std::function<void()>* Connection::Data::GetPthreadRecvLoop() noexcept
-{
-	return &m_pthreadRecvLoop;
 }
 
 FORCE_INLINE [[nodiscard]] Connection& Connection::Data::GetConnection() const noexcept { return *m_connection; }
@@ -423,7 +418,13 @@ FORCE_INLINE [[nodiscard]] bool Connection::Data::GetDoReconnection() const noex
 
 FORCE_INLINE [[nodiscard]] void* Connection::Data::Trampoline(void* data) noexcept
 {
-	static_cast<std::function<void()>*>(data)->operator()();
+	// Take over the reference passed by pthread creator, it should be released after the receive loop is finished
+	const std::shared_ptr<Data> connectionData{ [data]() {
+		const std::unique_ptr<std::shared_ptr<Data>> owner{ static_cast<std::shared_ptr<Data>*>(data) };
+		return std::move(*owner);
+	}() };
+
+	connectionData->m_pthreadRecvLoop(connectionData);
 	return nullptr;
 }
 
@@ -442,6 +443,8 @@ FORCE_INLINE Connection::Connection(const uint64_t id, const int32_t connection)
 	, m_connection{ connection }
 {
 }
+
+FORCE_INLINE Connection::~Connection() noexcept { Close(); }
 
 FORCE_INLINE [[nodiscard]] uint64_t Connection::Recv(void* const buffer, const uint64_t size, const int32_t flags)
 {
@@ -555,14 +558,14 @@ FORCE_INLINE void Connection::SetSend(T&& f) noexcept
 
 FORCE_INLINE [[nodiscard]] uint64_t Connection::GetId() const noexcept { return m_id; }
 
-FORCE_INLINE void Connection::Close()
+FORCE_INLINE void Connection::Close() noexcept
 {
-	if (m_isClosed) [[unlikely]] {
+	// Only the first caller closes the descriptor, otherwise its number can be reused and closed by mistake
+	if (m_isClosed.exchange(true, std::memory_order_acq_rel)) {
 		return;
 	}
 
 	m_isUsable.store(false, std::memory_order_release);
-	m_isClosed = true;
 	if (shutdown(m_connection, SHUT_RDWR) == -1) [[unlikely]] {
 		if (errno == ENOTCONN) {
 			LOG_DEBUG_NEW("Is already closed, connection id: {}", m_id);

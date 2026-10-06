@@ -42,12 +42,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::INFO);
 	MSAPI::logger.SetName("ITAH");
 	MSAPI::logger.SetToFile(true);
-	MSAPI::logger.SetToConsole(true);
+	MSAPI::logger.SetToConsole(false);
 	MSAPI::logger.Start();
-
-	if (!MSAPI::Server::SetMlockallCurrentFuture()) [[unlikely]] {
-		return 1;
-	}
 
 	return static_cast<int>(!MSAPI::Test::Integration::ApplicationHandlers());
 }
