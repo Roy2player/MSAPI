@@ -654,4 +654,4 @@ uint64_t Timer::GetNanosecondsToTomorrow()
 
 #undef HOW_MUCH_DAYS_PER_MONTH
 
-}; //* namespace MSAPI
+} // namespace MSAPI

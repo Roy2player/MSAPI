@@ -158,8 +158,8 @@ public:
  */
 class TableData {
 private:
-	//* Not const for enable copy/move semantics.
-	//* Shared pointer to allow copy constructor and assignment operator.
+	// Not const for enable copy/move semantics.
+	// Shared pointer to allow copy constructor and assignment operator.
 	std::shared_ptr<AutoClearPtr<void>> m_ownBuffer{ nullptr };
 	const void* m_sharedBuffer{ nullptr };
 	size_t m_bufferSize{ 8 };
@@ -572,7 +572,7 @@ public:
 						if constexpr (is_standard_primitive_type<safe_underlying_type_t<T>> || std::is_same_v<T, Timer>
 							|| std::is_same_v<T, Timer::Duration>) {
 
-							//* skip
+							// Skip
 						}
 						else if constexpr (is_standard_primitive_type_optional<T>) {
 							if (update.has_value()) {
@@ -1263,6 +1263,6 @@ private:
 	}
 };
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_TABLE_H
+#endif // MSAPI_TABLE_H

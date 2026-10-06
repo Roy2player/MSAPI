@@ -186,7 +186,9 @@ FORCE_INLINE [[nodiscard]] bool ObjectData()
 			: m_param1(param1)
 			, m_param2(param2)
 			, m_param3(param3)
-			, m_param4(param4) {};
+			, m_param4(param4)
+		{
+		}
 
 		[[nodiscard]] static bool AreEqual(const CustomObject& a, const CustomObject& b, MSAPI::Test::Test& t)
 		{

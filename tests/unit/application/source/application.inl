@@ -119,19 +119,15 @@ FORCE_INLINE [[nodiscard]] bool Application()
 	const auto checkNotEmpty{ [&check]<typename T> [[nodiscard]] (T & v1, const T& v2, const T& v3, T& v4, T& v5,
 								  const MSAPI::Application::State state,
 								  std::string_view (*const f)(remove_optional_t<T>) = nullptr) {
-		/*
-			int8_t = int8_t
-			Enum : int8_t = int8_t
-			std::optional<int8_t> = std::optional<int8_t>
-		*/
+		// int8_t = int8_t
+		// Enum : int8_t = int8_t
+		// std::optional<int8_t> = std::optional<int8_t>
 		using UnderlyingType = std::conditional_t<is_optional_v<T>, T,
 			std::conditional_t<std::is_enum_v<T>, safe_underlying_type_t<T>, T>>;
 
-		/*
-			int8_t = int8_t
-			Enum : int8_t = int8_t
-			std::optional<int8_t> = int8_t
-		*/
+		// int8_t = int8_t
+		// Enum : int8_t = int8_t
+		// std::optional<int8_t> = int8_t
 		using UnderlyingPrimitiveType
 			= std::conditional_t<std::is_enum_v<T>, safe_underlying_type_t<T>, remove_optional_t<T>>;
 
@@ -1384,8 +1380,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 
 		{
 			Test::TestEnum param1{ Test::TestEnum::Four };
-			//* Max is always auto generated, but parameter should be passed. Min can be calculated as Undefined or
-			//* Undefined + 1
+			// Max is always auto generated, but parameter should be passed. Min can be calculated as Undefined or
+			// Undefined + 1
 			Test::TestEnum param4{ Test::TestEnum::Undefined };
 			Test::TestEnum param5{ Test::TestEnum::Max };
 			RETURN_IF_FALSE(checkNotEmpty(param1, Test::TestEnum::Eight, Test::TestEnum::Two, param4, param5,

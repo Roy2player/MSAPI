@@ -27,6 +27,10 @@ namespace MSAPI {
 
 /**************************
  * @brief Object for parsing HTML data. Initialization in constructor from string, generate array of teg structures.
+ *
+ * @todo Store indexes of tags for each type: std::map<Type, std::set<int>> m_indexesForType.
+ * @todo Valid/invalid tags.
+ * @todo Empty tags.
  */
 class HTML {
 public:
@@ -78,6 +82,8 @@ public:
 	 * @brief Object to describe a HTML tag.
 	 *
 	 * @test Yes.
+	 *
+	 * @todo Store classes, ids, attributes and content of the tag.
 	 */
 	struct Tag {
 	private:
@@ -89,12 +95,8 @@ public:
 		Type type{ Type::Undefined };
 		size_t begin{ 0 };
 		size_t end{ 0 };
-		//* 0 == undefined
+		// 0 == undefined
 		uint depth{ 0 };
-		//? std::vector<std::string> classes;
-		//? std::vector<std::string> ids;
-		//? std::vector<std::string> attributes;
-		//? std::string content;
 
 		/**************************
 		 * @return True if tag is started, false otherwise.
@@ -154,9 +156,6 @@ private:
 	std::vector<Tag> m_tags;
 	uint m_maxDepth{ 0 };
 	size_t m_size{ 0 };
-	// TODO: std::map<Type, std::set<int>> m_indexesForType; //* Type, { int }
-	// TODO: valid/invalid
-	// TODO: empty
 
 public:
 	/**************************
@@ -270,6 +269,6 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, HTML& html);
 };
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_HTML_H
+#endif // MSAPI_HTML_H

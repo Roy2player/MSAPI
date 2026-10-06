@@ -524,6 +524,8 @@ public:
 	 * @locking Write lock m_streamConnectionIdToStreamLock during removing.
 	 *
 	 * @test Yes.
+	 *
+	 * @todo Build log message about removed streams lazily, only if logging level is enabled.
 	 */
 	FORCE_INLINE void FailStreamsForConnectionId(uint64_t connectionId) noexcept;
 
@@ -976,6 +978,8 @@ constexpr static inline bool CLEANUP_OUTSIDE{ false };
  * each hash will have its own opening callback.
  * - Think how to integrate access verification via Authorization module to allow access manage feature for that type of
  * stream.
+ *
+ * @todo Resolve in code todos.
  */
 template <typename... FObjects>
 	requires(std::is_class_v<FObjects> && ...)
@@ -1293,6 +1297,8 @@ public:
 	 * @locking Write lock associated streams structure each removal.
 	 *
 	 * @test Yes.
+	 *
+	 * @todo Build log message about removed streams lazily, only if logging level is enabled.
 	 */
 	FORCE_INLINE void ClearActiveStreamsForConnectionId(uint64_t connectionId) noexcept;
 

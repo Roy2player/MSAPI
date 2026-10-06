@@ -19,8 +19,8 @@
  * protocol.
  */
 
-#ifndef MSAPI_PROTOCOL_WEBSOCKET_INL
-#define MSAPI_PROTOCOL_WEBSOCKET_INL
+#ifndef MSAPI_PROTOCOL_WEB_SOCKET_INL
+#define MSAPI_PROTOCOL_WEB_SOCKET_INL
 
 #include "../server/server.inl"
 #include <unordered_set>
@@ -89,20 +89,18 @@ public:
 	static constexpr inline double MAXIMUM_HEADER_MB{ 10. / MB };
 
 private:
-	/*
-		13 version (RFC 6455) WebSocket frame format
-
-		1 bit	FIN	       	1 = final fragment of a message; 0 = more fragments follow
-		1 bit	RSV1	   	Reserved (used for extensions like permessage-deflate)
-		1 bit	RSV2	   	Reserved
-		1 bit	RSV3	   	Reserved
-		4 bits	OPCODE	    Frame type (text, binary, close, ping, pong, continuation)
-		1 bit	MASK	   	1 = payload is masked (mandatory for client -> server)
-		7 bits	DATA SIZE	Payload size indicator (see extended length rules below)
-		16 bits optional	Extended Payload Length	Unsigned integer, present if Payload Length = 126
-		64 bits optional	Extended Payload Length	Unsigned integer, present if Payload Length = 127
-		32 bits optional	Masking Key	4-byte array, present if MASK = 1
-	*/
+	// 13 version (RFC 6455) WebSocket frame format
+	//
+	// 1 bit	FIN	       	1 = final fragment of a message; 0 = more fragments follow
+	// 1 bit	RSV1	   	Reserved (used for extensions like permessage-deflate)
+	// 1 bit	RSV2	   	Reserved
+	// 1 bit	RSV3	   	Reserved
+	// 4 bits	OPCODE	    Frame type (text, binary, close, ping, pong, continuation)
+	// 1 bit	MASK	   	1 = payload is masked (mandatory for client -> server)
+	// 7 bits	DATA SIZE	Payload size indicator (see extended length rules below)
+	// 16 bits optional	Extended Payload Length	Unsigned integer, present if Payload Length = 126
+	// 64 bits optional	Extended Payload Length	Unsigned integer, present if Payload Length = 127
+	// 32 bits optional	Masking Key	4-byte array, present if MASK = 1
 	std::vector<uint8_t> m_buffer = std::vector<uint8_t>(REQUIRED_HEADER_SIZE, 0);
 	int8_t m_headerSize{ REQUIRED_HEADER_SIZE };
 
@@ -529,6 +527,9 @@ public:
 	 * @todo Add per-connection limit to do not allow one connection to occupy all the available shared limit.
 	 * @todo When Application will be a child of Sever, call Server::CloseConnection(connection) at close opcode
 	 * handling.
+	 *
+	 * @todo Close connection by Server::CloseConnection after response to close message, when Application will be a
+	 * child of Server.
 	 */
 	FORCE_INLINE void Collect(const std::shared_ptr<Connection::Data>& connectionData, Data&& data);
 
@@ -1696,4 +1697,4 @@ FORCE_INLINE [[nodiscard]] bool IHandler::CheckLimitForNew(const double addition
 
 } // namespace MSAPI
 
-#endif // MSAPI_PROTOCOL_WEBSOCKET_INL
+#endif // MSAPI_PROTOCOL_WEB_SOCKET_INL

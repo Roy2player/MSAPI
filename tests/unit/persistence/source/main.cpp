@@ -31,7 +31,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetParentPath(path);
 	path += "logs/";
 
-	//* Clear old files
+	// Clear old files
 	std::vector<std::string> files;
 	if (MSAPI::IO::List<MSAPI::IO::FileType::Regular>(files, path.c_str())) {
 		for (const auto& file : files) {

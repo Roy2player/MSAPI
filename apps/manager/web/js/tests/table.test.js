@@ -58,7 +58,7 @@ class RowChecking {
 				inputs[i].dispatchEvent(new Event("input"));
 			}
 
-			//* Trigger global event listeners in case if input type has it
+			// Trigger global event listeners in case if input type has it
 			document.dispatchEvent(new Event("click"));
 		}
 	}
@@ -174,7 +174,7 @@ testRunner.Test('Create mutable and immutable tables', () => {
 		"25" : { type : 'Duration', name : 'Name twenty six', canBeEmpty : false, durationType : 'Seconds' }
 	};
 
-	//* Table with all columns, mutable
+	// Table with all columns, mutable
 	const parameter1 = { name : 'Important data', type : 'TableData', canBeEmpty : false, columns };
 
 	const table1 = new Table({ parent : body, id : 30015, metadata : parameter1, isMutable : true });
@@ -354,7 +354,7 @@ testRunner.Test('Create mutable and immutable tables', () => {
 	testRunner.Assert(buttons1.children[1].textContent, "Revert", "Second button should have the correct text");
 	testRunner.Assert(buttons1.children[2].textContent, "Save", "Third button should have the correct text");
 
-	//* Table with all columns, immutable
+	// Table with all columns, immutable
 	const parameter2 = { name : 'Important data', type : 'TableData', canBeEmpty : false, columns };
 
 	const table2 = new Table({ parent : body, id : 30016, metadata : parameter2, isMutable : false });
@@ -449,7 +449,7 @@ testRunner.Test('Add row via button and directly', () => {
 	let rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
 
-	//* Try to add row with empty values
+	// Try to add row with empty values
 	table.AddRow();
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -463,7 +463,7 @@ testRunner.Test('Add row via button and directly', () => {
 		false, false, false, false, true, false, true, true, true
 	]);
 
-	//* Try to add row with invalid values
+	// Try to add row with invalid values
 	RowChecking.SetValues(newInputs, [
 		"3123fd", -2, 3, 4, 5, 6, 7, 8, 9, 10, -11, 12, 13, 14, 15, 16, 17, 18, 19, 20.003, -21.002, 22.001, true,
 		"text", -532564, "2"
@@ -477,7 +477,7 @@ testRunner.Test('Add row via button and directly', () => {
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
 
-	//* Try to add row with valid values
+	// Try to add row with valid values
 	RowChecking.SetValues(newInputs, [
 		1, -2, 3, 4, 5, 6, 7, 8, 9, 10, -11, 12, 13, 14, 15, 16, 17, 18, 19, 20.003, -21.002, 22.001, true, "text",
 		"2021-01-01", "44m"
@@ -663,7 +663,7 @@ testRunner.Test('Add row via button and directly', () => {
 	];
 	RowChecking.CheckAttributes(newInputs, expectedValues);
 
-	//* Try to add row with valid values
+	// Try to add row with valid values
 	table.AddRow([
 		1, -2, 3, 4, 5, 6, 7, 8, 9, 10, -11, 12, 13, 14, 15, 16, 17, 18, 19, 20.003, -21.002, 22.001, true, "text",
 		1609459200000000000n, 130000000000
@@ -679,7 +679,7 @@ testRunner.Test('Add row via button and directly', () => {
 		`2021-01-01 ${TestRunner.GetHourWithUtcShift(2021, 0, 0)}:00:00.000000000 UTC${TestRunner.UTC}`, "2m 10s"
 	]);
 	RowChecking.CheckAttributes(newInputs, expectedValues);
-	//* Add row with invalid values directly
+	// Add row with invalid values directly
 	table.AddRow([
 		1, -2, 3, 4, 5, 6, 7, 8, 9, 10, -11, 12, 13, 14, 15, 16, 17, 18, 19, 20.003, -21.002, 22.001, "text", "text",
 		-532564, 33
@@ -707,20 +707,20 @@ testRunner.Test('Remove row', () => {
 	let rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
 
-	//* Add row
+	// Add row
 	table.AddRow([ 1, 2.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 3, "Table should have the correct number of rows: " + 3);
 	testRunner.Assert(rows[1].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Remove row
+	// Remove row
 	rows[1].querySelector(".remove").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
 
-	//* Add two rows
+	// Add two rows
 	table.AddRow([ 1, 2.5 ]);
 	table.RemoveRow({ index : 1 });
 	table.AddRow([ 2, 3.5 ]);
@@ -731,14 +731,14 @@ testRunner.Test('Remove row', () => {
 	testRunner.Assert(rows[1].classList.contains("added"), true, "New row should be marked as added");
 	testRunner.Assert(rows[2].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Remove first row
+	// Remove first row
 	rows[1].querySelector(".remove").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 3, "Table should have the correct number of rows: " + 3);
 	testRunner.Assert(rows[1].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Remove second row
+	// Remove second row
 	rows[1].querySelector(".remove").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -763,34 +763,34 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	let rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
 
-	//* Add row
+	// Add row
 	table.AddRow([ 1, 2.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 3, "Table should have the correct number of rows: " + 3);
 	testRunner.Assert(rows[1].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Clear table
+	// Clear table
 	table.Clear();
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
 
-	//* Add row
+	// Add row
 	table.AddRow([ 1, 2.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 3, "Table should have the correct number of rows: " + 3);
 	testRunner.Assert(rows[1].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Save table
+	// Save table
 	table.Save();
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 3, "Table should have the correct number of rows: " + 3);
 	testRunner.Assert(rows[1].classList.contains("added"), false, "New row should not be marked as added");
 
-	//* Clear table
+	// Clear table
 	tableNode.querySelector(".clear").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -798,7 +798,7 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	testRunner.Assert(rows[1].classList.contains("added"), false, "New row should not be marked as added");
 	testRunner.Assert(rows[1].classList.contains("removed"), true, "New row should be marked as removed");
 
-	//* Revert table
+	// Revert table
 	table.Revert();
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -806,14 +806,14 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	testRunner.Assert(rows[1].classList.contains("added"), false, "New row should not be marked as added");
 	testRunner.Assert(rows[1].classList.contains("removed"), false, "New row should not be marked as removed");
 
-	//* Add row
+	// Add row
 	table.AddRow([ 1, 2.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 4, "Table should have the correct number of rows: " + 4);
 	testRunner.Assert(rows[2].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Clear table
+	// Clear table
 	table.Clear();
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -821,14 +821,14 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	testRunner.Assert(rows[1].classList.contains("added"), false, "New row should not be marked as added");
 	testRunner.Assert(rows[1].classList.contains("removed"), true, "New row should be marked as removed");
 
-	//* Add row
+	// Add row
 	table.AddRow([ 1, 2.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 4, "Table should have the correct number of rows: " + 4);
 	testRunner.Assert(rows[2].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Revert table
+	// Revert table
 	tableNode.querySelector(".revert").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -836,12 +836,12 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	testRunner.Assert(rows[1].classList.contains("added"), false, "New row should not be marked as added");
 	testRunner.Assert(rows[1].classList.contains("removed"), false, "New row should not be marked as removed");
 
-	//* Set invalid values
+	// Set invalid values
 	RowChecking.SetValues(rows[1].querySelectorAll("input"), [ "text", 2.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	RowChecking.CheckInvalidStates(rows[1].querySelectorAll("input"), [ true, false ]);
 
-	//* Add row
+	// Add row
 	table.AddRow([ 1, 2.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -849,7 +849,7 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	RowChecking.CheckInvalidStates(rows[1].querySelectorAll("input"), [ true, false ]);
 	testRunner.Assert(rows[2].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Save table
+	// Save table
 	table.Save();
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -857,7 +857,7 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	RowChecking.CheckInvalidStates(rows[1].querySelectorAll("input"), [ true, false ]);
 	testRunner.Assert(rows[2].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Revert table
+	// Revert table
 	table.Revert();
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -865,14 +865,14 @@ testRunner.Test('Clear, save and revert table via buttons and directly', () => {
 	RowChecking.CheckInvalidStates(rows[1].querySelectorAll("input"), [ false, false ]);
 	testRunner.Assert(rows[1].classList.contains("added"), false, "New row should not be marked as added");
 
-	//* Add row
+	// Add row
 	table.AddRow([ 1, 2.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 4, "Table should have the correct number of rows: " + 4);
 	testRunner.Assert(rows[2].classList.contains("added"), true, "New row should be marked as added");
 
-	//* Save table
+	// Save table
 	tableNode.querySelector(".save").dispatchEvent(new Event("click", { bubbles : true }));
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -925,7 +925,7 @@ testRunner.Test('Min and max limits, step attribute', () => {
 	const newInputs = newRow.querySelectorAll("input");
 	testRunner.Assert(newInputs.length, 23, "New row should have the correct number of inputs");
 
-	//* Set all values to min - step
+	// Set all values to min - step
 	RowChecking.SetValues(newInputs, [
 		parameter.columns[0].min - +newInputs[0].step, parameter.columns[1].min - +newInputs[1].step,
 		parameter.columns[2].min - +newInputs[2].step, parameter.columns[3].min - +newInputs[3].step,
@@ -959,13 +959,13 @@ testRunner.Test('Min and max limits, step attribute', () => {
 		`${parameter.columns[22].min - 1}n`
 	]);
 
-	//* Try to add row with invalid values
+	// Try to add row with invalid values
 	table.AddRow();
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
 
-	//* Increment all values by their steps
+	// Increment all values by their steps
 	newInputs.forEach(input => {
 		if (input.hasAttribute("nanoseconds")) {
 			RowChecking.SetValues([ input ], [ `${parameter.columns[22].min}n` ]);
@@ -989,7 +989,7 @@ testRunner.Test('Min and max limits, step attribute', () => {
 		parameter.columns[20].min, parameter.columns[21].min, `${parameter.columns[22].min}n`
 	]);
 
-	//* Try to add row with valid values
+	// Try to add row with valid values
 	table.AddRow();
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -1012,7 +1012,7 @@ testRunner.Test('Min and max limits, step attribute', () => {
 	RowChecking.CheckValues(
 		newInputs, [ "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "" ]);
 
-	//* Set all values to max + step
+	// Set all values to max + step
 	RowChecking.SetValues(addedInputs, [
 		parameter.columns[0].max + +addedInputs[0].step, parameter.columns[1].max + +addedInputs[1].step,
 		parameter.columns[2].max + +addedInputs[2].step, parameter.columns[3].max + +addedInputs[3].step,
@@ -1047,7 +1047,7 @@ testRunner.Test('Min and max limits, step attribute', () => {
 		`${parameter.columns[22].max + 1}n`
 	]);
 
-	//* Try to save table
+	// Try to save table
 	table.Save();
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -1074,7 +1074,7 @@ testRunner.Test('Min and max limits, step attribute', () => {
 		true, true, true, true, true
 	]);
 
-	//* Decrement all values by their steps
+	// Decrement all values by their steps
 	addedInputs.forEach(input => {
 		if (input.hasAttribute("nanoseconds")) {
 			RowChecking.SetValues([ input ], [ `${parameter.columns[22].max}n` ]);
@@ -1099,7 +1099,7 @@ testRunner.Test('Min and max limits, step attribute', () => {
 	]);
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 
-	//* Try to save table
+	// Try to save table
 	table.Save();
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -1228,7 +1228,7 @@ testRunner.Test('Validation out of range custom limits', () => {
 	const newInputs = newRow.querySelectorAll("input");
 	testRunner.Assert(newInputs.length, 23, "New row should have the correct number of inputs");
 
-	//* Verify that all limits in the range
+	// Verify that all limits in the range
 	RowChecking.CheckAttributes(newInputs, [
 		{ min : Helper.TYPES_LIMITS.int_8.min, max : Helper.TYPES_LIMITS.int_8.max },
 		{ min : Helper.TYPES_LIMITS.int_16.min, max : Helper.TYPES_LIMITS.int_16.max },
@@ -1257,7 +1257,7 @@ testRunner.Test('Validation out of range custom limits', () => {
 });
 
 testRunner.Test('Empty limits', () => {
-	//* Table's columns can be empty
+	// Table's columns can be empty
 	const table = new Table({
 		parent : body,
 		id : 30014,
@@ -1296,7 +1296,7 @@ testRunner.Test('Empty limits', () => {
 	const newInputs = newRow.querySelectorAll("input");
 	testRunner.Assert(newInputs.length, 14, "New row should have the correct number of inputs");
 
-	//* Try to add row with empty values
+	// Try to add row with empty values
 	table.AddRow();
 	testRunner.Assert(tableNode.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -1344,7 +1344,7 @@ testRunner.Test('Empty limits', () => {
 	const newInputs2 = newRow2.querySelectorAll("input");
 	testRunner.Assert(newInputs2.length, 14, "New row should have the correct number of inputs");
 
-	//* Try to add row with empty values
+	// Try to add row with empty values
 	table2.AddRow();
 	testRunner.Assert(tableNode2.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode2.querySelectorAll(".row");
@@ -1352,12 +1352,12 @@ testRunner.Test('Empty limits', () => {
 	RowChecking.CheckInvalidStates(
 		newInputs2, [ true, true, true, true, true, true, true, true, true, true, true, true, true, true ]);
 
-	//* Set all values to valid
+	// Set all values to valid
 	RowChecking.SetValues(newInputs2, [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, "12", "2021-01-01", "14n" ]);
 	RowChecking.CheckInvalidStates(newInputs2,
 		[ false, false, false, false, false, false, false, false, false, false, false, false, false, false ]);
 
-	//* Try to add row with valid values
+	// Try to add row with valid values
 	table2.AddRow();
 	testRunner.Assert(tableNode2.classList.contains("changed"), true, "Table should be marked as changed");
 	rows = tableNode2.querySelectorAll(".row");
@@ -1387,7 +1387,7 @@ testRunner.Test('Add, modify and remove row in immutable table', () => {
 	let rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
 
-	//* Add row
+	// Add row
 	table.AddRow([ 1, 2.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 	rows = tableNode.querySelectorAll(".row");
@@ -1420,13 +1420,13 @@ testRunner.Test('Add, modify and remove row in immutable table', () => {
 	testRunner.Assert(rows[1].classList.contains("added"), false, "New row should not be marked as added");
 	testRunner.Assert(rows[1].querySelector(".remove"), null, "New row should not have remove button");
 
-	//* Modify row
+	// Modify row
 	RowChecking.SetValues(addedInputs, [ 2, 3.5 ]);
 	RowChecking.CheckInvalidStates(addedInputs, [ false, false ]);
 	RowChecking.CheckValues(addedInputs, [ 2, 3.5 ]);
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 
-	//* Remove row
+	// Remove row
 	table.RemoveRow({ index : 1 });
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);

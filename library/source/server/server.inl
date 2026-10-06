@@ -38,6 +38,16 @@
 
 namespace MSAPI {
 
+namespace Test {
+
+namespace Unit {
+
+class ServerObserver;
+
+} // namespace Unit
+
+} // namespace Test
+
 /*---------------------------------------------------------------------------------
 Declarations
 ---------------------------------------------------------------------------------*/
@@ -67,9 +77,8 @@ Declarations
  * - Const parameter 1000004 "Recv buffer size limit" is a limit of buffer for recv function inside connection
  * request handler. Default is 8 megabytes, minimum is 1024 bytes. Will be applied for newly allocated buffers.
  * - Const parameter 1000005 "Server state" is a state of server.
- * - Const parameter 1000006 "Max connections" is a SOMAXCONN number.
- * - Const parameter 1000007 "Listen IP" is a IP address of server to listen after starting.
- * - Const parameter 1000008 "Listen port" is a port of server to listen after starting.
+ * - Const parameter 1000006 "Listen IP" is a IP address of server to listen after starting.
+ * - Const parameter 1000007 "Listen port" is a port of server to listen after starting.
  *
  * Server state is internal variable which can be used for check server state and can't be managed outside. Each time
  * server becomes Stopped, the internal stopped state counter is increased.
@@ -92,6 +101,11 @@ Declarations
  * @todo Improve UID generation. Way with std::atomic counter is thread safe, but performance overhead is sensitive in
  * some cases. Way with int generation + check in container even worse. Probably it should be UID generator with two
  * uint64_t values. UPD the performance overhead on atomic synchronization must be proved first and result documented.
+ *
+ * @todo m_listenIpStr should be replaced by SString.
+ * @todo Parameters m_maxConnectionsOneIp, m_limitConnectAttempts, m_recvBufferSizeLimit, m_secondsBetweenTryToConnect
+ * and m_listenPort should be atomic.
+ * @todo m_stateTmp should be removed when application parameters will be atomic values.
  */
 class Server : public Application {
 public:
@@ -102,7 +116,7 @@ public:
 	 *
 	 * @return String interpretation of server state enum.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] static constexpr std::string_view EnumToString(State state) noexcept;
 
@@ -126,7 +140,7 @@ private:
 		 *
 		 * @locking Is not required.
 		 *
-		 * @todo Add tests coverage.
+		 * @test Yes.
 		 */
 		FORCE_INLINE explicit IpLimits(uint64_t maxConnections) noexcept;
 
@@ -139,7 +153,7 @@ private:
 		 *
 		 * @return True if the connection ID was added, false if the limit has been reached or the ID already exists.
 		 *
-		 * @todo Add tests coverage.
+		 * @test Yes.
 		 */
 		FORCE_INLINE [[nodiscard]] bool AddConnectionId(uint64_t id) noexcept;
 
@@ -150,7 +164,7 @@ private:
 		 *
 		 * @locking External write lock is required.
 		 *
-		 * @todo Add tests coverage.
+		 * @test Yes.
 		 */
 		FORCE_INLINE void RemoveConnectionId(uint64_t id) noexcept;
 
@@ -159,7 +173,7 @@ private:
 		 *
 		 * @return Current number of connections.
 		 *
-		 * @todo Add tests coverage.
+		 * @test Yes.
 		 */
 		FORCE_INLINE [[nodiscard]] size_t GetConnectionsCount() const noexcept;
 
@@ -173,7 +187,7 @@ private:
 		 *
 		 * @return True if the maximum was updated, false if the value is invalid or no change was needed.
 		 *
-		 * @todo Add tests coverage.
+		 * @test Yes.
 		 */
 		FORCE_INLINE [[nodiscard]] bool SetMaxConnections(uint64_t value) noexcept;
 
@@ -182,7 +196,7 @@ private:
 		 *
 		 * @return Internal lock for external management.
 		 *
-		 * @todo Add tests coverage.
+		 * @test Yes.
 		 */
 		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetLock() const noexcept;
 	};
@@ -213,15 +227,13 @@ private:
 	// TODO: remove when application parameters will be atomic values
 	State m_stateTmp{ State::Stopped };
 
-	static inline constexpr int32_t m_somaxconn{ SOMAXCONN };
-
 public:
 	/**************************
 	 * @brief Construct a new Server object, registration parameters.
 	 *
 	 * @locking Is not required.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE Server() noexcept;
 
@@ -231,7 +243,7 @@ public:
 	 *
 	 * @locking Lock m_serverAcceptingLoop, write lock m_closingConnectionsLock and m_alivePthreadsRWLock inside.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE virtual ~Server() noexcept;
 
@@ -251,8 +263,11 @@ public:
 	 * all connections. Wait for all pthreads to be finished on interruption, increase stopped state counter and set
 	 * state to Stopped.
 	 *
-	 * @attention Interrupted when the server enters the Stopping state, socket initialization fails, or the listen
-	 * connection limit is reached. Startup errors leave the server restartable.
+	 * @attention Interrupted when the server enters the Stopping state or socket initialization fails. Startup errors
+	 * leave the server restartable.
+	 *
+	 * @note If the server encounters too many open files (EMFILE or ENFILE), it will log a warning and retry after
+	 * 100ms.
 	 *
 	 * @locking Holds lock on m_serverAcceptingLoop, read lock on m_idToConnectionDataRWLock on hello sending and write
 	 * lock m_alivePthreadsRWLock on interruption.
@@ -260,7 +275,9 @@ public:
 	 * @param ip Address to listen.
 	 * @param port Port to listen.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
+	 *
+	 * @todo Make a waiting time on EMFILE and ENFILE errors configurable.
 	 */
 	FORCE_INLINE void Start(uint32_t ip, uint16_t port) noexcept;
 
@@ -272,7 +289,7 @@ public:
 	 *
 	 * @locking Write lock m_closingConnectionsLock and read lock m_idToConnectionDataRWLock.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE void Stop() noexcept;
 
@@ -281,7 +298,7 @@ public:
 	 *
 	 * @return State of server.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] State GetState() const noexcept;
 
@@ -290,7 +307,7 @@ public:
 	 *
 	 * @return Count of how many times server was stopped.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t GetStoppedStateCount() const noexcept;
 
@@ -307,7 +324,7 @@ public:
 	 *
 	 * @return Created connection data on success, nullptr otherwise.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE
 	[[nodiscard]] std::shared_ptr<Connection::Data> OpenConnection(
@@ -326,7 +343,7 @@ public:
 	 *
 	 * @return Created connection data on success, nullptr otherwise.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE
 	[[nodiscard]] std::shared_ptr<Connection::Data> OpenManagerConnection(
@@ -350,7 +367,7 @@ public:
 	 *
 	 * @locking Read lock m_closingConnectionsLock at loop exiting.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	template <Connection::Type Type>
 	FORCE_INLINE void RecvLoop(const std::shared_ptr<Connection::Data>& connectionData);
@@ -361,21 +378,26 @@ public:
 	 * @return Count of opened connections.
 	 *
 	 * @todo When parameters become atomic, the connections counter should the one instead of that getter.
+	 *
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t GetConnectionsCount() const noexcept;
 
 	/**************************
-	 * @brief Set pthread attributes for new pthreads. This function is called before creating new pthreads and sets the
-	 * required attributes for the pthreads to be created.
+	 * @brief Initialize pthread attributes for new pthreads and set detached state, as created pthreads are never
+	 * joined. Scheduling and stack size are inherited defaults.
 	 *
-	 * @param attr Pthread attributes object.
+	 * @param attr Pthread attributes object, must not be initialized.
 	 *
 	 * @locking Is not required.
 	 *
-	 * @todo Clear description together with understanding of pthread attributes based on pthread intendent behaviour
-	 * must here. That is possible, that not each attribute is required for each pthread.
+	 * @return True if attributes are initialized and set, caller must destroy them by pthread_attr_destroy. False
+	 * otherwise, attributes are not initialized and must not be destroyed. Pthread must not be created with
+	 * uninitialized attributes.
+	 *
+	 * @test Yes.
 	 */
-	FORCE_INLINE static void AddPthreadAttributes(pthread_attr_t& attr) noexcept;
+	FORCE_INLINE [[nodiscard]] static bool AddPthreadAttributes(pthread_attr_t& attr) noexcept;
 
 	/**************************
 	 * @brief Try to set soft and hard RLIMIT_MEMLOCK limits as RLIM_INFINITY and set mlockall as MCL_CURRENT and
@@ -386,6 +408,8 @@ public:
 	 * @locking Is not required.
 	 *
 	 * @return True on success, false otherwise.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] static bool SetMlockallCurrentFuture() noexcept;
 
@@ -395,7 +419,7 @@ protected:
 	 *
 	 * @return Connection data by its id if exist, nullptr otherwise.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE std::shared_ptr<Connection::Data> GetConnectionData(uint64_t id) const noexcept;
 
@@ -448,7 +472,7 @@ private:
 	 *
 	 * @return Created connection data on success, nullptr otherwise.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	template <bool IsUnique, bool IsUsual>
 	FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> OpenConnectionImpl(
@@ -477,7 +501,7 @@ private:
 	 *
 	 * @return True if pthread is created successfully, false otherwise.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	template <Connection::Type Type>
 	FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> CreatePthread(std::unique_ptr<Connection>&& connection,
@@ -494,7 +518,7 @@ private:
 	 *
 	 * @return True if socket was bind, false otherwise.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] static bool Bind(int32_t socket, const sockaddr_in* addr) noexcept;
 
@@ -507,7 +531,7 @@ private:
 	 *
 	 * @return True if socket was listen, false otherwise.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] static bool Listen(int32_t socket) noexcept;
 
@@ -521,7 +545,7 @@ private:
 	 *
 	 * @return Accepted connection, empty if interrupted or any error.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] std::unique_ptr<Connection> Accept(int32_t socket, sockaddr_in* addr) noexcept;
 
@@ -546,7 +570,7 @@ private:
 	 * @locking Lock in OpenConnectionImpl call on reconnection path.
 	 * @locking Read lock m_ipToLimitsRWLock and write lock limits lock on income connection path.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	template <bool HasReconnectionPath>
 	FORCE_INLINE void Close(const std::shared_ptr<Connection::Data>& connectionData,
@@ -563,9 +587,21 @@ private:
 	 *
 	 * @return True if all limits are passed and connection is registered, false otherwise.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] bool RegisterConnectionFromIp(uint64_t id, const SString<16>& ip) noexcept;
+
+	/**************************
+	 * @brief Unregister connection from ip limits, registered by RegisterConnectionFromIp.
+	 *
+	 * @param id Id of connection.
+	 * @param ip Ip address of connection.
+	 *
+	 * @locking Read lock on limits lookup and further write lock limits structure.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE void UnregisterConnectionFromIp(uint64_t id, std::string_view ip) noexcept;
 
 	/**************************
 	 * @brief Recv loop function for new pthread.
@@ -578,7 +614,7 @@ private:
 	 *
 	 * @return Always nullptr.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	template <Connection::Type Type>
 	FORCE_INLINE void* PthreadRecvLoop(const std::shared_ptr<Connection::Data>& connectionData);
@@ -594,9 +630,12 @@ private:
 	 *
 	 * @return Socket descriptor if socket was created, -1 otherwise.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] static int32_t Socket(int32_t domain, int32_t type, int32_t protocol) noexcept;
+
+	// Direct access to IP limits in unit test
+	friend class MSAPI::Test::Unit::ServerObserver;
 };
 
 /*---------------------------------------------------------------------------------
@@ -636,7 +675,7 @@ FORCE_INLINE [[nodiscard]] size_t Server::IpLimits::GetConnectionsCount() const 
 
 FORCE_INLINE [[nodiscard]] bool Server::IpLimits::SetMaxConnections(const uint64_t value) noexcept
 {
-	if (value <= 1) [[unlikely]] {
+	if (value == 0) [[unlikely]] {
 		LOG_WARNING_NEW("Max connections cannot be less than 1, provided: {}", value);
 		return false;
 	}
@@ -650,7 +689,7 @@ FORCE_INLINE [[nodiscard]] bool Server::IpLimits::SetMaxConnections(const uint64
 		LOG_DEBUG_NEW("Max connections is changed from: {} to: {}", m_maxConnections, value);
 	}
 	else {
-		LOG_DEBUG_NEW("ax connections is changed from: {} to: {} and less than current connections count: ",
+		LOG_DEBUG_NEW("Max connections is changed from: {} to: {} and less than current connections count: {}",
 			m_maxConnections, value, m_connectionsId.size());
 	}
 
@@ -695,9 +734,8 @@ FORCE_INLINE Server::Server() noexcept
 	RegisterParameter(1000003, { "Limit of connections from one IP", &m_maxConnectionsOneIp, 1 });
 	RegisterParameter(1000004, { "Recv buffer size limit", &m_recvBufferSizeLimit, 1024 });
 	RegisterConstParameter(1000005, { "Server state", &m_stateTmp, &EnumToString });
-	RegisterConstParameter(1000006, { "Max connections", &m_somaxconn });
-	RegisterConstParameter(1000007, { "Listen IP", &m_listenIpStr });
-	RegisterConstParameter(1000008, { "Listen port", &m_listenPort });
+	RegisterConstParameter(1000006, { "Listen IP", &m_listenIpStr });
+	RegisterConstParameter(1000007, { "Listen port", &m_listenPort });
 }
 
 FORCE_INLINE Server::~Server() noexcept
@@ -777,13 +815,21 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		return;
 	}
 
+	pthread_attr_t attr;
+	if (!AddPthreadAttributes(attr)) [[unlikely]] {
+		(void)close(m_listeningSocket);
+		m_listeningSocket = -1;
+		m_listenIp.Clear();
+		m_listenIpStr = "";
+		m_listenPort = 0;
+		LOG_ERROR("Pthread attributes error, starting is interrupted");
+		m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
+		return;
+	}
+
 	LOG_INFO("Successfully server start");
 	m_state.store(State::Running, std::memory_order_release);
 	m_stateTmp = State::Running;
-
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	AddPthreadAttributes(attr);
 
 	{
 		const Lock::AtomicRW::Guard<Lock::READ> _{ m_idToConnectionDataRWLock };
@@ -794,54 +840,48 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 
 	sockaddr_in clientAddr{ 0, 0, 0, 0 };
 	SString<16> clientIp;
-	do {
-		while (GetConnectionsCount() < m_somaxconn) {
-			auto newConnection{ Accept(m_listeningSocket, &clientAddr) };
-			state = m_state.load(std::memory_order_acquire);
+	while (true) {
+		auto newConnection{ Accept(m_listeningSocket, &clientAddr) };
+		state = m_state.load(std::memory_order_acquire);
 
-			if (state == State::Stopping) [[unlikely]] {
-				m_listenIp.Clear();
-				m_listenIpStr = "";
-				m_listenPort = 0;
-				LOG_DEBUG("Server state is Stopping, wait for pthreads to be finished");
-				const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_alivePthreadsRWLock };
-				pthread_attr_destroy(&attr);
-				LOG_DEBUG("All pthreads are finished, server is stopped");
-				m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
-				m_state.store(State::Stopped, std::memory_order_release);
-				m_stateTmp = State::Stopped;
-				return;
+		if (state == State::Stopping) [[unlikely]] {
+			if (newConnection != nullptr) {
+				newConnection->Close();
 			}
-
-			if (state != State::Running) [[unlikely]] {
-				LOG_DEBUG_NEW("Server state: {}, continue to accept new connections", EnumToString(state));
-				continue;
-			}
-
-			if (newConnection == nullptr) [[unlikely]] {
-				continue;
-			}
-
-			if (!Helper::GetStringIp(clientAddr.sin_addr, clientIp)) [[unlikely]] {
-				(void)clientIp.Copy(std::string_view{ "unknown" });
-			}
-			(void)CreatePthread<Connection::Type::Income>(
-				std::move(newConnection), std::move(clientIp), attr, ip, port, /*doReconnection=*/false);
+			break;
 		}
 
-		LOG_INFO("Server can't accept new connection, limit: " + _S(m_somaxconn) + " is reached. Sleep for 10 seconds");
-		std::this_thread::sleep_for(std::chrono::seconds(10));
-	} while (m_somaxconn >= GetConnectionsCount());
+		if (state != State::Running) [[unlikely]] {
+			LOG_DEBUG_NEW("Server state: {}, continue to accept new connections", EnumToString(state));
+			if (newConnection != nullptr) {
+				newConnection->Close();
+			}
+			continue;
+		}
 
-	LOG_ERROR_NEW("Unexpected exit from the main accepting loop, server state: {}, connections counter: {}",
-		EnumToString(m_state.load(std::memory_order_acquire)), GetConnectionsCount());
-	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_alivePthreadsRWLock };
-	pthread_attr_destroy(&attr);
-	(void)close(m_listeningSocket);
-	m_listeningSocket = -1;
+		if (newConnection == nullptr) [[unlikely]] {
+			if (errno == EMFILE || errno == ENFILE) [[unlikely]] {
+				LOG_DEBUG("Too many open files, cannot accept new connection. Retrying in 100ms");
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			}
+			continue;
+		}
+
+		if (!Helper::GetStringIp(clientAddr.sin_addr, clientIp)) [[unlikely]] {
+			(void)clientIp.Copy(std::string_view{ "unknown" });
+		}
+
+		(void)CreatePthread<Connection::Type::Income>(
+			std::move(newConnection), std::move(clientIp), attr, ip, port, /*doReconnection=*/false);
+	}
+
 	m_listenIp.Clear();
 	m_listenIpStr = "";
 	m_listenPort = 0;
+	LOG_DEBUG("Server state is Stopping, wait for pthreads to be finished");
+	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_alivePthreadsRWLock };
+	pthread_attr_destroy(&attr);
+	LOG_DEBUG("All pthreads are finished, server is stopped");
 	m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
 	m_state.store(State::Stopped, std::memory_order_release);
 	m_stateTmp = State::Stopped;
@@ -990,16 +1030,33 @@ FORCE_INLINE [[nodiscard]] uint64_t Server::GetConnectionsCount() const noexcept
 	return m_idToConnectionData.size();
 }
 
-FORCE_INLINE void Server::AddPthreadAttributes(pthread_attr_t& attr) noexcept
+FORCE_INLINE [[nodiscard]] bool Server::AddPthreadAttributes(pthread_attr_t& attr) noexcept
 {
-	// The minimum pthread stack is only POSIX requirement, which does not takes into additional requirements, like
-	// guard page, bookkeeping/padding and god knows what else.
-	// As a side effect, not only pthread_create can return EAGAIN, but also pthread can crashes due to wrong
-	// mangling! pthread_attr_setstacksize(&attr, UINT64(2 * PTHREAD_STACK_MIN));
-	pthread_attr_setscope(&attr, PTHREAD_SCOPE_PROCESS);
-	pthread_attr_setschedpolicy(&attr, SCHED_RR);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	//? pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED); Cant use it, because of SCHED_RR, but why?}
+	//  - pthread_attr_setscope(&attr, PTHREAD_SCOPE_PROCESS) always fails with ENOTSUP on Linux, only
+	//  PTHREAD_SCOPE_SYSTEM is supported, so it had no effect.
+	//  - pthread_attr_setschedpolicy(&attr, SCHED_RR) succeeds, but is ignored, because default inherit scheduler
+	//  attribute is PTHREAD_INHERIT_SCHED and new pthread takes policy of the creating one (SCHED_OTHER).
+	//  - pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) was not usable with SCHED_RR, because SCHED_RR
+	//  requires priority in [1, 99] (default 0 leads to EINVAL in pthread_create) and CAP_SYS_NICE or non-zero
+	//  RLIMIT_RTPRIO (otherwise EPERM). Real-time round-robin for each connection pthread can also starve the system.
+	//  - pthread_attr_setstacksize(&attr, 2 * PTHREAD_STACK_MIN) is too small, PTHREAD_STACK_MIN is only a POSIX lower
+	//  bound and does not include guard page and runtime needs, so it leads to stack overflow. Default stack size of
+	//  glibc (RLIMIT_STACK, usually 8 megabytes) is used.
+
+	if (const auto result{ pthread_attr_init(&attr) }; result != 0) [[unlikely]] {
+		LOG_ERROR_NEW("Failed to initialize pthread attributes. Error №{}: {}", result, std::strerror(result));
+		return false;
+	}
+
+	// Created pthreads are never joined
+	if (const auto result{ pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) }; result != 0) [[unlikely]] {
+		LOG_ERROR_NEW(
+			"Failed to set detached state of pthread attributes. Error №{}: {}", result, std::strerror(result));
+		(void)pthread_attr_destroy(&attr);
+		return false;
+	}
+
+	return true;
 }
 
 FORCE_INLINE [[nodiscard]] bool Server::SetMlockallCurrentFuture() noexcept
@@ -1109,8 +1166,12 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 	LOG_DEBUG_NEW("New connection id: {} to: {}:{} is just established", newConnection->GetId(), ipStr, port);
 
 	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	AddPthreadAttributes(attr);
+	if (!AddPthreadAttributes(attr)) [[unlikely]] {
+		LOG_ERROR_NEW("Connection id: {} to: {}:{} is closed, pthread attributes are not created",
+			newConnection->GetId(), ipStr, port);
+		newConnection->Close();
+		return {};
+	}
 
 	const auto connectionData{ CreatePthread < IsUsual ? Connection::Type::Outcome
 													   : Connection::Type::Manager
@@ -1148,16 +1209,27 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::CreatePthre
 		std::move(connection), std::move(ipStr), ip, port, Type, doReconnection) };
 	if (!connectionData->SetPthreadRecvLoop([this, connectionData]() { PthreadRecvLoop<Type>(connectionData); }))
 		[[unlikely]] {
+
+		connectionData->GetConnection().Close();
+		if constexpr (Type == Connection::Type::Income) {
+			UnregisterConnectionFromIp(id, connectionData->GetIpStr());
+		}
 		return {};
 	}
 
+	bool isSaved [[indeterminate]];
 	{
 		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_idToConnectionDataRWLock };
-		const auto [it, isSuccess] = m_idToConnectionData.emplace(id, connectionData);
-		if (!isSuccess) [[unlikely]] {
-			LOG_ERROR_NEW("Failed attempt to save data for {} connection id: {}", Connection::EnumToString(Type), id);
-			return {};
+		isSaved = m_idToConnectionData.emplace(id, connectionData).second;
+	}
+
+	if (!isSaved) [[unlikely]] {
+		LOG_ERROR_NEW("Failed attempt to save data for {} connection id: {}", Connection::EnumToString(Type), id);
+		connectionData->GetConnection().Close();
+		if constexpr (Type == Connection::Type::Income) {
+			UnregisterConnectionFromIp(id, connectionData->GetIpStr());
 		}
+		return {};
 	}
 
 	LOG_INFO_NEW("New {} connection id: {}", Connection::EnumToString(Type), id);
@@ -1283,25 +1355,7 @@ FORCE_INLINE void Server::Close(const std::shared_ptr<Connection::Data>& connect
 
 		{
 			const auto ipStr{ connectionData->GetIpStr() };
-			std::shared_ptr<IpLimits> ipLimits;
-			do {
-				{
-					const Lock::AtomicRW::Guard<Lock::READ> _{ m_ipToLimitsRWLock };
-					const auto it{ m_ipToLimits.find(std::hash<std::string_view>{}(ipStr)) };
-					if (it != m_ipToLimits.end()) [[likely]] {
-						ipLimits = it->second;
-					}
-				}
-
-				if (ipLimits != nullptr) [[likely]] {
-					const Lock::AtomicRW::Guard<Lock::WRITE> _{ ipLimits->GetLock() };
-					(void)ipLimits->RemoveConnectionId(id);
-					break;
-				}
-
-				LOG_WARNING_NEW("Ip limits are not found for ip: {}, connection id: {}", ipStr, id);
-			} while (false);
-
+			UnregisterConnectionFromIp(id, ipStr);
 			LOG_INFO_NEW("Income connection is closed, id: {}, {}:{}. Active connections counter: {}", id, ipStr,
 				connectionData->GetPort(), GetConnectionsCount());
 		}
@@ -1356,6 +1410,26 @@ FORCE_INLINE [[nodiscard]] bool Server::RegisterConnectionFromIp(const uint64_t 
 	return false;
 }
 
+FORCE_INLINE void Server::UnregisterConnectionFromIp(const uint64_t id, const std::string_view ip) noexcept
+{
+	std::shared_ptr<IpLimits> ipLimits;
+	{
+		const Lock::AtomicRW::Guard<Lock::READ> _{ m_ipToLimitsRWLock };
+		const auto it{ m_ipToLimits.find(std::hash<std::string_view>{}(ip)) };
+		if (it != m_ipToLimits.end()) [[likely]] {
+			ipLimits = it->second;
+		}
+	}
+
+	if (ipLimits == nullptr) [[unlikely]] {
+		LOG_WARNING_NEW("Ip limits are not found for ip: {}, connection id: {}", ip, id);
+		return;
+	}
+
+	const Lock::AtomicRW::Guard<Lock::WRITE> _{ ipLimits->GetLock() };
+	(void)ipLimits->RemoveConnectionId(id);
+}
+
 template <Connection::Type Type>
 FORCE_INLINE void* Server::PthreadRecvLoop(const std::shared_ptr<Connection::Data>& connectionData)
 {
@@ -1399,11 +1473,9 @@ FORCE_INLINE [[nodiscard]] int32_t Server::Socket(
 
 	{
 		int32_t enable{ 1 };
-		/*
-			This socket option tells the kernel to reuse a local socket in TIME_WAIT state, without waiting for its
-			natural timeout to expire. If you're developing a server, setting this option can be useful, because it
-			allows the server to restart without waiting for the timeout to expire when it has been shut down.
-		*/
+		// This socket option tells the kernel to reuse a local socket in TIME_WAIT state, without waiting for its
+		// natural timeout to expire. If you're developing a server, setting this option can be useful, because it
+		// allows the server to restart without waiting for the timeout to expire when it has been shut down.
 		if (setsockopt(socketListen, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int32_t)) < 0) [[unlikely]] {
 			LOG_ERROR("Failed to set SO_REUSEADDR option to socket");
 		}
@@ -1411,12 +1483,10 @@ FORCE_INLINE [[nodiscard]] int32_t Server::Socket(
 #ifdef SO_REUSEPORT
 	{
 		int32_t enable{ 0 };
-		/*
-			This is a more recent addition that allows multiple sockets on the same host to bind to the same port.
-			This can be useful for programs that want to do multicast or need to have multiple processes listening on
-			the same port. Note that this option is not available on all systems, which is why it's wrapped in an
-			#ifdef in your code.
-		*/
+		// This is a more recent addition that allows multiple sockets on the same host to bind to the same port.
+		// This can be useful for programs that want to do multicast or need to have multiple processes listening on
+		// the same port. Note that this option is not available on all systems, which is why it's wrapped in an
+		// #ifdef in your code.
 		if (setsockopt(socketListen, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int32_t)) < 0) [[unlikely]] {
 			LOG_ERROR("Failed to set SO_REUSEPORT option to socket");
 		}
@@ -1424,12 +1494,10 @@ FORCE_INLINE [[nodiscard]] int32_t Server::Socket(
 #endif
 	{
 		int32_t enable{ 1 };
-		/*
-			This option is used to control the Nagle's algorithm for a socket. When enabled (set to 1), the
-			algorithm is disabled and the TCP stack will send out small packets without waiting to see if more data
-			is coming that could be included in the packets. This can reduce latency but may increase bandwidth
-			usage.
-		*/
+		// This option is used to control the Nagle's algorithm for a socket. When enabled (set to 1), the
+		// algorithm is disabled and the TCP stack will send out small packets without waiting to see if more data
+		// is coming that could be included in the packets. This can reduce latency but may increase bandwidth
+		// usage.
 		if (setsockopt(socketListen, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int32_t)) < 0) [[unlikely]] {
 			LOG_ERROR("Failed to set TCP_NODELAY option to socket");
 		}

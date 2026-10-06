@@ -11,6 +11,7 @@ New source files must use the project copyright and license header.
 
 - Order as presented below.
 - Section tag is used once per documentation block, except for `@param`, `@tparam`, and `@todo`.
+- `@todo` is the only place to explicitly define problems, technical debt and open questions. Each of them is described by a separate `@todo` in the documentation block of the related file, abstraction or function. For further simplicity `// TODO: comment` can duplicate the `@todo` in code to explicitly mark the place for further work, but inline `// TODO` without the corresponding `@todo` is prohibited.
 - Empty line between sections.
 - Dots at the end of sentences.
 - Use active voice.

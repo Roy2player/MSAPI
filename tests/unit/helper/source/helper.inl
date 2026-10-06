@@ -460,7 +460,7 @@ FORCE_INLINE [[nodiscard]] bool Helper()
 	}
 
 	return t.Passed<bool>();
-};
+}
 
 } // namespace Unit
 

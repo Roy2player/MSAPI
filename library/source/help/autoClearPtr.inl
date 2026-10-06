@@ -139,7 +139,7 @@ template <AutoClearPtrT T> FORCE_INLINE AutoClearPtr<T>::AutoClearPtr(const uint
 	if (m_ptr == nullptr) [[unlikely]] {
 		LOG_ERROR_NEW("Bad malloc of {}. Error №{}: {}", size, errno, std::strerror(errno));
 	}
-};
+}
 
 template <AutoClearPtrT T>
 FORCE_INLINE AutoClearPtr<T>::AutoClearPtr(T* ptr) noexcept

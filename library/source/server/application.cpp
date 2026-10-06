@@ -1306,4 +1306,4 @@ std::string_view Application::EnumToString(const State state)
 	}
 }
 
-} //* namespace MSAPI
+} // namespace MSAPI

@@ -16,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef WEBSOCKET_NODE_INL
-#define WEBSOCKET_NODE_INL
+#ifndef MSAPI_INTEGRATION_TEST_WEBSOCKET_NODE_INL
+#define MSAPI_INTEGRATION_TEST_WEBSOCKET_NODE_INL
 
 #include "../../../../library/source/protocol/http.h"
 #include "../../../../library/source/protocol/webSocket.inl"
@@ -132,4 +132,4 @@ public:
 	}
 };
 
-#endif // WEBSOCKET_NODE_INL
+#endif // MSAPI_INTEGRATION_TEST_WEBSOCKET_NODE_INL
