@@ -66,9 +66,9 @@ public:
     FORCE_INLINE ~Connection() noexcept;
 
     Connection(const Connection&) = delete;
-    Connection(Connection&&) = delete;
+    FORCE_INLINE Connection(Connection&&) noexcept = default;
     Connection& operator=(const Connection&) = delete;
-    Connection& operator=(Connection&&) = delete;
+    FORCE_INLINE Connection& operator=(Connection&&) noexcept = default;
 };
 ```
 
