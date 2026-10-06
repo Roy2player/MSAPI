@@ -44,7 +44,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetLevelSave(MSAPI::Log::Level::INFO);
 	MSAPI::logger.SetName("UTSHA1");
 	MSAPI::logger.SetToFile(true);
-	MSAPI::logger.SetToConsole(true);
+	MSAPI::logger.SetToConsole(false);
 	MSAPI::logger.Start();
 
 	return static_cast<int>(!MSAPI::Test::Unit::Sha1());
