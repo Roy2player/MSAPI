@@ -54,7 +54,24 @@ const auto connection{ OpenConnection(ip, port, /*doReconnection=*/false) };
 
 - Use `class` for all class declarations, public or protected fields fields are prohibited.
 - Use `explicit` for all constructors that can be called with a single argument.
-- Explicitly mark copy and move constructors and assignment operators as `= default` or `= delete`.
+- Copy constructor, move constructor, copy assignment and move assignment operators are always explicitly declared as `= default` or `= delete`, all four together. Implicit generation of them depends on other members silently: user declared destructor suppresses implicit move and makes the type copied instead, lock or `std::unique_ptr` field makes copying deleted. Explicit declaration documents the intent and lets the compiler check it.
+- Destructor and default constructor are not required to be declared explicitly, as their implicit behavior is not surprising:
+  - destructor is declared only if it has a behavior (e.g. releases a resource) or the class is a polymorphic base, which requires `virtual ~Base() = default;`;
+  - default constructor is declared as `= default` if default construction is required together with other constructors, as declaring any other constructor suppresses the implicit one; in other cases its declaration is optional.
+
+```cpp
+class Connection {
+public:
+    FORCE_INLINE explicit Connection(int32_t socket) noexcept;
+    FORCE_INLINE ~Connection() noexcept;
+
+    Connection(const Connection&) = delete;
+    Connection(Connection&&) = delete;
+    Connection& operator=(const Connection&) = delete;
+    Connection& operator=(Connection&&) = delete;
+};
+```
+
 - Use `mutable` only for lock fields, see [Concurrency](concurrency.md#lock-fields-and-constness).
 
 #### Enum
