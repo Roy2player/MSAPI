@@ -16,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef OBJECT_CLIENT_H
-#define OBJECT_CLIENT_H
+#ifndef MSAPI_INTEGRATION_TEST_OBJECT_CLIENT_H
+#define MSAPI_INTEGRATION_TEST_OBJECT_CLIENT_H
 
 #include "../../../../library/source/protocol/object.inl"
 #include "../../../../library/source/server/server.inl"
@@ -83,4 +83,4 @@ public:
 	}
 };
 
-#endif // OBJECT_CLIENT_H
+#endif // MSAPI_INTEGRATION_TEST_OBJECT_CLIENT_H

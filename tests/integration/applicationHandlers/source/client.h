@@ -16,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef APPLICATION_HANDLERS_CLIENT_H
-#define APPLICATION_HANDLERS_CLIENT_H
+#ifndef MSAPI_INTEGRATION_TEST_CLIENT_H
+#define MSAPI_INTEGRATION_TEST_CLIENT_H
 
 #include "../../../../library/source/server/server.inl"
 #include "../../../../library/source/test/actionsCounter.inl"
@@ -84,9 +84,9 @@ private:
 public:
 	Client();
 
-	//* MSAPI::Server
+	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
-	//* MSAPI::Application
+	// MSAPI::Application
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;
 	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
@@ -148,4 +148,4 @@ public:
 	size_t GetUnhandledActions() const noexcept;
 };
 
-#endif //* APPLICATION_HANDLERS_CLIENT_H
+#endif // MSAPI_INTEGRATION_TEST_CLIENT_H

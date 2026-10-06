@@ -107,7 +107,7 @@ HTML::HTML(const std::string_view buffer)
 				size_t index{ currentTag.begin + 1 };
 				size_t maxSizeMultiplier{ currentTag.begin };
 
-				//* We using isCloseTag and don't filling currentTag state, because it's will be happen every iteration
+				// We using isCloseTag and don't filling currentTag state, because it's will be happen every iteration
 				bool isCloseTag{ buffer[index] == '/' };
 
 				if (buffer[index] == '!') {
@@ -198,7 +198,7 @@ uint HTML::MaxDepth() const noexcept { return m_maxDepth; }
 
 size_t HTML::BodySize() const noexcept { return m_size; }
 
-size_t HTML::TagsSize() const noexcept { return m_tags.size(); };
+size_t HTML::TagsSize() const noexcept { return m_tags.size(); }
 
 HTML::Type operator++(HTML::Type& type) { return type = static_cast<HTML::Type>(static_cast<short>(type) + 1); }
 
@@ -339,4 +339,4 @@ std::string_view HTML::EnumToString(const HTML::Type value)
 	}
 }
 
-}; //* namespace MSAPI
+} // namespace MSAPI

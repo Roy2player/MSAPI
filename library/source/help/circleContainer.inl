@@ -81,7 +81,7 @@ public:
 			m_ready.store(false);
 			m_ready.notify_one();
 			return m_current->value;
-		};
+		}
 	};
 
 private:
@@ -98,7 +98,7 @@ public:
 		m_nodes[end].next = &m_nodes[0];
 	}
 
-	//* For ability to access m_nodes and m_ready in constructor
+	// For ability to access m_nodes and m_ready in constructor
 	friend class Accessor;
 };
 
@@ -125,7 +125,7 @@ struct Buffers {
 
 	Buffers() { }
 
-	//* 4MB of memory if page size is 4KB
+	// 4MB of memory if page size is 4KB
 	CircleContainer<Buffer, BUFFERS_COUNTER> buffers;
 	CircleContainer<Buffer, BUFFERS_COUNTER>::Accessor accessor{ buffers };
 
@@ -144,4 +144,4 @@ const int_fast16_t Buffers::Buffer::pageSize = 4096; // Only for tests
 
 } // namespace MSAPI
 
-#endif //* MSAPI_CIRCLE_CONTAINER_INL
+#endif // MSAPI_CIRCLE_CONTAINER_INL

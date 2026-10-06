@@ -183,20 +183,18 @@ template <typename T>
 FORCE_INLINE [[nodiscard]] std::optional<int> Daemon<T>::ConnectToDomain(
 	[[maybe_unused]] const uint16_t port, [[maybe_unused]] const std::string& domain)
 {
-	/*
-	Legacy function is not used, but contain some context. Let's keep it.
-
-	int id;
-	do {
-		id = m_connectionIdGenerator.fetch_add(1, std::memory_order_relaxed);
-	} while (m_connectionsDataToId.find(id) != m_connectionsDataToId.end());
-	LOG_INFO("Daemon is connecting to domain: " + domain + ", id: " + _S(id));
-	if (!m_application->ConnectOpen(id, inet_addr(Helper::DomainToIp(domain.c_str()).c_str()), port, false)) {
-		return {};
-	}
-	m_connectionsDataToId.insert({ id, { port, domain } });
-	return id;
-	*/
+	// Legacy function is not used, but contain some context. Let's keep it.
+	//
+	// int id;
+	// do {
+	// 	id = m_connectionIdGenerator.fetch_add(1, std::memory_order_relaxed);
+	// } while (m_connectionsDataToId.find(id) != m_connectionsDataToId.end());
+	// LOG_INFO("Daemon is connecting to domain: " + domain + ", id: " + _S(id));
+	// if (!m_application->ConnectOpen(id, inet_addr(Helper::DomainToIp(domain.c_str()).c_str()), port, false)) {
+	// 	return {};
+	// }
+	// m_connectionsDataToId.insert({ id, { port, domain } });
+	// return id;
 	return {};
 }
 
@@ -222,8 +220,10 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uin
 	m_ports.insert(port);
 
 	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	Server::AddPthreadAttributes(attr);
+	if (!Server::AddPthreadAttributes(attr)) [[unlikely]] {
+		LOG_ERROR_NEW("Pthread attributes are not created for daemon, port: {}", port);
+		return false;
+	}
 
 	m_appData = { &m_application, &m_pthreadLock, ip, port };
 	if (const auto result{ pthread_create(&m_pthread, &attr, StartingRequest, static_cast<void*>(&m_appData)) };

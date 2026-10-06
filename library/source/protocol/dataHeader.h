@@ -16,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef MSAPI_DATA_HEADER_H
-#define MSAPI_DATA_HEADER_H
+#ifndef MSAPI_PROTOCOL_DATA_HEADER_H
+#define MSAPI_PROTOCOL_DATA_HEADER_H
 
 #include <iostream>
 
@@ -90,4 +90,4 @@ public:
 
 } // namespace MSAPI
 
-#endif // MSAPI_DATA_HEADER_H
+#endif // MSAPI_PROTOCOL_DATA_HEADER_H

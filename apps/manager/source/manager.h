@@ -214,6 +214,10 @@ public:
 	void HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
 		const std::map<size_t, std::variant<standardTypes>>& parameters) final;
 	void HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
+	/**************************
+	 * @todo Lookup of created app by connection is a bad design, it can be changed because of new Connection::Data
+	 * approach.
+	 */
 	void HandleMetadata(
 		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, std::string_view metadata) final;
 	void HandleOutcomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
@@ -353,9 +357,10 @@ private:
 		return MSAPI::Protocol::WebSocket::Events::HandleResult::Success;
 	}
 
-	// TODO: Here password or login can be changed from another user. The current login must be saved by connection and
-	// used here.
-	// That functionality should be provided my the module itself.
+	/**************************
+	 * @todo Password or login can be changed from another user. The current login must be saved by connection and used
+	 * here. That functionality should be provided by the authorization module itself.
+	 */
 	FORCE_INLINE MSAPI::Protocol::WebSocket::Events::HandleResult ModifyAccount(
 		std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single)
 	{

@@ -16,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef MSAPI_TEST_STANDARD_DATA_INL
-#define MSAPI_TEST_STANDARD_DATA_INL
+#ifndef MSAPI_UNIT_TEST_STANDARD_DATA_INL
+#define MSAPI_UNIT_TEST_STANDARD_DATA_INL
 
 #include "../../../../library/source/protocol/standard.h"
 #include "../../../../library/source/test/test.inl"
@@ -321,4 +321,4 @@ FORCE_INLINE [[nodiscard]] bool StandardData()
 
 } // namespace MSAPI
 
-#endif // MSAPI_TEST_STANDARD_DATA_INL
+#endif // MSAPI_UNIT_TEST_STANDARD_DATA_INL

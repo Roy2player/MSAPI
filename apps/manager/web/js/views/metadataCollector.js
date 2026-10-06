@@ -266,7 +266,7 @@ class MetadataCollector extends View {
 			return false;
 		}
 
-		//* Validate structure: should have at least 'mutable' or 'const' sections
+		// Validate structure: should have at least 'mutable' or 'const' sections
 		if (!metadata.hasOwnProperty("mutable") && !metadata.hasOwnProperty("const")) {
 			console.warn(`App metadata for '${appType}' should have 'mutable' or 'const' sections`);
 		}
@@ -321,7 +321,7 @@ class MetadataCollector extends View {
 View.AddViewTemplate("Metadata collector", `<div class="customView"></div>`);
 Dispatcher.RegisterPanel("Metadata collector", () => new MetadataCollector());
 
-//* Metadata items which are used by MSAPI Frontend views
+// Metadata items which are used by MSAPI Frontend views
 MetadataCollector.AddMetadata(1, { name : "Create", type : "system" }, true);
 MetadataCollector.AddMetadata(2, { name : "Change state", type : "system" }, true);
 MetadataCollector.AddMetadata(3, { name : "Modify", type : "system" }, true);

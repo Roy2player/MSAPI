@@ -16,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef OBJECT_DISTRIBUTOR_H
-#define OBJECT_DISTRIBUTOR_H
+#ifndef MSAPI_INTEGRATION_TEST_OBJECT_DISTRIBUTOR_H
+#define MSAPI_INTEGRATION_TEST_OBJECT_DISTRIBUTOR_H
 
 #include "../../../../library/source/protocol/object.inl"
 #include "../../../../library/source/server/server.inl"
@@ -119,4 +119,4 @@ private:
 		};
 };
 
-#endif // OBJECT_DISTRIBUTOR_H
+#endif // MSAPI_INTEGRATION_TEST_OBJECT_DISTRIBUTOR_H

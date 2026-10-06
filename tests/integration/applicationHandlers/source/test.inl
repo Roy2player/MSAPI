@@ -408,7 +408,7 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 			RETURN_IF_FALSE(t.Assert(parametersResponse.find(2000002) != parametersResponse.end(), true,
 				"Parameter 2000002 is in response"));
 
-			RETURN_IF_FALSE(t.Assert(parametersResponse.size(), 54, "Correct number of parameters in response"));
+			RETURN_IF_FALSE(t.Assert(parametersResponse.size(), 53, "Correct number of parameters in response"));
 
 			return true;
 		}

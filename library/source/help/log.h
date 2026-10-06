@@ -53,13 +53,11 @@
 #define GREEN_BEGIN "\033[0;32m"
 #define COLOR_END "\033[0m"
 
-/*
-	https://stackoverflow.com/questions/78802843/build-error-caused-by-interaction-of-gcc-ub-sanitiser-and-std-format
-
-	Unfortunately, that function cannot be used with GCC sanitizer null, undefined and bounds options.
-	It sets checks even inside consteval function what makes them not consteval anymore.
-	This code will be saved as convenient way for creating compilation-time strings, but not used for now.
-*/
+// https://stackoverflow.com/questions/78802843/build-error-caused-by-interaction-of-gcc-ub-sanitiser-and-std-format
+//
+// Unfortunately, that function cannot be used with GCC sanitizer null, undefined and bounds options.
+// It sets checks even inside consteval function what makes them not consteval anymore.
+// This code will be saved as convenient way for creating compilation-time strings, but not used for now.
 template <uint64_t... Size> consteval auto Concatenate(const char (&... strings)[Size])
 {
 	const auto size = (... + (Size - 1));
@@ -140,6 +138,9 @@ public:
 
 	/**************************
 	 * @brief Synchrony request to write str by particular level.
+	 *
+	 * @todo Format message directly into the logger buffer by std::format_to, e.g.
+	 * Print(std::format_to(Log.GetBuffer(), ..., Level::INFO)).
 	 */
 	void Print(std::string&& str, Level level) noexcept;
 
@@ -250,7 +251,7 @@ private:
 
 extern Log logger;
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
 #define LOG_ERROR_NEW(pattern, ...)                                                                                    \
 	MSAPI::logger.Print(LOG_PLACE + std::format(pattern, __VA_ARGS__), MSAPI::Log::Level::ERROR)
@@ -275,7 +276,7 @@ template <typename T> FORCE_INLINE std::string _S(const T x)
 {
 #define suppress
 #pragma GCC diagnostic push
-//* Because of std::to_string() has not declared for types less than int.
+// Because of std::to_string() has not declared for types less than int.
 #pragma GCC diagnostic ignored "-Wsign-promo"
 	if constexpr (MSAPI::is_integer_type<T>) {
 		return std::to_string(x);

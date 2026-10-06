@@ -17,7 +17,7 @@ const Duration = require('../core/duration');
 let testRunner = new TestRunner();
 
 testRunner.SetPostTestFunction(() => {
-	//* Trigger global Durations event to clean up if needed
+	// Trigger global Durations event to clean up if needed
 	document.dispatchEvent(new Event("click"));
 });
 

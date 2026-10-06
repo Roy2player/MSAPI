@@ -16,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef HTTP_CLIENT_H
-#define HTTP_CLIENT_H
+#ifndef MSAPI_INTEGRATION_TEST_HTTP_CLIENT_H
+#define MSAPI_INTEGRATION_TEST_HTTP_CLIENT_H
 
 #include "../../../../library/source/protocol/http.h"
 #include "../../../../library/source/server/server.inl"
@@ -42,4 +42,4 @@ public:
 	const std::optional<MSAPI::Protocol::HTTP::Data>& GetHTTPData() const noexcept;
 };
 
-#endif // HTTP_CLIENT_H
+#endif // MSAPI_INTEGRATION_TEST_HTTP_CLIENT_H

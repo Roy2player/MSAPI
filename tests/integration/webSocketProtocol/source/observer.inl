@@ -16,8 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  */
 
-#ifndef MSAPI_PROTOCOL_WEBSOCKET_OBSERVER_INL
-#define MSAPI_PROTOCOL_WEBSOCKET_OBSERVER_INL
+#ifndef MSAPI_INTEGRATION_TEST_PROTOCOL_WEBSOCKET_OBSERVER_INL
+#define MSAPI_INTEGRATION_TEST_PROTOCOL_WEBSOCKET_OBSERVER_INL
 
 #include "../../../../library/source/protocol/webSocket.inl"
 
@@ -116,4 +116,4 @@ public:
 
 } // namespace MSAPI
 
-#endif // MSAPI_PROTOCOL_WEBSOCKET_OBSERVER_INL
+#endif // MSAPI_INTEGRATION_TEST_PROTOCOL_WEBSOCKET_OBSERVER_INL

@@ -256,7 +256,7 @@ class GridChecking {
 						testRunner.Assert(getEventListeners(input).input.length, 1);
 					}
 					else {
-						//* Select
+						// Select
 						testRunner.Assert(getEventListeners(input).click, undefined);
 						testRunner.Assert(getEventListeners(input).input, undefined);
 					}
@@ -1124,8 +1124,8 @@ testRunner.Test('Create and modify grid', async () => {
 testRunner.Test('Test post add row and column functions, manage rows and columns', async () => {
 	TestRunner.Step('Create grid with all post-functions');
 
-	//* External event listener button due to the fact GridChecking.CheckRows checks availability of neccessary event
-	//* listeners accordingly to the parameter type
+	// External event listener button due to the fact GridChecking.CheckRows checks availability of neccessary event
+	// listeners accordingly to the parameter type
 	let incrementButton = document.createElement('button');
 	body.appendChild(incrementButton);
 

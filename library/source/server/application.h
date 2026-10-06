@@ -141,9 +141,9 @@ public:
 		const std::optional<std::variant<integerTypes, floatTypes, Timer::Duration>> m_max;
 		const bool m_canBeEmpty{ false };
 		std::string m_error;
-		//* For Duration
+		// For Duration
 		const Timer::Duration::Type m_durationType{ Timer::Duration::Type::Nanoseconds };
-		//* For enums
+		// For enums
 		std::string_view (*const m_printFunc)(int){ nullptr };
 		std::string m_stringInterpretations;
 
@@ -336,7 +336,7 @@ public:
 		bool Merge(size_t id, const std::variant<standardTypes>& value);
 
 		friend bool Test::Unit::Application();
-		//* For access in RegisterValidation and Merge methods and direct access to fields.
+		// For access in RegisterValidation and Merge methods and direct access to fields.
 		friend class Application;
 	};
 
@@ -349,9 +349,9 @@ public:
 		std::variant<standardPrimitiveTypesConstPtr, const std::string*, const Timer*, const Timer::Duration*,
 			const TableData*>
 			m_value;
-		//* For Duration
+		// For Duration
 		const Timer::Duration::Type m_durationType{ Timer::Duration::Type::Nanoseconds };
-		//* For enums
+		// For enums
 		std::string_view (*const m_printFunc)(int){ nullptr };
 		std::string m_stringInterpretations;
 
@@ -447,7 +447,7 @@ public:
 
 #undef MSAPI_TMP_APPLICATION_PARAMETER_FILL_METADATA_FOR_ENUM
 
-		//* For direct access to fields.
+		// For direct access to fields.
 		friend class Application;
 	};
 
@@ -651,6 +651,8 @@ protected:
 	 * @param data Reserved Standard message.
 	 *
 	 * @test Yes.
+	 *
+	 * @todo Wrap metadata generation into GenerateMetadata function to avoid code duplication and mess.
 	 */
 	void Collect(const std::shared_ptr<Connection::Data>& connectionData, const Protocol::Standard::Data& data);
 
@@ -739,7 +741,7 @@ protected:
 	friend bool Test::Unit::Application();
 };
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
 #define MSAPI_HANDLE_RUN_REQUEST_PRESET                                                                                \
 	if (MSAPI::Application::IsRunning()) {                                                                             \
@@ -1055,4 +1057,4 @@ protected:
                                                                                                                        \
 	MSAPI::logger.Start();
 
-#endif //* MSAPI_APPLICATION_H
+#endif // MSAPI_APPLICATION_H

@@ -91,6 +91,9 @@ Declarations
  * @brief Integration test for web socket protocol.
  *
  * @return True if all tests passed and false if something went wrong.
+ *
+ * @todo Close messages are not checked in terms of reserving and following actions. When Application will be able to
+ * call Server methods to close connection, deeper testing of close messages should be done.
  */
 FORCE_INLINE [[nodiscard]] bool WebSocketProtocol();
 
@@ -1051,7 +1054,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 		// TODO: For now checking of close messages does not happen in terms of reserving and followed that actions.
 		// TODO: When Application will be able to call Server methods to close connection, then deeper testing of close
-		// messages should be done
+		// TODO: messages should be done
 		// 2.17. Send empty close message
 		LOG_INFO_NEW("Testing empty close message from client {}", clientPortStr);
 		RETURN_IF_FALSE(
