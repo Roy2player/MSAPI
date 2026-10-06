@@ -36,8 +36,8 @@
  * undelivered events, and websocket I/O remains outside event locks.
  */
 
-#ifndef MSAPI_PROTOCOL_WEBSOCKET_EVENTS_INL
-#define MSAPI_PROTOCOL_WEBSOCKET_EVENTS_INL
+#ifndef MSAPI_PROTOCOL_WEB_SOCKET_EVENTS_INL
+#define MSAPI_PROTOCOL_WEB_SOCKET_EVENTS_INL
 
 #include "../help/json.h"
 #include "../server/authorization.inl"
@@ -1847,4 +1847,4 @@ FORCE_INLINE void StreamsDistributor<Module>::Handle(const uint64_t id, const ui
 
 } // namespace MSAPI
 
-#endif // MSAPI_PROTOCOL_WEBSOCKET_EVENTS_INL
+#endif // MSAPI_PROTOCOL_WEB_SOCKET_EVENTS_INL

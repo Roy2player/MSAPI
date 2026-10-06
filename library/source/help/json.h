@@ -281,6 +281,6 @@ template <typename T>
 	return std::get_if<T>(&node->GetValue());
 }
 
-}; //* namespace MSAPI
+} // namespace MSAPI
 
-#endif //* MSAPI_JSON_H
+#endif // MSAPI_JSON_H

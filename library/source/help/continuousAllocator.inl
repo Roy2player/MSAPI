@@ -32,9 +32,6 @@ namespace MSAPI {
 Declarations
 ---------------------------------------------------------------------------------*/
 
-//! This is first-touch implementation and has to be polished
-//! Tests for allocators are required for using in production
-
 /**************************
  * @brief Allocator for maximizing CPU code prediction features, due to continuous memory allocations. By default
  * allocates numbers of objects which fits in page size. Can be stored only object which size is less than page size.
@@ -42,6 +39,9 @@ Declarations
  * nodes with their meta information and second half contains continuos buffer with objects.
  *
  * @tparam T Type of stored object.
+ *
+ * @todo This is first-touch implementation and has to be polished.
+ * @todo Tests for allocators are required for using in production.
  */
 template <typename T> class ContinuousAllocator {
 private:

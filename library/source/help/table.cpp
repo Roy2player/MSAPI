@@ -404,7 +404,7 @@ TableData::TableData(const std::list<JsonNode>& rows, const std::vector<Standard
 
 #define suppress
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuse-after-free" //* free(buffer) is safe operation, but is marked as error
+#pragma GCC diagnostic ignored "-Wuse-after-free" // free(buffer) is safe operation, but is marked as error
 	void* newBuffer{ realloc(buffer, offset) };
 	if (newBuffer == nullptr) [[unlikely]] {
 		LOG_ERROR("Forming table data is interrupted. Cannot reallocate memory for encoding table. Error №" + _S(errno)
@@ -593,4 +593,4 @@ std::string TableData::LookUpToJson(const std::vector<StandardType::Type>& colum
 	return json;
 }
 
-}; //* namespace MSAPI
+} // namespace MSAPI

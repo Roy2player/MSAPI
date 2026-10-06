@@ -210,9 +210,8 @@ class ServerSimulator {
 							"stringInterpretations" :
 								{ "0" : "Undefined", "1" : "Initialization", "2" : "Running", "3" : "Stopped" }
 						},
-						"1000006" : { "name" : "Max connections", "type" : "Int32" },
-						"1000007" : { "name" : "Listen IP", "type" : "Uint32" },
-						"1000008" : { "name" : "Listen port", "type" : "Uint16" },
+						"1000006" : { "name" : "Listen IP", "type" : "Uint32" },
+						"1000007" : { "name" : "Listen port", "type" : "Uint16" },
 						"2000001" : { "name" : "Name", "type" : "String" },
 						"2000002" : {
 							"name" : "Application state",

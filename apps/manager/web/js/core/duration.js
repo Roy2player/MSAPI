@@ -419,7 +419,7 @@ class Duration {
 			return;
 		}
 
-		//* Empty string is considered as BigInt(0)
+		// Empty string is considered as BigInt(0)
 		const currentNanoseconds = input.getAttribute("nanoseconds");
 		if (currentNanoseconds != "" && BigInt(+currentNanoseconds) == nanoseconds) {
 			return;

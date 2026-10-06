@@ -18,8 +18,8 @@
  * @brief Common structures for MSAPI tests of object protocol.
  */
 
-#ifndef COMMON_STRUCTURES_H
-#define COMMON_STRUCTURES_H
+#ifndef MSAPI_INTEGRATION_TEST_COMMON_STRUCTURES_H
+#define MSAPI_INTEGRATION_TEST_COMMON_STRUCTURES_H
 
 #include "../../../../library/source/help/log.h"
 
@@ -139,4 +139,4 @@ struct OrderStructure {
 	friend bool operator<(const OrderStructure& f, const OrderStructure& s) { return f.figi < s.figi; }
 };
 
-#endif //* COMMON_STRUCTURES_H
+#endif // MSAPI_INTEGRATION_TEST_COMMON_STRUCTURES_H

@@ -167,29 +167,29 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 
 	let hiddenViewsList = global.dispatcher.m_hiddenViews.querySelector('.hiddenViews > .list');
 
-	//* Add hidden view
+	// Add hidden view
 	global.dispatcher.AddHiddenView(view1);
 	CheckHiddenViewsList(1);
 	testRunner.Assert(hiddenViewsList.childNodes[0].querySelector('span').innerHTML, 'Installed apps',
 		'Unexpected name on hidden view');
 	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
 
-	//* Click to show
+	// Click to show
 	hiddenViewsList.firstElementChild.dispatchEvent(new Event("click", { bubbles : true }));
 	CheckHiddenViewsList(0);
 	CheckClassList(view1.m_parentView, [ 'view' ]);
 
-	//* Add hidden view
+	// Add hidden view
 	global.dispatcher.AddHiddenView(view1);
 	CheckHiddenViewsList(1);
 	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
 
-	//* Try to add the same view again
+	// Try to add the same view again
 	global.dispatcher.AddHiddenView(view1);
 	CheckHiddenViewsList(1);
 	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
 
-	//* Add another hidden view
+	// Add another hidden view
 	let view2 = new Account();
 	await TestRunner.WaitFor(() => view2.m_created, 'view2 created');
 	CheckClassList(view2.m_parentView, [ 'view' ]);
@@ -197,7 +197,7 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 	CheckHiddenViewsList(2);
 	CheckClassList(view2.m_parentView, [ 'view', 'hidden' ]);
 
-	//* Add another hidden view
+	// Add another hidden view
 	let view3 = new CreatedApps();
 	await TestRunner.WaitFor(() => view3.m_created, 'view3 created');
 	CheckClassList(view3.m_parentView, [ 'view' ]);
@@ -207,24 +207,24 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 		'Unexpected name on hidden view');
 	CheckClassList(view3.m_parentView, [ 'view', 'hidden' ]);
 
-	//* Call show on view
+	// Call show on view
 	view1.Show();
 	CheckHiddenViewsList(2);
 	CheckClassList(view1.m_parentView, [ 'view' ]);
 
-	//* Call maximize on view
+	// Call maximize on view
 	view2.Maximize();
 	CheckHiddenViewsList(1);
 	CheckClassList(view2.m_parentView, [ 'view', 'maximized' ]);
 
-	//* Call hide on views
+	// Call hide on views
 	view1.Hide();
 	view2.Hide();
 	CheckHiddenViewsList(3);
 	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
 	CheckClassList(view2.m_parentView, [ 'view', 'maximized', 'hidden' ]);
 
-	//* Click to show to all
+	// Click to show to all
 	hiddenViewsList.childNodes[2].dispatchEvent(new Event("click", { bubbles : true }));
 	hiddenViewsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
 	hiddenViewsList.childNodes[0].dispatchEvent(new Event("click", { bubbles : true }));
@@ -233,7 +233,7 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 	CheckClassList(view2.m_parentView, [ 'view', 'maximized' ]);
 	CheckClassList(view3.m_parentView, [ 'view' ]);
 
-	//* Add hidden views
+	// Add hidden views
 	global.dispatcher.AddHiddenView(view1);
 	global.dispatcher.AddHiddenView(view2);
 	global.dispatcher.AddHiddenView(view3);
@@ -242,12 +242,12 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 	CheckClassList(view2.m_parentView, [ 'view', 'maximized', 'hidden' ]);
 	CheckClassList(view3.m_parentView, [ 'view', 'hidden' ]);
 
-	//* Remove hidden view
+	// Remove hidden view
 	global.dispatcher.RemoveHiddenView(view1);
 	CheckHiddenViewsList(2);
 	CheckClassList(view1.m_parentView, [ 'view' ]);
 
-	//* Remove hidden views
+	// Remove hidden views
 	global.dispatcher.RemoveHiddenView(view2);
 	global.dispatcher.RemoveHiddenView(view3);
 	CheckHiddenViewsList(0);
@@ -299,21 +299,21 @@ testRunner.Test('Manage list of registered panels', async () => {
 		}
 	};
 
-	//* Register panel
+	// Register panel
 	Dispatcher.RegisterPanel('Installed apps', () => new InstalledApps());
 	checkRegisteredPanelsList(1, 0);
 	testRunner.Assert(registeredPanelsList.childNodes[0].querySelector('span').innerHTML, 'Installed apps',
 		'Unexpected name on registered panel');
 
-	//* Register panel
+	// Register panel
 	Dispatcher.RegisterPanel('Installed apps', () => new InstalledApps());
 	checkRegisteredPanelsList(1, 0);
 
-	//* Register panel
+	// Register panel
 	Dispatcher.RegisterPanel('Created apps', () => new CreatedApps());
 	checkRegisteredPanelsList(2, 0);
 
-	//* Click to create panel
+	// Click to create panel
 	registeredPanelsList.childNodes[0].dispatchEvent(new Event("click", { bubbles : true }));
 	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 1, 'view is created');
 	checkRegisteredPanelsList(2, 0);
@@ -322,7 +322,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 	testRunner.Assert(
 		Array.from(View.GetCreatedViews().values())[0].m_title, 'Installed apps', 'Unexpected name on created view');
 
-	//* Click to create panel
+	// Click to create panel
 	registeredPanelsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
 	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 2, 'view is created');
 	checkRegisteredPanelsList(2, 0);
@@ -330,7 +330,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 	testRunner.Assert(
 		Array.from(View.GetCreatedViews().values())[1].m_title, 'Created apps', 'Unexpected name on created view');
 
-	//* Click to create panel
+	// Click to create panel
 	registeredPanelsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
 	await TestRunner.WaitFor(() => View.GetCreatedViews().size === 3, 'view is created');
 	checkRegisteredPanelsList(2, 0);
@@ -338,17 +338,17 @@ testRunner.Test('Manage list of registered panels', async () => {
 	testRunner.Assert(
 		Array.from(View.GetCreatedViews().values())[2].m_title, 'Created apps', 'Unexpected name on created view');
 
-	//* Hide views
+	// Hide views
 	let views = Array.from(View.GetCreatedViews().values());
 	views[0].Hide();
 	views[1].Hide();
 	checkRegisteredPanelsList(2, 2);
 
-	//* Destroy views
+	// Destroy views
 	DestroyViews();
 	checkRegisteredPanelsList(2, 0);
 
-	//* Unregister panels
+	// Unregister panels
 	UnregisterPanels();
 	checkRegisteredPanelsList(0, 0);
 });

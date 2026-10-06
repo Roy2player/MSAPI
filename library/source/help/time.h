@@ -35,7 +35,7 @@
 
 namespace MSAPI {
 
-//* Functions that use it must take into leap year
+// Functions that use it must take into leap year
 constexpr uint8_t dayPerMonth[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 constexpr uint32_t SECONDS_IN_YEAR = 31536000;
 constexpr uint32_t SECONDS_IN_DAY = 86400;
@@ -77,7 +77,7 @@ public:
 		std::function<void(int*)> m_callback;
 		IHandler* m_handler;
 		timer_t m_id{};
-		//* Callback, this, parameter
+		// Callback, this, parameter
 		std::tuple<void*, int*, int*> m_data;
 		bool m_running{};
 		time_t m_timeToCall{};
@@ -803,7 +803,7 @@ public:
 	static std::chrono::microseconds TimevalToDuration(timeval tv);
 };
 
-} //* namespace MSAPI
+} // namespace MSAPI
 
 namespace std {
 
@@ -836,6 +836,6 @@ struct hash<std::pair<T, S>> {
 	}
 };
 
-} //* namespace std
+} // namespace std
 
-#endif //* MSAPI_TIME_H
+#endif // MSAPI_TIME_H

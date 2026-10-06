@@ -237,7 +237,7 @@ class Timer {
 			timestamp = 0n;
 		}
 
-		//* Empty string is considered as BigInt(0)
+		// Empty string is considered as BigInt(0)
 		const currentTimestamp = input.getAttribute("timestamp");
 		if (currentTimestamp != "" && BigInt(+currentTimestamp) == timestamp) {
 			return;

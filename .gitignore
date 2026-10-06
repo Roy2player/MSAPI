@@ -35,3 +35,4 @@ tests/unit/basicSString/build/UnitTestBasicSString
 tests/unit/persistence/build/UnitTestPersistence
 tests/unit/test/build/UnitTestTest
 tests/unit/lock/build/UnitTestLock
+tests/unit/server/build/UnitTestServer

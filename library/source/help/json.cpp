@@ -91,7 +91,7 @@ void Json::Construct(const std::string_view body)
 			continue;
 		}
 
-		//* It is string value
+		// It is string value
 		if (insideDoubleQuotes) {
 			if (body[index] == '"') {
 				isKey = true;
@@ -112,13 +112,13 @@ void Json::Construct(const std::string_view body)
 			continue;
 		}
 
-		//* It will be string value
+		// It will be string value
 		if (body[index] == '"') {
 			insideDoubleQuotes = true;
 			continue;
 		}
 
-		//* It is undefined value type
+		// It is undefined value type
 		if (body[index] == ' ' || body[index] == '\n' || body[index] == '\t') {
 			continue;
 		}
@@ -235,7 +235,7 @@ void Json::Construct(const std::string_view body)
 		continue;                                                                                                      \
 	}
 
-		//* It is potential number value
+		// It is potential number value
 		if (body[index] == '-') {
 			value += body[index++];
 			if (index >= bodySize || !std::isdigit(body[index])) {
@@ -245,10 +245,10 @@ void Json::Construct(const std::string_view body)
 			goto startNegativeNumber;
 		}
 
-		//* It is number value
+		// It is number value
 		if (std::isdigit(body[index])) {
 			TMP_MSAPI_JSON_PARSE_NUMBER(uint64_t);
-		//* Zero performance cost differentiation
+		// Zero performance cost differentiation
 		startNegativeNumber:
 			TMP_MSAPI_JSON_PARSE_NUMBER(int64_t);
 		}
@@ -259,7 +259,7 @@ void Json::Construct(const std::string_view body)
 #undef TMP_MSAPI_JSON_EMPLACE_uint64_t
 #undef TMP_MSAPI_JSON_EMPLACE_double
 
-		//* It is boolean value 'true'
+		// It is boolean value 'true'
 		if (body[index] == 't') {
 			if (index + 3 < bodySize && body[index + 1] == 'r' && body[index + 2] == 'u' && body[index + 3] == 'e') {
 				isKey = true;
@@ -273,7 +273,7 @@ void Json::Construct(const std::string_view body)
 			return;
 		}
 
-		//* It is boolean value 'false'
+		// It is boolean value 'false'
 		if (body[index] == 'f') {
 			if (index + 4 < bodySize && body[index + 1] == 'a' && body[index + 2] == 'l' && body[index + 3] == 's'
 				&& body[index + 4] == 'e') {
@@ -289,7 +289,7 @@ void Json::Construct(const std::string_view body)
 			return;
 		}
 
-		//* It is null value
+		// It is null value
 		if (body[index] == 'n') {
 			if (index + 3 < bodySize && body[index + 1] == 'u' && body[index + 2] == 'l' && body[index + 3] == 'l') {
 				isKey = true;
@@ -303,7 +303,7 @@ void Json::Construct(const std::string_view body)
 			return;
 		}
 
-		//* It is json object
+		// It is json object
 		if (body[index] == '{') {
 			value += body[index];
 			while (objectDepth != 0 && ++index < bodySize) {
@@ -337,7 +337,7 @@ void Json::Construct(const std::string_view body)
 			continue;
 		}
 
-		//* It is array
+		// It is array
 		if (body[index] == '[') {
 		startArray:
 			begin = index;
@@ -368,14 +368,14 @@ void Json::Construct(const std::string_view body)
 			continue;
 		}
 
-		//* Expected symbols between value and key
+		// Expected symbols between value and key
 		if (body[index] == ' ' || body[index] == '\n' || body[index] == '\t' || body[index] == ','
 			|| body[index] == ':') {
 
 			continue;
 		}
 
-		//* End of json object
+		// End of json object
 		if ((body[index] == '}' || body[index] == ']') && index + 1 == bodySize) {
 			break;
 		}
@@ -497,7 +497,7 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 
 	++begin;
 	for (; begin < end; ++begin) {
-		//* It is string value
+		// It is string value
 		if (insideDoubleQuotes) {
 			if (body[begin] == '"') {
 				insideDoubleQuotes = false;
@@ -516,13 +516,13 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 			continue;
 		}
 
-		//* It will be string value
+		// It will be string value
 		if (body[begin] == '"') {
 			insideDoubleQuotes = true;
 			continue;
 		}
 
-		//* It is undefined value type
+		// It is undefined value type
 		if (body[begin] == ' ' || body[begin] == '\n' || body[begin] == '\t') {
 			continue;
 		}
@@ -629,7 +629,7 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 		continue;                                                                                                      \
 	}
 
-		//* It is potential number value
+		// It is potential number value
 		if (body[begin] == '-') {
 			value += body[begin++];
 			if (begin >= end || !std::isdigit(body[begin])) {
@@ -639,10 +639,10 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 			goto startNegativeNumber;
 		}
 
-		//* It is number value
+		// It is number value
 		if (std::isdigit(body[begin])) {
 			TMP_MSAPI_JSON_PARSE_NUMBER(uint64_t);
-		//* Zero performance cost differentiation
+		// Zero performance cost differentiation
 		startNegativeNumber:
 			TMP_MSAPI_JSON_PARSE_NUMBER(int64_t);
 		}
@@ -653,7 +653,7 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 #undef TMP_MSAPI_JSON_EMPLACE_uint64_t
 #undef TMP_MSAPI_JSON_EMPLACE_double
 
-		//* It is boolean value 'true'
+		// It is boolean value 'true'
 		if (body[begin] == 't') {
 			if (begin + 3 < end && body[begin + 1] == 'r' && body[begin + 2] == 'u' && body[begin + 3] == 'e') {
 				array.emplace_back(JsonNode{ true });
@@ -665,7 +665,7 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 			return;
 		}
 
-		//* It is boolean value 'false'
+		// It is boolean value 'false'
 		if (body[begin] == 'f') {
 			if (begin + 4 < end && body[begin + 1] == 'a' && body[begin + 2] == 'l' && body[begin + 3] == 's'
 				&& body[begin + 4] == 'e') {
@@ -679,7 +679,7 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 			return;
 		}
 
-		//* It is null value
+		// It is null value
 		if (body[begin] == 'n') {
 			if (begin + 3 < end && body[begin + 1] == 'u' && body[begin + 2] == 'l' && body[begin + 3] == 'l') {
 				array.emplace_back(JsonNode{ nullptr });
@@ -691,7 +691,7 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 			return;
 		}
 
-		//* It is json object
+		// It is json object
 		if (body[begin] == '{') {
 			value += body[begin];
 			while (objectDepth != 0 && ++begin < end) {
@@ -722,7 +722,7 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 			continue;
 		}
 
-		//* It is array
+		// It is array
 		if (body[begin] == '[') {
 			_begin = begin;
 			_end = _begin;
@@ -751,12 +751,12 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 			continue;
 		}
 
-		//* Expected symbol between values
+		// Expected symbol between values
 		if (body[begin] == ' ' || body[begin] == '\n' || body[begin] == '\t' || body[begin] == ',') {
 			continue;
 		}
 
-		//* End of array
+		// End of array
 		if (body[begin] == ']' && begin == end) {
 			break;
 		}
@@ -864,4 +864,4 @@ std::string JsonNode::PrepareToJson() const noexcept
 		m_value));
 }
 
-}; //* namespace MSAPI
+} // namespace MSAPI

@@ -50,7 +50,6 @@ void Log::SetParentPath(const std::string& path) noexcept
 
 const std::string& Log::GetPath() const noexcept { return m_path; }
 
-//! Print(std::format_to(Log.GetBuffer(), ..., Level::INFO));
 void Log::Print(std::string&& str, const Level level) noexcept
 {
 	if (level > m_levelSave) {
@@ -259,4 +258,4 @@ void Log::Stop() noexcept
 	Print("Log was stopped", Level::DEBUG);
 }
 
-}; //* namespace MSAPI
+} // namespace MSAPI

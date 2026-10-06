@@ -224,8 +224,8 @@ class Helper {
 		for (let index = 0; index < str.length; ++index) {
 			char = str.charCodeAt(index);
 			hash = (hash << 5) - hash + char;
-			//* The bitwise OR operation with 0 (hash |= 0) does not change the value of hash. However, it forces the
-			//* JavaScript engine to treat hash as a 32-bit signed integer.
+			// The bitwise OR operation with 0 (hash |= 0) does not change the value of hash. However, it forces the
+			// JavaScript engine to treat hash as a 32-bit signed integer.
 			hash |= 0;
 		}
 

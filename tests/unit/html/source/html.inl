@@ -129,7 +129,7 @@ FORCE_INLINE [[nodiscard]] bool HTML()
 	RETURN_IF_FALSE(t.Assert(page.GetTag(), page.GetTag(page.TagsSize() + 1), "HTML get default tag (complex)"));
 
 	return t.Passed<bool>();
-};
+}
 
 } // namespace Unit
 
