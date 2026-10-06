@@ -221,6 +221,7 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uin
 
 	pthread_attr_t attr;
 	if (!Server::AddPthreadAttributes(attr)) [[unlikely]] {
+		m_ports.erase(port);
 		LOG_ERROR_NEW("Pthread attributes are not created for daemon, port: {}", port);
 		return false;
 	}
