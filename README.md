@@ -144,4 +144,5 @@ Project has a set of guidelines to ensure following best practices, maintain cod
 - [**Code syntax:**](guidelines/codeSyntax.md) Syntax and declaration rules.
 - [**Concurrency:**](guidelines/concurrency.md) Locking patterns and thread-safety requirements.
 - [**Doxygen inline documentation:**](guidelines/doxygenInlineDocumentation.md) Required inline documentation and comment structure.
+- [**File Organization:**](guidelines/fileOrganization.md): Inlinable library layout and structure of .inl files.
 - [**Logging:**](guidelines/logging.md) Logging levels, message style, and runtime logging guidance.
