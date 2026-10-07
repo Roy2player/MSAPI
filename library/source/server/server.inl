@@ -1502,7 +1502,9 @@ template <Connection::Type Type>
 FORCE_INLINE void* Server::PthreadRecvLoop(const std::shared_ptr<Connection::Data>& connectionData)
 {
 	// Pthread is not cancelable, it is finished cooperatively and cleans up its resources itself
-	(void)pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
+	if (const auto result{ pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr) }; result != 0) [[unlikely]] {
+		LOG_ERROR_NEW("Failed to disable pthread cancellation. Error №{}: {}", result, std::strerror(result));
+	}
 
 	// Read lock is incremented before attempting to create pthread and decremented on create failure
 	// In bad path there is no locking, on good path this guard is a guarantee it will be unlocked

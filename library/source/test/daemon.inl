@@ -293,7 +293,10 @@ FORCE_INLINE [[nodiscard]] [[nodiscard]] std::unique_ptr<Daemon<T>> Daemon<T>::C
 template <typename T> FORCE_INLINE [[nodiscard]] void* Daemon<T>::StartingRequest(void* appData)
 {
 	// Pthread is not cancelable, it is finished cooperatively and cleans up its resources itself
-	(void)pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
+	if (const auto result{ pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr) }; result != 0) [[unlikely]] {
+		LOG_ERROR_NEW("Failed to disable pthread cancellation. Error №{}: {}", result, std::strerror(result));
+	}
+
 	const auto pid{ gettid() };
 	LOG_DEBUG_NEW("Pthread function is called, PID: {}", pid);
 	const auto* serverParameters{ static_cast<Daemon<T>::AppData*>(appData) };
