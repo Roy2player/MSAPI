@@ -449,8 +449,6 @@ FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::RecvImpl(const uint64_
 		const auto result{ m_connectionData->GetConnection().Recv(m_buffer.Get() + m_size, rest, Flags) };
 
 		if (result == 0) [[unlikely]] {
-			// Not sure if it is required
-			// pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
 			return { 0, 0 };
 		}
 
@@ -466,9 +464,6 @@ FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::RecvImpl(const uint64_
 		m_size += result;
 		rest -= result;
 	} while (rest != 0);
-
-	// Not sure if it is required
-	// pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, nullptr);
 
 	if constexpr ((Flags & MSG_PEEK) == 0) {
 		if (requiredSize >= m_peekedSize) {
@@ -520,8 +515,6 @@ FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::RecvTrunc(const uint64_t truncSi
 		const auto result{ m_connectionData->GetConnection().Recv(truncBuffer, dropPortion, MSG_TRUNC) };
 
 		if (result == 0) [[unlikely]] {
-			// Not sure if it is required
-			// pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
 			return truncSize - rest;
 		}
 

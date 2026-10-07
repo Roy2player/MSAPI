@@ -57,7 +57,7 @@ FORCE_INLINE [[nodiscard]] bool Application();
  * @brief HandleModifyRequest - default behavior: merge parameters and apply pause state if parameters are not valid.
  * Macros MSAPI_HANDLE_MODIFY_REQUEST_PRESET can be placed in the beginning of overridden method for enabling with
  * predefined logic.
- * @brief HandleDeleteRequest - default behavior: handle pause and call server stop to cancel main server process.
+ * @brief HandleDeleteRequest - default behavior: handle pause and call server stop to finish main accepting loop.
  *
  * Not predefined and can be handled from any outcome connection:
  * @brief HandleHello - handler of signal which sends for every newly open outcome connection if or when server becomes
@@ -498,7 +498,7 @@ public:
 
 	/**************************
 	 * @brief Handle delete request from External application. Already defined in Server class, but can be
-	 * overridden. Default behavior: handle pause and call server stop to cancel main server process.
+	 * overridden. Default behavior: handle pause and call server stop to finish main accepting loop.
 	 *
 	 * @test Yes.
 	 */

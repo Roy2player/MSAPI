@@ -90,6 +90,8 @@ Declarations
  * @attention Each TCP socket is opened with SO_REUSEADDR=true, SO_REUSEPORT=false if supported and TCP_NODELAY=true
  * options.
  * @attention SetMlockallCurrentFuture function can be used to lock all current and future memory of the process.
+ * @attention Pthreads created by the server are not cancelable, cancellation is disabled at the beginning of each
+ * pthread and is never enabled.
  *
  * @see RecvBuffer for recv behavior.
  * @see Connection for connection behavior.
@@ -103,10 +105,76 @@ Declarations
  * and m_listenPort should be atomic.
  * @todo m_stateTmp should be removed when application parameters will be atomic values.
  * @todo Add global connections limit.
+ * @todo Parameter 1000003 "Limit of connections from one IP" is applied only to IPs seen for the first time,
+ * existing IP limits keep the value they were created with.
+ * @todo m_ipToLimits keeps an entry for every distinct client IP forever. Entries are small and kept on purpose, so
+ * the next connection from a known IP requires only read lock of the container. If the count of distinct IPs becomes a
+ * problem, empty entries can be purged when the container size exceeds a limit.
  */
 class Server : public Application {
 public:
 	enum State : int8_t { Undefined, Running, Stopped, Stopping, Max };
+
+	/**************************
+	 * @brief Attributes of pthreads created by the library: detached state, as created pthreads are never joined.
+	 * Scheduling and stack size are inherited defaults. Attributes are initialized once on construction and are only
+	 * read after it.
+	 *
+	 * @attention If initialization fails, attributes are invalid and pthreads must not be created with them, validity
+	 * is checked by IsValid.
+	 *
+	 * @concurrency Yes. Attributes are only read after construction, so pthreads can be created with them concurrently.
+	 */
+	class PthreadAttributes {
+	private:
+		pthread_attr_t m_attributes{};
+		bool m_isValid{};
+
+	public:
+		/**************************
+		 * @brief Construct a new PthreadAttributes object, initialize attributes and set detached state. Attributes are
+		 * destroyed if setting fails, and stay invalid on any failure.
+		 *
+		 * @locking Is not required.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE PthreadAttributes() noexcept;
+
+		/**************************
+		 * @brief Destroy the PthreadAttributes object, destroy attributes if they are valid.
+		 *
+		 * @locking Is not required.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE ~PthreadAttributes() noexcept;
+
+		PthreadAttributes(const PthreadAttributes&) = delete;
+		PthreadAttributes(PthreadAttributes&&) = delete;
+		PthreadAttributes& operator=(const PthreadAttributes&) = delete;
+		PthreadAttributes& operator=(PthreadAttributes&&) = delete;
+
+		/**************************
+		 * @locking Is not required.
+		 *
+		 * @return True if attributes are initialized and pthreads can be created with them, false otherwise.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE [[nodiscard]] bool IsValid() const noexcept;
+
+		/**************************
+		 * @pre IsValid().
+		 *
+		 * @locking Is not required.
+		 *
+		 * @return Const reference to attributes.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE [[nodiscard]] const pthread_attr_t& Get() const noexcept;
+	};
 
 	/**************************
 	 * @locking Is not required.
@@ -223,6 +291,7 @@ private:
 	std::atomic<State> m_state{ State::Stopped };
 	// TODO: remove when application parameters will be atomic values
 	State m_stateTmp{ State::Stopped };
+	PthreadAttributes m_pthreadAttributes;
 
 public:
 	/**************************
@@ -279,8 +348,9 @@ public:
 	FORCE_INLINE void Start(uint32_t ip, uint16_t port) noexcept;
 
 	/**************************
-	 * @brief Close connections, cancel child pthreads and clear containers. If was in running state - set state to
-	 * Stopping and close main listening socket which is an interrupt condition for main accepting loop.
+	 * @brief Close connections, which finishes recv loops of child pthreads, and clear containers. If was in running
+	 * state - set state to Stopping and close main listening socket which is an interrupt condition for main accepting
+	 * loop. Child pthreads are not canceled, they exit by themselves after their recv loops are finished.
 	 *
 	 * @attention This function does not wait for pthreads to be finished as it can be called inside one.
 	 *
@@ -381,22 +451,6 @@ public:
 	FORCE_INLINE [[nodiscard]] uint64_t GetConnectionsCount() const noexcept;
 
 	/**************************
-	 * @brief Initialize pthread attributes for new pthreads and set detached state, as created pthreads are never
-	 * joined. Scheduling and stack size are inherited defaults.
-	 *
-	 * @param attr Pthread attributes object, must not be initialized.
-	 *
-	 * @locking Is not required.
-	 *
-	 * @return True if attributes are initialized and set, caller must destroy them by pthread_attr_destroy. False
-	 * otherwise, attributes are not initialized and must not be destroyed. Pthread must not be created with
-	 * uninitialized attributes.
-	 *
-	 * @test Yes.
-	 */
-	FORCE_INLINE [[nodiscard]] static bool AddPthreadAttributes(pthread_attr_t& attr) noexcept;
-
-	/**************************
 	 * @brief Try to set soft and hard RLIMIT_MEMLOCK limits as RLIM_INFINITY and set mlockall as MCL_CURRENT and
 	 * MCL_FUTURE. Locks all memory of the calling process into RAM.
 	 *
@@ -478,13 +532,13 @@ private:
 	/**************************
 	 * @brief Create new pthread for recv loop.
 	 *
-	 * @attention If pthread is not created, connection will be closed.
+	 * @attention If pthread is not created, connection will be closed. Pthread is not created if pthread attributes are
+	 * not valid.
 	 *
 	 * @tparam Type Type of connection.
 	 *
 	 * @param connection Connection data structure.
 	 * @param ipStr IP address of connection.
-	 * @param pthreadAttr Pthread attributes object.
 	 * @param ip IP address of connection.
 	 * @param port Port of connection.
 	 * @param doReconnection If reconnection is required for this connection.
@@ -502,8 +556,7 @@ private:
 	 */
 	template <Connection::Type Type>
 	FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> CreatePthread(std::unique_ptr<Connection>&& connection,
-		SString<16>&& ipStr, const pthread_attr_t& pthreadAttr, uint32_t ip, uint16_t port,
-		bool doReconnection) noexcept;
+		SString<16>&& ipStr, uint32_t ip, uint16_t port, bool doReconnection) noexcept;
 
 	/**************************
 	 * @brief Bind socket.
@@ -553,7 +606,9 @@ private:
 	 * @brief Clear containers, shutdown and close connection. Perform attempt to reconnection for outcome connection
 	 * and call reconnection callback on success.
 	 *
-	 * @attention Related to connection recv loop pthread is canceled asynchronously.
+	 * @attention Related to connection recv loop pthread is not canceled. Shutdown of the connection wakes the pthread
+	 * blocked on recv, its recv loop finishes and the pthread exits by itself, see PthreadRecvLoop. If called from the
+	 * recv loop pthread itself, the pthread exits after the recv loop returns.
 	 *
 	 * @tparam HasReconnectionPath If the reconnection path is included in function. This compilation time parameter is
 	 * required to simplify code inlining in CreatePthread path, where recursive inlining is a problem. There is
@@ -589,7 +644,8 @@ private:
 	FORCE_INLINE [[nodiscard]] bool RegisterConnectionFromIp(uint64_t id, const SString<16>& ip) noexcept;
 
 	/**************************
-	 * @brief Unregister connection from ip limits, registered by RegisterConnectionFromIp.
+	 * @brief Unregister connection from ip limits, registered by RegisterConnectionFromIp. Limits of the ip are kept
+	 * even if its last connection is unregistered.
 	 *
 	 * @param id Id of connection.
 	 * @param ip Ip address of connection.
@@ -602,6 +658,9 @@ private:
 
 	/**************************
 	 * @brief Recv loop function for new pthread.
+	 *
+	 * @attention Disables cancellation of the pthread as the first action, the pthread is finished only by the end of
+	 * the recv loop, when the connection is closed or the server is stopping.
 	 *
 	 * @tparam Type Type of connection processing.
 	 *
@@ -638,6 +697,55 @@ private:
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
+
+/*---------------------------------------------------------------------------------
+Server::PthreadAttributes
+---------------------------------------------------------------------------------*/
+
+FORCE_INLINE Server::PthreadAttributes::PthreadAttributes() noexcept
+{
+	//  - pthread_attr_setscope(&attr, PTHREAD_SCOPE_PROCESS) always fails with ENOTSUP on Linux, only
+	//  PTHREAD_SCOPE_SYSTEM is supported, so it had no effect.
+	//  - pthread_attr_setschedpolicy(&attr, SCHED_RR) succeeds, but is ignored, because default inherit scheduler
+	//  attribute is PTHREAD_INHERIT_SCHED and new pthread takes policy of the creating one (SCHED_OTHER).
+	//  - pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) was not usable with SCHED_RR, because SCHED_RR
+	//  requires priority in [1, 99] (default 0 leads to EINVAL in pthread_create) and CAP_SYS_NICE or non-zero
+	//  RLIMIT_RTPRIO (otherwise EPERM). Real-time round-robin for each connection pthread can also starve the system.
+	//  - pthread_attr_setstacksize(&attr, 2 * PTHREAD_STACK_MIN) is too small, PTHREAD_STACK_MIN is only a POSIX lower
+	//  bound and does not include guard page and runtime needs, so it leads to stack overflow. Default stack size of
+	//  glibc (RLIMIT_STACK, usually 8 megabytes) is used.
+
+	if (const auto result{ pthread_attr_init(&m_attributes) }; result != 0) [[unlikely]] {
+		LOG_ERROR_NEW("Failed to initialize pthread attributes. Error №{}: {}", result, std::strerror(result));
+		return;
+	}
+
+	// Created pthreads are never joined
+	if (const auto result{ pthread_attr_setdetachstate(&m_attributes, PTHREAD_CREATE_DETACHED) }; result != 0)
+		[[unlikely]] {
+
+		LOG_ERROR_NEW(
+			"Failed to set detached state of pthread attributes. Error №{}: {}", result, std::strerror(result));
+		(void)pthread_attr_destroy(&m_attributes);
+		return;
+	}
+
+	m_isValid = true;
+}
+
+FORCE_INLINE Server::PthreadAttributes::~PthreadAttributes() noexcept
+{
+	if (m_isValid) {
+		(void)pthread_attr_destroy(&m_attributes);
+	}
+}
+
+FORCE_INLINE [[nodiscard]] bool Server::PthreadAttributes::IsValid() const noexcept { return m_isValid; }
+
+FORCE_INLINE [[nodiscard]] const pthread_attr_t& Server::PthreadAttributes::Get() const noexcept
+{
+	return m_attributes;
+}
 
 /*---------------------------------------------------------------------------------
 Server::IpLimits
@@ -768,6 +876,12 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		return;
 	}
 
+	if (!m_pthreadAttributes.IsValid()) [[unlikely]] {
+		LOG_ERROR("Pthread attributes are not valid, starting is interrupted");
+		m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
+		return;
+	}
+
 	m_addr.sin_addr.s_addr = htobe32(ip);
 	if (!Helper::GetStringIp(m_addr.sin_addr, m_listenIp)) [[unlikely]] {
 		(void)m_listenIp.Copy(std::string_view{ "unknown" });
@@ -812,18 +926,6 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		return;
 	}
 
-	pthread_attr_t attr;
-	if (!AddPthreadAttributes(attr)) [[unlikely]] {
-		(void)close(m_listeningSocket);
-		m_listeningSocket = -1;
-		m_listenIp.Clear();
-		m_listenIpStr = "";
-		m_listenPort = 0;
-		LOG_ERROR("Pthread attributes error, starting is interrupted");
-		m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
-		return;
-	}
-
 	LOG_INFO("Successfully server start");
 	m_state.store(State::Running, std::memory_order_release);
 	m_stateTmp = State::Running;
@@ -864,7 +966,7 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		}
 
 		(void)CreatePthread<Connection::Type::Income>(
-			std::move(newConnection), std::move(clientIp), attr, ip, port, /*doReconnection=*/false);
+			std::move(newConnection), std::move(clientIp), ip, port, /*doReconnection=*/false);
 	}
 
 	m_listenIp.Clear();
@@ -872,7 +974,6 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 	m_listenPort = 0;
 	LOG_DEBUG("Server state is Stopping, wait for pthreads to be finished");
 	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_alivePthreadsRWLock };
-	pthread_attr_destroy(&attr);
 	LOG_DEBUG("All pthreads are finished, server is stopped");
 	m_stoppedStateCount.fetch_add(1, std::memory_order_relaxed);
 	m_state.store(State::Stopped, std::memory_order_release);
@@ -1022,35 +1123,6 @@ FORCE_INLINE [[nodiscard]] uint64_t Server::GetConnectionsCount() const noexcept
 	return m_idToConnectionData.size();
 }
 
-FORCE_INLINE [[nodiscard]] bool Server::AddPthreadAttributes(pthread_attr_t& attr) noexcept
-{
-	//  - pthread_attr_setscope(&attr, PTHREAD_SCOPE_PROCESS) always fails with ENOTSUP on Linux, only
-	//  PTHREAD_SCOPE_SYSTEM is supported, so it had no effect.
-	//  - pthread_attr_setschedpolicy(&attr, SCHED_RR) succeeds, but is ignored, because default inherit scheduler
-	//  attribute is PTHREAD_INHERIT_SCHED and new pthread takes policy of the creating one (SCHED_OTHER).
-	//  - pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) was not usable with SCHED_RR, because SCHED_RR
-	//  requires priority in [1, 99] (default 0 leads to EINVAL in pthread_create) and CAP_SYS_NICE or non-zero
-	//  RLIMIT_RTPRIO (otherwise EPERM). Real-time round-robin for each connection pthread can also starve the system.
-	//  - pthread_attr_setstacksize(&attr, 2 * PTHREAD_STACK_MIN) is too small, PTHREAD_STACK_MIN is only a POSIX lower
-	//  bound and does not include guard page and runtime needs, so it leads to stack overflow. Default stack size of
-	//  glibc (RLIMIT_STACK, usually 8 megabytes) is used.
-
-	if (const auto result{ pthread_attr_init(&attr) }; result != 0) [[unlikely]] {
-		LOG_ERROR_NEW("Failed to initialize pthread attributes. Error №{}: {}", result, std::strerror(result));
-		return false;
-	}
-
-	// Created pthreads are never joined
-	if (const auto result{ pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) }; result != 0) [[unlikely]] {
-		LOG_ERROR_NEW(
-			"Failed to set detached state of pthread attributes. Error №{}: {}", result, std::strerror(result));
-		(void)pthread_attr_destroy(&attr);
-		return false;
-	}
-
-	return true;
-}
-
 FORCE_INLINE [[nodiscard]] bool Server::SetMlockallCurrentFuture() noexcept
 {
 	struct rlimit new_rlimit;
@@ -1157,17 +1229,9 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 
 	LOG_DEBUG_NEW("New connection id: {} to: {}:{} is just established", newConnection->GetId(), ipStr, port);
 
-	pthread_attr_t attr;
-	if (!AddPthreadAttributes(attr)) [[unlikely]] {
-		LOG_ERROR_NEW("Connection id: {} to: {}:{} is closed, pthread attributes are not created",
-			newConnection->GetId(), ipStr, port);
-		return {};
-	}
-
-	const auto connectionData{ CreatePthread < IsUsual ? Connection::Type::Outcome
-													   : Connection::Type::Manager
-				> (std::move(newConnection), std::move(ipStr), attr, ip, port, doReconnection) };
-	pthread_attr_destroy(&attr);
+	const auto connectionData{ CreatePthread < IsUsual
+			? Connection::Type::Outcome
+			: Connection::Type::Manager > (std::move(newConnection), std::move(ipStr), ip, port, doReconnection) };
 
 	if (connectionData != nullptr) [[likely]] {
 		if (m_state.load(std::memory_order_acquire) == State::Running) {
@@ -1182,9 +1246,15 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::OpenConnect
 
 template <Connection::Type Type>
 FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::CreatePthread(
-	std::unique_ptr<Connection>&& connection, SString<16>&& ipStr, const pthread_attr_t& pthreadAttr, const uint32_t ip,
-	const uint16_t port, const bool doReconnection) noexcept
+	std::unique_ptr<Connection>&& connection, SString<16>&& ipStr, const uint32_t ip, const uint16_t port,
+	const bool doReconnection) noexcept
 {
+	if (!m_pthreadAttributes.IsValid()) [[unlikely]] {
+		LOG_ERROR_NEW("Pthread is not created, pthread attributes are not valid, {} connection id: {}",
+			Connection::EnumToString(Type), connection->GetId());
+		return {};
+	}
+
 	const MSAPI::Lock::AtomicRW::Guard<Lock::READ> _{ m_closingConnectionsLock };
 
 	const auto id{ connection->GetId() };
@@ -1231,7 +1301,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::CreatePthre
 	while (true) {
 		m_alivePthreadsRWLock.ReadLock();
 		const auto result{ pthread_create(
-			&pthreadId, &pthreadAttr, &Connection::Data::Trampoline, pthreadConnectionData.get()) };
+			&pthreadId, &m_pthreadAttributes.Get(), &Connection::Data::Trampoline, pthreadConnectionData.get()) };
 
 		if (result == 0) [[likely]] {
 			(void)pthreadConnectionData.release();
@@ -1384,8 +1454,13 @@ FORCE_INLINE [[nodiscard]] bool Server::RegisterConnectionFromIp(const uint64_t 
 		}
 
 		const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_ipToLimitsRWLock };
-		ipLimits = std::make_shared<IpLimits>(m_maxConnectionsOneIp);
-		m_ipToLimits.emplace(ipHash, ipLimits);
+		// Limits can be created by another registration from the same ip between the read locked lookup above and
+		// taking this write lock, then the existing limits are used
+		const auto [it, isInserted] = m_ipToLimits.try_emplace(ipHash);
+		if (isInserted) {
+			it->second = std::make_shared<IpLimits>(m_maxConnectionsOneIp);
+		}
+		ipLimits = it->second;
 	} while (false);
 
 	bool result [[indeterminate]];
@@ -1423,12 +1498,17 @@ FORCE_INLINE void Server::UnregisterConnectionFromIp(const uint64_t id, const st
 	}
 
 	const Lock::AtomicRW::Guard<Lock::WRITE> _{ ipLimits->GetLock() };
-	(void)ipLimits->RemoveConnectionId(id);
+	ipLimits->RemoveConnectionId(id);
 }
 
 template <Connection::Type Type>
 FORCE_INLINE void* Server::PthreadRecvLoop(const std::shared_ptr<Connection::Data>& connectionData)
 {
+	// Pthread is not cancelable, it is finished cooperatively and cleans up its resources itself
+	if (const auto result{ pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr) }; result != 0) [[unlikely]] {
+		LOG_ERROR_NEW("Failed to disable pthread cancellation. Error №{}: {}", result, std::strerror(result));
+	}
+
 	// Read lock is incremented before attempting to create pthread and decremented on create failure
 	// In bad path there is no locking, on good path this guard is a guarantee it will be unlocked
 	struct Guard {
@@ -1442,9 +1522,6 @@ FORCE_INLINE void* Server::PthreadRecvLoop(const std::shared_ptr<Connection::Dat
 		FORCE_INLINE ~Guard() noexcept { rwLock.ReadUnlock(); }
 	};
 	const Guard _{ m_alivePthreadsRWLock };
-
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
-	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, nullptr);
 
 	const auto id{ connectionData->GetConnectionId() };
 	const auto pid{ gettid() };
