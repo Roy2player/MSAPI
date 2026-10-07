@@ -461,8 +461,6 @@ FORCE_INLINE [[nodiscard]] uint64_t Connection::Recv(void* const buffer, const u
 		}
 
 		if (result == 0) [[likely]] {
-			// Not sure if it is required
-			// pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
 			m_isUsable.store(false, std::memory_order_release);
 			LOG_INFO_NEW("Socket is closed by other side, connection id: {}", m_id);
 			return 0;

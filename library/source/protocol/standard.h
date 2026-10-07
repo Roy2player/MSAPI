@@ -21,6 +21,10 @@
  * objects contains cipher which can be used to identify messages for different purposes.
  *
  * @note Ciphers from 934875930 to 934875939 are reserved for standard protocol.
+ *
+ * @todo Data is encoded in native byte order and layout of the machine, so the protocol works only between machines
+ * with the same endianness. Endianness of both sides must be verified, e.g. on connection hello, otherwise the protocol
+ * must not be used.
  */
 
 #ifndef MSAPI_PROTOCOL_STANDARD_H
@@ -76,6 +80,10 @@ public:
 	 * @param buffer Buffer with data.
 	 *
 	 * @test Yes.
+	 *
+	 * @todo Values are read by *reinterpret_cast<const type*>(buffer + offset), but the offset is generally not aligned
+	 * for the type, as values follow a 1 byte type specifier and a 8 bytes key, which is undefined behavior and works
+	 * only on platforms allowing unaligned access, as x86-64. Values should be read by memcpy into a local variable.
 	 */
 	Data(const DataHeader& header, const void* buffer);
 
@@ -222,8 +230,10 @@ public:
 	}
 
 	/**************************
-	 * @brief Encode contained data to buffer. Message template is: (size_t) cipher, (size_t) buffer size, (size_t) key,
-	 * (short) type specifier [(T) value, [(size_t) string size, (char) value..]]
+	 * @brief Encode contained data to buffer. Message template is: (size_t) cipher, (size_t) buffer size, then for each
+	 * item: (int8_t) type specifier, (size_t) key and value. Value is (T) value for primitive types, Timer, Duration
+	 * and optional with value, (size_t) string size and (char) characters for not empty string, table buffer for table.
+	 * Empty string and empty optional have no value, they are defined by their type specifier.
 	 *
 	 * @attention Freeing up memory after using is required.
 	 *

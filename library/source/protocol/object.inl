@@ -46,6 +46,14 @@
  * @todo Filters can be || and &&.
  * @todo Allow number of different filters.
  * @todo typeid.hash_code() should be replaced with custom hash function.
+ * @todo Objects are transferred in native byte order and layout of the machine, so the protocol works only between
+ * machines with the same endianness. Endianness of both sides must be verified, e.g. on connection hello, otherwise the
+ * protocol must not be used.
+ * @todo Objects are copied to and read from the buffer as raw bytes, but they are constrained only by std::is_class_v.
+ * Objects must be constrained by std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>: trivially copyable
+ * makes copying of object bytes well defined and excludes owning members and virtual functions, standard layout makes
+ * the memory layout predictable between separately compiled programs. Raw pointers, padding bytes, platform dependent
+ * type sizes and alignment are not detected by these traits and must be avoided in objects.
  */
 
 #ifndef MSAPI_PROTOCOL_OBJECT_INL
@@ -235,6 +243,11 @@ public:
 	 * @pre buffer != nullptr;
 	 *
 	 * @test Yes.
+	 *
+	 * @todo Object pointer is aligned, as buffer is allocated by malloc and object follows the 32 bytes header, but the
+	 * object lifetime is never started in the buffer: bytes are written by recv, which does not create objects
+	 * implicitly, so access via reinterpret_cast is formally undefined behavior. Object should be accessed via
+	 * std::start_lifetime_as<Object>.
 	 */
 	template <typename Object>
 	FORCE_INLINE static void GetPointerToObjectInBuffer(const Object** ptr, const void* buffer) noexcept;

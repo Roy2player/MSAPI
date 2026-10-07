@@ -62,6 +62,7 @@ private:
 	// { port, domain }
 	std::map<uint64_t, std::pair<uint16_t, std::string>> m_connectionsDataToId;
 	AppData m_appData;
+	Server::PthreadAttributes m_pthreadAttributes;
 	std::atomic<int32_t> m_connectionIdGenerator{};
 	bool m_isRan{};
 
@@ -219,23 +220,21 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uin
 	// Because function can be used directly
 	m_ports.insert(port);
 
-	pthread_attr_t attr;
-	if (!Server::AddPthreadAttributes(attr)) [[unlikely]] {
+	if (!m_pthreadAttributes.IsValid()) [[unlikely]] {
 		m_ports.erase(port);
-		LOG_ERROR_NEW("Pthread attributes are not created for daemon, port: {}", port);
+		LOG_ERROR_NEW("Pthread for daemon is not created, pthread attributes are not valid, port: {}", port);
 		return false;
 	}
 
 	m_appData = { &m_application, &m_pthreadLock, ip, port };
-	if (const auto result{ pthread_create(&m_pthread, &attr, StartingRequest, static_cast<void*>(&m_appData)) };
+	if (const auto result{
+			pthread_create(&m_pthread, &m_pthreadAttributes.Get(), StartingRequest, static_cast<void*>(&m_appData)) };
 		result != 0) {
 
 		LOG_ERROR("Pthread for daemon is not created. Error №" + _S(result) + ": " + std::strerror(result));
-		pthread_attr_destroy(&attr);
 		return false;
 	}
 
-	pthread_attr_destroy(&attr);
 	LOG_DEBUG("Pthread for daemon is created successfully");
 
 	while (true) {
@@ -293,10 +292,13 @@ FORCE_INLINE [[nodiscard]] [[nodiscard]] std::unique_ptr<Daemon<T>> Daemon<T>::C
 
 template <typename T> FORCE_INLINE [[nodiscard]] void* Daemon<T>::StartingRequest(void* appData)
 {
+	// Pthread is not cancelable, it is finished cooperatively and cleans up its resources itself
+	if (const auto result{ pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr) }; result != 0) [[unlikely]] {
+		LOG_ERROR_NEW("Failed to disable pthread cancellation. Error №{}: {}", result, std::strerror(result));
+	}
+
 	const auto pid{ gettid() };
 	LOG_DEBUG_NEW("Pthread function is called, PID: {}", pid);
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
-	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, nullptr);
 	const auto* serverParameters{ static_cast<Daemon<T>::AppData*>(appData) };
 	T* server{ serverParameters->app };
 	Lock::Atomic::Guard _{ *serverParameters->lock };
