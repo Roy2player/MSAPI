@@ -29,8 +29,10 @@
  * 2.3. Server: unregistered connection frees space for a new one, duplicate connection id is denied;
  * 2.4. Server: unregistering from unknown IP and unknown connection id does not change limits;
  * 2.5. Server: changed limit of connections from one IP is applied to a new IP;
+ * 2.6. Server: IP limits are kept when the last connection is unregistered;
  * 3.1. Server: income connection data is released after peer closes connection and pthread recv loop is finished,
- * connection is removed from server and IP limits.
+ * connection is removed from server and IP limits;
+ * 4.1. Pthread attributes: attributes are valid after construction and have detached state.
  */
 
 #ifndef MSAPI_UNIT_TEST_SERVER_INL
@@ -126,14 +128,13 @@ public:
 	 *
 	 * @param socket Connected socket, ownership is transferred to the connection.
 	 * @param ip IP address.
-	 * @param attr Initialized pthread attributes.
 	 *
 	 * @locking Perform locking in Server::CreatePthread call.
 	 *
 	 * @return Connection data on success, nullptr otherwise.
 	 */
 	FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> CreateIncomeConnection(
-		int32_t socket, std::string_view ip, const pthread_attr_t& attr) noexcept;
+		int32_t socket, std::string_view ip) noexcept;
 
 	/**************************
 	 * @locking Perform locking in Server::GetConnectionsCount call.
@@ -210,7 +211,7 @@ FORCE_INLINE void ServerObserver::SetMaxConnectionsOneIp(const uint64_t value) n
 }
 
 FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> ServerObserver::CreateIncomeConnection(
-	const int32_t socket, const std::string_view ip, const pthread_attr_t& attr) noexcept
+	const int32_t socket, const std::string_view ip) noexcept
 {
 	SString<16> ipStr;
 	if (!ipStr.Copy(ip)) [[unlikely]] {
@@ -219,7 +220,7 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> ServerObserver::Cre
 
 	// Friend access
 	return m_server.CreatePthread<Connection::Type::Income>(
-		std::make_unique<Connection>(socket), std::move(ipStr), attr, /*ip=*/0, /*port=*/0, /*doReconnection=*/false);
+		std::make_unique<Connection>(socket), std::move(ipStr), /*ip=*/0, /*port=*/0, /*doReconnection=*/false);
 }
 
 FORCE_INLINE [[nodiscard]] uint64_t ServerObserver::GetConnectionsCount() const noexcept
@@ -342,18 +343,21 @@ FORCE_INLINE [[nodiscard]] bool Server()
 	RETURN_IF_FALSE(t.Assert(observer.GetConnectionsCountFromIp(THIRD_IP), std::optional<uint64_t>{ 2 },
 		"Count of connections from third IP is changed limit"));
 
+	// 2.6. Server: IP limits are kept when the last connection is unregistered
+	observer.UnregisterConnectionFromIp(6, SECOND_IP);
+	RETURN_IF_FALSE(t.Assert(observer.GetConnectionsCountFromIp(SECOND_IP), std::optional<uint64_t>{ 0 },
+		"IP limits are kept on unregistration of the last connection"));
+	RETURN_IF_FALSE(t.Assert(observer.GetIpLimitsCount(), 3, "Count of IP limits is not changed"));
+
 	// 3.1. Server: income connection data is released after peer closes connection and pthread recv loop is finished
 	{
 		constexpr std::string_view FOURTH_IP{ "172.16.0.1" };
 		int32_t sockets[2]{};
 		RETURN_IF_FALSE(t.Assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0, "Socket pair is created"));
-		pthread_attr_t attr;
-		RETURN_IF_FALSE(t.Assert(MSAPI::Server::AddPthreadAttributes(attr), true, "Pthread attributes are created"));
 
 		std::weak_ptr<Connection::Data> weakConnectionData;
 		{
-			const auto connectionData{ observer.CreateIncomeConnection(sockets[0], FOURTH_IP, attr) };
-			(void)pthread_attr_destroy(&attr);
+			const auto connectionData{ observer.CreateIncomeConnection(sockets[0], FOURTH_IP) };
 			RETURN_IF_FALSE(t.Assert(connectionData != nullptr, true, "Income connection is created"));
 			weakConnectionData = connectionData;
 		}
@@ -372,6 +376,16 @@ FORCE_INLINE [[nodiscard]] bool Server()
 		RETURN_IF_FALSE(t.Assert(observer.GetConnectionsCountFromIp(FOURTH_IP), std::optional<uint64_t>{ 0 },
 			"Connection is unregistered from IP limits"));
 		RETURN_IF_FALSE(t.Assert(fcntl(sockets[0], F_GETFD) == -1 && errno == EBADF, true, "Descriptor is closed"));
+	}
+
+	// 4.1. Pthread attributes: attributes are valid after construction and have detached state
+	{
+		const MSAPI::Server::PthreadAttributes attributes;
+		RETURN_IF_FALSE(t.Assert(attributes.IsValid(), true, "Pthread attributes are valid after construction"));
+		int32_t detachState{};
+		RETURN_IF_FALSE(t.Assert(
+			pthread_attr_getdetachstate(&attributes.Get(), &detachState), 0, "Detach state of attributes is read"));
+		RETURN_IF_FALSE(t.Assert(detachState, PTHREAD_CREATE_DETACHED, "Pthread attributes have detached state"));
 	}
 
 	return t.Passed<bool>();
