@@ -348,8 +348,9 @@ public:
 	FORCE_INLINE void Start(uint32_t ip, uint16_t port) noexcept;
 
 	/**************************
-	 * @brief Close connections, cancel child pthreads and clear containers. If was in running state - set state to
-	 * Stopping and close main listening socket which is an interrupt condition for main accepting loop.
+	 * @brief Close connections, which finishes recv loops of child pthreads, and clear containers. If was in running
+	 * state - set state to Stopping and close main listening socket which is an interrupt condition for main accepting
+	 * loop. Child pthreads are not canceled, they exit by themselves after their recv loops are finished.
 	 *
 	 * @attention This function does not wait for pthreads to be finished as it can be called inside one.
 	 *
@@ -605,7 +606,9 @@ private:
 	 * @brief Clear containers, shutdown and close connection. Perform attempt to reconnection for outcome connection
 	 * and call reconnection callback on success.
 	 *
-	 * @attention Related to connection recv loop pthread is canceled asynchronously.
+	 * @attention Related to connection recv loop pthread is not canceled. Shutdown of the connection wakes the pthread
+	 * blocked on recv, its recv loop finishes and the pthread exits by itself, see PthreadRecvLoop. If called from the
+	 * recv loop pthread itself, the pthread exits after the recv loop returns.
 	 *
 	 * @tparam HasReconnectionPath If the reconnection path is included in function. This compilation time parameter is
 	 * required to simplify code inlining in CreatePthread path, where recursive inlining is a problem. There is
