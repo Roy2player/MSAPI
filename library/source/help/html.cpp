@@ -17,7 +17,6 @@
  */
 
 #include "html.h"
-#include "log.h"
 #include <iomanip>
 
 namespace MSAPI {
@@ -81,10 +80,11 @@ HTML
 HTML::HTML(const std::string_view buffer)
 {
 	Tag currentTag;
-	uint currentDepth{ 0 };
-	bool currentTagComment{ false };
-	bool commentWithDash{ false };
-	for (size_t index{ 0 }; index < buffer.size(); ++index) {
+	uint currentDepth{};
+	bool currentTagComment{};
+	bool commentWithDash{};
+
+	for (size_t index{}; index < buffer.size(); ++index) {
 		const char symbol = buffer[m_size];
 		++m_size;
 
@@ -122,7 +122,7 @@ HTML::HTML(const std::string_view buffer)
 					}
 
 					for (; index < currentTag.end; ++index) {
-						if (index - maxSizeMultiplier > maxTagSize) {
+						if (index - maxSizeMultiplier > MAX_TAG_SIZE) {
 							currentTag.valid = Valid::False;
 						}
 

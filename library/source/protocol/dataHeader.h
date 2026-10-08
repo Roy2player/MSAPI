@@ -19,6 +19,7 @@
 #ifndef MSAPI_PROTOCOL_DATA_HEADER_H
 #define MSAPI_PROTOCOL_DATA_HEADER_H
 
+#include "../help/log.h"
 #include <iostream>
 
 namespace MSAPI {
@@ -51,6 +52,11 @@ public:
 	 * @test Yes.
 	 */
 	DataHeader(uint64_t cipher) noexcept;
+
+	FORCE_INLINE DataHeader(const DataHeader&) noexcept = default;
+	FORCE_INLINE DataHeader(DataHeader&&) noexcept = default;
+	FORCE_INLINE DataHeader& operator=(const DataHeader&) noexcept = default;
+	FORCE_INLINE DataHeader& operator=(DataHeader&&) noexcept = default;
 
 	/**************************
 	 * @return Cipher of data.

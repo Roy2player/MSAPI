@@ -47,7 +47,7 @@ template <typename T> class ContinuousAllocator {
 private:
 	static inline const constexpr int_fast16_t pageSize{ 4096 };
 	static inline const constexpr int_fast16_t freeNodesSize{ 100 };
-	static std::atomic<bool> m_ready;
+	static std::atomic<bool> READY;
 
 public:
 	struct FreeNodes {
@@ -115,11 +115,11 @@ public:
 			ready.store(true);                                                                                         \
 			ready.notify_one();                                                                                        \
 		}                                                                                                              \
-	} tmp{ m_ready };                                                                                                  \
+	} tmp{ READY };                                                                                                    \
                                                                                                                        \
-	m_ready.wait(false);                                                                                               \
-	m_ready.store(false);                                                                                              \
-	m_ready.notify_one();
+	READY.wait(false);                                                                                                 \
+	READY.store(false);                                                                                                \
+	READY.notify_one();
 
 		TMP_MSAPI_CONTINUOUS_ALLOCATOR_BLOCK_OR_WAIT;
 
@@ -144,8 +144,8 @@ public:
 		TMP_MSAPI_CONTINUOUS_ALLOCATOR_BLOCK_OR_WAIT;
 
 		{
-			Node* emptyFreeNode{ nullptr };
-			size_t index{ 0 };
+			Node* emptyFreeNode{};
+			size_t index{};
 			const size_t size{ m_freeNodes.size() };
 			const uintptr_t tail{ begin + toDeallocate };
 
@@ -220,8 +220,9 @@ private:
 		if constexpr (Initialization) {
 			m_buffer = aligned_alloc(pageSize, pageSize);
 			if (m_buffer == nullptr) [[unlikely]] {
-				LOG_ERROR("Cannot allocate alligned memory of size: " + _S(pageSize)
-					+ " bytes with alignment: " + _S(pageSize) + " for continuous allocator");
+				LOG_ERROR_NEW(
+					"Cannot allocate alligned memory of size: {} bytes with alignment: {} for continuous allocator",
+					pageSize, pageSize);
 				throw std::bad_alloc{};
 			}
 
@@ -237,7 +238,7 @@ private:
 	m_bufferSize += bytesAdditionally;                                                                                 \
 	m_buffer = realloc(m_buffer, m_bufferSize);                                                                        \
 	if (m_buffer == nullptr) [[unlikely]] {                                                                            \
-		LOG_ERROR("Cannot reallocate memory of size: " + _S(m_bufferSize) + " bytes for continuous allocator");        \
+		LOG_ERROR_NEW("Cannot reallocate memory of size: {} bytes for continuous allocator", m_bufferSize);            \
 		throw std::bad_alloc{};                                                                                        \
 	}                                                                                                                  \
                                                                                                                        \

@@ -79,6 +79,13 @@ private:
 		const int32_t m_limit{ 50000 };
 
 	public:
+		FORCE_INLINE PortGenerator() noexcept = default;
+
+		PortGenerator(const PortGenerator&) = delete;
+		PortGenerator(PortGenerator&&) = delete;
+		PortGenerator& operator=(const PortGenerator&) = delete;
+		PortGenerator& operator=(PortGenerator&&) = delete;
+
 		/**************************
 		 * @return Unique port.
 		 *
@@ -138,6 +145,7 @@ private:
 		std::string metadata;
 		MSAPI::Json metadataJson;
 
+	public:
 		/**************************
 		 * @brief Construct a new Installed App Data object without view.
 		 *
@@ -160,6 +168,11 @@ private:
 			, bin{ bin }
 		{
 		}
+
+		FORCE_INLINE InstalledAppData(const InstalledAppData&) = default;
+		FORCE_INLINE InstalledAppData(InstalledAppData&&) noexcept = default;
+		FORCE_INLINE InstalledAppData& operator=(const InstalledAppData&) = default;
+		FORCE_INLINE InstalledAppData& operator=(InstalledAppData&&) noexcept = default;
 	};
 
 	/**************************
@@ -172,6 +185,7 @@ private:
 		const std::shared_ptr<InstalledAppData> appData;
 		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 
+	public:
 		/**************************
 		 * @brief Construct a new Created App Data object.
 		 *
@@ -180,6 +194,11 @@ private:
 		 * @param appData Pointer to installed app data.
 		 */
 		CreatedAppData(size_t hash, int pid, const std::shared_ptr<InstalledAppData>& appData);
+
+		FORCE_INLINE CreatedAppData(const CreatedAppData&) = default;
+		FORCE_INLINE CreatedAppData(CreatedAppData&&) noexcept = default;
+		CreatedAppData& operator=(const CreatedAppData&) = delete;
+		CreatedAppData& operator=(CreatedAppData&&) = delete;
 	};
 
 private:
@@ -204,6 +223,11 @@ public:
 	 * @brief Construct a new Manager object, check access to /bin/bash, register parameters.
 	 */
 	Manager();
+
+	Manager(const Manager&) = delete;
+	Manager(Manager&&) = delete;
+	Manager& operator=(const Manager&) = delete;
+	Manager& operator=(Manager&&) = delete;
 
 	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;

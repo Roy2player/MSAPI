@@ -45,6 +45,7 @@ Declarations
 struct FileGuard {
 	int32_t value{ -1 };
 
+public:
 	/**************************
 	 * @brief Open POSIX file descriptor.
 	 *
@@ -105,6 +106,7 @@ struct FileGuard {
 struct DirGuard {
 	DIR* value{};
 
+public:
 	/**************************
 	 * @brief Open directory.
 	 *
@@ -118,7 +120,7 @@ struct DirGuard {
 	 */
 	template <typename PathType>
 		requires StringableView<PathType>
-	FORCE_INLINE DirGuard(PathType path) noexcept;
+	FORCE_INLINE explicit DirGuard(PathType path) noexcept;
 
 	/**************************
 	 * @test Yes.
@@ -200,7 +202,7 @@ FORCE_INLINE [[nodiscard]] bool HasPath(PathType path);
  *
  * @test Yes.
  */
-consteval int32_t SuggestFlags(const bool append);
+FORCE_INLINE [[nodiscard]] consteval int32_t SuggestFlags(bool append);
 
 /**************************
  * @brief Save binary data in file.
@@ -226,10 +228,10 @@ template <bool Append = false, int32_t Mode = 0644, bool Multiple = false, typen
 FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, PathType pathOrFd);
 
 constexpr bool APPEND{ true };
-constexpr bool OVERWRITE{ false };
+constexpr bool OVERWRITE{};
 
 constexpr bool MULTIPLE{ true };
-constexpr bool SINGLE{ false };
+constexpr bool SINGLE{};
 
 /**************************
  * @brief Save array of binary data in file.
@@ -314,7 +316,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, PathType pathOrFd
  */
 template <typename T, uint64_t PSM>
 	requires(std::is_integral_v<T> || std::is_floating_point_v<T>)
-consteval uint64_t SuggestPsm();
+FORCE_INLINE [[nodiscard]] consteval uint64_t SuggestPsm();
 
 /**************************
  * @brief Save primitive type objects in file with specific separator.
@@ -344,7 +346,7 @@ template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint6
 	requires(std::forward_iterator<typename T<TT>::iterator>
 		&& (std::is_same_v<PathType, int32_t> || StringableView<PathType>)
 		&& (std::is_integral_v<TT> || std::is_floating_point_v<TT>))
-[[nodiscard]] bool SavePrimitives(const T<TT>& objects, PathType pathOrFd, char separator);
+FORCE_INLINE [[nodiscard]] bool SavePrimitives(const T<TT>& objects, PathType pathOrFd, char separator);
 
 /**************************
  * @brief Saves primitive values from a half-open forward iterator range.
@@ -414,7 +416,7 @@ FORCE_INLINE [[nodiscard]] bool SaveStr(std::string_view str, PathType path);
  */
 template <typename T, typename PathType>
 	requires StringableView<PathType>
-[[nodiscard]] bool ReadBinary(T* object, PathType path);
+FORCE_INLINE [[nodiscard]] bool ReadBinary(T* object, PathType path);
 
 /**************************
  * @brief Read array of binary data from file.
@@ -432,10 +434,13 @@ template <typename T, typename PathType>
  * @return True if read was successful, false otherwise.
  *
  * @test Yes.
+ *
+ * @todo Support reading into associative containers of pairs if the object has GetKey() method, e.g. map of key to
+ * object, where the last record of a key wins. That removes the temporary container in Persistence::Pair::ReadImpl.
  */
 template <template <typename> typename T, typename S, typename PathType>
 	requires StringableView<PathType>
-[[nodiscard]] bool ReadBinaries(T<S>& container, PathType path);
+FORCE_INLINE [[nodiscard]] bool ReadBinaries(T<S>& container, PathType path);
 
 /**************************
  * @brief Read string until end of the file.
@@ -483,7 +488,7 @@ template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(std::str
  */
 template <typename SourcePathType, typename DestinationPathType>
 	requires StringableView<SourcePathType> && StringableView<DestinationPathType>
-[[nodiscard]] bool CopyFile(SourcePathType from, DestinationPathType to);
+FORCE_INLINE [[nodiscard]] bool CopyFile(SourcePathType from, DestinationPathType to);
 
 /**************************
  * @brief Create directory with all parent directories.
@@ -523,7 +528,7 @@ enum class FileType : int16_t {
  *
  * @test Yes.
  */
-FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const FileType type);
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(FileType type);
 
 /**************************
  * @brief List directory content with specific type and append to provided container. "." and ".." are excluded from
@@ -646,7 +651,7 @@ FORCE_INLINE [[nodiscard]] bool HasPath(const PathType path)
 	return false;
 }
 
-consteval int32_t SuggestFlags(const bool append)
+FORCE_INLINE [[nodiscard]] consteval int32_t SuggestFlags(const bool append)
 {
 	int32_t flags{ O_WRONLY | O_CREAT };
 
@@ -838,7 +843,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, const PathType pa
 
 template <typename T, uint64_t PSM>
 	requires(std::is_integral_v<T> || std::is_floating_point_v<T>)
-consteval uint64_t SuggestPsm()
+FORCE_INLINE [[nodiscard]] consteval uint64_t SuggestPsm()
 {
 	constexpr auto size = sizeof(T);
 
@@ -1011,7 +1016,7 @@ template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, template <ty
 	requires(std::forward_iterator<typename T<TT>::iterator>
 		&& (std::is_same_v<PathType, int32_t> || StringableView<PathType>)
 		&& (std::is_integral_v<TT> || std::is_floating_point_v<TT>))
-[[nodiscard]] bool SavePrimitives(const T<TT>& objects, const PathType pathOrFd, const char separator)
+FORCE_INLINE [[nodiscard]] bool SavePrimitives(const T<TT>& objects, const PathType pathOrFd, const char separator)
 {
 	return SavePrimitives<Append, Mode, Buffer, PSM>(objects.begin(), objects.end(), pathOrFd, separator);
 }
@@ -1065,7 +1070,7 @@ FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const PathTy
 
 template <typename T, typename PathType>
 	requires StringableView<PathType>
-[[nodiscard]] bool ReadBinary(T* const object, const PathType path)
+FORCE_INLINE [[nodiscard]] bool ReadBinary(T* const object, const PathType path)
 {
 	if (!HasPath(path)) [[unlikely]] {
 		LOG_ERROR_NEW("Can't find file to read data: {}", path);
@@ -1095,7 +1100,7 @@ template <typename T, typename PathType>
 
 template <template <typename> typename T, typename S, typename PathType>
 	requires StringableView<PathType>
-[[nodiscard]] bool ReadBinaries(T<S>& container, const PathType path)
+FORCE_INLINE [[nodiscard]] bool ReadBinaries(T<S>& container, const PathType path)
 {
 	if (!HasPath(path)) [[unlikely]] {
 		LOG_ERROR_NEW("Can't find file to read data: {}", path);
@@ -1299,7 +1304,7 @@ template <uint64_t Buffer> FORCE_INLINE [[nodiscard]] bool Remove(const std::str
 
 template <typename SourcePathType, typename DestinationPathType>
 	requires StringableView<SourcePathType> && StringableView<DestinationPathType>
-[[nodiscard]] bool CopyFile(const SourcePathType from, const DestinationPathType to)
+FORCE_INLINE [[nodiscard]] bool CopyFile(const SourcePathType from, const DestinationPathType to)
 {
 	FileGuard fdFrom{ from, O_RDONLY, 0 };
 	if (fdFrom.value == -1) [[unlikely]] {

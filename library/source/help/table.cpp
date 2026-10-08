@@ -102,7 +102,7 @@ TableData::TableData(const std::list<JsonNode>& rows, const std::vector<Standard
 		return;
 	}
 
-	size_t allocationStep{ 0 };
+	size_t allocationStep{};
 	for (const auto columnType : columnTypes) {
 		switch (columnType) {
 		case StandardType::Type::Int8:
@@ -244,7 +244,7 @@ TableData::TableData(const std::list<JsonNode>& rows, const std::vector<Standard
 	free(buffer);                                                                                                      \
 	return;
 
-		size_t index{ 0 };
+		size_t index{};
 		for (const auto& cell : *rowArray) {
 			const auto* cellVariant{ &cell.GetValue() };
 			switch (columnTypes[index]) {
@@ -457,7 +457,7 @@ std::string TableData::LookUpToJson(const std::vector<StandardType::Type>& colum
 
 	size_t offset{ sizeof(size_t) };
 	while (true) {
-		for (size_t index{ 0 };; ++index) {
+		for (size_t index{};; ++index) {
 			switch (columnTypes[index]) {
 			case StandardType::Type::Int8:
 

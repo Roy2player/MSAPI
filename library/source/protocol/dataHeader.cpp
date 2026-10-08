@@ -17,7 +17,6 @@
  */
 
 #include "dataHeader.h"
-#include "../help/log.h"
 #include <cstring>
 
 namespace MSAPI {

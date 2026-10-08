@@ -102,14 +102,19 @@ public:
 	enum class Level : int16_t { Undefined, ERROR, WARNING, INFO, DEBUG, PROTOCOL, Max };
 
 private:
-	bool m_active{ false };
-	bool m_separateDays{ false };
+	bool m_active{};
+	bool m_separateDays{};
 	bool m_toConsole;
 	bool m_toFile;
 	Level m_levelSave;
 	std::ofstream m_ofstreamLog;
 	std::string m_name;
 	std::string m_path;
+	Timer::Event m_timerToSeparate{ { [](int* parameter) {
+									   reinterpret_cast<Log*>(parameter)->Stop();
+									   reinterpret_cast<Log*>(parameter)->Start();
+								   } },
+		reinterpret_cast<int*>(this) };
 
 public:
 	/**************************
@@ -135,6 +140,11 @@ public:
 	 * @note Call Stop() inside
 	 */
 	~Log() noexcept;
+
+	Log(const Log&) = delete;
+	Log(Log&&) = delete;
+	Log& operator=(const Log&) = delete;
+	Log& operator=(Log&&) = delete;
 
 	/**************************
 	 * @brief Synchrony request to write str by particular level.
@@ -237,12 +247,6 @@ public:
 	static std::string_view EnumToString(Level level) noexcept;
 
 private:
-	Timer::Event m_timerToSeparate{ { [](int* parameter) {
-									   reinterpret_cast<Log*>(parameter)->Stop();
-									   reinterpret_cast<Log*>(parameter)->Start();
-								   } },
-		reinterpret_cast<int*>(this) };
-
 	/**************************
 	 * @return String interpretation of Level enum with static width between '<' and '>' symbols.
 	 */

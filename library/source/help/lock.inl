@@ -47,6 +47,7 @@ template <MutexT T> struct NamedMutex {
 	T mutex;
 	const std::string name;
 
+public:
 	/**************************
 	 * @brief Construct a new Named Mutex object.
 	 *
@@ -56,7 +57,7 @@ template <MutexT T> struct NamedMutex {
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE NamedMutex(std::string&& name) noexcept;
+	FORCE_INLINE explicit NamedMutex(std::string&& name) noexcept;
 };
 
 template <typename T, typename S>
@@ -87,7 +88,7 @@ concept MutexAndParams
  */
 template <typename T, typename S>
 	requires MutexAndParams<T, S>
-FORCE_INLINE [[nodiscard]] bool MutexInit(NamedMutex<T>& namedMutex, const S mutexattr);
+FORCE_INLINE [[nodiscard]] bool MutexInit(NamedMutex<T>& namedMutex, S mutexattr);
 
 /**************************
  * @brief Destroys an initialized POSIX mutex and reports errors without locking it.
@@ -126,10 +127,10 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexDestroy(NamedMutex<T>
 FORCE_INLINE [[nodiscard]] bool MutexLock(NamedMutex<pthread_mutex_t>& namedMutex);
 
 constexpr bool WRITE{ true };
-constexpr bool READ{ false };
+constexpr bool READ{};
 
 constexpr bool TRY_LOCK{ true };
-constexpr bool DO_LOCK{ false };
+constexpr bool DO_LOCK{};
 
 /**************************
  * @brief Lock read write mutex and print error if any occurred.
@@ -175,7 +176,7 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>&
  *
  * @attention The initialized named mutex outlives the guard. Guard lifetime defines the protected access scope.
  *
- * @concurrency Yes. Follows the underlying initialized POSIX mutex contract.
+ * @concurrency Yes.
  */
 class Guard {
 private:
@@ -193,7 +194,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Guard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept;
+	FORCE_INLINE explicit Guard(NamedMutex<pthread_mutex_t>& namedMutex) noexcept;
 
 	Guard(const Guard&) = delete;
 	Guard(Guard&&) = delete;
@@ -215,9 +216,11 @@ class AtomicRW;
 /**************************
  * @brief RAII guard that locks the read/write mutex on construction and unlocks it on destruction.
  *
+ * @attention The initialized named mutex outlives the guard. Guard lifetime defines the protected access scope.
+ *
  * @tparam Wr True for write lock, false for read lock.
  *
- * @concurrency Yes. Follows the initialized POSIX RW-lock contract; the named mutex outlives the guard.
+ * @concurrency Yes.
  */
 template <bool Wr> class GuardRW {
 private:
@@ -235,7 +238,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept;
+	FORCE_INLINE explicit GuardRW(NamedMutex<pthread_rwlock_t>& namedMutex) noexcept;
 
 	GuardRW(const GuardRW&) = delete;
 	GuardRW(GuardRW&&) = delete;
@@ -266,7 +269,9 @@ public:
 	/**************************
 	 * @brief RAII guard that locks the atomic lock on construction and unlocks it on destruction.
 	 *
-	 * @concurrency Yes. The owning lock outlives the guard; guard lifetime defines exclusive protected access.
+	 * @attention The owning lock outlives the guard. Guard lifetime defines exclusive protected access scope.
+	 *
+	 * @concurrency Yes.
 	 */
 	class Guard {
 	private:
@@ -282,7 +287,7 @@ public:
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE Guard(Atomic& atomicLock) noexcept;
+		FORCE_INLINE explicit Guard(Atomic& atomicLock) noexcept;
 
 		Guard(const Guard&) = delete;
 		Guard(Guard&&) = delete;
@@ -331,7 +336,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE bool TryLock() noexcept;
+	FORCE_INLINE [[nodiscard]] bool TryLock() noexcept;
 
 	/**************************
 	 * @brief Set lock to false and notify one thread.
@@ -362,9 +367,11 @@ public:
 	/**************************
 	 * @brief RAII guard that locks the atomic read/write lock on construction and unlocks it on destruction.
 	 *
+	 * @attention The owning lock outlives the guard. Guard lifetime defines the protected access scope.
+	 *
 	 * @tparam Wr True for write lock, false for read lock.
 	 *
-	 * @concurrency Yes. Guard lifetime defines protected access; the owning lock outlives the guard.
+	 * @concurrency Yes.
 	 */
 	template <bool Wr> class Guard {
 	private:
@@ -382,7 +389,7 @@ public:
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE Guard(AtomicRW& atomicRWLock) noexcept;
+		FORCE_INLINE explicit Guard(AtomicRW& atomicRWLock) noexcept;
 
 		Guard(const Guard&) = delete;
 		Guard(Guard&&) = delete;
@@ -488,28 +495,29 @@ FORCE_INLINE [[nodiscard]] bool MutexInit(NamedMutex<T>& namedMutex, const S mut
 	if (ret != 0) {
 		switch (ret) {
 		case EAGAIN:
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": The system lacked the necessary resources (other than memory) to initialize another mutex, "
-				  "error EAGAIN");
+			LOG_ERROR_NEW("Mutex name \"{}\": The system lacked the necessary resources (other than memory) to "
+						  "initialize another mutex, error EAGAIN",
+				namedMutex.name);
 			return false;
 		case ENOMEM:
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": Insufficient memory exists to initialize the mutex, error ENOMEM");
+			LOG_ERROR_NEW(
+				"Mutex name \"{}\": Insufficient memory exists to initialize the mutex, error ENOMEM", namedMutex.name);
 			return false;
 		case EPERM:
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": The caller does not have the privilege to perform the operation, error EPERM");
+			LOG_ERROR_NEW(
+				"Mutex name \"{}\": The caller does not have the privilege to perform the operation, error EPERM",
+				namedMutex.name);
 			return false;
 		case EBUSY:
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": The implementation has detected an attempt to reinitialize the object referenced by mutex, a "
-				  "previously initialized, but not yet destroyed, mutex, error EBUSY");
+			LOG_ERROR_NEW("Mutex name \"{}\": The implementation has detected an attempt to reinitialize the object "
+						  "referenced by mutex, a previously initialized, but not yet destroyed, mutex, error EBUSY",
+				namedMutex.name);
 			return false;
 		case EINVAL:
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": The value specified by attr is invalid, error EINVAL");
+			LOG_ERROR_NEW("Mutex name \"{}\": The value specified by attr is invalid, error EINVAL", namedMutex.name);
 			return false;
 		default:
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": Unknown error №" + _S(ret));
+			LOG_ERROR_NEW("Mutex name \"{}\": Unknown error №{}", namedMutex.name, ret);
 			return false;
 		}
 	}
@@ -533,16 +541,16 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexDestroy(NamedMutex<T>
 	if (ret != 0) {
 		switch (ret) {
 		case EBUSY:
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": The implementation has detected an attempt to destroy the object referenced by mutex while it "
-				  "is locked or referenced (for example, while being used in a pthread_cond_timedwait() or "
-				  "pthread_cond_wait()) by another thread, error EBUSY");
+			LOG_ERROR_NEW("Mutex name \"{}\": The implementation has detected an attempt to destroy the object "
+						  "referenced by mutex while it is locked or referenced (for example, while being used in a "
+						  "pthread_cond_timedwait() or pthread_cond_wait()) by another thread, error EBUSY",
+				namedMutex.name);
 			return false;
 		case EINVAL:
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": The value specified by mutex is invalid, error EINVAL");
+			LOG_ERROR_NEW("Mutex name \"{}\": The value specified by mutex is invalid, error EINVAL", namedMutex.name);
 			return false;
 		default:
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": Unknown error №" + _S(ret));
+			LOG_ERROR_NEW("Mutex name \"{}\": Unknown error №{}", namedMutex.name, ret);
 			return false;
 		}
 	}
@@ -555,9 +563,10 @@ FORCE_INLINE [[nodiscard]] bool MutexLock(NamedMutex<pthread_mutex_t>& namedMute
 	if (const auto ret{ pthread_mutex_lock(&namedMutex.mutex) }; ret != 0) {
 		switch (ret) {
 		case EINVAL:
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": The mutex was created with the protocol attribute having the value PTHREAD_PRIO_PROTECT and the "
-				  "calling thread's priority is higher than the mutex's current priority ceiling, error EINVAL");
+			LOG_ERROR_NEW("Mutex name \"{}\": The mutex was created with the protocol attribute having the value "
+						  "PTHREAD_PRIO_PROTECT and the calling thread's priority is higher than the mutex's current "
+						  "priority ceiling, error EINVAL",
+				namedMutex.name);
 			return false;
 		case EAGAIN:
 			LOG_ERROR_NEW("Mutex name \"{}\": The mutex could not be locked, because the maximum number of recursive "
@@ -565,11 +574,12 @@ FORCE_INLINE [[nodiscard]] bool MutexLock(NamedMutex<pthread_mutex_t>& namedMute
 				namedMutex.name);
 			return false;
 		case EDEADLK:
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": A deadlock condition was detected or the value of mutex is invalid, error EDEADLK");
+			LOG_ERROR_NEW(
+				"Mutex name \"{}\": A deadlock condition was detected or the value of mutex is invalid, error EDEADLK",
+				namedMutex.name);
 			return false;
 		default:
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": Unknown error №" + _S(ret));
+			LOG_ERROR_NEW("Mutex name \"{}\": Unknown error №{}", namedMutex.name, ret);
 			return false;
 		}
 	}
@@ -612,7 +622,7 @@ template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMu
 			}
 			return false;
 		case EINVAL: // rdlock, tryrdlock, wrlock and trywrlock
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": The value specified by mutex is invalid, error EINVAL");
+			LOG_ERROR_NEW("Mutex name \"{}\": The value specified by mutex is invalid, error EINVAL", namedMutex.name);
 			return false;
 		case EAGAIN: // rdlock and tryrdlock
 			LOG_ERROR_NEW("Mutex name \"{}\": The mutex could not be locked, because the maximum number of recursive "
@@ -620,11 +630,12 @@ template <bool Wr, bool Try> FORCE_INLINE [[nodiscard]] bool MutexRWLock(NamedMu
 				namedMutex.name);
 			return false;
 		case EDEADLK: // rdlock, wrlock and trywrlock
-			LOG_ERROR("Mutex name \"" + namedMutex.name
-				+ "\": A deadlock condition was detected or the value of mutex is invalid, error EDEADLK");
+			LOG_ERROR_NEW(
+				"Mutex name \"{}\": A deadlock condition was detected or the value of mutex is invalid, error EDEADLK",
+				namedMutex.name);
 			return false;
 		default:
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": Unknown error №" + _S(ret));
+			LOG_ERROR_NEW("Mutex name \"{}\": Unknown error №{}", namedMutex.name, ret);
 			return false;
 		}
 	}
@@ -648,7 +659,7 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>&
 	if (ret != 0) {
 		switch (ret) {
 		case EPERM:
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": The current thread does not own the mutex, error EPERM");
+			LOG_ERROR_NEW("Mutex name \"{}\": The current thread does not own the mutex, error EPERM", namedMutex.name);
 			return false;
 		case EAGAIN: // Only for pthread_mutex_t
 			LOG_ERROR_NEW("Mutex name \"{}\": The mutex could not be unlocked, because the maximum number of recursive "
@@ -656,10 +667,10 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool MutexUnlock(NamedMutex<T>&
 				namedMutex.name);
 			return false;
 		case EINVAL:
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": The value specified by mutex is invalid, error EINVAL");
+			LOG_ERROR_NEW("Mutex name \"{}\": The value specified by mutex is invalid, error EINVAL", namedMutex.name);
 			return false;
 		default:
-			LOG_ERROR("Mutex name \"" + namedMutex.name + "\": Unknown error №" + _S(ret));
+			LOG_ERROR_NEW("Mutex name \"{}\": Unknown error №{}", namedMutex.name, ret);
 			return false;
 		}
 	}
@@ -715,7 +726,7 @@ FORCE_INLINE void Atomic::Lock() noexcept
 	}
 }
 
-FORCE_INLINE bool Atomic::TryLock() noexcept { return !m_lock.test_and_set(std::memory_order_acquire); }
+FORCE_INLINE [[nodiscard]] bool Atomic::TryLock() noexcept { return !m_lock.test_and_set(std::memory_order_acquire); }
 
 FORCE_INLINE void Atomic::Unlock() noexcept
 {

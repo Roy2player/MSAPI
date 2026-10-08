@@ -128,7 +128,7 @@ FORCE_INLINE [[nodiscard]] bool Application();
  */
 class Application {
 public:
-	enum State : int16_t { Undefined, Paused, Running, Max };
+	enum class State : int16_t { Undefined, Paused, Running, Max };
 
 	/**************************
 	 * @brief Contains particular parameter and its requirements.
@@ -139,7 +139,7 @@ public:
 		std::variant<standardTypesPtr> m_value;
 		const std::optional<std::variant<integerTypes, floatTypes, Timer::Duration>> m_min;
 		const std::optional<std::variant<integerTypes, floatTypes, Timer::Duration>> m_max;
-		const bool m_canBeEmpty{ false };
+		const bool m_canBeEmpty{};
 		std::string m_error;
 		// For Duration
 		const Timer::Duration::Type m_durationType{ Timer::Duration::Type::Nanoseconds };
@@ -307,6 +307,11 @@ public:
 		{
 		}
 
+		FORCE_INLINE Parameter(const Parameter&) = default;
+		FORCE_INLINE Parameter(Parameter&&) = default;
+		Parameter& operator=(const Parameter&) = delete;
+		Parameter& operator=(Parameter&&) = delete;
+
 	private:
 		/**************************
 		 * @brief Validation of registered parameter's value. If value is not correct, error will be added and
@@ -447,6 +452,11 @@ public:
 
 #undef MSAPI_TMP_APPLICATION_PARAMETER_FILL_METADATA_FOR_ENUM
 
+		FORCE_INLINE ConstParameter(const ConstParameter&) = default;
+		FORCE_INLINE ConstParameter(ConstParameter&&) = default;
+		ConstParameter& operator=(const ConstParameter&) = delete;
+		ConstParameter& operator=(ConstParameter&&) = delete;
+
 		// For direct access to fields.
 		friend class Application;
 	};
@@ -469,6 +479,11 @@ public:
 	 * @brief Default destructor, call HandlePauseRequest.
 	 */
 	virtual ~Application();
+
+	Application(const Application&) = delete;
+	Application(Application&&) = delete;
+	Application& operator=(const Application&) = delete;
+	Application& operator=(Application&&) = delete;
 
 	/**************************
 	 * @brief Handle run request from External application. Already defined in Server class, but can be overridden.
@@ -917,7 +932,7 @@ protected:
 		}                                                                                                              \
 	}                                                                                                                  \
                                                                                                                        \
-	unsigned short port{ 0 };                                                                                          \
+	unsigned short port{};                                                                                             \
 	if (const auto* portStr{ parameters.GetValue("port") }; portStr != nullptr) {                                      \
 		if (const auto* value{ std::get_if<std::string>(&portStr->GetValue()) }; value != nullptr) {                   \
 			if (value->empty()) {                                                                                      \
@@ -958,7 +973,7 @@ protected:
 		std::cerr << "Invalid type of manager port in parameters, string is expected." << std::endl;                   \
 		return 1;                                                                                                      \
 	}                                                                                                                  \
-	unsigned short managerPort{ 0 };                                                                                   \
+	unsigned short managerPort{};                                                                                      \
 	{                                                                                                                  \
 		const auto error{                                                                                              \
 			std::from_chars(managerValue->data(), managerValue->data() + managerValue->size(), managerPort).ec         \

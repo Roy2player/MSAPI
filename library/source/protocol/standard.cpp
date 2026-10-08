@@ -42,7 +42,7 @@ Data::Data(const DataHeader& header, const void* buffer)
 {
 	size_t offset{ sizeof(size_t) * 2 };
 	StandardType::Type type [[indeterminate]];
-	size_t key{ 0 };
+	size_t key{};
 
 	while (m_bufferSize > offset) {
 		memcpy(&type, &static_cast<const char*>(buffer)[offset], sizeof(type));

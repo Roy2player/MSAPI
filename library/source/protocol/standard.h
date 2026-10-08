@@ -87,6 +87,11 @@ public:
 	 */
 	Data(const DataHeader& header, const void* buffer);
 
+	FORCE_INLINE Data(const Data&) = default;
+	FORCE_INLINE Data(Data&&) noexcept = default;
+	FORCE_INLINE Data& operator=(const Data&) = default;
+	FORCE_INLINE Data& operator=(Data&&) noexcept = default;
+
 	/**************************
 	 * @return Size of buffer.
 	 */

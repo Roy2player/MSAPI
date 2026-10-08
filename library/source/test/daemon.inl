@@ -40,20 +40,73 @@ Declarations
  */
 template <typename T> class Daemon {
 private:
-	struct AppData {
-		T* app{};
-		Lock::Atomic* lock{};
-		uint32_t ip{};
-		uint16_t port{};
+	/**************************
+	 * @brief Data passed to the daemon pthread to start the application.
+	 *
+	 * @concurrency No.
+	 */
+	class AppData {
+	private:
+		T* m_app{};
+		Lock::Atomic* m_lock{};
+		uint32_t m_ip{};
+		uint16_t m_port{};
 
+	public:
+		/**************************
+		 * @brief Construct a new AppData object.
+		 *
+		 * @param app Application to start.
+		 * @param lock Lock held by the pthread while the application is running.
+		 * @param ip IP address to listen.
+		 * @param port Port to listen.
+		 *
+		 * @test Yes.
+		 */
 		FORCE_INLINE AppData(T* app, Lock::Atomic* lock, uint32_t ip, uint16_t port) noexcept;
 
+		/**************************
+		 * @test Yes.
+		 */
 		FORCE_INLINE AppData() noexcept = default;
+
 		AppData(const AppData&) = delete;
 		AppData(AppData&&) = delete;
 		AppData& operator=(const AppData&) = delete;
 		FORCE_INLINE AppData& operator=(AppData&&) noexcept = default;
+
+		/**************************
+		 * @return Application to start.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE [[nodiscard]] T* GetApp() const noexcept;
+
+		/**************************
+		 * @return Lock held by the pthread while the application is running.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE [[nodiscard]] Lock::Atomic* GetLock() const noexcept;
+
+		/**************************
+		 * @return IP address to listen.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE [[nodiscard]] uint32_t GetIp() const noexcept;
+
+		/**************************
+		 * @return Port to listen.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE [[nodiscard]] uint16_t GetPort() const noexcept;
 	};
+
+private:
+	// Ports used by created daemons, to generate a unique port for each new daemon
+	static inline std::set<uint16_t> PORTS;
 
 private:
 	T m_application;
@@ -66,16 +119,18 @@ private:
 	std::atomic<int32_t> m_connectionIdGenerator{};
 	bool m_isRan{};
 
-	static inline std::set<uint16_t> m_ports;
-
 public:
 	/**************************
 	 * @brief Construct a new Daemon for T.
+	 *
+	 * @test Yes.
 	 */
-	template <typename... Args> FORCE_INLINE Daemon(Args&&... args);
+	template <typename... Args> FORCE_INLINE explicit Daemon(Args&&... args);
 
 	/**************************
 	 * @brief Destroy the Daemon for T and remove port from used ports.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE ~Daemon();
 
@@ -94,6 +149,8 @@ public:
 	 *
 	 * @todo Check if domain is valid and if it is IP (mean ConnectionToDomainOrIp).
 	 * @todo Store by port/ip 64-bit value
+	 *
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE [[nodiscard]] std::optional<int> ConnectToDomain(uint16_t port, const std::string& domain);
 
@@ -105,16 +162,22 @@ public:
 	 * @param port Port to listen.
 	 *
 	 * @return True if server started, false in another way.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] bool Start(uint32_t ip, uint16_t port);
 
 	/**************************
 	 * @return Application.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] T& GetApp();
 
 	/**************************
 	 * @return Port of application.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] uint16_t GetPort() const;
 
@@ -128,6 +191,8 @@ public:
 	 * @param args Arguments for Daemon type.
 	 *
 	 * @return Unique pointer to new Daemon or empty if something went wrong.
+	 *
+	 * @test Yes.
 	 */
 	template <typename... Args>
 	static FORCE_INLINE [[nodiscard]] std::unique_ptr<Daemon<T>> Create(std::string&& name, Args&&... args);
@@ -138,8 +203,10 @@ public:
 	 * @param appData Info to manage application.
 	 *
 	 * @return nullptr.
+	 *
+	 * @test Yes.
 	 */
-	static void* StartingRequest(void* appData);
+	FORCE_INLINE [[nodiscard]] static void* StartingRequest(void* appData);
 };
 
 /*---------------------------------------------------------------------------------
@@ -153,11 +220,25 @@ AppData
 template <typename T>
 FORCE_INLINE Daemon<T>::AppData::AppData(
 	T* const app, Lock::Atomic* const lock, const uint32_t ip, const uint16_t port) noexcept
-	: app{ app }
-	, lock{ lock }
-	, ip{ ip }
-	, port{ port }
+	: m_app{ app }
+	, m_lock{ lock }
+	, m_ip{ ip }
+	, m_port{ port }
 {
+}
+
+template <typename T> FORCE_INLINE [[nodiscard]] T* Daemon<T>::AppData::GetApp() const noexcept { return m_app; }
+
+template <typename T> FORCE_INLINE [[nodiscard]] Lock::Atomic* Daemon<T>::AppData::GetLock() const noexcept
+{
+	return m_lock;
+}
+
+template <typename T> FORCE_INLINE [[nodiscard]] uint32_t Daemon<T>::AppData::GetIp() const noexcept { return m_ip; }
+
+template <typename T> FORCE_INLINE [[nodiscard]] uint16_t Daemon<T>::AppData::GetPort() const noexcept
+{
+	return m_port;
 }
 
 /*---------------------------------------------------------------------------------
@@ -167,7 +248,7 @@ Daemon
 template <typename T>
 template <typename... Args>
 FORCE_INLINE Daemon<T>::Daemon(Args&&... args)
-	: m_application(std::forward<Args>(args)...)
+	: m_application{ std::forward<Args>(args)... }
 {
 }
 
@@ -176,7 +257,7 @@ template <typename T> FORCE_INLINE Daemon<T>::~Daemon()
 	if (m_isRan) {
 		m_application.HandlePauseRequest();
 		m_application.Server::Stop();
-		m_ports.erase(m_appData.port);
+		PORTS.erase(m_appData.GetPort());
 	}
 }
 
@@ -205,7 +286,7 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uin
 	const auto stoppedStateCount{ m_application.Server::GetStoppedStateCount() };
 
 	if (state == Server::State::Running) {
-		LOG_ERROR("Application is in running state, port: " + _S(port));
+		LOG_ERROR_NEW("Application is in running state, port: {}", port);
 		return false;
 	}
 
@@ -213,25 +294,25 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uin
 		{
 			Lock::Atomic::Guard _{ m_pthreadLock };
 		}
-		m_ports.erase(m_appData.port);
+		PORTS.erase(m_appData.GetPort());
 		m_isRan = false;
 	}
 
 	// Because function can be used directly
-	m_ports.insert(port);
+	PORTS.insert(port);
 
 	if (!m_pthreadAttributes.IsValid()) [[unlikely]] {
-		m_ports.erase(port);
+		PORTS.erase(port);
 		LOG_ERROR_NEW("Pthread for daemon is not created, pthread attributes are not valid, port: {}", port);
 		return false;
 	}
 
-	m_appData = { &m_application, &m_pthreadLock, ip, port };
+	m_appData = AppData{ &m_application, &m_pthreadLock, ip, port };
 	if (const auto result{
 			pthread_create(&m_pthread, &m_pthreadAttributes.Get(), StartingRequest, static_cast<void*>(&m_appData)) };
 		result != 0) {
 
-		LOG_ERROR("Pthread for daemon is not created. Error №" + _S(result) + ": " + std::strerror(result));
+		LOG_ERROR_NEW("Pthread for daemon is not created. Error №{}: {}", result, std::strerror(result));
 		return false;
 	}
 
@@ -245,44 +326,43 @@ template <typename T> FORCE_INLINE [[nodiscard]] bool Daemon<T>::Start(const uin
 		}
 
 		if (stoppedStateCount != m_application.Server::GetStoppedStateCount()) {
-			LOG_ERROR("Stopped state count is increased, port: " + _S(port));
+			LOG_ERROR_NEW("Stopped state count is increased, port: {}", port);
 			break;
 		}
 
 		std::this_thread::sleep_for(std::chrono::microseconds(50));
 	};
 
-	m_ports.erase(port);
+	PORTS.erase(port);
 	return false;
 }
 
 template <typename T> FORCE_INLINE [[nodiscard]] T& Daemon<T>::GetApp() { return m_application; }
 
-template <typename T> FORCE_INLINE [[nodiscard]] uint16_t Daemon<T>::GetPort() const { return m_appData.port; }
+template <typename T> FORCE_INLINE [[nodiscard]] uint16_t Daemon<T>::GetPort() const { return m_appData.GetPort(); }
 
 template <typename T>
 template <typename... Args>
-FORCE_INLINE [[nodiscard]] [[nodiscard]] std::unique_ptr<Daemon<T>> Daemon<T>::Create(
-	std::string&& name, Args&&... args)
+FORCE_INLINE [[nodiscard]] std::unique_ptr<Daemon<T>> Daemon<T>::Create(std::string&& name, Args&&... args)
 {
 	auto daemon{ std::make_unique<Daemon<T>>(std::forward<Args>(args)...) };
 	daemon->GetApp().SetName(name);
 	std::mt19937 mersenne{ UINT64(Timer{}.GetNanoseconds()) };
 	auto port{ static_cast<uint16_t>(mersenne() % (65535 - 3000) + 3000) };
-	int32_t counter{ 0 };
+	int32_t counter{};
 	do {
-		if (m_ports.insert(port).second) {
+		if (PORTS.insert(port).second) {
 			break;
 		}
 		port = static_cast<uint16_t>(mersenne() % (65535 - 3000) + 3000);
 
 		if (++counter >= 50000) {
-			LOG_ERROR("Cannot generate a unique port for app: " + name);
+			LOG_ERROR_NEW("Cannot generate a unique port for app: {}", name);
 			return {};
 		}
 	} while (true);
 
-	LOG_DEBUG("Creating application name: " + name + ", port: " + _S(port));
+	LOG_DEBUG_NEW("Creating application name: {}, port: {}", name, port);
 	if (!daemon->Start(INADDR_LOOPBACK, port)) {
 		return {};
 	}
@@ -300,9 +380,9 @@ template <typename T> FORCE_INLINE [[nodiscard]] void* Daemon<T>::StartingReques
 	const auto pid{ gettid() };
 	LOG_DEBUG_NEW("Pthread function is called, PID: {}", pid);
 	const auto* serverParameters{ static_cast<Daemon<T>::AppData*>(appData) };
-	T* server{ serverParameters->app };
-	Lock::Atomic::Guard _{ *serverParameters->lock };
-	server->Start(serverParameters->ip, serverParameters->port);
+	T* server{ serverParameters->GetApp() };
+	Lock::Atomic::Guard _{ *serverParameters->GetLock() };
+	server->Start(serverParameters->GetIp(), serverParameters->GetPort());
 	LOG_DEBUG_NEW("Pthread function is finished, PID: {}", pid);
 	return nullptr;
 }

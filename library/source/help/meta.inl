@@ -134,26 +134,30 @@ template <typename T> struct second_map_type<std::map<size_t, T>> {
 	using type = T;
 };
 
-template <typename... Ts> constexpr size_t calculate_total_sizeof() { return (... + sizeof(Ts)); }
+template <typename... Ts> FORCE_INLINE [[nodiscard]] constexpr size_t calculate_total_sizeof()
+{
+	return (... + sizeof(Ts));
+}
 
-template <typename Tuple, typename F, size_t... I> void for_each(Tuple& tuple, F&& f, std::index_sequence<I...>)
+template <typename Tuple, typename F, size_t... I>
+FORCE_INLINE void for_each(Tuple& tuple, F&& f, std::index_sequence<I...>)
 {
 	(f(std::get<I>(tuple)), ...);
 }
 
-template <typename... Ts, typename F> void for_each_in_tuple(std::tuple<Ts...>& tuple, F&& f)
+template <typename... Ts, typename F> FORCE_INLINE void for_each_in_tuple(std::tuple<Ts...>& tuple, F&& f)
 {
 	for_each(tuple, f, std::make_index_sequence<sizeof...(Ts)>{});
 }
 
 template <typename Tuple, typename F, size_t... I>
-void apply_to_element(const Tuple& tuple, size_t index, F&& f, std::index_sequence<I...>)
+FORCE_INLINE void apply_to_element(const Tuple& tuple, size_t index, F&& f, std::index_sequence<I...>)
 {
 	((I == index ? f(std::get<I>(tuple)) : void()), ...);
 }
 
 template <typename... Ts, typename F>
-void apply_to_element_in_tuple(const std::tuple<Ts...>& tuple, size_t index, F&& f)
+FORCE_INLINE void apply_to_element_in_tuple(const std::tuple<Ts...>& tuple, size_t index, F&& f)
 {
 	apply_to_element(tuple, index, f, std::make_index_sequence<sizeof...(Ts)>{});
 }
@@ -281,7 +285,8 @@ template <typename... Ts> struct TransformPack<std::tuple<Ts...>> {
 template <typename Tuple> using TransformPack_t = typename TransformPack<Tuple>::type;
 
 // Helper to convert tuple to variant
-template <typename Tuple, std::size_t... I> auto tuple_to_variant_impl(std::index_sequence<I...>)
+template <typename Tuple, std::size_t... I>
+FORCE_INLINE [[nodiscard]] auto tuple_to_variant_impl(std::index_sequence<I...>)
 {
 	return std::variant<std::tuple_element_t<I, Tuple>...>{};
 }

@@ -751,7 +751,7 @@ uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, 
 		}
 	}
 
-	uint16_t port{ 0 };
+	uint16_t port{};
 	const auto* parametersPort{ parameters.GetValue("port") };
 	if (parametersPort != nullptr) {
 		const auto* parametersPortValue{ std::get_if<std::string>(&parametersPort->GetValue()) };
@@ -801,13 +801,13 @@ uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, 
 		}
 	}
 
-	bool logInConsole{ false };
+	bool logInConsole{};
 	if (const auto logInConsoleStr{ parameters.GetValueType<std::string>("logInConsole") };
 		logInConsoleStr != nullptr) {
 		logInConsole = *logInConsoleStr == "true";
 	}
 
-	bool logInFile{ false };
+	bool logInFile{};
 	if (const auto logInFileStr{ parameters.GetValueType<std::string>("logInFile") }; logInFileStr != nullptr) {
 		logInFile = *logInFileStr == "true";
 	}

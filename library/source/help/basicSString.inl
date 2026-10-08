@@ -159,7 +159,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool Copy(const Type* const source, const size_t size) noexcept;
+	FORCE_INLINE [[nodiscard]] bool Copy(const Type* source, size_t size) noexcept;
 
 	/**************************
 	 * @brief Copy data from source to internal buffer and set size accordingly. Only the first capacity characters are
@@ -171,7 +171,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool Copy(const std::basic_string_view<Type> view) noexcept;
+	FORCE_INLINE [[nodiscard]] bool Copy(std::basic_string_view<Type> view) noexcept;
 
 	/**************************
 	 * @brief Copy n characters, or n * sizeof(Type) bytes, from source to the end of meaningful data and set size
@@ -189,7 +189,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool Concatenate(const Type* const source, const size_t size) noexcept;
+	FORCE_INLINE [[nodiscard]] bool Concatenate(const Type* source, size_t size) noexcept;
 
 	/**************************
 	 * @brief Copy data from view to the end of meaningful data and set size accordingly. Only the characters fitting
@@ -201,7 +201,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool Concatenate(const std::basic_string_view<Type> view) noexcept;
+	FORCE_INLINE [[nodiscard]] bool Concatenate(std::basic_string_view<Type> view) noexcept;
 
 	/**************************
 	 * @attention Size is expected to be updated by specific method on C-style buffer writing.
@@ -475,10 +475,13 @@ FORCE_INLINE [[nodiscard]] constexpr size_t BasicSString<Type, Capacity>::GetCap
 template <typename Type, size_t Capacity, typename CharType>
 	requires std::is_same_v<Type, CharType>
 struct std::formatter<MSAPI::BasicSString<Type, Capacity>, CharType> {
-	constexpr auto parse(std::basic_format_parse_context<CharType>& ctx) { return ctx.begin(); }
+	FORCE_INLINE [[nodiscard]] constexpr auto parse(std::basic_format_parse_context<CharType>& ctx)
+	{
+		return ctx.begin();
+	}
 
 	template <typename FormatContext>
-	auto format(const MSAPI::BasicSString<Type, Capacity>& string, FormatContext& ctx) const
+	FORCE_INLINE [[nodiscard]] auto format(const MSAPI::BasicSString<Type, Capacity>& string, FormatContext& ctx) const
 	{
 		if constexpr (std::is_same_v<CharType, char>) {
 			return format_to(ctx.out(), "{}", string.Get());

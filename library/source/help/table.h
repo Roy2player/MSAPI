@@ -53,6 +53,7 @@ public:
 		const StandardType::Type type;
 		std::string metadata;
 
+	public:
 		/**************************
 		 * @brief Construct a new Column object, empty constructor.
 		 *
@@ -61,11 +62,23 @@ public:
 		 */
 		Column(size_t id, StandardType::Type type);
 
+		FORCE_INLINE Column(const Column&) = default;
+		FORCE_INLINE Column(Column&&) noexcept = default;
+		Column& operator=(const Column&) = delete;
+		Column& operator=(Column&&) = delete;
+
 		FORCE_INLINE friend bool operator==(const Column&, const Column&) = default;
 	};
 
 public:
+	FORCE_INLINE TableBase() noexcept = default;
+
 	FORCE_INLINE virtual ~TableBase() = default;
+
+	FORCE_INLINE TableBase(const TableBase&) noexcept = default;
+	FORCE_INLINE TableBase(TableBase&&) noexcept = default;
+	FORCE_INLINE TableBase& operator=(const TableBase&) noexcept = default;
+	FORCE_INLINE TableBase& operator=(TableBase&&) noexcept = default;
 
 	/**************************
 	 * @brief Merge additional rows from the buffer into the table. Structure of the buffer should be: [(size_t) buffer
@@ -161,7 +174,7 @@ private:
 	// Not const for enable copy/move semantics.
 	// Shared pointer to allow copy constructor and assignment operator.
 	std::shared_ptr<AutoClearPtr<void>> m_ownBuffer{ nullptr };
-	const void* m_sharedBuffer{ nullptr };
+	const void* m_sharedBuffer{};
 	size_t m_bufferSize{ 8 };
 
 public:
@@ -204,6 +217,11 @@ public:
 	 * @test Yes.
 	 */
 	TableData(const std::list<JsonNode>& rows, const std::vector<StandardType::Type>& columnTypes);
+
+	FORCE_INLINE TableData(const TableData&) = default;
+	FORCE_INLINE TableData(TableData&&) noexcept = default;
+	FORCE_INLINE TableData& operator=(const TableData&) = default;
+	FORCE_INLINE TableData& operator=(TableData&&) noexcept = default;
 
 	/**************************
 	 * @return Readable pointer to buffer with table data, nullptr if buffer is empty.
@@ -300,105 +318,11 @@ private:
 	using MultimapTypes = TransformPack_t<UniqueTypes>;
 	using VariantType = tuple_to_variant<MultimapTypes>;
 
+private:
 	std::vector<VariantType> m_data;
 	size_t m_bufferSize{ sizeof(size_t) };
 	std::list<Column> m_columns;
-	size_t m_rows{ 0 };
-
-private:
-	/**************************
-	 * @brief Parse types of columns and their IDs during creation of table and add them to the column list.
-	 *
-	 * @tparam Fs Types of table's columns.
-	 *
-	 * @param ids IDs of table's columns.
-	 *
-	 * @test Yes.
-	 */
-	template <typename... Fs> void AddColumns(std::vector<size_t>&& ids)
-	{
-		size_t index{ 0 };
-		(([&index, &ids, this](const auto& t) {
-			using T = safe_underlying_type_t<std::decay_t<decltype(t)>>;
-			m_data.emplace_back(std::map<size_t, std::decay_t<decltype(t)>>{});
-			if constexpr (std::is_same_v<T, int8_t>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Int8);
-			}
-			else if constexpr (std::is_same_v<T, int16_t>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Int16);
-			}
-			else if constexpr (std::is_same_v<T, int32_t>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Int32);
-			}
-			else if constexpr (std::is_same_v<T, int64_t>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Int64);
-			}
-			else if constexpr (std::is_same_v<T, uint8_t>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Uint8);
-			}
-			else if constexpr (std::is_same_v<T, uint16_t>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Uint16);
-			}
-			else if constexpr (std::is_same_v<T, uint32_t>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Uint32);
-			}
-			else if constexpr (std::is_same_v<T, uint64_t>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Uint64);
-			}
-			else if constexpr (std::is_same_v<T, double>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Double);
-			}
-			else if constexpr (std::is_same_v<T, float>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Float);
-			}
-			else if constexpr (std::is_same_v<T, bool>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Bool);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<int8_t>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalInt8);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<int16_t>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalInt16);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<int32_t>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalInt32);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<int64_t>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalInt64);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<uint8_t>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalUint8);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<uint16_t>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalUint16);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<uint32_t>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalUint32);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<uint64_t>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalUint64);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<double>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalDouble);
-			}
-			else if constexpr (std::is_same_v<T, std::optional<float>>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalFloat);
-			}
-			else if constexpr (std::is_same_v<T, std::string>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::String);
-			}
-			else if constexpr (std::is_same_v<T, Timer>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Timer);
-			}
-			else if constexpr (std::is_same_v<T, Timer::Duration>) {
-				m_columns.emplace_back(ids[index++], StandardType::Type::Duration);
-			}
-			else {
-				static_assert(sizeof(T) + 1 == 0, "Unsupported type for table's colum");
-			}
-		}(Fs{})),
-			...);
-	}
+	size_t m_rows{};
 
 public:
 	/**************************
@@ -470,6 +394,11 @@ public:
 		LOG_DEBUG("Created " + ToString());
 	}
 
+	FORCE_INLINE Table(const Table&) = default;
+	FORCE_INLINE Table(Table&&) noexcept = default;
+	FORCE_INLINE Table& operator=(const Table&) = default;
+	FORCE_INLINE Table& operator=(Table&&) noexcept = default;
+
 	/**************************
 	 * @brief Add a new row in the table. Data should contain the same number of elements with the same types as
 	 * in columns in the order.
@@ -490,7 +419,7 @@ public:
 	{
 		std::vector<tuple_to_variant<UniqueTypes>> data = { std::forward<Fs>(cells)... };
 		if (data.size() == m_columns.size()) {
-			for (size_t index{ 0 }; auto& value : data) {
+			for (size_t index{}; auto& value : data) {
 				std::visit(
 					[index, &value, this](auto& map) {
 						std::visit(
@@ -630,7 +559,7 @@ public:
 		const size_t bufferSize{ *reinterpret_cast<const size_t*>(buffer) };
 		size_t offset{ sizeof(size_t) };
 		while (offset < bufferSize) {
-			for (size_t index{ 0 }; const auto& [id, type, metadata] : m_columns) {
+			for (size_t index{}; const auto& [id, type, metadata] : m_columns) {
 				switch (type) {
 				case StandardType::Type::Int8:
 
@@ -820,7 +749,7 @@ public:
 		std::string result;
 		result.reserve(256);
 		BI(result, "Table:\n{{\n\tBuffer size: {}\n\tColumns:\n\t{{", m_bufferSize);
-		for (size_t column{ 0 }; const auto& [id, type, metadata] : m_columns) {
+		for (size_t column{}; const auto& [id, type, metadata] : m_columns) {
 			result += std::format("\n\t\t[{}] {} {}", column++, id, StandardType::EnumToString(type));
 		}
 
@@ -829,8 +758,8 @@ public:
 		}
 
 		result += "\n\t}\n\tRows:\n\t{";
-		for (size_t row{ 0 }; row < m_rows; ++row) {
-			for (size_t column{ 0 }; const auto& [id, type, metadata] : m_columns) {
+		for (size_t row{}; row < m_rows; ++row) {
+			for (size_t column{}; const auto& [id, type, metadata] : m_columns) {
 				if (column == 0) [[unlikely]] {
 					result += std::format("\n\t\t[{}, {}] ", column, row);
 				}
@@ -911,7 +840,7 @@ public:
 		}
 
 		std::string data{ ",\"Rows\":[" };
-		for (size_t row{ 0 }; row < m_rows; ++row) {
+		for (size_t row{}; row < m_rows; ++row) {
 			if (row == 0) [[likely]] {
 				data += "[";
 			}
@@ -919,7 +848,7 @@ public:
 				data += "],[";
 			}
 
-			for (size_t column{ 0 }; const auto& [id, type, metadata] : m_columns) {
+			for (size_t column{}; const auto& [id, type, metadata] : m_columns) {
 				if (column != 0) [[likely]] {
 					data += ",";
 				}
@@ -1091,8 +1020,8 @@ public:
 		memcpy(buffer, &m_bufferSize, sizeof(size_t));
 		size_t offset{ sizeof(size_t) };
 
-		for (size_t row{ 0 }; row < m_rows; ++row) {
-			for (size_t column{ 0 }, columns{ m_columns.size() }; column < columns; ++column) {
+		for (size_t row{}; row < m_rows; ++row) {
+			for (size_t column{}, columns{ m_columns.size() }; column < columns; ++column) {
 				std::visit(
 					[column, row, &buffer, &offset](const auto& map) {
 						const auto it{ map.find(row) };
@@ -1227,6 +1156,101 @@ public:
 	{
 		return first.m_bufferSize == second.m_bufferSize && first.m_rows == second.m_rows
 			&& first.m_columns == second.m_columns && first.m_data == second.m_data;
+	}
+
+private:
+	/**************************
+	 * @brief Parse types of columns and their IDs during creation of table and add them to the column list.
+	 *
+	 * @tparam Fs Types of table's columns.
+	 *
+	 * @param ids IDs of table's columns.
+	 *
+	 * @test Yes.
+	 */
+	template <typename... Fs> void AddColumns(std::vector<size_t>&& ids)
+	{
+		size_t index{};
+		(([&index, &ids, this](const auto& t) {
+			using T = safe_underlying_type_t<std::decay_t<decltype(t)>>;
+			m_data.emplace_back(std::map<size_t, std::decay_t<decltype(t)>>{});
+			if constexpr (std::is_same_v<T, int8_t>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Int8);
+			}
+			else if constexpr (std::is_same_v<T, int16_t>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Int16);
+			}
+			else if constexpr (std::is_same_v<T, int32_t>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Int32);
+			}
+			else if constexpr (std::is_same_v<T, int64_t>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Int64);
+			}
+			else if constexpr (std::is_same_v<T, uint8_t>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Uint8);
+			}
+			else if constexpr (std::is_same_v<T, uint16_t>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Uint16);
+			}
+			else if constexpr (std::is_same_v<T, uint32_t>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Uint32);
+			}
+			else if constexpr (std::is_same_v<T, uint64_t>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Uint64);
+			}
+			else if constexpr (std::is_same_v<T, double>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Double);
+			}
+			else if constexpr (std::is_same_v<T, float>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Float);
+			}
+			else if constexpr (std::is_same_v<T, bool>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Bool);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<int8_t>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalInt8);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<int16_t>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalInt16);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<int32_t>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalInt32);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<int64_t>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalInt64);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<uint8_t>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalUint8);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<uint16_t>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalUint16);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<uint32_t>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalUint32);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<uint64_t>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalUint64);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<double>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalDouble);
+			}
+			else if constexpr (std::is_same_v<T, std::optional<float>>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::OptionalFloat);
+			}
+			else if constexpr (std::is_same_v<T, std::string>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::String);
+			}
+			else if constexpr (std::is_same_v<T, Timer>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Timer);
+			}
+			else if constexpr (std::is_same_v<T, Timer::Duration>) {
+				m_columns.emplace_back(ids[index++], StandardType::Type::Duration);
+			}
+			else {
+				static_assert(sizeof(T) + 1 == 0, "Unsupported type for table's colum");
+			}
+		}(Fs{})),
+			...);
 	}
 
 private:

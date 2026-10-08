@@ -33,7 +33,7 @@ Declarations
 ---------------------------------------------------------------------------------*/
 
 constexpr inline bool hex{ true };
-constexpr inline bool binary{ false };
+constexpr inline bool binary{};
 
 /**************************
  * @brief Log raw data.
@@ -54,6 +54,8 @@ constexpr inline bool binary{ false };
  * 0	2f 45 aa 89 bc 93 31 99
  * 8	2f 45 aa 89 bc 93 31 99
  * 16	2f 45 aa 89 bc 93 31 99
+ *
+ * @todo Add tests coverage.
  */
 template <bool Notation> FORCE_INLINE void PrintBinaryDescriptor(const void* data, size_t size, std::string_view title);
 
