@@ -84,6 +84,10 @@ public:
 	 * @todo Values are read by *reinterpret_cast<const type*>(buffer + offset), but the offset is generally not aligned
 	 * for the type, as values follow a 1 byte type specifier and a 8 bytes key, which is undefined behavior and works
 	 * only on platforms allowing unaligned access, as x86-64. Values should be read by memcpy into a local variable.
+	 * @todo Buffer bounds are validated only for String and TableData payloads. The record type and 8 bytes key, as well
+	 * as primitive, optional and timer payloads, are read without checking the remaining buffer size, so a truncated
+	 * message leads to reading past the received buffer. Validate the record header and each fixed size payload before
+	 * reading and reject malformed data instead of returning with a partially parsed object.
 	 */
 	Data(const DataHeader& header, const void* buffer);
 
