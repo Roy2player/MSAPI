@@ -168,6 +168,12 @@ public:
  * will own the buffer, because real table should be encoded, and clear it in destroying. If object created from buffer
  * - then TableData will be only a view on buffer and will not clear it. The purpose of the second type is to merge data
  * from network into the table.
+ *
+ * @todo Buffer size and string lengths are encoded as native size_t, while the outer Standard protocol uses fixed width
+ * uint64_t headers and keys. Peers with different data models, as 32 bit and 64 bit, disagree on the length width,
+ * which shifts the payload offset and corrupts table parameters. Use a fixed width uint64_t length throughout TableData
+ * and Table encoding and decoding, including the Standard protocol TableData branch, or explicitly reject cross data
+ * model peers.
  */
 class TableData {
 private:
