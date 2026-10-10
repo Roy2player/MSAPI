@@ -268,7 +268,7 @@ FORCE_INLINE [[nodiscard]] bool StandardData()
 		"Data to string is correct for huge object"));
 
 	RETURN_IF_FALSE(t.Assert(data.GetDataTypes()
-			== std::map<size_t, MSAPI::StandardType::Type>{ { 1, MSAPI::StandardType::Type::Int8 },
+			== std::map<uint64_t, MSAPI::StandardType::Type>{ { 1, MSAPI::StandardType::Type::Int8 },
 				{ 2, MSAPI::StandardType::Type::Int16 }, { 3, MSAPI::StandardType::Type::Int32 },
 				{ 4, MSAPI::StandardType::Type::Int64 }, { 5, MSAPI::StandardType::Type::Uint8 },
 				{ 6, MSAPI::StandardType::Type::Uint16 }, { 7, MSAPI::StandardType::Type::Uint32 },
@@ -298,7 +298,7 @@ FORCE_INLINE [[nodiscard]] bool StandardData()
 		true, "Data types are expected for huge object"));
 
 	RETURN_IF_FALSE(t.Assert(data.GetData()
-			== std::map<size_t, std::variant<standardTypes>>{ { 1, dataItem1 }, { 2, dataItem2 }, { 3, dataItem3 },
+			== std::map<uint64_t, std::variant<standardTypes>>{ { 1, dataItem1 }, { 2, dataItem2 }, { 3, dataItem3 },
 				{ 4, dataItem4 }, { 5, dataItem5 }, { 6, dataItem6 }, { 7, dataItem7 }, { 8, dataItem8 },
 				{ 9, dataItem9 }, { 10, dataItem10 }, { 11, dataItem11 }, { 12, dataItem12 }, { 13, dataItem13 },
 				{ 14, dataItem14 }, { 15, dataItem15 }, { 16, dataItem16 }, { 17, dataItem17 }, { 18, dataItem18 },
@@ -311,6 +311,21 @@ FORCE_INLINE [[nodiscard]] bool StandardData()
 
 	data.Clear();
 	RETURN_IF_FALSE(checkEmpty(data));
+
+	// Preserve parameter IDs beyond the 32-bit range when encoding and decoding.
+	const uint64_t highParameterId{ uint64_t{ 1 } << 40 };
+	const int32_t highParameterValue{ 777 };
+	data.SetData(highParameterId, highParameterValue);
+	MSAPI::AutoClearPtr<void> highIdBuffer{ data.Encode() };
+	RETURN_IF_FALSE(t.Assert(highIdBuffer.Get() != nullptr, true, "High parameter ID buffer is allocated"));
+	const std::span<const uint8_t> highIdHeaderBytes{ static_cast<const uint8_t*>(highIdBuffer.Get()),
+		sizeof(uint64_t) * 2 };
+	MSAPI::DataHeader highIdHeader{ highIdHeaderBytes };
+	MSAPI::Protocol::Standard::Data highIdCopy{ highIdHeader, highIdBuffer.Get() };
+	const auto highIdItem{ highIdCopy.GetData().find(highParameterId) };
+	RETURN_IF_FALSE(t.Assert(highIdItem != highIdCopy.GetData().end(), true, "High parameter ID survives round trip"));
+	RETURN_IF_FALSE(t.Assert(
+		std::get<int32_t>(highIdItem->second), highParameterValue, "High parameter ID value survives round trip"));
 
 	return t.Passed<bool>();
 }

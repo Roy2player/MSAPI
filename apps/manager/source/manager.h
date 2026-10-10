@@ -139,7 +139,7 @@ private:
 	 */
 	struct InstalledAppData {
 		bool hasView;
-		int32_t viewPortParameter;
+		uint64_t viewPortParameter;
 		std::string type;
 		std::string bin;
 		std::string metadata;
@@ -161,7 +161,7 @@ private:
 		 * @param bin Path to app bin.
 		 * @param viewPortParameter Parameter where port for view is stored.
 		 */
-		InstalledAppData(const std::string& type, const std::string& bin, const int32_t viewPortParameter)
+		InstalledAppData(const std::string& type, const std::string& bin, const uint64_t viewPortParameter)
 			: hasView{ true }
 			, viewPortParameter{ viewPortParameter }
 			, type{ type }
@@ -207,7 +207,7 @@ private:
 	mutable MSAPI::Lock::AtomicRW m_hashToInstalledAppDataLock;
 	std::map<uint16_t, std::shared_ptr<CreatedAppData>> m_portToCreatedApp;
 	mutable MSAPI::Lock::AtomicRW m_portToCreatedAppLock;
-	std::map<size_t, std::shared_ptr<std::vector<MSAPI::StandardType::Type>>> m_tableIdToColumns;
+	std::map<uint64_t, std::shared_ptr<std::vector<MSAPI::StandardType::Type>>> m_tableIdToColumns;
 	mutable MSAPI::Lock::AtomicRW m_tableIdToColumnsLock;
 	MSAPI::Authorization::Base::Module<> m_authorizationModule;
 	MSAPI::Protocol::WebSocket::Events::SinglesDistributor<MSAPI::Authorization::Base::Module<>> m_singlesDistributor{
@@ -234,9 +234,9 @@ public:
 	// MSAPI::Application
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;
-	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
+	void HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate) final;
 	void HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
-		const std::map<size_t, std::variant<standardTypes>>& parameters) final;
+		const std::map<uint64_t, std::variant<standardTypes>>& parameters) final;
 	void HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
 	/**************************
 	 * @todo Lookup of created app by connection is a bad design, it can be changed because of new Connection::Data
@@ -625,7 +625,7 @@ private:
 		}
 
 		MSAPI::Protocol::Standard::Data parametersUpdate{ MSAPI::Protocol::Standard::CIPHER_ACTION_MODIFY };
-		size_t key;
+		uint64_t key{};
 		for (const auto& [keyStr, node] : parameters->GetKeysAndValues()) {
 			const auto error{ std::from_chars(keyStr.data(), keyStr.data() + keyStr.size(), key).ec };
 			if (error != std::errc{}) {

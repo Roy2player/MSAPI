@@ -89,12 +89,12 @@ public:
 	// MSAPI::Application
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;
-	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
+	void HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate) final;
 	void HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
 	void HandleMetadata(
 		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, std::string_view metadata) final;
 	void HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
-		const std::map<size_t, std::variant<standardTypes>>& parameters) final;
+		const std::map<uint64_t, std::variant<standardTypes>>& parameters) final;
 	void HandleIncomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
 
 	int8_t GetParameter1() const noexcept;

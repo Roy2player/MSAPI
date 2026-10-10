@@ -42,14 +42,14 @@ Data::Data(const DataHeader& header, const void* buffer)
 {
 	size_t offset{ sizeof(size_t) * 2 };
 	StandardType::Type type [[indeterminate]];
-	size_t key{};
+	uint64_t key{};
 
 	while (m_bufferSize > offset) {
 		memcpy(&type, &static_cast<const char*>(buffer)[offset], sizeof(type));
 		offset += sizeof(type);
 
-		memcpy(&key, &static_cast<const char*>(buffer)[offset], sizeof(size_t));
-		offset += sizeof(size_t);
+		memcpy(&key, &static_cast<const char*>(buffer)[offset], sizeof(uint64_t));
+		offset += sizeof(uint64_t);
 
 		switch (type) {
 		case StandardType::Type::Int8:
@@ -214,8 +214,8 @@ void* Data::Encode() const
 		memcpy(&static_cast<char*>(buffer)[offset], &typeIter->second, sizeof(StandardType::Type));
 		offset += sizeof(StandardType::Type);
 
-		memcpy(&static_cast<char*>(buffer)[offset], &key, sizeof(size_t));
-		offset += sizeof(size_t);
+		memcpy(&static_cast<char*>(buffer)[offset], &key, sizeof(uint64_t));
+		offset += sizeof(uint64_t);
 
 		std::visit(
 			[this, &buffer, &offset](auto&& value) {
@@ -307,9 +307,9 @@ std::string Data::ToString() const
 	return result;
 }
 
-const std::map<size_t, std::variant<standardTypes>>& Data::GetData() const noexcept { return m_data; }
+const std::map<uint64_t, std::variant<standardTypes>>& Data::GetData() const noexcept { return m_data; }
 
-const std::map<size_t, StandardType::Type>& Data::GetDataTypes() const noexcept { return m_dataTypes; }
+const std::map<uint64_t, StandardType::Type>& Data::GetDataTypes() const noexcept { return m_dataTypes; }
 
 /*---------------------------------------------------------------------------------
 Global

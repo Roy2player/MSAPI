@@ -60,8 +60,8 @@ constexpr uint64_t CIPHER_ACTION_MODIFY{ 934875938 };
  */
 class Data : public DataHeader {
 private:
-	std::map<size_t, std::variant<standardTypes>> m_data;
-	std::map<size_t, StandardType::Type> m_dataTypes;
+	std::map<uint64_t, std::variant<standardTypes>> m_data;
+	std::map<uint64_t, StandardType::Type> m_dataTypes;
 
 public:
 	/**************************
@@ -111,7 +111,7 @@ public:
 		requires(is_standard_type<std::remove_cv_t<std::remove_reference_t<T>>>
 			|| std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, TableBase>
 			|| std::derived_from<std::remove_cv_t<std::remove_reference_t<T>>, TableBase>)
-	void SetData(const size_t key, T&& value)
+	void SetData(const uint64_t key, T&& value)
 	{
 		using S = std::remove_cv_t<std::remove_reference_t<T>>;
 		if (m_data.find(key) != m_data.end()) {
@@ -122,7 +122,7 @@ public:
 #define TMP_MSAPI_STANDARD_SET_PRIMITIVE_DATA(type, standardType)                                                      \
 	m_data.emplace(key, std::forward<T>(value));                                                                       \
 	m_dataTypes.emplace(key, StandardType::Type::standardType);                                                        \
-	m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + sizeof(type);
+	m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + sizeof(type);
 
 		if constexpr (std::is_same_v<S, int8_t>) {
 			TMP_MSAPI_STANDARD_SET_PRIMITIVE_DATA(int8_t, Int8)
@@ -161,11 +161,11 @@ public:
 	m_data.emplace(key, std::forward<T>(value));                                                                       \
 	if (value.has_value()) {                                                                                           \
 		m_dataTypes.emplace(key, StandardType::Type::standardType);                                                    \
-		m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + sizeof(type);                                    \
+		m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + sizeof(type);                                  \
 	}                                                                                                                  \
 	else {                                                                                                             \
 		m_dataTypes.emplace(key, StandardType::Type::emptyStandardType);                                               \
-		m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t);                                                   \
+		m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t);                                                 \
 	}
 		}
 		else if constexpr (std::is_same_v<S, std::optional<int8_t>>) {
@@ -203,11 +203,11 @@ public:
 			if (value.empty()) {
 				m_data.emplace(key, std::string{ "" });
 				m_dataTypes.emplace(key, StandardType::Type::StringEmpty);
-				m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t);
+				m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t);
 			}
 			else {
 				m_dataTypes.emplace(key, StandardType::Type::String);
-				m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + sizeof(size_t) + value.size();
+				m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + sizeof(size_t) + value.size();
 				m_data.emplace(key, std::forward<T>(value));
 			}
 		}
@@ -221,12 +221,12 @@ public:
 		}
 		else if constexpr (std::is_same_v<S, TableData>) {
 			m_dataTypes.emplace(key, StandardType::Type::TableData);
-			m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + value.GetBufferSize();
+			m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + value.GetBufferSize();
 			m_data.emplace(key, std::forward<T>(value));
 		}
 		else if constexpr (std::is_same_v<S, TableBase> || std::derived_from<S, TableBase>) {
 			m_dataTypes.emplace(key, StandardType::Type::TableData);
-			m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + value.GetBufferSize();
+			m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + value.GetBufferSize();
 			m_data.emplace(key, TableData{ value });
 		}
 		else {
@@ -236,7 +236,7 @@ public:
 
 	/**************************
 	 * @brief Encode contained data to buffer. Message template is: (size_t) cipher, (size_t) buffer size, then for each
-	 * item: (int8_t) type specifier, (size_t) key and value. Value is (T) value for primitive types, Timer, Duration
+	 * item: (int8_t) type specifier, (uint64_t) key and value. Value is (T) value for primitive types, Timer, Duration
 	 * and optional with value, (size_t) string size and (char) characters for not empty string, table buffer for table.
 	 * Empty string and empty optional have no value, they are defined by their type specifier.
 	 *
@@ -305,12 +305,12 @@ public:
 	/**************************
 	 * @return Readable reference to data.
 	 */
-	const std::map<size_t, std::variant<standardTypes>>& GetData() const noexcept;
+	const std::map<uint64_t, std::variant<standardTypes>>& GetData() const noexcept;
 
 	/**************************
 	 * @return Readable reference to data types.
 	 */
-	const std::map<size_t, StandardType::Type>& GetDataTypes() const noexcept;
+	const std::map<uint64_t, StandardType::Type>& GetDataTypes() const noexcept;
 };
 
 /**************************

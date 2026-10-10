@@ -302,7 +302,7 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 			const MSAPI::Table<int32_t>& s44) {
 			const auto& parametersResponse{ manager.GetParametersResponse() };
 
-			const auto check{ [&parametersResponse, &t]<size_t I, typename T> [[nodiscard]] (const T& expected) {
+			const auto check{ [&parametersResponse, &t]<uint64_t I, typename T> [[nodiscard]] (const T& expected) {
 				auto it{ parametersResponse.find(I) };
 				if (it == parametersResponse.end()) {
 					LOG_ERROR("Parameter " + _S(I) + " is not found");

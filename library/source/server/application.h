@@ -323,7 +323,7 @@ public:
 		 *
 		 * @test Yes.
 		 */
-		bool RegisterValidation(size_t id);
+		bool RegisterValidation(uint64_t id);
 
 		/**************************
 		 * @brief Merge parameter value. If value is not correct, error will be added and printed warning
@@ -338,7 +338,7 @@ public:
 		 *
 		 * @test Yes.
 		 */
-		bool Merge(size_t id, const std::variant<standardTypes>& value);
+		bool Merge(uint64_t id, const std::variant<standardTypes>& value);
 
 		friend bool Test::Unit::Application();
 		// For access in RegisterValidation and Merge methods and direct access to fields.
@@ -465,9 +465,9 @@ private:
 	std::string m_name{ "" };
 	std::string m_metadata;
 	State m_state{ State::Paused };
-	std::map<size_t, Parameter> m_parameters;
-	std::map<size_t, const Parameter* const> m_errorParameters;
-	std::map<size_t, ConstParameter> m_constParameters;
+	std::map<uint64_t, Parameter> m_parameters;
+	std::map<uint64_t, const Parameter* const> m_errorParameters;
+	std::map<uint64_t, ConstParameter> m_constParameters;
 
 public:
 	/**************************
@@ -509,7 +509,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	virtual void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate);
+	virtual void HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate);
 
 	/**************************
 	 * @brief Handle delete request from External application. Already defined in Server class, but can be
@@ -550,7 +550,7 @@ public:
 	 * @test Yes.
 	 */
 	virtual void HandleParameters(const std::shared_ptr<Connection::Data>& connectionData,
-		const std::map<size_t, std::variant<standardTypes>>& parameters);
+		const std::map<uint64_t, std::variant<standardTypes>>& parameters);
 
 	/**************************
 	 * @brief Not network signal about previously opened connection by id was closed no by server. Already defined
@@ -595,14 +595,14 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	const std::map<size_t, Parameter>& GetParameters() const noexcept;
+	const std::map<uint64_t, Parameter>& GetParameters() const noexcept;
 
 	/**************************
 	 * @return Readable reference to constant parameters.
 	 *
 	 * @test Yes.
 	 */
-	const std::map<size_t, ConstParameter>& GetConstParameters() const noexcept;
+	const std::map<uint64_t, ConstParameter>& GetConstParameters() const noexcept;
 
 	/**************************
 	 * @return True if parameters with error not exist.
@@ -616,7 +616,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	const std::map<size_t, const Parameter* const>& GetErrorParameters() const noexcept;
+	const std::map<uint64_t, const Parameter* const>& GetErrorParameters() const noexcept;
 
 	/**************************
 	 * @return Name of application, can be empty.
@@ -680,7 +680,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void RegisterParameter(size_t id, Parameter&& parameter);
+	void RegisterParameter(uint64_t id, Parameter&& parameter);
 
 	/**************************
 	 * @brief Register constant parameter to application.
@@ -690,7 +690,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void RegisterConstParameter(size_t id, ConstParameter&& parameter);
+	void RegisterConstParameter(uint64_t id, ConstParameter&& parameter);
 
 	/**************************
 	 * @brief Get parameters of application in string format.
@@ -726,7 +726,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void MergeParameters(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate);
+	void MergeParameters(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate);
 
 	/**************************
 	 * @brief Merge parameter to application, manage container of parameters with error. Print warning log if
@@ -739,7 +739,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void MergeParameter(size_t id, const std::variant<standardTypes>& value);
+	void MergeParameter(uint64_t id, const std::variant<standardTypes>& value);
 
 	/**************************
 	 * @brief Set custom error to parameter. If error already exist, errors will be concatenated. Custom error will
@@ -751,7 +751,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void SetCustomError(size_t id, const std::string& error);
+	void SetCustomError(uint64_t id, const std::string& error);
 
 	friend bool Test::Unit::Application();
 };
