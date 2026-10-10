@@ -402,34 +402,36 @@ template <bool Append = false, int32_t Mode = 0644, typename PathType>
 FORCE_INLINE [[nodiscard]] bool SaveStr(std::string_view str, PathType path);
 
 /**************************
- * @brief Read binary data from file.
+ * @brief Read binary data from file. File descriptor is read from the beginning of the file.
+ *
+ * @attention If file descriptor is passed, it must be opened for reading. Its offset is moved by the read.
  *
  * @tparam T Type of object.
- * @tparam PathType Type of path.
+ * @tparam PathType Type of path or file descriptor.
  *
- * @param ptr Pointer to buffer.
- * @param path Full path to file.
+ * @param object Pointer to buffer.
+ * @param pathOrFd Full path to file or file descriptor.
  *
  * @return True if read was successful, false otherwise.
  *
  * @test Yes.
  */
 template <typename T, typename PathType>
-	requires StringableView<PathType>
-FORCE_INLINE [[nodiscard]] bool ReadBinary(T* object, PathType path);
+	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+FORCE_INLINE [[nodiscard]] bool ReadBinary(T* object, PathType pathOrFd);
 
 /**************************
- * @brief Read array of binary data from file.
+ * @brief Read array of binary data from file. File descriptor is read from the beginning of the file.
  *
  * @attention Records are appended to the container one by one. On failure, the container keeps the records read before
- * the failure.
+ * the failure. If file descriptor is passed, it must be opened for reading. Its offset is moved by the read.
  *
  * @param container Container for reading data.
- * @param path Full path to file.
+ * @param pathOrFd Full path to file or file descriptor.
  *
  * @tparam T Type of forward container.
  * @tparam S Type of object.
- * @tparam PathType Type of path.
+ * @tparam PathType Type of path or file descriptor.
  *
  * @return True if read was successful, false otherwise.
  *
@@ -439,8 +441,8 @@ FORCE_INLINE [[nodiscard]] bool ReadBinary(T* object, PathType path);
  * object, where the last record of a key wins. That removes the temporary container in Persistence::Pair::ReadImpl.
  */
 template <template <typename> typename T, typename S, typename PathType>
-	requires StringableView<PathType>
-FORCE_INLINE [[nodiscard]] bool ReadBinaries(T<S>& container, PathType path);
+	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+FORCE_INLINE [[nodiscard]] bool ReadBinaries(T<S>& container, PathType pathOrFd);
 
 /**************************
  * @brief Read string until end of the file.
@@ -1069,29 +1071,43 @@ FORCE_INLINE [[nodiscard]] bool SaveStr(const std::string_view str, const PathTy
 }
 
 template <typename T, typename PathType>
-	requires StringableView<PathType>
-FORCE_INLINE [[nodiscard]] bool ReadBinary(T* const object, const PathType path)
+	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+FORCE_INLINE [[nodiscard]] bool ReadBinary(T* const object, const PathType pathOrFd)
 {
-	if (!HasPath(path)) [[unlikely]] {
-		LOG_ERROR_NEW("Can't find file to read data: {}", path);
-		return false;
-	}
+	FileGuard fd{};
+	int32_t file;
 
-	FileGuard fd{ path, O_RDONLY, 0 };
-	if (fd.value == -1) [[unlikely]] {
-		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
-		return false;
+	if constexpr (StringableView<PathType>) {
+		if (!HasPath(pathOrFd)) [[unlikely]] {
+			LOG_ERROR_NEW("Can't find file to read data: {}", pathOrFd);
+			return false;
+		}
+
+		fd = FileGuard{ pathOrFd, O_RDONLY, 0 };
+		if (fd.value == -1) [[unlikely]] {
+			LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
+			return false;
+		}
+
+		file = fd.value;
+	}
+	else {
+		file = pathOrFd;
+		if (lseek(file, 0, SEEK_SET) == -1) [[unlikely]] {
+			LOG_ERROR_NEW("Failed to seek to start of file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
+			return false;
+		}
 	}
 
 	constexpr auto size{ sizeof(T) };
-	const auto result{ read(fd.value, object, size) };
+	const auto result{ read(file, object, size) };
 	if (result == -1) [[unlikely]] {
-		LOG_ERROR_NEW("Can't read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
+		LOG_ERROR_NEW("Can't read data: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 		return false;
 	}
 
 	if (UINT64(result) != size) [[unlikely]] {
-		LOG_ERROR_NEW("Read size {} is not equal to object size {} for file: {}", result, size, path);
+		LOG_ERROR_NEW("Read size {} is not equal to object size {} for file: {}", result, size, pathOrFd);
 		return false;
 	}
 
@@ -1099,26 +1115,40 @@ FORCE_INLINE [[nodiscard]] bool ReadBinary(T* const object, const PathType path)
 }
 
 template <template <typename> typename T, typename S, typename PathType>
-	requires StringableView<PathType>
-FORCE_INLINE [[nodiscard]] bool ReadBinaries(T<S>& container, const PathType path)
+	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
+FORCE_INLINE [[nodiscard]] bool ReadBinaries(T<S>& container, const PathType pathOrFd)
 {
-	if (!HasPath(path)) [[unlikely]] {
-		LOG_ERROR_NEW("Can't find file to read data: {}", path);
-		return false;
-	}
+	FileGuard fd{};
+	int32_t file;
 
-	FileGuard fd{ path, O_RDONLY, 0 };
-	if (fd.value == -1) [[unlikely]] {
-		LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
-		return false;
+	if constexpr (StringableView<PathType>) {
+		if (!HasPath(pathOrFd)) [[unlikely]] {
+			LOG_ERROR_NEW("Can't find file to read data: {}", pathOrFd);
+			return false;
+		}
+
+		fd = FileGuard{ pathOrFd, O_RDONLY, 0 };
+		if (fd.value == -1) [[unlikely]] {
+			LOG_ERROR_NEW("Can't open file to read data: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
+			return false;
+		}
+
+		file = fd.value;
+	}
+	else {
+		file = pathOrFd;
+		if (lseek(file, 0, SEEK_SET) == -1) [[unlikely]] {
+			LOG_ERROR_NEW("Failed to seek to start of file: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
+			return false;
+		}
 	}
 
 	alignas(S) int8_t buffer[sizeof(S)];
 	S* objectPtr{ std::launder(reinterpret_cast<S*>(buffer)) };
 	while (true) {
-		const auto result{ read(fd.value, objectPtr, sizeof(S)) };
+		const auto result{ read(file, objectPtr, sizeof(S)) };
 		if (result == -1) [[unlikely]] {
-			LOG_ERROR_NEW("Can't read data: {}. Error №{}: {}", path, errno, std::strerror(errno));
+			LOG_ERROR_NEW("Can't read data: {}. Error №{}: {}", pathOrFd, errno, std::strerror(errno));
 			return false;
 		}
 
@@ -1128,7 +1158,7 @@ FORCE_INLINE [[nodiscard]] bool ReadBinaries(T<S>& container, const PathType pat
 
 		if (UINT64(result) != sizeof(S)) [[unlikely]] {
 			LOG_ERROR_NEW("Read size {} of object №{} is not equal to object size {} for file: {}.", result,
-				container.size(), sizeof(S), path);
+				container.size(), sizeof(S), pathOrFd);
 			return false;
 		}
 
@@ -1143,7 +1173,7 @@ FORCE_INLINE [[nodiscard]] bool ReadBinaries(T<S>& container, const PathType pat
 		}
 	}
 
-	LOG_DEBUG_NEW("Read binary file: {} with {} items", path, container.size());
+	LOG_DEBUG_NEW("Read binary file: {} with {} items", pathOrFd, container.size());
 	return true;
 }
 

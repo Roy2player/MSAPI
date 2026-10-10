@@ -288,10 +288,15 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 				t.Assert(optional.GetTimestamp(), MSAPI::Timer{ 0 }, "Keep timestamp without timestamp file"));
 			RETURN_IF_FALSE(checkState(optional, {}, 0));
 
-			// Data file removed after construction cannot be read
-			PersistenceType missing{ dirV, "missing" };
-			RETURN_IF_FALSE(t.Assert(IO::Remove((dir + ".missing").c_str()), true, "Remove created data file"));
-			RETURN_IF_FALSE(t.Assert(missing.Read(), false, "Missing data read"));
+			// Files are bound on construction, removed data file is still saved and read through the opened descriptor
+			PersistenceType removed{ dirV, "removed" };
+			RETURN_IF_FALSE(t.Assert(IO::Remove((dir + ".removed").c_str()), true, "Remove created data file"));
+			RETURN_IF_FALSE(t.Assert(
+				removed.template EmplaceBack<SAVE_IMMEDIATE>(firstBatch[0]), true, "Save into removed data file"));
+			RETURN_IF_FALSE(t.Assert(IO::HasPath((dir + ".removed").c_str()), false, "No new data file at the path"));
+			RETURN_IF_FALSE(t.Assert(removed.template Save<CLEAR>(), true, "Clear objects saved into removed file"));
+			RETURN_IF_FALSE(t.Assert(removed.Read(), true, "Read removed data file"));
+			RETURN_IF_FALSE(checkState(removed, { firstBatch[0] }, 1));
 		}
 
 		{

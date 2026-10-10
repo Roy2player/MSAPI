@@ -53,9 +53,9 @@ Declarations
  * makes existing data files unreadable. The timestamp file holds a raw copy of MSAPI::Timer.
  * @note After Save with CLEAR policy the container is empty, while its objects stay in the data file. Read must be
  * called before the next change.
- * @note Data and timestamp files are opened on construction and stay open until destruction, so saving does not open
- * files. Files are bound to the opened descriptors: if a file is renamed or removed while the object exists, saving
- * continues into the renamed or removed file and a new file at the path is not used.
+ * @note Data and timestamp files are opened on construction and stay open until destruction, so reading and saving do
+ * not open files. Files are bound to the opened descriptors: if a file is renamed or removed while the object exists,
+ * reading and saving continue with the renamed or removed file and a new file at the path is not used.
  *
  * @tparam Derived Persistence type, which provides records handling.
  *
@@ -79,17 +79,17 @@ protected:
 	MSAPI::Timer m_timestamp{ 0 };
 	MSAPI::SString<512> m_path;
 	MSAPI::SString<512> m_timestampPath;
-	// Opened in append mode
+	// Opened for reading and for saving in append mode
 	MSAPI::IO::FileGuard m_file;
-	// Opened for writing, overwritten on each save
+	// Opened for reading and writing, overwritten on each save
 	MSAPI::IO::FileGuard m_timestampFile;
 	mutable MSAPI::Lock::AtomicRW m_lock;
 
 public:
 	/**************************
 	 * @brief Normalizes the directory, creates it with missing parents, stores the data and timestamp file paths and
-	 * opens both files for writing, creating them empty if missing and keeping existing content. The data file path is
-	 * "dir/.name" and the timestamp file path is "dir/.name_timestamp".
+	 * opens both files for reading and writing, creating them empty if missing and keeping existing content. The data
+	 * file path is "dir/.name" and the timestamp file path is "dir/.name_timestamp".
 	 *
 	 * @attention Empty directory, empty name, name with '/', path exceeding capacity, failed directory creation or
 	 * failed opening of a file leave the paths empty, and Read, Save and emplacement with SAVE_IMMEDIATE policy fail.
@@ -122,9 +122,10 @@ public:
 	 * @brief Reads all records of the data file into an empty container and marks them as saved, then reads the
 	 * timestamp file if it exists and is not empty.
 	 *
-	 * @attention Missing data file is a failure, empty data file has no records. Timestamp is left at its previous
-	 * value if the timestamp file does not exist or is empty, as it is created empty on construction. Failed reads
-	 * leave the container empty and the timestamp unchanged.
+	 * @attention Files opened on construction are read, see the class note. Empty data file has no records. Timestamp
+	 * is left at its previous value if the timestamp file is empty, as it is created empty on construction. Failed
+	 * reads, including invalid file descriptors after failed construction, leave the container empty and the timestamp
+	 * unchanged.
 	 *
 	 * @locking Write lock m_lock.
 	 *
@@ -721,7 +722,7 @@ FORCE_INLINE Base<Derived>::Base(const std::string_view dir, const std::string_v
 	}
 
 	// Files are opened once to avoid opening them on each save, existing content is kept
-	m_file = MSAPI::IO::FileGuard{ m_path.Get(), MSAPI::IO::SuggestFlags(MSAPI::IO::APPEND), 0644 };
+	m_file = MSAPI::IO::FileGuard{ m_path.Get(), O_RDWR | O_CREAT | O_APPEND, 0644 };
 	if (m_file.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW(
 			"Cannot open persistence data file: \"{}\". Error №{}: {}", m_path.Get(), errno, std::strerror(errno));
@@ -730,7 +731,7 @@ FORCE_INLINE Base<Derived>::Base(const std::string_view dir, const std::string_v
 		return;
 	}
 
-	m_timestampFile = MSAPI::IO::FileGuard{ m_timestampPath.Get(), O_WRONLY | O_CREAT, 0644 };
+	m_timestampFile = MSAPI::IO::FileGuard{ m_timestampPath.Get(), O_RDWR | O_CREAT, 0644 };
 	if (m_timestampFile.value == -1) [[unlikely]] {
 		LOG_ERROR_NEW("Cannot open persistence timestamp file: \"{}\". Error №{}: {}", m_timestampPath.Get(), errno,
 			std::strerror(errno));
@@ -743,12 +744,8 @@ FORCE_INLINE Base<Derived>::Base(const std::string_view dir, const std::string_v
 
 template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Read() noexcept
 {
+	// Invalid file descriptors after failed construction are rejected by IO
 	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_lock };
-	if (m_path.Empty()) [[unlikely]] {
-		LOG_WARNING("Persistence path is empty");
-		return false;
-	}
-
 	if (!Self().IsEmptyImpl()) [[unlikely]] {
 		LOG_WARNING_NEW("Interrupt the attempt to read records into a nonempty container, path: \"{}\"", m_path.Get());
 		return false;
@@ -760,11 +757,18 @@ template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Read(
 		return false;
 	}
 
-	// Timestamp file is created empty on construction, so an empty file has no timestamp yet
 	struct stat timestampStat { };
-	if (stat(m_timestampPath.Get(), &timestampStat) == 0 && timestampStat.st_size != 0) {
+	if (fstat(m_timestampFile.value, &timestampStat) == -1) [[unlikely]] {
+		LOG_ERROR_NEW("Cannot get status of persistence timestamp file: \"{}\". Error №{}: {}", m_timestampPath.Get(),
+			errno, std::strerror(errno));
+		Self().ClearImpl();
+		return false;
+	}
+
+	// Timestamp file is created empty on construction, so an empty file has no timestamp yet
+	if (timestampStat.st_size != 0) {
 		MSAPI::Timer timestamp{ 0 };
-		if (!MSAPI::IO::ReadBinary(&timestamp, m_timestampPath.Get())) [[unlikely]] {
+		if (!MSAPI::IO::ReadBinary(&timestamp, m_timestampFile.value)) [[unlikely]] {
 			Self().ClearImpl();
 			return false;
 		}
@@ -930,7 +934,7 @@ template <template <typename> typename Container, typename Type>
 	requires std::is_trivially_copyable_v<Type>
 FORCE_INLINE [[nodiscard]] bool Single<Container, Type>::ReadImpl() noexcept
 {
-	if (!MSAPI::IO::ReadBinaries(m_container, BaseT::m_path.Get())) [[unlikely]] {
+	if (!MSAPI::IO::ReadBinaries(m_container, BaseT::m_file.value)) [[unlikely]] {
 		return false;
 	}
 
@@ -1137,7 +1141,7 @@ template <template <typename...> typename Map, typename Key, typename Value>
 FORCE_INLINE [[nodiscard]] bool Pair<Map, Key, Value>::ReadImpl() noexcept
 {
 	std::vector<Object> records;
-	if (!MSAPI::IO::ReadBinaries(records, BaseT::m_path.Get())) [[unlikely]] {
+	if (!MSAPI::IO::ReadBinaries(records, BaseT::m_file.value)) [[unlikely]] {
 		return false;
 	}
 
