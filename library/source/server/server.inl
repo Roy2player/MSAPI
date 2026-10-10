@@ -113,7 +113,7 @@ Declarations
  */
 class Server : public Application {
 public:
-	enum State : int8_t { Undefined, Running, Stopped, Stopping, Max };
+	enum class State : int8_t { Undefined, Running, Stopped, Stopping, Max };
 
 	/**************************
 	 * @brief Attributes of pthreads created by the library: detached state, as created pthreads are never joined.
@@ -123,7 +123,7 @@ public:
 	 * @attention If initialization fails, attributes are invalid and pthreads must not be created with them, validity
 	 * is checked by IsValid.
 	 *
-	 * @concurrency Yes. Attributes are only read after construction, so pthreads can be created with them concurrently.
+	 * @concurrency No.
 	 */
 	class PthreadAttributes {
 	private:
@@ -135,16 +135,12 @@ public:
 		 * @brief Construct a new PthreadAttributes object, initialize attributes and set detached state. Attributes are
 		 * destroyed if setting fails, and stay invalid on any failure.
 		 *
-		 * @locking Is not required.
-		 *
 		 * @test Yes.
 		 */
 		FORCE_INLINE PthreadAttributes() noexcept;
 
 		/**************************
 		 * @brief Destroy the PthreadAttributes object, destroy attributes if they are valid.
-		 *
-		 * @locking Is not required.
 		 *
 		 * @test Yes.
 		 */
@@ -156,8 +152,6 @@ public:
 		PthreadAttributes& operator=(PthreadAttributes&&) = delete;
 
 		/**************************
-		 * @locking Is not required.
-		 *
 		 * @return True if attributes are initialized and pthreads can be created with them, false otherwise.
 		 *
 		 * @test Yes.
@@ -167,23 +161,12 @@ public:
 		/**************************
 		 * @pre IsValid().
 		 *
-		 * @locking Is not required.
-		 *
 		 * @return Const reference to attributes.
 		 *
 		 * @test Yes.
 		 */
 		FORCE_INLINE [[nodiscard]] const pthread_attr_t& Get() const noexcept;
 	};
-
-	/**************************
-	 * @locking Is not required.
-	 *
-	 * @return String interpretation of server state enum.
-	 *
-	 * @test Yes.
-	 */
-	FORCE_INLINE [[nodiscard]] static constexpr std::string_view EnumToString(State state) noexcept;
 
 private:
 	/**************************
@@ -208,6 +191,11 @@ private:
 		 * @test Yes.
 		 */
 		FORCE_INLINE explicit IpLimits(uint64_t maxConnections) noexcept;
+
+		IpLimits(const IpLimits&) = delete;
+		IpLimits(IpLimits&&) = delete;
+		IpLimits& operator=(const IpLimits&) = delete;
+		IpLimits& operator=(IpLimits&&) = delete;
 
 		/**************************
 		 * @brief Add a new connection ID to the set of connections.
@@ -267,6 +255,22 @@ private:
 	};
 
 private:
+	// OpenConnectionImpl policy: open a new unique connection
+	static inline constexpr bool UNIQUE{ true };
+	// OpenConnectionImpl policy: reopen connection with the old id
+	static inline constexpr bool RECONNECTION{};
+
+	// OpenConnectionImpl policy: usual connection
+	static inline constexpr bool USUAL{ true };
+	// OpenConnectionImpl policy: connection to manager
+	static inline constexpr bool MANAGER{};
+
+	// Close policy: reconnection path is included
+	static inline constexpr bool RECONNECTION_IS_POSSIBLE{ true };
+	// Close policy: reconnection path is excluded, see Close
+	static inline constexpr bool RECONNECTION_IS_NOT_POSSIBLE{};
+
+private:
 	std::unordered_map<uint64_t, std::shared_ptr<Connection::Data>> m_idToConnectionData;
 	mutable Lock::AtomicRW m_idToConnectionDataRWLock;
 	std::unordered_map<uint64_t, std::shared_ptr<IpLimits>> m_ipToLimits;
@@ -318,10 +322,11 @@ public:
 	Server& operator=(const Server&) = delete;
 	Server& operator=(Server&&) = delete;
 
-	// Application
+	// MSAPI::Application
 	FORCE_INLINE void HandleRunRequest() override;
 	FORCE_INLINE void HandlePauseRequest() override;
-	FORCE_INLINE void HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate);
+	FORCE_INLINE void HandleModifyRequest(
+		const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate) override;
 	FORCE_INLINE void HandleDeleteRequest() override;
 
 	/**************************
@@ -464,6 +469,13 @@ public:
 	 */
 	FORCE_INLINE [[nodiscard]] static bool SetMlockallCurrentFuture() noexcept;
 
+	/**************************
+	 * @return String interpretation of server state enum.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE [[nodiscard]] static constexpr std::string_view EnumToString(State state) noexcept;
+
 protected:
 	/**************************
 	 * @locking Read lock m_idToConnectionDataRWLock inside.
@@ -472,7 +484,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE std::shared_ptr<Connection::Data> GetConnectionData(uint64_t id) const noexcept;
+	FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> GetConnectionData(uint64_t id) const noexcept;
 
 	/**************************
 	 * @brief Handler for income data to be processed further.
@@ -488,7 +500,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	virtual void HandleBuffer(RecvBuffer& recvBuffer);
+	FORCE_INLINE virtual void HandleBuffer(RecvBuffer& recvBuffer);
 
 	/**************************
 	 * @locking Is not required.
@@ -500,12 +512,6 @@ protected:
 	FORCE_INLINE [[nodiscard]] uint16_t GetListenPort() const noexcept;
 
 private:
-	static inline constexpr bool UNIQUE{ true };
-	static inline constexpr bool RECONNECTION{ false };
-
-	static inline constexpr bool USUAL{ true };
-	static inline constexpr bool MANAGER{ false };
-
 	/**************************
 	 * @brief Open new connection. Send hello if server is running.
 	 *
@@ -599,9 +605,6 @@ private:
 	 */
 	FORCE_INLINE [[nodiscard]] std::unique_ptr<Connection> Accept(int32_t socket, sockaddr_in* addr) noexcept;
 
-	static inline constexpr bool RECONNECTION_IS_POSSIBLE{ true };
-	static inline constexpr bool RECONNECTION_IS_NOT_POSSIBLE{ false };
-
 	/**************************
 	 * @brief Clear containers, shutdown and close connection. Perform attempt to reconnection for outcome connection
 	 * and call reconnection callback on success.
@@ -673,7 +676,7 @@ private:
 	 * @test Yes.
 	 */
 	template <Connection::Type Type>
-	FORCE_INLINE void* PthreadRecvLoop(const std::shared_ptr<Connection::Data>& connectionData);
+	FORCE_INLINE [[nodiscard]] void* PthreadRecvLoop(const std::shared_ptr<Connection::Data>& connectionData);
 
 	/**************************
 	 * @brief Create socket and set SO_REUSEADDR=true, SO_REUSEPORT=false if supported and TCP_NODELAY=true options.
@@ -1142,7 +1145,7 @@ FORCE_INLINE [[nodiscard]] bool Server::SetMlockallCurrentFuture() noexcept
 	return true;
 }
 
-FORCE_INLINE std::shared_ptr<Connection::Data> Server::GetConnectionData(const uint64_t id) const noexcept
+FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> Server::GetConnectionData(const uint64_t id) const noexcept
 {
 	{
 		const Lock::AtomicRW::Guard<Lock::READ> _{ m_idToConnectionDataRWLock };
@@ -1502,7 +1505,7 @@ FORCE_INLINE void Server::UnregisterConnectionFromIp(const uint64_t id, const st
 }
 
 template <Connection::Type Type>
-FORCE_INLINE void* Server::PthreadRecvLoop(const std::shared_ptr<Connection::Data>& connectionData)
+FORCE_INLINE [[nodiscard]] void* Server::PthreadRecvLoop(const std::shared_ptr<Connection::Data>& connectionData)
 {
 	// Pthread is not cancelable, it is finished cooperatively and cleans up its resources itself
 	if (const auto result{ pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr) }; result != 0) [[unlikely]] {
@@ -1511,15 +1514,22 @@ FORCE_INLINE void* Server::PthreadRecvLoop(const std::shared_ptr<Connection::Dat
 
 	// Read lock is incremented before attempting to create pthread and decremented on create failure
 	// In bad path there is no locking, on good path this guard is a guarantee it will be unlocked
-	struct Guard {
-		Lock::AtomicRW& rwLock;
+	class Guard {
+	private:
+		Lock::AtomicRW& m_rwLock;
 
-		FORCE_INLINE Guard(Lock::AtomicRW& rwLock) noexcept
-			: rwLock{ rwLock }
+	public:
+		FORCE_INLINE explicit Guard(Lock::AtomicRW& rwLock) noexcept
+			: m_rwLock{ rwLock }
 		{
 		}
 
-		FORCE_INLINE ~Guard() noexcept { rwLock.ReadUnlock(); }
+		FORCE_INLINE ~Guard() noexcept { m_rwLock.ReadUnlock(); }
+
+		Guard(const Guard&) = delete;
+		Guard(Guard&&) = delete;
+		Guard& operator=(const Guard&) = delete;
+		Guard& operator=(Guard&&) = delete;
 	};
 	const Guard _{ m_alivePthreadsRWLock };
 
@@ -1555,7 +1565,7 @@ FORCE_INLINE [[nodiscard]] int32_t Server::Socket(
 	}
 #ifdef SO_REUSEPORT
 	{
-		int32_t enable{ 0 };
+		int32_t enable{};
 		// This is a more recent addition that allows multiple sockets on the same host to bind to the same port.
 		// This can be useful for programs that want to do multicast or need to have multiple processes listening on
 		// the same port. Note that this option is not available on all systems, which is why it's wrapped in an

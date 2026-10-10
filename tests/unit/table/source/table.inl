@@ -1792,9 +1792,10 @@ FORCE_INLINE [[nodiscard]] bool Table()
 
 	{
 		MSAPI::TableData tableData;
-		RETURN_IF_FALSE(t.Assert(tableData.GetBufferSize(), 8, "TableData buffer size"));
+		RETURN_IF_FALSE(t.Assert(tableData.GetBufferSize(), sizeof(size_t), "TableData buffer size"));
 		RETURN_IF_FALSE(t.Assert(tableData.GetBuffer() != nullptr, true, "TableData buffer not nullptr"));
-		RETURN_IF_FALSE(t.Assert(*static_cast<const size_t*>(tableData.GetBuffer()), 8, "TableData buffer value"));
+		RETURN_IF_FALSE(
+			t.Assert(*static_cast<const size_t*>(tableData.GetBuffer()), sizeof(size_t), "TableData buffer value"));
 	}
 
 	{

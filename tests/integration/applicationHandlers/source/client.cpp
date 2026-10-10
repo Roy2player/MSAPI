@@ -109,7 +109,7 @@ void Client::HandlePauseRequest()
 	MSAPI::ActionsCounter::IncrementActionsNumber();
 }
 
-void Client::HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate)
+void Client::HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
 {
 	MSAPI::Application::MergeParameters(parametersUpdate);
 	if (!MSAPI::Application::AreParametersValid()) {
@@ -132,7 +132,7 @@ void Client::HandleMetadata(
 }
 
 void Client::HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
-	[[maybe_unused]] const std::map<size_t, std::variant<standardTypes>>& parameters)
+	[[maybe_unused]] const std::map<uint64_t, std::variant<standardTypes>>& parameters)
 {
 	LOG_ERROR_NEW("Unexpected parameters received from connection id: {}", connectionData->GetConnectionId());
 	MSAPI::ActionsCounter::IncrementActionsNumber();

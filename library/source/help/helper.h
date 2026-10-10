@@ -130,7 +130,7 @@ constexpr bool caseInsensitive = false;
  */
 template <bool CaseSensitive> FORCE_INLINE bool ContainsStr(const std::string& base, const std::string& sub)
 {
-	size_t index{ 0 };
+	size_t index{};
 	const auto size{ sub.size() };
 	for (const auto& symbol : base) {
 		if constexpr (CaseSensitive) {
@@ -216,7 +216,7 @@ template <typename T>
 FORCE_INLINE std::string Replace(T&& str, const char from, const char to)
 {
 	if constexpr (std::is_same_v<std::remove_reference_t<T>, std::string>) {
-		for (size_t index{ 0 }; index < str.size(); ++index) {
+		for (size_t index{}; index < str.size(); ++index) {
 			if (str[index] == from) {
 				str[index] = to;
 			}

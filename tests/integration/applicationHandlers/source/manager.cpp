@@ -45,7 +45,7 @@ void Manager::HandleRunRequest()
 void Manager::HandlePauseRequest() { MSAPI::ActionsCounter::IncrementActionsNumber(); }
 
 void Manager::HandleModifyRequest(
-	[[maybe_unused]] const std::map<size_t, std::variant<standardTypes>>& parametersUpdate)
+	[[maybe_unused]] const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
 {
 	LOG_ERROR("Unexpected modify request received");
 	MSAPI::ActionsCounter::IncrementActionsNumber();
@@ -78,7 +78,7 @@ void Manager::HandleMetadata(
 }
 
 void Manager::HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
-	const std::map<size_t, std::variant<standardTypes>>& parameters)
+	const std::map<uint64_t, std::variant<standardTypes>>& parameters)
 {
 	if (connectionData != m_clientConnection) {
 		LOG_ERROR_NEW("Parameters response from unknown connection id: {}", connectionData->GetConnectionId());
@@ -202,7 +202,7 @@ std::string Manager::GetParameters() const
 
 const std::string& Manager::GetMetadata() const noexcept { return m_metadata; }
 
-const std::map<size_t, std::variant<standardTypes>>& Manager::GetParametersResponse() const noexcept
+const std::map<uint64_t, std::variant<standardTypes>>& Manager::GetParametersResponse() const noexcept
 {
 	return m_parametersResponse;
 }

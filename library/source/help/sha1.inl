@@ -42,6 +42,12 @@ Declarations
  * @brief SHA-1 hashing class.
  */
 class Sha1 {
+public:
+	// Final policy: reset the state after calculation, so the object can be reused
+	static constexpr inline bool RESET{ true };
+	// Final policy: keep the state after calculation
+	static constexpr inline bool DO_NOT_RESET{};
+
 private:
 	uint32_t m_h0{ 0x67452301 };
 	uint32_t m_h1{ 0xEFCDAB89 };
@@ -54,6 +60,13 @@ private:
 	std::array<uint32_t, 80> m_processBuffer{};
 
 public:
+	FORCE_INLINE Sha1() noexcept = default;
+
+	FORCE_INLINE Sha1(const Sha1&) noexcept = default;
+	FORCE_INLINE Sha1(Sha1&&) noexcept = default;
+	FORCE_INLINE Sha1& operator=(const Sha1&) noexcept = default;
+	FORCE_INLINE Sha1& operator=(Sha1&&) noexcept = default;
+
 	/**************************
 	 * @brief Update the hash with a chunk of data, this method can be called multiple times to hash data in chunks.
 	 *
@@ -62,9 +75,6 @@ public:
 	 * @test Yes.
 	 */
 	FORCE_INLINE void Update(std::span<const uint8_t> data) noexcept;
-
-	static constexpr inline bool RESET{ true };
-	static constexpr inline bool DO_NOT_RESET{ false };
 
 	/**************************
 	 * @brief Finalize the hash and return the resulting 20-byte digest.
@@ -101,7 +111,7 @@ private:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE static void WriteBe32(uint8_t* const dst, uint32_t x) noexcept;
+	FORCE_INLINE static void WriteBe32(uint8_t* dst, uint32_t x) noexcept;
 
 	/**************************
 	 * @brief Read a 32-bit unsigned integer from a byte array in big-endian order.
@@ -112,7 +122,7 @@ private:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] static uint32_t ReadBe32(const uint8_t* const p) noexcept;
+	FORCE_INLINE [[nodiscard]] static uint32_t ReadBe32(const uint8_t* p) noexcept;
 
 	/**************************
 	 * @brief Process a single 512-bit block of input data and update the hash state.
@@ -121,7 +131,7 @@ private:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE void ProcessBlock(const uint8_t* const block) noexcept;
+	FORCE_INLINE void ProcessBlock(const uint8_t* block) noexcept;
 };
 
 /*---------------------------------------------------------------------------------

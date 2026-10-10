@@ -44,7 +44,7 @@ Declarations
  */
 template <typename T, int_fast32_t Size> class CircleContainer {
 private:
-	static std::atomic<bool> m_ready;
+	static std::atomic<bool> READY;
 
 	struct Node {
 		T value;
@@ -55,7 +55,7 @@ public:
 	class Accessor {
 	private:
 		Node* m_current;
-		std::atomic<bool>& m_ready{ CircleContainer::m_ready };
+		std::atomic<bool>& m_ready{ CircleContainer::READY };
 
 	public:
 		Accessor(CircleContainer& container)
@@ -98,7 +98,7 @@ public:
 		m_nodes[end].next = &m_nodes[0];
 	}
 
-	// For ability to access m_nodes and m_ready in constructor
+	// For ability to access m_nodes and READY in constructor
 	friend class Accessor;
 };
 
@@ -138,7 +138,7 @@ struct Buffers {
 	}
 };
 
-template <> std::atomic<bool> CircleContainer<Buffers::Buffer, BUFFERS_COUNTER>::m_ready = true;
+template <> std::atomic<bool> CircleContainer<Buffers::Buffer, BUFFERS_COUNTER>::READY = true;
 std::atomic<int_fast32_t> Buffers::writesCounter = 0;
 const int_fast16_t Buffers::Buffer::pageSize = 4096; // Only for tests
 

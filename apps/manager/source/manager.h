@@ -79,6 +79,13 @@ private:
 		const int32_t m_limit{ 50000 };
 
 	public:
+		FORCE_INLINE PortGenerator() noexcept = default;
+
+		PortGenerator(const PortGenerator&) = delete;
+		PortGenerator(PortGenerator&&) = delete;
+		PortGenerator& operator=(const PortGenerator&) = delete;
+		PortGenerator& operator=(PortGenerator&&) = delete;
+
 		/**************************
 		 * @return Unique port.
 		 *
@@ -132,12 +139,13 @@ private:
 	 */
 	struct InstalledAppData {
 		bool hasView;
-		int32_t viewPortParameter;
+		uint64_t viewPortParameter;
 		std::string type;
 		std::string bin;
 		std::string metadata;
 		MSAPI::Json metadataJson;
 
+	public:
 		/**************************
 		 * @brief Construct a new Installed App Data object without view.
 		 *
@@ -153,13 +161,18 @@ private:
 		 * @param bin Path to app bin.
 		 * @param viewPortParameter Parameter where port for view is stored.
 		 */
-		InstalledAppData(const std::string& type, const std::string& bin, const int32_t viewPortParameter)
+		InstalledAppData(const std::string& type, const std::string& bin, const uint64_t viewPortParameter)
 			: hasView{ true }
 			, viewPortParameter{ viewPortParameter }
 			, type{ type }
 			, bin{ bin }
 		{
 		}
+
+		FORCE_INLINE InstalledAppData(const InstalledAppData&) = default;
+		FORCE_INLINE InstalledAppData(InstalledAppData&&) noexcept = default;
+		FORCE_INLINE InstalledAppData& operator=(const InstalledAppData&) = default;
+		FORCE_INLINE InstalledAppData& operator=(InstalledAppData&&) noexcept = default;
 	};
 
 	/**************************
@@ -172,6 +185,7 @@ private:
 		const std::shared_ptr<InstalledAppData> appData;
 		std::shared_ptr<MSAPI::Connection::Data> connectionData;
 
+	public:
 		/**************************
 		 * @brief Construct a new Created App Data object.
 		 *
@@ -180,6 +194,11 @@ private:
 		 * @param appData Pointer to installed app data.
 		 */
 		CreatedAppData(size_t hash, int pid, const std::shared_ptr<InstalledAppData>& appData);
+
+		FORCE_INLINE CreatedAppData(const CreatedAppData&) = default;
+		FORCE_INLINE CreatedAppData(CreatedAppData&&) noexcept = default;
+		CreatedAppData& operator=(const CreatedAppData&) = delete;
+		CreatedAppData& operator=(CreatedAppData&&) = delete;
 	};
 
 private:
@@ -188,7 +207,7 @@ private:
 	mutable MSAPI::Lock::AtomicRW m_hashToInstalledAppDataLock;
 	std::map<uint16_t, std::shared_ptr<CreatedAppData>> m_portToCreatedApp;
 	mutable MSAPI::Lock::AtomicRW m_portToCreatedAppLock;
-	std::map<size_t, std::shared_ptr<std::vector<MSAPI::StandardType::Type>>> m_tableIdToColumns;
+	std::map<uint64_t, std::shared_ptr<std::vector<MSAPI::StandardType::Type>>> m_tableIdToColumns;
 	mutable MSAPI::Lock::AtomicRW m_tableIdToColumnsLock;
 	MSAPI::Authorization::Base::Module<> m_authorizationModule;
 	MSAPI::Protocol::WebSocket::Events::SinglesDistributor<MSAPI::Authorization::Base::Module<>> m_singlesDistributor{
@@ -205,14 +224,19 @@ public:
 	 */
 	Manager();
 
+	Manager(const Manager&) = delete;
+	Manager(Manager&&) = delete;
+	Manager& operator=(const Manager&) = delete;
+	Manager& operator=(Manager&&) = delete;
+
 	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
 	// MSAPI::Application
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;
-	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
+	void HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate) final;
 	void HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
-		const std::map<size_t, std::variant<standardTypes>>& parameters) final;
+		const std::map<uint64_t, std::variant<standardTypes>>& parameters) final;
 	void HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
 	/**************************
 	 * @todo Lookup of created app by connection is a bad design, it can be changed because of new Connection::Data
@@ -601,7 +625,7 @@ private:
 		}
 
 		MSAPI::Protocol::Standard::Data parametersUpdate{ MSAPI::Protocol::Standard::CIPHER_ACTION_MODIFY };
-		size_t key;
+		uint64_t key{};
 		for (const auto& [keyStr, node] : parameters->GetKeysAndValues()) {
 			const auto error{ std::from_chars(keyStr.data(), keyStr.data() + keyStr.size(), key).ec };
 			if (error != std::errc{}) {
@@ -819,7 +843,7 @@ private:
 #undef TMP_MANAGER_CONTINUE_WITH_ERROR
 #undef TMP_MANAGER_TRY_SET_DATA_PARAMETER
 
-		if (parametersUpdate.GetBufferSize() > sizeof(size_t) * 2) {
+		if (parametersUpdate.GetBufferSize() > MSAPI::DataHeader::HEADER_SIZE) {
 			auto& connection{ createdAppData->connectionData->GetConnection() };
 			MSAPI::Protocol::Standard::Send(connection, parametersUpdate);
 			MSAPI::Protocol::Standard::SendParametersRequest(connection);

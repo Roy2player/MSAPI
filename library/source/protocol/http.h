@@ -48,7 +48,10 @@ namespace HTTP {
  */
 class Data {
 private:
+	// GUID from RFC 6455, concatenated with the client key to calculate the WebSocket accept key
 	static inline constexpr std::string_view WEB_SOCKET_GUID{ "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" };
+
+private:
 	std::map<std::string, std::string, std::less<>> m_headersMap;
 	std::string m_messageType;
 	std::string m_url;
@@ -76,6 +79,11 @@ public:
 	 * @test Yes.
 	 */
 	Data(MSAPI::RecvBuffer& recvBuffer);
+
+	FORCE_INLINE Data(const Data&) = default;
+	FORCE_INLINE Data(Data&&) noexcept = default;
+	FORCE_INLINE Data& operator=(const Data&) = default;
+	FORCE_INLINE Data& operator=(Data&&) noexcept = default;
 
 	/**************************
 	 * @return Readable link to maps with headers like { header, value }.
@@ -309,6 +317,11 @@ public:
 	IHandler(const MSAPI::Application* application);
 
 	FORCE_INLINE virtual ~IHandler() = default;
+
+	IHandler(const IHandler&) = delete;
+	IHandler(IHandler&&) = delete;
+	IHandler& operator=(const IHandler&) = delete;
+	IHandler& operator=(IHandler&&) = delete;
 
 	/**************************
 	 * @brief Collect HTTP message from socket connection and call Handler function if Application is running.

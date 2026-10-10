@@ -128,7 +128,7 @@ FORCE_INLINE [[nodiscard]] bool Application();
  */
 class Application {
 public:
-	enum State : int16_t { Undefined, Paused, Running, Max };
+	enum class State : int16_t { Undefined, Paused, Running, Max };
 
 	/**************************
 	 * @brief Contains particular parameter and its requirements.
@@ -139,7 +139,7 @@ public:
 		std::variant<standardTypesPtr> m_value;
 		const std::optional<std::variant<integerTypes, floatTypes, Timer::Duration>> m_min;
 		const std::optional<std::variant<integerTypes, floatTypes, Timer::Duration>> m_max;
-		const bool m_canBeEmpty{ false };
+		const bool m_canBeEmpty{};
 		std::string m_error;
 		// For Duration
 		const Timer::Duration::Type m_durationType{ Timer::Duration::Type::Nanoseconds };
@@ -307,6 +307,11 @@ public:
 		{
 		}
 
+		FORCE_INLINE Parameter(const Parameter&) = default;
+		FORCE_INLINE Parameter(Parameter&&) = default;
+		Parameter& operator=(const Parameter&) = delete;
+		Parameter& operator=(Parameter&&) = delete;
+
 	private:
 		/**************************
 		 * @brief Validation of registered parameter's value. If value is not correct, error will be added and
@@ -318,7 +323,7 @@ public:
 		 *
 		 * @test Yes.
 		 */
-		bool RegisterValidation(size_t id);
+		bool RegisterValidation(uint64_t id);
 
 		/**************************
 		 * @brief Merge parameter value. If value is not correct, error will be added and printed warning
@@ -333,7 +338,7 @@ public:
 		 *
 		 * @test Yes.
 		 */
-		bool Merge(size_t id, const std::variant<standardTypes>& value);
+		bool Merge(uint64_t id, const std::variant<standardTypes>& value);
 
 		friend bool Test::Unit::Application();
 		// For access in RegisterValidation and Merge methods and direct access to fields.
@@ -447,6 +452,11 @@ public:
 
 #undef MSAPI_TMP_APPLICATION_PARAMETER_FILL_METADATA_FOR_ENUM
 
+		FORCE_INLINE ConstParameter(const ConstParameter&) = default;
+		FORCE_INLINE ConstParameter(ConstParameter&&) = default;
+		ConstParameter& operator=(const ConstParameter&) = delete;
+		ConstParameter& operator=(ConstParameter&&) = delete;
+
 		// For direct access to fields.
 		friend class Application;
 	};
@@ -455,9 +465,9 @@ private:
 	std::string m_name{ "" };
 	std::string m_metadata;
 	State m_state{ State::Paused };
-	std::map<size_t, Parameter> m_parameters;
-	std::map<size_t, const Parameter* const> m_errorParameters;
-	std::map<size_t, ConstParameter> m_constParameters;
+	std::map<uint64_t, Parameter> m_parameters;
+	std::map<uint64_t, const Parameter* const> m_errorParameters;
+	std::map<uint64_t, ConstParameter> m_constParameters;
 
 public:
 	/**************************
@@ -469,6 +479,11 @@ public:
 	 * @brief Default destructor, call HandlePauseRequest.
 	 */
 	virtual ~Application();
+
+	Application(const Application&) = delete;
+	Application(Application&&) = delete;
+	Application& operator=(const Application&) = delete;
+	Application& operator=(Application&&) = delete;
 
 	/**************************
 	 * @brief Handle run request from External application. Already defined in Server class, but can be overridden.
@@ -494,7 +509,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	virtual void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate);
+	virtual void HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate);
 
 	/**************************
 	 * @brief Handle delete request from External application. Already defined in Server class, but can be
@@ -535,7 +550,7 @@ public:
 	 * @test Yes.
 	 */
 	virtual void HandleParameters(const std::shared_ptr<Connection::Data>& connectionData,
-		const std::map<size_t, std::variant<standardTypes>>& parameters);
+		const std::map<uint64_t, std::variant<standardTypes>>& parameters);
 
 	/**************************
 	 * @brief Not network signal about previously opened connection by id was closed no by server. Already defined
@@ -580,14 +595,14 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	const std::map<size_t, Parameter>& GetParameters() const noexcept;
+	const std::map<uint64_t, Parameter>& GetParameters() const noexcept;
 
 	/**************************
 	 * @return Readable reference to constant parameters.
 	 *
 	 * @test Yes.
 	 */
-	const std::map<size_t, ConstParameter>& GetConstParameters() const noexcept;
+	const std::map<uint64_t, ConstParameter>& GetConstParameters() const noexcept;
 
 	/**************************
 	 * @return True if parameters with error not exist.
@@ -601,7 +616,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	const std::map<size_t, const Parameter* const>& GetErrorParameters() const noexcept;
+	const std::map<uint64_t, const Parameter* const>& GetErrorParameters() const noexcept;
 
 	/**************************
 	 * @return Name of application, can be empty.
@@ -665,7 +680,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void RegisterParameter(size_t id, Parameter&& parameter);
+	void RegisterParameter(uint64_t id, Parameter&& parameter);
 
 	/**************************
 	 * @brief Register constant parameter to application.
@@ -675,7 +690,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void RegisterConstParameter(size_t id, ConstParameter&& parameter);
+	void RegisterConstParameter(uint64_t id, ConstParameter&& parameter);
 
 	/**************************
 	 * @brief Get parameters of application in string format.
@@ -711,7 +726,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void MergeParameters(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate);
+	void MergeParameters(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate);
 
 	/**************************
 	 * @brief Merge parameter to application, manage container of parameters with error. Print warning log if
@@ -724,7 +739,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void MergeParameter(size_t id, const std::variant<standardTypes>& value);
+	void MergeParameter(uint64_t id, const std::variant<standardTypes>& value);
 
 	/**************************
 	 * @brief Set custom error to parameter. If error already exist, errors will be concatenated. Custom error will
@@ -736,7 +751,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	void SetCustomError(size_t id, const std::string& error);
+	void SetCustomError(uint64_t id, const std::string& error);
 
 	friend bool Test::Unit::Application();
 };
@@ -917,7 +932,7 @@ protected:
 		}                                                                                                              \
 	}                                                                                                                  \
                                                                                                                        \
-	unsigned short port{ 0 };                                                                                          \
+	unsigned short port{};                                                                                             \
 	if (const auto* portStr{ parameters.GetValue("port") }; portStr != nullptr) {                                      \
 		if (const auto* value{ std::get_if<std::string>(&portStr->GetValue()) }; value != nullptr) {                   \
 			if (value->empty()) {                                                                                      \
@@ -958,7 +973,7 @@ protected:
 		std::cerr << "Invalid type of manager port in parameters, string is expected." << std::endl;                   \
 		return 1;                                                                                                      \
 	}                                                                                                                  \
-	unsigned short managerPort{ 0 };                                                                                   \
+	unsigned short managerPort{};                                                                                      \
 	{                                                                                                                  \
 		const auto error{                                                                                              \
 			std::from_chars(managerValue->data(), managerValue->data() + managerValue->size(), managerPort).ec         \

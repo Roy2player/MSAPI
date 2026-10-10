@@ -91,7 +91,7 @@ TableData::TableData(const void* buffer)
 	: m_sharedBuffer{ buffer }
 {
 	if (buffer != nullptr) {
-		m_bufferSize = *static_cast<const size_t*>(buffer);
+		memcpy(&m_bufferSize, buffer, sizeof(size_t));
 	}
 }
 
@@ -102,7 +102,7 @@ TableData::TableData(const std::list<JsonNode>& rows, const std::vector<Standard
 		return;
 	}
 
-	size_t allocationStep{ 0 };
+	size_t allocationStep{};
 	for (const auto columnType : columnTypes) {
 		switch (columnType) {
 		case StandardType::Type::Int8:
@@ -169,7 +169,7 @@ TableData::TableData(const std::list<JsonNode>& rows, const std::vector<Standard
 			allocationStep += 5;
 			break;
 		case StandardType::Type::String:
-			allocationStep += 72; /* 8 bytes for size and 64 bytes for content */
+			allocationStep += sizeof(size_t) + 64; // 8 bytes for size and 64 bytes for content
 			break;
 		case StandardType::Type::Timer:
 			allocationStep += sizeof(MSAPI::Timer);
@@ -244,7 +244,7 @@ TableData::TableData(const std::list<JsonNode>& rows, const std::vector<Standard
 	free(buffer);                                                                                                      \
 	return;
 
-		size_t index{ 0 };
+		size_t index{};
 		for (const auto& cell : *rowArray) {
 			const auto* cellVariant{ &cell.GetValue() };
 			switch (columnTypes[index]) {
@@ -457,7 +457,7 @@ std::string TableData::LookUpToJson(const std::vector<StandardType::Type>& colum
 
 	size_t offset{ sizeof(size_t) };
 	while (true) {
-		for (size_t index{ 0 };; ++index) {
+		for (size_t index{};; ++index) {
 			switch (columnTypes[index]) {
 			case StandardType::Type::Int8:
 

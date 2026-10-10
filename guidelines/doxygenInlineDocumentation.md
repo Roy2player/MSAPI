@@ -38,7 +38,7 @@ Use for class, struct, and union.
 - `@note` Outstanding information, as design choose thoughts, performance measurements and etc.
 - `@see` To point that some details can be found in other brief.
 - `@tparam` Description of a template parameter.
-- `@concurrency` `Yes` if the abstraction is designed to be used concurrency safely, `No` otherwise.
+- `@concurrency` `Yes` only if the abstraction provides its own synchronization mechanisms (e.g. internal locks or atomics) to manage concurrent access to itself, with description of the guarantees. `No` in all other cases, including abstractions without setters or other modifying methods.
 - `@purging` In case the abstraction accumulates resources in internal storage and has a mechanism to release them, describe the purging behavior.
 - `@todo` Description of future work, if any.
 

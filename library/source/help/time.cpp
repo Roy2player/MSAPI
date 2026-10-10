@@ -388,7 +388,7 @@ bool operator<=(const Timer::Date& first, const Timer::Date& second) { return !(
 Timer
 ---------------------------------------------------------------------------------*/
 
-const std::chrono::system_clock::time_point Timer::m_zero_point{ std::chrono::system_clock::from_time_t(INT64(0)) };
+const std::chrono::system_clock::time_point Timer::ZERO_POINT{ std::chrono::system_clock::from_time_t(INT64(0)) };
 
 Timer::Timer()
 	: m_point{ std::chrono::system_clock::now() }
@@ -401,11 +401,11 @@ Timer::Timer(const std::chrono::system_clock::time_point point)
 }
 
 Timer::Timer(const int64_t seconds, const int64_t nanoseconds)
-	: m_point{ seconds == 0 && nanoseconds == 0 ? m_zero_point : TimespecToTimePoint(timespec{ seconds, nanoseconds }) }
+	: m_point{ seconds == 0 && nanoseconds == 0 ? ZERO_POINT : TimespecToTimePoint(timespec{ seconds, nanoseconds }) }
 {
 }
 
-bool Timer::Empty() const { return m_point == m_zero_point; }
+bool Timer::Empty() const { return m_point == ZERO_POINT; }
 
 void Timer::Reset() { m_point = std::chrono::system_clock::now(); }
 
@@ -442,8 +442,8 @@ std::string Timer::ToString() const
 	auto minute{ static_cast<uint8_t>(timestamp / SECONDS_IN_MINUTE) };
 	auto second{ static_cast<uint8_t>(timestamp - static_cast<uint16_t>(minute) * SECONDS_IN_MINUTE) };
 
-	uint8_t month{ 0 };
-	for (uint8_t index{ 0 }; index < 12; ++index) {
+	uint8_t month{};
+	for (uint8_t index{}; index < 12; ++index) {
 		if (const auto daysPerMonth{ static_cast<uint16_t>(HOW_MUCH_DAYS_PER_MONTH(index, isLeap)) };
 			day >= daysPerMonth) {
 
@@ -527,8 +527,8 @@ Timer::Date Timer::ToDate() const
 		day -= extraDays;
 	}
 
-	uint8_t month{ 0 };
-	for (uint8_t index{ 0 }; index < 12; ++index) {
+	uint8_t month{};
+	for (uint8_t index{}; index < 12; ++index) {
 		if (const auto daysPerMonth{ static_cast<uint16_t>(HOW_MUCH_DAYS_PER_MONTH(index, isLeap)) };
 			day >= daysPerMonth) {
 
@@ -558,8 +558,8 @@ uint16_t Timer::HowMuchDaysFromStartOfYearTillMonth(const uint8_t month, const b
 		return 0;
 	}
 
-	uint16_t sum{ 0 };
-	for (uint8_t index{ 0 }; index < month - 1; ++index) {
+	uint16_t sum{};
+	for (uint8_t index{}; index < month - 1; ++index) {
 		sum += static_cast<uint16_t>(HOW_MUCH_DAYS_PER_MONTH(index, isLeap));
 	}
 

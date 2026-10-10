@@ -35,9 +35,9 @@ concept AutoClearPtrT = !std::is_pointer_v<T> && !std::is_reference_v<T> && !std
  * @brief RAII owner of pointer on allocated memory with error logging, const and non-const accessors and reallocation
  * possibility.
  */
-template <AutoClearPtrT T> struct AutoClearPtr {
+template <AutoClearPtrT T> class AutoClearPtr {
 private:
-	T* m_ptr{ nullptr };
+	T* m_ptr{};
 
 public:
 	/**************************
@@ -58,7 +58,7 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE AutoClearPtr(uint64_t size);
+	FORCE_INLINE explicit AutoClearPtr(uint64_t size);
 
 	/**************************
 	 * @brief Construct a new Auto Clear Ptr object.
@@ -67,7 +67,7 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE AutoClearPtr(T* ptr) noexcept;
+	FORCE_INLINE explicit AutoClearPtr(T* ptr) noexcept;
 
 	AutoClearPtr(const AutoClearPtr&) = delete;
 	AutoClearPtr& operator=(const AutoClearPtr&) = delete;
@@ -143,7 +143,7 @@ template <AutoClearPtrT T> FORCE_INLINE AutoClearPtr<T>::AutoClearPtr(const uint
 
 template <AutoClearPtrT T>
 FORCE_INLINE AutoClearPtr<T>::AutoClearPtr(T* ptr) noexcept
-	: m_ptr(ptr)
+	: m_ptr{ ptr }
 {
 }
 

@@ -19,6 +19,7 @@
 #ifndef MSAPI_HTML_H
 #define MSAPI_HTML_H
 
+#include "log.h"
 #include <string>
 #include <typeinfo>
 #include <vector>
@@ -34,8 +35,6 @@ namespace MSAPI {
  */
 class HTML {
 public:
-	static inline const int maxTagSize{ 8 };
-
 	enum class Type : int16_t {
 		Undefined,
 		Html,
@@ -87,16 +86,24 @@ public:
 	 */
 	struct Tag {
 	private:
-		bool m_started{ false };
+		bool m_started{};
 
 	public:
 		Valid isOpenTag{ Valid::Undefined };
 		Valid valid{ Valid::Undefined };
 		Type type{ Type::Undefined };
-		size_t begin{ 0 };
-		size_t end{ 0 };
+		size_t begin{};
+		size_t end{};
 		// 0 == undefined
-		uint depth{ 0 };
+		uint depth{};
+
+	public:
+		FORCE_INLINE Tag() noexcept = default;
+
+		FORCE_INLINE Tag(const Tag&) noexcept = default;
+		FORCE_INLINE Tag(Tag&&) noexcept = default;
+		FORCE_INLINE Tag& operator=(const Tag&) noexcept = default;
+		FORCE_INLINE Tag& operator=(Tag&&) noexcept = default;
 
 		/**************************
 		 * @return True if tag is started, false otherwise.
@@ -152,10 +159,14 @@ public:
 		friend bool operator!=(const Tag& first, const Tag& second) noexcept;
 	};
 
+public:
+	// Maximum length of a tag name, longer names make the tag invalid
+	static inline const int MAX_TAG_SIZE{ 8 };
+
 private:
 	std::vector<Tag> m_tags;
-	uint m_maxDepth{ 0 };
-	size_t m_size{ 0 };
+	uint m_maxDepth{};
+	size_t m_size{};
 
 public:
 	/**************************
@@ -166,6 +177,11 @@ public:
 	 * @test Yes.
 	 */
 	HTML(std::string_view buffer);
+
+	FORCE_INLINE HTML(const HTML&) = default;
+	FORCE_INLINE HTML(HTML&&) noexcept = default;
+	FORCE_INLINE HTML& operator=(const HTML&) = default;
+	FORCE_INLINE HTML& operator=(HTML&&) noexcept = default;
 
 	/**************************
 	 * @return Tag by index, if index is out of range or 0, return last tag.

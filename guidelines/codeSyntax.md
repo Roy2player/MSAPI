@@ -30,7 +30,14 @@ const auto connection{ OpenConnection(ip, port, /*doReconnection=*/false) };
 - Use FORCE_INLINE for all declarations and definitions.
 - Use `[[nodiscard]]` for all declarations and definitions of functions that return a value.
 - Use `noexcept` for all declarations and definitions of functions that do not throw exceptions. Make sure that internal calls do not throw exceptions as well or make sure that exceptions are caught and handled inside the function.
-- On function call use `/*tag=*/value` for all constants.
+- On function call use `/*tag=*/value` for constants whose meaning is not obvious from the call, e.g. `OpenConnection(ip, port, /*doReconnection=*/false)`. The purpose of the tag is to make non-obvious things explicit, so it is omitted when the function name already tells what the argument is, e.g. `SetSaved(true)`, `SetPort(8080)`.
+- Arguments passed by value are declared without `const` qualifier, as it is not a part of the function signature. Definition adds `const` to the argument if it is not modified in the function body.
+
+```cpp
+FORCE_INLINE void SetPort(uint16_t port) noexcept;
+
+FORCE_INLINE void Server::SetPort(const uint16_t port) noexcept { m_port = port; }
+```
 
 ### Body
 
@@ -38,6 +45,10 @@ const auto connection{ OpenConnection(ip, port, /*doReconnection=*/false) };
 - Use `[[maybe_unused]]` for all variables that are not used in the function body.
 - Use `[[indeterminate]]` for all local variables that can be uninitialized at the point of declaration.
 - `goto` operator is prohibited. Control flow is expressed by structured statements: loops, `break`/`continue` and early `return`.
+
+### Lambda
+
+- Capture defaults `[&]` and `[=]` are prohibited. Each captured variable is listed explicitly, by reference or by value, so it is visible what the lambda depends on and how, e.g. dangling reference or unintended copy is noticeable at the place of capture.
 
 ## Type
 
@@ -49,10 +60,25 @@ const auto connection{ OpenConnection(ip, port, /*doReconnection=*/false) };
 ### User defined type
 
 - Do not loose scope of user defined types, like class, struct, enum, etc. Use `std::` or `MSAPI::` prefix when using them outside of their namespace. If class is derived from another class, use `BaseClass::` prefix when accessing its data or functions.
+- If the base class name is long or templated, define a type alias for it and access inherited data and functions via the alias, e.g. `BaseT::m_path`. For a template base class the prefix is also required, as names of a dependent base are not found without it.
+
+```cpp
+template <template <typename> typename Container, typename Type>
+class Single : public Base<Single<Container, Type>> {
+    using BaseT = Base<Single<Container, Type>>;
+
+    FORCE_INLINE void Clear() noexcept
+    {
+        const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ BaseT::m_lock };
+        BaseT::m_timestamp = MSAPI::Timer{};
+    }
+};
+```
 
 #### Declaration
 
-- Use `class` for all class declarations, public or protected fields fields are prohibited.
+- Use `class` for all class declarations, public fields are prohibited. Protected fields are allowed only in a base class designed to share its state with derived classes, e.g. CRTP base, and derived classes access them via the base type alias, e.g. `BaseT::m_path`.
+- `struct` is kept where the standard library convention requires it: specializations of standard templates declared as `struct` (`std::hash`, `std::formatter`), allocator `rebind` and metaprogramming type traits, e.g. `template <typename T> struct is_optional : std::false_type {};`.
 - Use `explicit` for all constructors that can be called with a single argument.
 - Copy constructor, move constructor, copy assignment and move assignment operators are always explicitly declared as `= default` or `= delete`, all four together. Implicit generation of them depends on other members silently: user declared destructor suppresses implicit move and makes the type copied instead, lock or `std::unique_ptr` field makes copying deleted. Explicit declaration documents the intent and lets the compiler check it.
 - Destructor and default constructor are not required to be declared explicitly, as their implicit behavior is not surprising:
@@ -102,8 +128,9 @@ public:
 
 ## Variable
 
-Use `{}` for all basic data types to highlight that they are initialized with default value.
-Use `{ value }` for all initializations of types where no specific std::initializer_list construction exists.
+- Use brace initialization for all variables and fields.
+- Types without a user-defined constructor (basic data types, aggregates) initialized by default value use empty braces `{}`, including static fields, not explicit default value: `uint64_t m_size{};` instead of `uint64_t m_size{ 0 };`, `bool m_isSaved{};` instead of `bool m_isSaved{ false };`, `int8_t* m_buffer{};` instead of `int8_t* m_buffer{ nullptr };`.
+- Use `{ value }` for all initializations of types where no specific std::initializer_list construction exists.
 
 ## Macros
 
@@ -120,3 +147,4 @@ const auto result{ square(size + 1) };
 
 - Use `// Comment` to define the purpose of friendship.
 - Use `// Comment` to mark place where direct access via friendship is happening.
+- Consider usage of private methods of the class over direct access to its private members, e.g. `object.SetSaved(true)` instead of `object.m_isSaved = true`, so the class keeps control of its state.

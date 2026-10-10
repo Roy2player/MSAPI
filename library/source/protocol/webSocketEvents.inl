@@ -116,11 +116,13 @@ public:
 	/**************************
 	 * @brief Handler and access requirements holder.
 	 */
-	struct HandlerData {
-		const handler_t handler;
-		const int16_t grade;
-		const bool isPermissionRequired;
+	class HandlerData {
+	private:
+		const handler_t m_handler;
+		const int16_t m_grade;
+		const bool m_isPermissionRequired;
 
+	public:
 		/**************************
 		 * @brief Construct object with requirements.
 		 *
@@ -138,12 +140,33 @@ public:
 		 *
 		 * @todo Add tests coverage.
 		 */
-		FORCE_INLINE HandlerData(handler_t&& handler) noexcept;
+		FORCE_INLINE explicit HandlerData(handler_t&& handler) noexcept;
 
 		HandlerData(const HandlerData&) = delete;
 		HandlerData(HandlerData&&) = delete;
 		HandlerData& operator=(const HandlerData&) = delete;
 		HandlerData& operator=(HandlerData&&) = delete;
+
+		/**************************
+		 * @return Event type specific handler.
+		 *
+		 * @todo Add tests coverage.
+		 */
+		FORCE_INLINE [[nodiscard]] const handler_t& GetHandler() const noexcept;
+
+		/**************************
+		 * @return Minimal required grade, meaningful only if permission is required.
+		 *
+		 * @todo Add tests coverage.
+		 */
+		FORCE_INLINE [[nodiscard]] int16_t GetGrade() const noexcept;
+
+		/**************************
+		 * @return True if permission is required to handle the event, false otherwise.
+		 *
+		 * @todo Add tests coverage.
+		 */
+		FORCE_INLINE [[nodiscard]] bool IsPermissionRequired() const noexcept;
 	};
 
 	using handlerData_t = HandlerData;
@@ -229,7 +252,7 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE IdentityFilter(uint64_t identity) noexcept;
+	FORCE_INLINE explicit IdentityFilter(uint64_t identity) noexcept;
 
 	/**************************
 	 * @brief Create filter from json. Filter is expected to be under "filter" key with unsigned type, empty filter is
@@ -237,7 +260,7 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE IdentityFilter(const Json& json) noexcept;
+	FORCE_INLINE explicit IdentityFilter(const Json& json) noexcept;
 
 	FORCE_INLINE IdentityFilter(const IdentityFilter&) noexcept = default;
 	FORCE_INLINE IdentityFilter(IdentityFilter&&) noexcept = default;
@@ -286,6 +309,11 @@ public:
 	 */
 	FORCE_INLINE Single(uint64_t id, std::shared_ptr<HandlerData>&& handlerData, Json&& json,
 		const std::shared_ptr<Connection::Data>& connectionData) noexcept;
+
+	Single(const Single&) = delete;
+	FORCE_INLINE Single(Single&&) noexcept = default;
+	Single& operator=(const Single&) = delete;
+	FORCE_INLINE Single& operator=(Single&&) noexcept = default;
 };
 
 /**************************
@@ -317,6 +345,11 @@ public:
 	 */
 	FORCE_INLINE Stream(uint64_t id, std::shared_ptr<HandlerData>&& handlerData, Json&& json,
 		const std::shared_ptr<Connection::Data>& connectionData) noexcept;
+
+	Stream(const Stream&) = delete;
+	FORCE_INLINE Stream(Stream&&) noexcept = default;
+	Stream& operator=(const Stream&) = delete;
+	FORCE_INLINE Stream& operator=(Stream&&) noexcept = default;
 
 	/**************************
 	 * @brief Send new stream state.
@@ -392,7 +425,7 @@ public:
 		 *
 		 * @todo Add tests coverage.
 		 */
-		FORCE_INLINE Events(EventsData& data) noexcept;
+		FORCE_INLINE explicit Events(EventsData& data) noexcept;
 
 		Events(const Events&) = delete;
 		Events(Events&&) = delete;
@@ -488,6 +521,16 @@ public:
 	 * containers. EraseEventsByFilter and EraseEvent release events but keep the per-filter containers.
 	 */
 	class EventsData {
+	public:
+		/**************************
+		 * @brief GetEvents policy: only look up existing events structure for filter.
+		 *
+		 * @todo Add static asserts in future test.
+		 */
+		static constexpr inline bool LOOKUP{ true };
+		// GetEvents policy: create events structure for filter if it does not exist
+		static constexpr inline bool CREATE{};
+
 	private:
 		const uint64_t m_connectionId;
 		std::map<filter_t, std::shared_ptr<Events>> m_filterToEvents;
@@ -504,7 +547,7 @@ public:
 		 *
 		 * @todo Add tests coverage.
 		 */
-		FORCE_INLINE EventsData(uint64_t connectionId) noexcept;
+		FORCE_INLINE explicit EventsData(uint64_t connectionId) noexcept;
 
 		EventsData(const EventsData&) = delete;
 		EventsData(EventsData&&) = delete;
@@ -517,12 +560,6 @@ public:
 		 * @todo Add tests coverage.
 		 */
 		FORCE_INLINE [[nodiscard]] uint64_t GetConnectionId() const noexcept;
-
-		/**************************
-		 * @todo Add static asserts in future test.
-		 */
-		static constexpr inline bool LOOKUP{ true };
-		static constexpr inline bool CREATE{ false };
 
 		/**************************
 		 * @attention Read locks structure. Write locks structure and create new events structure for filter if does not
@@ -666,7 +703,7 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE Distributor(Module& authorization) noexcept;
+	FORCE_INLINE explicit Distributor(Module& authorization) noexcept;
 
 	Distributor(const Distributor&) = delete;
 	Distributor(Distributor&&) = delete;
@@ -818,6 +855,7 @@ class SinglesDistributor : public Distributor<Module, Single, IdentityFilter, Si
 public:
 	using base_t = Distributor<Module, Single, IdentityFilter, SinglesDistributor<Module>>;
 
+public:
 	/**************************
 	 * @brief Construct new singles distributor object.
 	 *
@@ -825,7 +863,12 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE SinglesDistributor(Module& authorization) noexcept;
+	FORCE_INLINE explicit SinglesDistributor(Module& authorization) noexcept;
+
+	SinglesDistributor(const SinglesDistributor&) = delete;
+	SinglesDistributor(SinglesDistributor&&) = delete;
+	SinglesDistributor& operator=(const SinglesDistributor&) = delete;
+	SinglesDistributor& operator=(SinglesDistributor&&) = delete;
 
 	/**************************
 	 * @brief Send data to related events and erase them on success.
@@ -874,6 +917,7 @@ class StreamsDistributor : public Distributor<Module, Stream, IdentityFilter, St
 public:
 	using base_t = Distributor<Module, Stream, IdentityFilter, StreamsDistributor<Module>>;
 
+public:
 	/**************************
 	 * @brief Construct new streams distributor object.
 	 *
@@ -881,7 +925,12 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE StreamsDistributor(Module& authorization) noexcept;
+	FORCE_INLINE explicit StreamsDistributor(Module& authorization) noexcept;
+
+	StreamsDistributor(const StreamsDistributor&) = delete;
+	StreamsDistributor(StreamsDistributor&&) = delete;
+	StreamsDistributor& operator=(const StreamsDistributor&) = delete;
+	StreamsDistributor& operator=(StreamsDistributor&&) = delete;
 
 private:
 	/**************************
@@ -987,18 +1036,37 @@ Event::HandlerData
 
 template <typename EventType>
 FORCE_INLINE Event<EventType>::HandlerData::HandlerData(handler_t&& handler, const int16_t grade) noexcept
-	: handler{ std::move(handler) }
-	, grade{ grade }
-	, isPermissionRequired{ true }
+	: m_handler{ std::move(handler) }
+	, m_grade{ grade }
+	, m_isPermissionRequired{ true }
 {
 }
 
 template <typename EventType>
 FORCE_INLINE Event<EventType>::HandlerData::HandlerData(handler_t&& handler) noexcept
-	: handler{ std::move(handler) }
-	, grade{}
-	, isPermissionRequired{ false }
+	: m_handler{ std::move(handler) }
+	, m_grade{}
+	, m_isPermissionRequired{}
 {
+}
+
+template <typename EventType>
+FORCE_INLINE [[nodiscard]] const typename Event<EventType>::handler_t&
+Event<EventType>::HandlerData::GetHandler() const noexcept
+{
+	return m_handler;
+}
+
+template <typename EventType>
+FORCE_INLINE [[nodiscard]] int16_t Event<EventType>::HandlerData::GetGrade() const noexcept
+{
+	return m_grade;
+}
+
+template <typename EventType>
+FORCE_INLINE [[nodiscard]] bool Event<EventType>::HandlerData::IsPermissionRequired() const noexcept
+{
+	return m_isPermissionRequired;
 }
 
 /*---------------------------------------------------------------------------------
@@ -1009,7 +1077,7 @@ template <typename EventType>
 FORCE_INLINE Event<EventType>::Event(const uint64_t id, std::shared_ptr<HandlerData>&& handlerData, Json&& json,
 	const std::shared_ptr<Connection::Data>& connectionData) noexcept
 	: m_id{ id }
-	, m_handlerData(std::move(handlerData))
+	, m_handlerData{ std::move(handlerData) }
 	, m_json{ std::move(json) }
 	, m_connectionData{ connectionData }
 {
@@ -1033,7 +1101,7 @@ FORCE_INLINE [[nodiscard]] const std::shared_ptr<Connection::Data>& Event<EventT
 
 template <typename EventType> FORCE_INLINE [[nodiscard]] HandleResult Event<EventType>::Handle(std::string& payload)
 {
-	return m_handlerData->handler(payload, *static_cast<const EventType*>(this));
+	return m_handlerData->GetHandler()(payload, *static_cast<const EventType*>(this));
 }
 
 /*---------------------------------------------------------------------------------
@@ -1526,7 +1594,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Collect(
 		handlerData = it->second;
 	}
 
-	if (!handlerData->isPermissionRequired) {
+	if (!handlerData->IsPermissionRequired()) {
 		Filter filter{ json };
 		static_cast<Impl*>(this)->Handle(
 			id, hash, std::move(filter), connectionData, std::move(json), std::move(handlerData));
@@ -1534,7 +1602,7 @@ FORCE_INLINE void Distributor<Module, EventType, Filter, Impl>::Collect(
 	}
 
 	if (!m_authorization.IsAccessGranted(
-			connectionData->GetConnectionId(), static_cast<Module::grade_t>(handlerData->grade))) {
+			connectionData->GetConnectionId(), static_cast<Module::grade_t>(handlerData->GetGrade()))) {
 		SendFailed(id, connectionData->GetConnection(), "Access is not granted");
 		return;
 	}
@@ -1601,14 +1669,27 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 	}
 
 	// Trade of from locking while sending to once locking but string allocating
-	struct Destination {
-		Connection& connection;
-		std::string uids;
+	class Destination {
+	private:
+		Connection& m_connection;
+		std::string m_uids;
 
-		FORCE_INLINE Destination(Connection& connection) noexcept
-			: connection{ connection }
+	public:
+		FORCE_INLINE explicit Destination(Connection& connection) noexcept
+			: m_connection{ connection }
 		{
 		}
+
+		Destination(const Destination&) = delete;
+		FORCE_INLINE Destination(Destination&&) noexcept = default;
+		Destination& operator=(const Destination&) = delete;
+		Destination& operator=(Destination&&) = delete;
+
+		FORCE_INLINE [[nodiscard]] Connection& GetConnection() const noexcept { return m_connection; }
+
+		FORCE_INLINE [[nodiscard]] std::string& GetUids() noexcept { return m_uids; }
+
+		FORCE_INLINE [[nodiscard]] const std::string& GetUids() const noexcept { return m_uids; }
 	};
 
 	size_t maxUidsSize{};
@@ -1621,14 +1702,14 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 
 		if (begin != end) {
 			Destination destination{ begin->second->GetConnectionData()->GetConnection() };
-			auto backIt{ std::back_inserter(destination.uids) };
+			auto backIt{ std::back_inserter(destination.GetUids()) };
 			std::format_to(backIt, "{}", begin->second->GetId());
 
 			while (++begin != end) {
 				std::format_to(backIt, ",{}", begin->second->GetId());
 			}
 
-			const auto size{ destination.uids.size() };
+			const auto size{ destination.GetUids().size() };
 			if (maxUidsSize < size) {
 				maxUidsSize = size;
 			}
@@ -1662,13 +1743,13 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 
 	const auto payloadTotalSize{ payload.size() };
 	for (const auto& destination : destinations) {
-		LOG_PROTOCOL_NEW(
-			"Send data to events, uids: [{}], connection id: {}", destination.uids, destination.connection.GetId());
-		const auto headerSize{ destination.uids.size() + 9 };
+		LOG_PROTOCOL_NEW("Send data to events, uids: [{}], connection id: {}", destination.GetUids(),
+			destination.GetConnection().GetId());
+		const auto headerSize{ destination.GetUids().size() + 9 };
 		const auto headerShift{ maxUidsSize - headerSize };
 		std::format_to_n(
-			payload.data() + headerShift, static_cast<int64_t>(headerSize), "{{\"uids\":[{}", destination.uids);
-		Send(destination.connection,
+			payload.data() + headerShift, static_cast<int64_t>(headerSize), "{{\"uids\":[{}", destination.GetUids());
+		Send(destination.GetConnection(),
 			{ std::span<const uint8_t>(
 				  reinterpret_cast<const uint8_t*>(payload.data() + headerShift), payloadTotalSize - headerShift),
 				Data::Opcode::Text });

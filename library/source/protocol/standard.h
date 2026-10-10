@@ -60,8 +60,8 @@ constexpr uint64_t CIPHER_ACTION_MODIFY{ 934875938 };
  */
 class Data : public DataHeader {
 private:
-	std::map<size_t, std::variant<standardTypes>> m_data;
-	std::map<size_t, StandardType::Type> m_dataTypes;
+	std::map<uint64_t, std::variant<standardTypes>> m_data;
+	std::map<uint64_t, StandardType::Type> m_dataTypes;
 
 public:
 	/**************************
@@ -71,7 +71,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	Data(size_t cipher);
+	Data(uint64_t cipher);
 
 	/**************************
 	 * @brief Constructor for parsing data from buffer.
@@ -84,8 +84,17 @@ public:
 	 * @todo Values are read by *reinterpret_cast<const type*>(buffer + offset), but the offset is generally not aligned
 	 * for the type, as values follow a 1 byte type specifier and a 8 bytes key, which is undefined behavior and works
 	 * only on platforms allowing unaligned access, as x86-64. Values should be read by memcpy into a local variable.
+	 * @todo Buffer bounds are validated only for String and TableData payloads. The record type and 8 bytes key, as
+	 * well as primitive, optional and timer payloads, are read without checking the remaining buffer size, so a
+	 * truncated message leads to reading past the received buffer. Validate the record header and each fixed size
+	 * payload before reading and reject malformed data instead of returning with a partially parsed object.
 	 */
 	Data(const DataHeader& header, const void* buffer);
+
+	FORCE_INLINE Data(const Data&) = default;
+	FORCE_INLINE Data(Data&&) noexcept = default;
+	FORCE_INLINE Data& operator=(const Data&) = default;
+	FORCE_INLINE Data& operator=(Data&&) noexcept = default;
 
 	/**************************
 	 * @return Size of buffer.
@@ -106,7 +115,7 @@ public:
 		requires(is_standard_type<std::remove_cv_t<std::remove_reference_t<T>>>
 			|| std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, TableBase>
 			|| std::derived_from<std::remove_cv_t<std::remove_reference_t<T>>, TableBase>)
-	void SetData(const size_t key, T&& value)
+	void SetData(const uint64_t key, T&& value)
 	{
 		using S = std::remove_cv_t<std::remove_reference_t<T>>;
 		if (m_data.find(key) != m_data.end()) {
@@ -117,7 +126,7 @@ public:
 #define TMP_MSAPI_STANDARD_SET_PRIMITIVE_DATA(type, standardType)                                                      \
 	m_data.emplace(key, std::forward<T>(value));                                                                       \
 	m_dataTypes.emplace(key, StandardType::Type::standardType);                                                        \
-	m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + sizeof(type);
+	m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + sizeof(type);
 
 		if constexpr (std::is_same_v<S, int8_t>) {
 			TMP_MSAPI_STANDARD_SET_PRIMITIVE_DATA(int8_t, Int8)
@@ -156,11 +165,11 @@ public:
 	m_data.emplace(key, std::forward<T>(value));                                                                       \
 	if (value.has_value()) {                                                                                           \
 		m_dataTypes.emplace(key, StandardType::Type::standardType);                                                    \
-		m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + sizeof(type);                                    \
+		m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + sizeof(type);                                  \
 	}                                                                                                                  \
 	else {                                                                                                             \
 		m_dataTypes.emplace(key, StandardType::Type::emptyStandardType);                                               \
-		m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t);                                                   \
+		m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t);                                                 \
 	}
 		}
 		else if constexpr (std::is_same_v<S, std::optional<int8_t>>) {
@@ -198,11 +207,11 @@ public:
 			if (value.empty()) {
 				m_data.emplace(key, std::string{ "" });
 				m_dataTypes.emplace(key, StandardType::Type::StringEmpty);
-				m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t);
+				m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t);
 			}
 			else {
 				m_dataTypes.emplace(key, StandardType::Type::String);
-				m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + sizeof(size_t) + value.size();
+				m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) * 2 + value.size();
 				m_data.emplace(key, std::forward<T>(value));
 			}
 		}
@@ -216,12 +225,12 @@ public:
 		}
 		else if constexpr (std::is_same_v<S, TableData>) {
 			m_dataTypes.emplace(key, StandardType::Type::TableData);
-			m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + value.GetBufferSize();
+			m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + value.GetBufferSize();
 			m_data.emplace(key, std::forward<T>(value));
 		}
 		else if constexpr (std::is_same_v<S, TableBase> || std::derived_from<S, TableBase>) {
 			m_dataTypes.emplace(key, StandardType::Type::TableData);
-			m_bufferSize += sizeof(StandardType::Type) + sizeof(size_t) + value.GetBufferSize();
+			m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + value.GetBufferSize();
 			m_data.emplace(key, TableData{ value });
 		}
 		else {
@@ -230,10 +239,10 @@ public:
 	}
 
 	/**************************
-	 * @brief Encode contained data to buffer. Message template is: (size_t) cipher, (size_t) buffer size, then for each
-	 * item: (int8_t) type specifier, (size_t) key and value. Value is (T) value for primitive types, Timer, Duration
-	 * and optional with value, (size_t) string size and (char) characters for not empty string, table buffer for table.
-	 * Empty string and empty optional have no value, they are defined by their type specifier.
+	 * @brief Encode contained data to buffer. Message template is: (uint64_t) cipher, (uint64_t) buffer size, then for
+	 * each item: (int8_t) type specifier, (uint64_t) key and value. Value is (T) value for primitive types, Timer,
+	 * Duration and optional with value, (uint64_t) string size and (char) characters for not empty string, table buffer
+	 * for table. Empty string and empty optional have no value, they are defined by their type specifier.
 	 *
 	 * @attention Freeing up memory after using is required.
 	 *
@@ -300,12 +309,12 @@ public:
 	/**************************
 	 * @return Readable reference to data.
 	 */
-	const std::map<size_t, std::variant<standardTypes>>& GetData() const noexcept;
+	const std::map<uint64_t, std::variant<standardTypes>>& GetData() const noexcept;
 
 	/**************************
 	 * @return Readable reference to data types.
 	 */
-	const std::map<size_t, StandardType::Type>& GetDataTypes() const noexcept;
+	const std::map<uint64_t, StandardType::Type>& GetDataTypes() const noexcept;
 };
 
 /**************************

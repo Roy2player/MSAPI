@@ -17,19 +17,10 @@ add_compile_options(
     -Wsign-conversion
     -Wsign-promo
 
-    -pedantic
     #-Werror
     -fmax-errors=20
 
     -std=c++26
-
-    -O3 # TODO: Find a way to build with -Ofast
-    -march=native
-    -flto=auto
-    -v
-    -funroll-loops
-    -finline-functions
-    -fomit-frame-pointer
 
     -fconcepts-diagnostics-depth=2
 
@@ -40,10 +31,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "Build Type: Debug")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "Build Type: Release")
-elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    message(STATUS "Build Type: RelWithDebInfo")
-elseif(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
-    message(STATUS "Build Type: MinSizeRel")
 else()
     message(STATUS "Build Type: Unknown")
 endif()
@@ -63,12 +50,6 @@ if(DEFINED CMAKE_CXX_DEFINES AND NOT CMAKE_CXX_DEFINES STREQUAL "")
     message(STATUS "Compile Definitions: ${CMAKE_CXX_DEFINES}")
 endif()
 
-# Check if additional compile options (from add_compile_options()) are not empty
-get_property(CXX_COMPILE_OPTIONS DIRECTORY PROPERTY COMPILE_OPTIONS)
-if(CXX_COMPILE_OPTIONS)
-    message(STATUS "C++ Additional Compile Options: ${CXX_COMPILE_OPTIONS}")
-endif()
-
 # Check if the project is being compiled in 32-bit or 64-bit mode
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(STATUS "Data Model: 64-bit")
@@ -82,18 +63,43 @@ endif()
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "Compiler Target: ${CMAKE_SYSTEM_PROCESSOR}")
 
-set(SANITIZE_OPTIONS
-    "-fsanitize=leak,undefined,shift,integer-divide-by-zero,vla-bound,null,signed-integer-overflow,bounds,float-divide-by-zero,float-cast-overflow,bool,enum,vptr,pointer-overflow \
-     -fsanitize-address-use-after-scope \
-     -fvar-tracking-assignments \
-     --param=max-vartrack-size=999999999"
+set(MSAPI_OPTIMIZE_OPTIONS
+    -O3 # TODO: Find a way to build with -Ofast
+    -march=native
+    -flto=auto
+    -funroll-loops
+    -finline-functions
+    -fomit-frame-pointer
 )
-# address option cannot be used due to unexpected crash in HTTP data handler.
 
-# Check if the build type is DEBUG
+# UndefinedBehaviorSanitizer includes signed overflow, shift, vla-bound, null,
+# bounds, bool, enum, vptr, and pointer-overflow checks. Integer divide-by-zero
+# is listed explicitly.
+set(MSAPI_SANITIZE_OPTIONS
+    -fsanitize=address,leak,undefined,integer-divide-by-zero,float-divide-by-zero,float-cast-overflow
+    -fno-sanitize-recover=all
+)
+
+# Keep build profiles in the existing build-type conditionals.
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZE_OPTIONS}")
-   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZE_OPTIONS}")
+    # Debug: modest optimization, full debug symbols, frame pointers, assertions, sanitizers.
+    add_compile_options(
+        -Og
+        -g3
+        -v
+        -fno-omit-frame-pointer
+        -D_GLIBCXX_ASSERTIONS
+        ${MSAPI_SANITIZE_OPTIONS}
+    )
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    # Release: optimized build with LTO.
+    add_compile_options(${MSAPI_OPTIMIZE_OPTIONS})
+endif()
+
+# Report compile options after adding the selected build profile.
+get_property(CXX_COMPILE_OPTIONS DIRECTORY PROPERTY COMPILE_OPTIONS)
+if(CXX_COMPILE_OPTIONS)
+    message(STATUS "C++ Additional Compile Options: ${CXX_COMPILE_OPTIONS}")
 endif()
 
 # Function to set common properties to MSAPI application target
@@ -104,4 +110,10 @@ function(msapi_set_target_properties target)
     )
 
     target_link_options(${target} PRIVATE -static-libstdc++ -static-libgcc)
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_link_options(${target} PRIVATE ${MSAPI_SANITIZE_OPTIONS})
+    elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_link_options(${target} PRIVATE -flto=auto)
+    endif()
 endfunction()

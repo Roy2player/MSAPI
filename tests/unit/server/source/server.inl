@@ -56,7 +56,7 @@ Declarations
 /**************************
  * @brief Provides direct access to Server IP limits for unit testing.
  *
- * @concurrency Yes. Follows locking of the Server IP limits.
+ * @concurrency No.
  */
 class ServerObserver {
 public:
@@ -82,8 +82,6 @@ public:
 	 * @param id Connection id.
 	 * @param ip IP address.
 	 *
-	 * @locking Perform locking in Server::RegisterConnectionFromIp call.
-	 *
 	 * @return True if connection is registered, false otherwise or if IP does not fit into static string.
 	 */
 	FORCE_INLINE [[nodiscard]] bool RegisterConnectionFromIp(uint64_t id, std::string_view ip) noexcept;
@@ -93,23 +91,17 @@ public:
 	 *
 	 * @param id Connection id.
 	 * @param ip IP address.
-	 *
-	 * @locking Perform locking in Server::UnregisterConnectionFromIp call.
 	 */
 	FORCE_INLINE void UnregisterConnectionFromIp(uint64_t id, std::string_view ip) noexcept;
 
 	/**************************
 	 * @param ip IP address.
 	 *
-	 * @locking Read lock m_ipToLimitsRWLock, then read lock IP limits.
-	 *
 	 * @return Count of connections registered from IP, empty if there are no limits for IP.
 	 */
 	FORCE_INLINE [[nodiscard]] std::optional<uint64_t> GetConnectionsCountFromIp(std::string_view ip) const noexcept;
 
 	/**************************
-	 * @locking Read lock m_ipToLimitsRWLock.
-	 *
 	 * @return Count of IPs with limits.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t GetIpLimitsCount() const noexcept;
@@ -118,8 +110,6 @@ public:
 	 * @brief Set limit of connections from one IP, as parameter 1000003 modification does.
 	 *
 	 * @param value New limit.
-	 *
-	 * @locking Is not required.
 	 */
 	FORCE_INLINE void SetMaxConnectionsOneIp(uint64_t value) noexcept;
 
@@ -129,16 +119,12 @@ public:
 	 * @param socket Connected socket, ownership is transferred to the connection.
 	 * @param ip IP address.
 	 *
-	 * @locking Perform locking in Server::CreatePthread call.
-	 *
 	 * @return Connection data on success, nullptr otherwise.
 	 */
 	FORCE_INLINE [[nodiscard]] std::shared_ptr<Connection::Data> CreateIncomeConnection(
 		int32_t socket, std::string_view ip) noexcept;
 
 	/**************************
-	 * @locking Perform locking in Server::GetConnectionsCount call.
-	 *
 	 * @return Count of server connections.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t GetConnectionsCount() const noexcept;

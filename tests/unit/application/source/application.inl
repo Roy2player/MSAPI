@@ -67,7 +67,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 	 */
 	const auto check{ [&t] [[nodiscard]] (const size_t checkIndex, const MSAPI::Application& app,
 						  const std::string_view expectedParameters, const size_t parametersSize,
-						  const std::map<size_t, std::string>& errors) {
+						  const std::map<uint64_t, std::string>& errors) {
 		std::string parameters;
 		app.GetParameters(parameters);
 		RETURN_IF_FALSE(
@@ -217,7 +217,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		RETURN_IF_FALSE(check(2, app, expectedParameters, 1, {}));
 
 		T tmp2;
-		std::map<size_t, std::string> expectedErrors;
+		std::map<uint64_t, std::string> expectedErrors;
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
 			tmp2 = min - Timer::Duration::CreateDays(1);
 			app.RegisterParameter(2, { "Some name", &tmp2, Timer::Duration::Type::Days, min });
@@ -1272,7 +1272,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		RETURN_IF_FALSE(check(4, app, expectedParameters, 2, {}));
 
 		T tmp2;
-		std::map<size_t, std::string> expectedErrors;
+		std::map<uint64_t, std::string> expectedErrors;
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
 			tmp2 = min.value() - Timer::Duration::CreateDays(1);
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + v4.ToString(Timer::Duration::Type::Days)
@@ -1600,7 +1600,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		Timer param3{ 0 };
 		app.RegisterParameter(2, { "Some name", &param3 });
 		app.RegisterParameter(2, { "Some name", &param3 });
-		std::map<size_t, std::string> expectedErrors{ { 1, "Parameter Some name(1) is empty" },
+		std::map<uint64_t, std::string> expectedErrors{ { 1, "Parameter Some name(1) is empty" },
 			{ 2, "Parameter Some name(2) is empty" } };
 		RETURN_IF_FALSE(check(4, app,
 			"Parameters:\n{\n\tSome name(1) : " + param1.ToString() + "\n\tSome name(2) : " + param3.ToString()
@@ -1697,7 +1697,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 
 		table2.Clear();
 		app.MergeParameters({ { 1, table2 } });
-		std::map<size_t, std::string> expectedErrors{ { 1, "Parameter Some name(1) is empty" } };
+		std::map<uint64_t, std::string> expectedErrors{ { 1, "Parameter Some name(1) is empty" } };
 		RETURN_IF_FALSE(check(
 			3, app, "Parameters:\n{\n\tSome name(1) : " + table2.ToString() + ASE(app.GetState()), 1, expectedErrors));
 
@@ -1764,7 +1764,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		app.MergeParameters({ { 5, table7 } });
 		RETURN_IF_FALSE(check(11, app, expectedParameters, 5, expectedErrors));
 
-		bool boolean{ false };
+		bool boolean{};
 		app.MergeParameters({ { 1, boolean } });
 		app.MergeParameters({ { 2, boolean } });
 		app.MergeParameters({ { 3, boolean } });
@@ -1777,6 +1777,18 @@ FORCE_INLINE [[nodiscard]] bool Application()
 	}
 
 #undef ASE
+
+	// Register and merge a parameter whose ID exceeds the 32-bit range.
+	{
+		MSAPI::Application highIdApp;
+		const uint64_t highParameterId{ uint64_t{ 1 } << 40 };
+		int32_t highParameterValue{ 1 };
+		highIdApp.RegisterParameter(highParameterId, { "High ID parameter", &highParameterValue });
+		RETURN_IF_FALSE(t.Assert(
+			highIdApp.GetParameters().contains(highParameterId), true, "Application registers high parameter ID"));
+		highIdApp.MergeParameters({ { highParameterId, int32_t{ 2 } } });
+		RETURN_IF_FALSE(t.Assert(highParameterValue, int32_t{ 2 }, "Application merges high parameter ID"));
+	}
 
 	return t.Passed<bool>();
 }

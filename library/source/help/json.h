@@ -45,7 +45,7 @@ template <typename T> constexpr bool is_json_node_type = is_any_of<T, JsonNodeTy
  */
 class Json {
 private:
-	bool m_isValid{ false };
+	bool m_isValid{};
 	std::map<std::string, JsonNode, std::less<>> m_keysAndValues;
 
 public:
@@ -62,6 +62,11 @@ public:
 	 * @test Yes.
 	 */
 	FORCE_INLINE Json() = default;
+
+	FORCE_INLINE Json(const Json&) = default;
+	FORCE_INLINE Json(Json&&) noexcept = default;
+	FORCE_INLINE Json& operator=(const Json&) = default;
+	FORCE_INLINE Json& operator=(Json&&) noexcept = default;
 
 	/**************************
 	 * @brief Construct a new Json object, empty constructor.
@@ -171,7 +176,7 @@ public:
 class JsonNode {
 private:
 	std::variant<JsonNodeTypes> m_value;
-	bool m_valid{ false };
+	bool m_valid{};
 
 public:
 	/**************************
@@ -231,6 +236,11 @@ public:
 			  std::get_if<std::decay_t<T>>(&m_value)->end(), [](const auto& node) { return node.Valid(); }) }
 	{
 	}
+
+	FORCE_INLINE JsonNode(const JsonNode&) = default;
+	FORCE_INLINE JsonNode(JsonNode&&) noexcept = default;
+	FORCE_INLINE JsonNode& operator=(const JsonNode&) = default;
+	FORCE_INLINE JsonNode& operator=(JsonNode&&) noexcept = default;
 
 	/**************************
 	 * @brief Guaranties that node has a value.

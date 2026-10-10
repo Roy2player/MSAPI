@@ -94,7 +94,7 @@ enum class Type : int8_t { Undefined, Snapshot, SnapshotAndLive, Max };
  *
  * @test Yes.
  */
-FORCE_INLINE constexpr std::string_view EnumToString(Type value) noexcept;
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(Type value) noexcept;
 
 enum class State : int8_t { Undefined, Pending, Opened, Done, Failed, Closed, Max };
 
@@ -105,7 +105,7 @@ enum class State : int8_t { Undefined, Pending, Opened, Done, Failed, Closed, Ma
  *
  * @test Yes.
  */
-FORCE_INLINE constexpr std::string_view EnumToString(State value) noexcept;
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(State value) noexcept;
 
 enum class Issue : int8_t {
 	Undefined,
@@ -127,7 +127,7 @@ enum class Issue : int8_t {
  *
  * @test Yes.
  */
-FORCE_INLINE constexpr std::string_view EnumToString(Issue value) noexcept;
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(Issue value) noexcept;
 
 /**************************
  * @brief Structure for provide stream state.
@@ -137,6 +137,24 @@ FORCE_INLINE constexpr std::string_view EnumToString(Issue value) noexcept;
 struct StreamStateResponse {
 	State state{ State::Undefined };
 	Issue issue{ Issue::Empty };
+
+public:
+	FORCE_INLINE StreamStateResponse() noexcept = default;
+
+	/**************************
+	 * @brief Construct a new StreamStateResponse object.
+	 *
+	 * @param state Stream state.
+	 * @param issue Issue of the stream, empty by default.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE explicit StreamStateResponse(State state, Issue issue = Issue::Empty) noexcept;
+
+	FORCE_INLINE StreamStateResponse(const StreamStateResponse&) noexcept = default;
+	FORCE_INLINE StreamStateResponse(StreamStateResponse&&) noexcept = default;
+	FORCE_INLINE StreamStateResponse& operator=(const StreamStateResponse&) noexcept = default;
+	FORCE_INLINE StreamStateResponse& operator=(StreamStateResponse&&) noexcept = default;
 };
 
 /**************************
@@ -146,12 +164,13 @@ struct StreamStateResponse {
  * @concurrency No.
  */
 class Data : public DataHeader {
+public:
+	// Cipher of object protocol data, checked on receiving to recognize the protocol
+	static constexpr inline uint64_t CIPHER{ 2666999999 };
+
 private:
 	uint64_t m_objectHash;
 	uint64_t m_streamId;
-
-public:
-	static constexpr inline uint64_t CIPHER{ 2666999999 };
 
 public:
 	/**************************
@@ -195,7 +214,7 @@ public:
 	 */
 	template <typename T>
 		requires std::is_same_v<std::decay_t<T>, DataHeader>
-	FORCE_INLINE Data(T&& header, const std::span<const uint8_t> buffer) noexcept;
+	FORCE_INLINE Data(T&& header, std::span<const uint8_t> buffer) noexcept;
 
 	/**************************
 	 * @return Hash of object in data.
@@ -318,6 +337,10 @@ public:
 	};
 
 protected:
+	// Counter to generate unique stream ids
+	static inline std::atomic<uint64_t> STREAM_COUNTER{};
+
+protected:
 	std::atomic<uint64_t> m_id;
 	const uint64_t m_objectHash;
 	std::shared_ptr<Connection::Data> m_connectionData;
@@ -325,15 +348,13 @@ protected:
 	State m_state{ State::Closed };
 	bool m_isSnapshotDone{};
 
-	static inline std::atomic<uint64_t> m_streamCounter{};
-
 public:
 	/**************************
 	 * @brief Construct a new Stream Base object, generate unique id for stream.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE StreamBase(uint64_t objectHash) noexcept;
+	FORCE_INLINE explicit StreamBase(uint64_t objectHash) noexcept;
 
 	StreamBase(const StreamBase&) = delete;
 	StreamBase(StreamBase&&) = delete;
@@ -478,7 +499,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE IHandlerBase(const Application& application) noexcept;
+	FORCE_INLINE explicit IHandlerBase(const Application& application) noexcept;
 
 	FORCE_INLINE virtual ~IHandlerBase() noexcept = default;
 
@@ -753,7 +774,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Filter(FilterBase&& filter) noexcept;
+	FORCE_INLINE explicit Filter(FilterBase&& filter) noexcept;
 
 	FORCE_INLINE Filter(const Filter&) noexcept = default;
 	FORCE_INLINE Filter(Filter&&) noexcept = default;
@@ -850,7 +871,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] Stream(IHandler<Object>& handler) noexcept;
+	FORCE_INLINE [[nodiscard]] explicit Stream(IHandler<Object>& handler) noexcept;
 
 	/**************************
 	 * @brief Close stream.
@@ -959,7 +980,7 @@ private:
 };
 
 constexpr static inline bool CLEANUP_INSIDE{ true };
-constexpr static inline bool CLEANUP_OUTSIDE{ false };
+constexpr static inline bool CLEANUP_OUTSIDE{};
 
 /**************************
  * @brief Contains data about streams and their filters.
@@ -1183,7 +1204,7 @@ public:
 		 *
 		 * @todo Add tests coverage.
 		 */
-		FORCE_INLINE std::string ToString() const noexcept;
+		FORCE_INLINE [[nodiscard]] std::string ToString() const noexcept;
 
 		// Access to locking required fields on stopping
 		friend class Distributor;
@@ -1273,7 +1294,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Distributor(const Application& application) noexcept;
+	FORCE_INLINE explicit Distributor(const Application& application) noexcept;
 
 	/**************************
 	 * @brief Default destructor, stops active distributions.
@@ -1353,7 +1374,8 @@ public:
 	 */
 	template <typename FObject>
 		requires is_included_in<FObject, FObjects...>
-	void Collect(const std::shared_ptr<Connection::Data>& connectionData, const Data& data, const void* object);
+	FORCE_INLINE void Collect(
+		const std::shared_ptr<Connection::Data>& connectionData, const Data& data, const void* object);
 
 	/**************************
 	 * @brief Send objects to particular stream.
@@ -1379,7 +1401,7 @@ public:
 	 */
 	template <template <typename> typename Container, typename Object>
 		requires std::is_class_v<Object>
-	[[nodiscard]] bool SendObjectsToStream(StreamData& streamData, const Container<Object>& objects,
+	FORCE_INLINE [[nodiscard]] bool SendObjectsToStream(StreamData& streamData, const Container<Object>& objects,
 		const std::function<bool(const FilterBase* filter, const Object& object)>& filterPredicate);
 
 	/**************************
@@ -1405,7 +1427,7 @@ public:
 	 */
 	template <typename Object>
 		requires std::is_class_v<Object>
-	[[nodiscard]] bool SendObjectToStream(StreamData& streamData, const Object& object,
+	FORCE_INLINE [[nodiscard]] bool SendObjectToStream(StreamData& streamData, const Object& object,
 		const std::function<bool(const FilterBase* filter, const Object& object)>& filterPredicate);
 
 	/**************************
@@ -1429,8 +1451,8 @@ public:
 	 */
 	template <typename Object>
 		requires std::is_class_v<Object>
-	void SendNewObject(const Object& object,
-		const std::function<bool(const FilterBase* filter, const Object& object)> filterPredicate);
+	FORCE_INLINE void SendNewObject(
+		const Object& object, std::function<bool(const FilterBase* filter, const Object& object)> filterPredicate);
 
 private:
 	/**************************
@@ -1458,7 +1480,7 @@ private:
 	 */
 	template <typename Object, bool CleanupPolicy>
 		requires std::is_class_v<Object>
-	[[nodiscard]] bool SendObjectToStreamImpl(StreamData& streamData, const Object& object,
+	FORCE_INLINE [[nodiscard]] bool SendObjectToStreamImpl(StreamData& streamData, const Object& object,
 		const std::function<bool(const FilterBase* filter, const Object& object)>& filterPredicate);
 
 	/**************************
@@ -1480,7 +1502,7 @@ private:
 Definitions
 ---------------------------------------------------------------------------------*/
 
-FORCE_INLINE constexpr std::string_view EnumToString(const Type value) noexcept
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const Type value) noexcept
 {
 	static_assert(U(Type::Max) == 3, "Absence of stream type enum transcription");
 
@@ -1499,7 +1521,7 @@ FORCE_INLINE constexpr std::string_view EnumToString(const Type value) noexcept
 	}
 }
 
-FORCE_INLINE constexpr std::string_view EnumToString(const State value) noexcept
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const State value) noexcept
 {
 	static_assert(U(State::Max) == 6, "Absence of stream state enum transcription");
 
@@ -1524,7 +1546,7 @@ FORCE_INLINE constexpr std::string_view EnumToString(const State value) noexcept
 	}
 }
 
-FORCE_INLINE constexpr std::string_view EnumToString(const Issue value) noexcept
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const Issue value) noexcept
 {
 	static_assert(U(Issue::Max) == 9, "Absence of stream issue enum transcription");
 
@@ -1565,6 +1587,16 @@ FORCE_INLINE [[nodiscard]] bool Send(Connection& connection, const Data& data, c
 	}
 
 	return connection.Send(packData.Get(), data.GetBufferSize(), MSG_NOSIGNAL) != 0;
+}
+
+/*---------------------------------------------------------------------------------
+StreamStateResponse
+---------------------------------------------------------------------------------*/
+
+FORCE_INLINE StreamStateResponse::StreamStateResponse(const State state, const Issue issue) noexcept
+	: state{ state }
+	, issue{ issue }
+{
 }
 
 /*---------------------------------------------------------------------------------
@@ -1609,7 +1641,7 @@ FORCE_INLINE [[nodiscard]] AutoClearPtr<void> Data::PackData(const void* data) c
 	void* const buffer{ malloc(m_bufferSize) };
 	if (buffer == nullptr) [[unlikely]] {
 		LOG_ERROR_NEW("Cannot allocate memory for packing data. Error №{}: {}", errno, std::strerror(errno));
-		return { nullptr };
+		return AutoClearPtr<void>{ nullptr };
 	}
 
 	memcpy(buffer, &m_cipher, sizeof(uint64_t));
@@ -1619,7 +1651,7 @@ FORCE_INLINE [[nodiscard]] AutoClearPtr<void> Data::PackData(const void* data) c
 	memcpy(&static_cast<char*>(buffer)[sizeof(uint64_t) * 4], data, m_bufferSize - sizeof(uint64_t) * 4);
 	// Diagnostic::PrintBinaryDescriptor<Diagnostic::binary>(buffer, m_bufferSize, "Packed object data");
 
-	return { buffer };
+	return AutoClearPtr<void>{ buffer };
 }
 
 template <typename Object>
@@ -1660,7 +1692,7 @@ StreamBase
 FORCE_INLINE StreamBase::StreamBase(const uint64_t objectHash) noexcept
 	: m_objectHash{ objectHash }
 {
-	m_id.store(m_streamCounter.fetch_add(1, std::memory_order_relaxed), std::memory_order_relaxed);
+	m_id.store(STREAM_COUNTER.fetch_add(1, std::memory_order_relaxed), std::memory_order_relaxed);
 }
 
 FORCE_INLINE [[nodiscard]] uint64_t StreamBase::GetId() const noexcept { return m_id.load(std::memory_order_relaxed); }
@@ -1849,7 +1881,7 @@ FORCE_INLINE [[nodiscard]] bool IHandlerBase::Collect(
 	const StreamConnectionId streamConnectionId{ streamId, connectionId };
 	LOG_PROTOCOL_NEW("Collect {}, connection id: {}", data.ToString(), connectionId);
 
-	StreamBase* stream{ nullptr };
+	StreamBase* stream{};
 	do {
 		const Lock::AtomicRW::Guard<Lock::READ> _{ m_streamConnectionIdToStreamLock };
 		const auto it{ m_streamConnectionIdToStream.find(streamConnectionId) };
@@ -2228,7 +2260,7 @@ FORCE_INLINE void Stream<Object, FObject>::Close() noexcept
 			return;
 		}
 
-		newId = m_streamCounter.fetch_add(1, std::memory_order_relaxed);
+		newId = STREAM_COUNTER.fetch_add(1, std::memory_order_relaxed);
 		m_id.store(newId, std::memory_order_relaxed);
 
 		m_isSnapshotDone = false;
@@ -2419,7 +2451,7 @@ FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Distributor<FObjects...>::StreamData:
 
 template <typename... FObjects>
 	requires(std::is_class_v<FObjects> && ...)
-FORCE_INLINE std::string Distributor<FObjects...>::StreamData::ToString() const noexcept
+FORCE_INLINE [[nodiscard]] std::string Distributor<FObjects...>::StreamData::ToString() const noexcept
 {
 	return std::format("Stream data:\n{{"
 					   "\n\tstream id          : {}"
@@ -2632,7 +2664,7 @@ template <typename... FObjects>
 	requires(std::is_class_v<FObjects> && ...)
 template <typename FObject>
 	requires is_included_in<FObject, FObjects...>
-void Distributor<FObjects...>::Collect(
+FORCE_INLINE void Distributor<FObjects...>::Collect(
 	const std::shared_ptr<Connection::Data>& connectionData, const Data& data, const void* object)
 {
 	const auto streamId{ data.GetStreamId() };
@@ -2861,7 +2893,7 @@ template <typename... FObjects>
 	requires(std::is_class_v<FObjects> && ...)
 template <template <typename> typename Container, typename Object>
 	requires std::is_class_v<Object>
-[[nodiscard]] bool Distributor<FObjects...>::SendObjectsToStream(StreamData& streamData,
+FORCE_INLINE [[nodiscard]] bool Distributor<FObjects...>::SendObjectsToStream(StreamData& streamData,
 	const Container<Object>& objects,
 	const std::function<bool(const FilterBase* filter, const Object& object)>& filterPredicate)
 {
@@ -2946,8 +2978,8 @@ template <typename... FObjects>
 	requires(std::is_class_v<FObjects> && ...)
 template <typename Object>
 	requires std::is_class_v<Object>
-[[nodiscard]] bool Distributor<FObjects...>::SendObjectToStream(StreamData& streamData, const Object& object,
-	const std::function<bool(const FilterBase* filter, const Object& object)>& filterPredicate)
+FORCE_INLINE [[nodiscard]] bool Distributor<FObjects...>::SendObjectToStream(StreamData& streamData,
+	const Object& object, const std::function<bool(const FilterBase* filter, const Object& object)>& filterPredicate)
 {
 	return SendObjectToStreamImpl<Object, CLEANUP_INSIDE>(streamData, object, filterPredicate);
 }
@@ -2956,7 +2988,7 @@ template <typename... FObjects>
 	requires(std::is_class_v<FObjects> && ...)
 template <typename Object>
 	requires std::is_class_v<Object>
-void Distributor<FObjects...>::SendNewObject(
+FORCE_INLINE void Distributor<FObjects...>::SendNewObject(
 	const Object& object, const std::function<bool(const FilterBase* filter, const Object& object)> filterPredicate)
 {
 	std::shared_ptr<Streams> streams;
@@ -3004,8 +3036,8 @@ template <typename... FObjects>
 	requires(std::is_class_v<FObjects> && ...)
 template <typename Object, bool CleanupPolicy>
 	requires std::is_class_v<Object>
-[[nodiscard]] bool Distributor<FObjects...>::SendObjectToStreamImpl(StreamData& streamData, const Object& object,
-	const std::function<bool(const FilterBase* filter, const Object& object)>& filterPredicate)
+FORCE_INLINE [[nodiscard]] bool Distributor<FObjects...>::SendObjectToStreamImpl(StreamData& streamData,
+	const Object& object, const std::function<bool(const FilterBase* filter, const Object& object)>& filterPredicate)
 {
 	const FilterBase* filter [[indeterminate]];
 	auto& connection{ streamData.GetConnection() };

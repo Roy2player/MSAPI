@@ -272,8 +272,8 @@ void Manager::HandleRunRequest()
 
 			LOG_INFO("New app registered: " + *appValue + ", id: " + _S(appId) + ", bin: " + *binValue
 				+ ", parameter with port for view: " + _S(static_cast<int32_t>(*viewValue)));
-			m_hashToInstalledAppData.emplace(std::move(appId),
-				std::make_shared<InstalledAppData>(*appValue, *binValue, static_cast<int32_t>(*viewValue)));
+			m_hashToInstalledAppData.emplace(
+				std::move(appId), std::make_shared<InstalledAppData>(*appValue, *binValue, *viewValue));
 			continue;
 		}
 
@@ -284,10 +284,10 @@ void Manager::HandleRunRequest()
 			continue;
 		}
 
-		if (viewValue != nullptr && it->second->viewPortParameter != static_cast<int32_t>(*viewValue)) {
+		if (viewValue != nullptr && it->second->viewPortParameter != *viewValue) {
 			LOG_INFO("For app: " + *appValue + " view port changed from " + _S(it->second->viewPortParameter) + " to "
-				+ _S(static_cast<int32_t>(*viewValue)));
-			it->second->viewPortParameter = static_cast<int32_t>(*viewValue);
+				+ _S(*viewValue));
+			it->second->viewPortParameter = *viewValue;
 		}
 	}
 
@@ -340,7 +340,7 @@ void Manager::HandlePauseRequest()
 	m_authorizationModule.Stop();
 }
 
-void Manager::HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate)
+void Manager::HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
 {
 	for (const auto& [id, value] : parametersUpdate) {
 		if (MSAPI::Application::IsRunning()) {
@@ -361,7 +361,7 @@ void Manager::HandleModifyRequest(const std::map<size_t, std::variant<standardTy
 }
 
 void Manager::HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
-	const std::map<size_t, std::variant<standardTypes>>& parameters)
+	const std::map<uint64_t, std::variant<standardTypes>>& parameters)
 {
 	const auto portIt{ parameters.find(1000007) };
 	if (portIt == parameters.end()) {
@@ -557,7 +557,7 @@ void Manager::HandleMetadata(
 				continue;
 			}
 
-			size_t tableId{};
+			uint64_t tableId{};
 			const auto error{ std::from_chars(keyStr.data(), keyStr.data() + keyStr.size(), tableId).ec };
 			if (error != std::errc{}) {
 				LOG_ERROR("Broken metadata, table id cannot be converted properly. Error: "
@@ -751,7 +751,7 @@ uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, 
 		}
 	}
 
-	uint16_t port{ 0 };
+	uint16_t port{};
 	const auto* parametersPort{ parameters.GetValue("port") };
 	if (parametersPort != nullptr) {
 		const auto* parametersPortValue{ std::get_if<std::string>(&parametersPort->GetValue()) };
@@ -801,13 +801,13 @@ uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, 
 		}
 	}
 
-	bool logInConsole{ false };
+	bool logInConsole{};
 	if (const auto logInConsoleStr{ parameters.GetValueType<std::string>("logInConsole") };
 		logInConsoleStr != nullptr) {
 		logInConsole = *logInConsoleStr == "true";
 	}
 
-	bool logInFile{ false };
+	bool logInFile{};
 	if (const auto logInFileStr{ parameters.GetValueType<std::string>("logInFile") }; logInFileStr != nullptr) {
 		logInFile = *logInFileStr == "true";
 	}

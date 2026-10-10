@@ -467,6 +467,11 @@ FORCE_INLINE [[nodiscard]] bool Io()
 			TestStruct o2{};
 			RETURN_IF_FALSE(t.Assert(IO::ReadBinary(&o2, o1Path), true, "Read binary struct"));
 			RETURN_IF_FALSE(t.Assert(o2, o1, "Read struct should be equal to saved struct"));
+			// Descriptor is read from the beginning of the file regardless of its offset after saving
+			o2 = TestStruct{};
+			RETURN_IF_FALSE(
+				t.Assert(IO::ReadBinary(&o2, o1PathOrFd), true, "Read binary struct by path or descriptor"));
+			RETURN_IF_FALSE(t.Assert(o2, o1, "Struct read by path or descriptor should be equal to saved struct"));
 			TestStruct o3{};
 			RETURN_IF_FALSE(
 				t.Assert(IO::SaveBinary<IO::APPEND>(&o3, o3PathOrFd), true, "Save binary struct in append mode"));
@@ -478,6 +483,10 @@ FORCE_INLINE [[nodiscard]] bool Io()
 				t.Assert(IO::SaveBinary<IO::APPEND>(&o3, o3PathOrFd), true, "Save binary struct in append mode"));
 			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(vecRead, o3Path), true, "Read binaries from append file"));
 			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Read structs from append file should be equal to saved structs"));
+			vecRead.clear();
+			RETURN_IF_FALSE(t.Assert(
+				IO::ReadBinaries(vecRead, o3PathOrFd), true, "Read binaries from append file by path or descriptor"));
+			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Structs read by path or descriptor from append file"));
 			vec.erase(vec.end() - 1);
 			vecRead.clear();
 			RETURN_IF_FALSE(t.Assert(IO::SaveBinary(&o3, o3PathOrFd), true, "Save binary struct in overwrite mode"));
@@ -494,6 +503,10 @@ FORCE_INLINE [[nodiscard]] bool Io()
 			RETURN_IF_FALSE(t.Assert(IO::SaveBinaries(vec, vecPathOrFd), true, "Save binaries"));
 			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(vecRead, vecPath), true, "Read binaries"));
 			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Read binaries should be equal to saved binaries"));
+			vecRead.clear();
+			RETURN_IF_FALSE(
+				t.Assert(IO::ReadBinaries(vecRead, vecPathOrFd), true, "Read binaries by path or descriptor"));
+			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Binaries read by path or descriptor"));
 
 			// Iterator pairs preserve the same binary format for paths and open descriptors.
 			RETURN_IF_FALSE(
@@ -512,6 +525,10 @@ FORCE_INLINE [[nodiscard]] bool Io()
 			vecRead.clear();
 			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(vecRead, vecPath), true, "Read binaries after offset saves"));
 			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Read binaries after offset saves should be equal to expected"));
+			vecRead.clear();
+			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(vecRead, vecPathOrFd), true,
+				"Read binaries after offset saves by path or descriptor"));
+			RETURN_IF_FALSE(t.Assert(vecRead, vec, "Binaries read by path or descriptor after offset saves"));
 
 			return true;
 		} };
@@ -701,8 +718,48 @@ FORCE_INLINE [[nodiscard]] bool Io()
 		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, rangePath.c_str()), true, "Read descriptor range modes"));
 		RETURN_IF_FALSE(t.Assert(actual == selected, true, "Binary descriptor overwrite and append"));
 		RETURN_IF_FALSE(t.Assert(fcntl(file.value, F_GETFD) != -1, true, "Binary range descriptor remains open"));
+		actual.clear();
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, file.value), true, "Read binary descriptor range"));
+		RETURN_IF_FALSE(t.Assert(actual == selected, true, "Binary descriptor range read by descriptor"));
+		int32_t first{};
+		RETURN_IF_FALSE(t.Assert(IO::ReadBinary(&first, file.value), true, "Read first record by descriptor"));
+		RETURN_IF_FALSE(t.Assert(first, selected.front(), "Descriptor is read from the beginning of the file"));
 		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries(values.begin(), values.end(), int32_t{ -1 }), false,
 			"Binary range rejects invalid descriptor"));
+		RETURN_IF_FALSE(
+			t.Assert(IO::ReadBinaries(actual, int32_t{ -1 }), false, "Binary read rejects invalid descriptor"));
+		RETURN_IF_FALSE(
+			t.Assert(IO::ReadBinary(&first, int32_t{ -1 }), false, "Record read rejects invalid descriptor"));
+
+		// Reading and saving alternate on one descriptor opened in append mode, saving always goes to the end.
+		{
+			IO::FileGuard appendFile{ rangePath.c_str(), O_RDWR | O_CREAT | O_APPEND | O_TRUNC, 0644 };
+			RETURN_IF_FALSE(t.Assert(appendFile.value != -1, true, "Open append descriptor for reading"));
+			RETURN_IF_FALSE(t.Assert(IO::SaveBinaries<IO::APPEND>(values.begin(), values.begin() + 2, appendFile.value),
+				true, "Save first records by append descriptor"));
+			actual.clear();
+			RETURN_IF_FALSE(t.Assert(IO::ReadBinaries(actual, appendFile.value), true, "Read by append descriptor"));
+			RETURN_IF_FALSE(
+				t.Assert(actual == std::vector<int32_t>{ 11, 22 }, true, "First records read by append descriptor"));
+			RETURN_IF_FALSE(t.Assert(IO::SaveBinary<IO::APPEND>(values[2], appendFile.value), true,
+				"Save record by append descriptor after reading"));
+			actual.clear();
+			RETURN_IF_FALSE(
+				t.Assert(IO::ReadBinaries(actual, appendFile.value), true, "Read by append descriptor after saving"));
+			RETURN_IF_FALSE(t.Assert(actual == std::vector<int32_t>{ 11, 22, 33 }, true,
+				"Saving after reading goes to the end of the file"));
+		}
+
+		// Descriptor opened only for writing cannot be read.
+		{
+			IO::FileGuard writeOnly{ rangePath.c_str(), O_WRONLY, 0 };
+			RETURN_IF_FALSE(t.Assert(writeOnly.value != -1, true, "Open write-only descriptor"));
+			actual.clear();
+			RETURN_IF_FALSE(t.Assert(
+				IO::ReadBinaries(actual, writeOnly.value), false, "Binary read rejects write-only descriptor"));
+			RETURN_IF_FALSE(
+				t.Assert(IO::ReadBinary(&first, writeOnly.value), false, "Record read rejects write-only descriptor"));
+		}
 		RETURN_IF_FALSE(t.Assert(IO::SaveBinaries(values.begin(), values.end(), (path + "missing/range").c_str()),
 			false, "Binary range rejects missing parent"));
 	}

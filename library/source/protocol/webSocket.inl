@@ -84,8 +84,58 @@ public:
 		TLSHandshakeFailure = 1015, // TLS failure during handshake. Must not be used.
 	};
 
+	/**************************
+	 * @brief One-usage non-owning abstraction to manage the process of splitting one payload into several parts one by
+	 * one.
+	 *
+	 * @tparam T Type of payload, must be one byte long.
+	 */
+	template <typename T>
+		requires(sizeof(T) == 1)
+	class SplitGenerator {
+	private:
+		Data& m_data;
+		const std::span<const T> m_buffer;
+		size_t m_step;
+		size_t m_offset{};
+		bool m_masking;
+
+	public:
+		/**************************
+		 * @brief Construct non-owning split generator data structure for Binary and Text web socket data types. The
+		 * minimum payload size in constant 4, the minimum step is 1. If zero step or step greater than payload size is
+		 * provided, then step will be equal to min(buffer size / 4, 65535).
+		 *
+		 * @param data Web socket data destination.
+		 * @param buffer Source of payload.
+		 * @param step Payload step.
+		 * @param masking Define if messages should be masked. Default is false.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE SplitGenerator(Data& data, std::span<T> buffer, size_t step, bool masking = false);
+
+		SplitGenerator(const SplitGenerator&) = delete;
+		SplitGenerator(SplitGenerator&&) = delete;
+		SplitGenerator& operator=(const SplitGenerator&) = delete;
+		SplitGenerator& operator=(SplitGenerator&&) = delete;
+
+		/**************************
+		 * @brief Prepare next websocket data. In case of enabled masking each message has unique masking key.
+		 *
+		 * @return False if all buffer were already prepared, true otherwise.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE [[nodiscard]] bool Get();
+	};
+
+public:
+	// Size of the first two bytes of the frame header, which are always present
 	static constexpr inline int8_t REQUIRED_HEADER_SIZE{ 2 };
+	// Bytes in one megabyte, to convert payload size to megabytes for the stored data limit
 	static constexpr inline double MB{ 1024. * 1024. };
+	// Maximum frame header size in megabytes, added to the payload size of stored data
 	static constexpr inline double MAXIMUM_HEADER_MB{ 10. / MB };
 
 private:
@@ -141,7 +191,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Data(RecvBuffer& recvBuffer);
+	FORCE_INLINE explicit Data(RecvBuffer& recvBuffer);
 
 	/**************************
 	 * @return String interpretation of WebSocket data message.
@@ -342,47 +392,6 @@ public:
 	FORCE_INLINE [[nodiscard]] static constexpr int8_t GetExpectedHeaderSize(
 		size_t payloadSize, bool isMasked) noexcept;
 
-	/**************************
-	 * @brief One-usage non-owning abstraction to manage the process of splitting one payload into several parts one by
-	 * one.
-	 *
-	 * @tparam T Type of payload, must be one byte long.
-	 */
-	template <typename T>
-		requires(sizeof(T) == 1)
-	class SplitGenerator {
-	private:
-		Data& m_data;
-		const std::span<const T> m_buffer;
-		size_t m_step;
-		size_t m_offset{};
-		bool m_masking;
-
-	public:
-		/**************************
-		 * @brief Construct non-owning split generator data structure for Binary and Text web socket data types. The
-		 * minimum payload size in constant 4, the minimum step is 1. If zero step or step greater than payload size is
-		 * provided, then step will be equal to min(buffer size / 4, 65535).
-		 *
-		 * @param data Web socket data destination.
-		 * @param buffer Source of payload.
-		 * @param step Payload step.
-		 * @param masking Define if messages should be masked. Default is false.
-		 *
-		 * @test Yes.
-		 */
-		FORCE_INLINE SplitGenerator(Data& data, std::span<T> buffer, size_t step, bool masking = false);
-
-		/**************************
-		 * @brief Prepare next websocket data. In case of enabled masking each message has unique masking key.
-		 *
-		 * @return False if all buffer were already prepared, true otherwise.
-		 *
-		 * @test Yes.
-		 */
-		FORCE_INLINE [[nodiscard]] bool Get();
-	};
-
 private:
 	/**************************
 	 * @brief Check if mask is not zero and set masking parameters in buffer.
@@ -414,6 +423,8 @@ private:
  *
  * @param connection Connection to send.
  * @param data Data to send.
+ *
+ * @test Yes.
  */
 FORCE_INLINE void Send(Connection& connection, const Data& data);
 
@@ -447,6 +458,7 @@ public:
 		const uint64_t connectionId;
 		Timer timestamp{};
 
+	public:
 		/**************************
 		 * @brief Create fragmented data object with creation timestamp.
 		 *
@@ -464,6 +476,12 @@ public:
 	};
 
 private:
+	// Purge policy: purge only if stored data size exceeds the limit
+	static inline constexpr bool CHECK_BEFORE{ true };
+	// Purge policy: purge without checking the limit first
+	static inline constexpr bool CHECK_USUAL{};
+
+private:
 	const MSAPI::Application* const m_application;
 	double m_storedFragmentedDataSizeMb{};
 	double m_storedFragmentedDataLimitMb{ 10. };
@@ -479,12 +497,17 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE IHandler(const MSAPI::Application* application) noexcept;
+	FORCE_INLINE explicit IHandler(const MSAPI::Application* application) noexcept;
 
 	/**************************
 	 * @brief Default destructor.
 	 */
 	FORCE_INLINE virtual ~IHandler() = default;
+
+	IHandler(const IHandler&) = delete;
+	IHandler(IHandler&&) = delete;
+	IHandler& operator=(const IHandler&) = delete;
+	IHandler& operator=(IHandler&&) = delete;
 
 	/**************************
 	 * @brief Handler function for text and binary messages.
@@ -504,7 +527,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	virtual void HandleWebSocketPong(
+	FORCE_INLINE virtual void HandleWebSocketPong(
 		[[maybe_unused]] const std::shared_ptr<Connection::Data>& connectionData, [[maybe_unused]] Data&& data);
 
 	/**************************
@@ -538,7 +561,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE double GetFragmentedDataLimit() const noexcept;
+	FORCE_INLINE [[nodiscard]] double GetFragmentedDataLimit() const noexcept;
 
 	/**************************
 	 * @brief Set new fragmented data limit. Limit cannot be less than zero. If limit is zero, then fragmented messages
@@ -573,9 +596,6 @@ public:
 	FORCE_INLINE void ClearConnection(uint64_t connectionId) noexcept;
 
 private:
-	static inline constexpr bool CHECK_BEFORE{ true };
-	static inline constexpr bool CHECK_USUAL{ false };
-
 	/**************************
 	 * @brief Purge stored fragmented data for connections in FIFO order.
 	 *
@@ -584,6 +604,8 @@ private:
 	 * @return True if there is enough space, false otherwise.
 	 *
 	 * @todo Unit test.
+	 *
+	 * @test Yes.
 	 */
 	template <bool T> FORCE_INLINE [[nodiscard]] bool PurgeStoredData();
 
@@ -1453,7 +1475,7 @@ FORCE_INLINE void IHandler::Collect(const std::shared_ptr<Connection::Data>& con
 
 	switch (data.GetOpcode()) {
 	case Data::Opcode::Continuation: {
-		FragmentedData* fragmentedDataPtr{ nullptr };
+		FragmentedData* fragmentedDataPtr{};
 		{
 			Lock::Atomic::Guard _{ m_fragmentedDataLock };
 			const auto it{ m_connectionIdToFragmentedData.find(connectionId) };
@@ -1575,7 +1597,10 @@ FORCE_INLINE void IHandler::Collect(const std::shared_ptr<Connection::Data>& con
 	HandleWebSocket(connectionData, std::move(data));
 }
 
-FORCE_INLINE double IHandler::GetFragmentedDataLimit() const noexcept { return m_storedFragmentedDataLimitMb; }
+FORCE_INLINE [[nodiscard]] double IHandler::GetFragmentedDataLimit() const noexcept
+{
+	return m_storedFragmentedDataLimitMb;
+}
 
 FORCE_INLINE [[nodiscard]] bool IHandler::SetFragmentedDataLimit(const double limitMb)
 {

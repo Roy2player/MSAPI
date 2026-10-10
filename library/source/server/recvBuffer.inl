@@ -88,6 +88,12 @@ public:
 	};
 
 private:
+	// RecvImpl policy: regular recv, buffer and peeked sizes are reset
+	static constexpr inline bool REGULAR{ true };
+	// RecvImpl policy: additional recv, data is placed after existed one
+	static constexpr inline bool IRREGULAR{};
+
+private:
 	const std::shared_ptr<Connection::Data> m_connectionData;
 	const uint64_t m_capacityLimit;
 	AutoClearPtr<uint8_t> m_buffer;
@@ -269,9 +275,6 @@ private:
 	 */
 	FORCE_INLINE [[nodiscard]] bool CheckCapacity(uint64_t requiredSize);
 
-	static constexpr inline bool regular{ true };
-	static constexpr inline bool irregular{ false };
-
 	/**************************
 	 * @brief Extend existed buffer by recv particular number of bytes from socket in buffer and place after existed
 	 * data. Overwrites peeked bytes if any and reduces peeked size.
@@ -382,16 +385,16 @@ FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::GetConnectionId() const noexcept
 
 FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::GetDataType() const noexcept { return m_dataType; }
 
-FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::Recv() { return RecvImpl<0, regular>(m_toProcessSize); }
+FORCE_INLINE [[nodiscard]] RecvBuffer::Result RecvBuffer::Recv() { return RecvImpl<0, REGULAR>(m_toProcessSize); }
 
 FORCE_INLINE [[nodiscard]] bool RecvBuffer::RecvAdditional(const uint64_t requiredSize)
 {
-	return RecvImpl<0, irregular>(requiredSize).GetBufferSize() != 0;
+	return RecvImpl<0, IRREGULAR>(requiredSize).GetBufferSize() != 0;
 }
 
 FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::RecvAdditionalPeek(const uint64_t requiredSize)
 {
-	return RecvImpl<MSG_PEEK, irregular>(requiredSize).GetBufferSize();
+	return RecvImpl<MSG_PEEK, IRREGULAR>(requiredSize).GetBufferSize();
 }
 
 FORCE_INLINE [[nodiscard]] bool RecvBuffer::CheckCapacity(const uint64_t requiredSize)
@@ -484,6 +487,7 @@ FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::RecvTrunc(const uint64_t truncSi
 		return 0;
 	}
 
+	// Size of the thread local storage for truncated data, bigger portions are dropped by parts
 	static constexpr uint64_t TRUNC_BUFFER_SIZE{ 1024 };
 	static thread_local std::array<uint8_t, TRUNC_BUFFER_SIZE> t_truncStorage;
 

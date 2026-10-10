@@ -162,6 +162,8 @@ public:
 	 * @brief Backup the password hash into the provided buffer.
 	 *
 	 * @param buffer The buffer to store the password hash.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE void BackupPassword(std::array<uint8_t, PASSWORD_HASH_SIZE>& buffer) const noexcept;
 
@@ -169,6 +171,8 @@ public:
 	 * @brief Restore the password hash from the provided buffer.
 	 *
 	 * @param buffer The buffer containing the password hash.
+	 *
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE void RestorePassword(const std::array<uint8_t, PASSWORD_HASH_SIZE>& buffer) noexcept;
 
@@ -258,6 +262,8 @@ private:
 		 * @param dataPath The file path where the account data is stored.
 		 *
 		 * @locking Is not required.
+		 *
+		 * @test Yes.
 		 */
 		FORCE_INLINE explicit AccountData(A&& account, std::string&& dataPath) noexcept;
 
@@ -282,7 +288,7 @@ private:
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE A& GetAccount() noexcept;
+		FORCE_INLINE [[nodiscard]] A& GetAccount() noexcept;
 
 		/**************************
 		 * @locking External read lock is required.
@@ -291,7 +297,7 @@ private:
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE const std::string& GetDataPath() const noexcept;
+		FORCE_INLINE [[nodiscard]] const std::string& GetDataPath() const noexcept;
 
 		/**************************
 		 * @brief Set a new data path for the account data file.
@@ -322,7 +328,7 @@ private:
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE Timer GetLastActivity() const noexcept;
+		FORCE_INLINE [[nodiscard]] Timer GetLastActivity() const noexcept;
 
 		/**************************
 		 * @locking Is not required.
@@ -331,7 +337,7 @@ private:
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE Lock::AtomicRW& GetRWLock() const noexcept;
+		FORCE_INLINE [[nodiscard]] Lock::AtomicRW& GetRWLock() const noexcept;
 
 		/**************************
 		 * @brief Save the account data to its associated file.
@@ -350,6 +356,8 @@ private:
 		 * @param connectionId The connection identifier.
 		 *
 		 * @locking External write lock is required.
+		 *
+		 * @test Yes.
 		 */
 		FORCE_INLINE void SetConnectionId(uint64_t connectionId) noexcept;
 
@@ -357,6 +365,8 @@ private:
 		 * @brief Clear the associated connection id.
 		 *
 		 * @locking External write lock is required.
+		 *
+		 * @test Yes.
 		 */
 		FORCE_INLINE void ClearConnectionId() noexcept;
 
@@ -364,8 +374,10 @@ private:
 		 * @locking External read lock is required.
 		 *
 		 * @return The connection identifier associated with this account, empty in case if no active connection.
+		 *
+		 * @test Yes.
 		 */
-		FORCE_INLINE std::optional<uint64_t> GetConnectionId() const noexcept;
+		FORCE_INLINE [[nodiscard]] std::optional<uint64_t> GetConnectionId() const noexcept;
 	};
 
 private:
@@ -435,6 +447,8 @@ public:
 	 * @param duration The duration to set as the logout timeout.
 	 *
 	 * @locking Is not required.
+	 *
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE void SetLogoutTimeout(Timer::Duration duration);
 
@@ -442,6 +456,8 @@ public:
 	 * @locking Is not required.
 	 *
 	 * @return The current logout timeout duration.
+	 *
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE [[nodiscard]] Timer::Duration GetLogoutTimeout() const noexcept;
 
@@ -674,7 +690,7 @@ protected:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE bool CheckLoginAsPath(std::string_view login, std::string& error) const noexcept;
+	FORCE_INLINE [[nodiscard]] bool CheckLoginAsPath(std::string_view login, std::string& error) const noexcept;
 
 	/**************************
 	 * @brief Handle account activity by updating the last activity timestamp and saving a log entry.
@@ -695,6 +711,8 @@ private:
 	 * @brief Handle the periodic inactive-connection check.
 	 *
 	 * @locking Read lock m_logonConnectionIdToAccountDataLock inside.
+	 *
+	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE void HandleEvent([[maybe_unused]] const Timer::Event& event) final;
 };
@@ -843,13 +861,13 @@ template <Accountable A, Gradable G> FORCE_INLINE Module<A, G>::AccountData::~Ac
 	const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_rwLock };
 }
 
-template <Accountable A, Gradable G> FORCE_INLINE A& Module<A, G>::AccountData::GetAccount() noexcept
+template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] A& Module<A, G>::AccountData::GetAccount() noexcept
 {
 	return m_account;
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE const std::string& Module<A, G>::AccountData::GetDataPath() const noexcept
+FORCE_INLINE [[nodiscard]] const std::string& Module<A, G>::AccountData::GetDataPath() const noexcept
 {
 	return m_dataPath;
 }
@@ -866,12 +884,14 @@ FORCE_INLINE void Module<A, G>::AccountData::UpdateLastActivity(Timer timer) noe
 	m_lastActivity = std::move(timer);
 }
 
-template <Accountable A, Gradable G> FORCE_INLINE Timer Module<A, G>::AccountData::GetLastActivity() const noexcept
+template <Accountable A, Gradable G>
+FORCE_INLINE [[nodiscard]] Timer Module<A, G>::AccountData::GetLastActivity() const noexcept
 {
 	return m_lastActivity;
 }
 
-template <Accountable A, Gradable G> FORCE_INLINE Lock::AtomicRW& Module<A, G>::AccountData::GetRWLock() const noexcept
+template <Accountable A, Gradable G>
+FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Module<A, G>::AccountData::GetRWLock() const noexcept
 {
 	return m_rwLock;
 }
@@ -893,7 +913,7 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::AccountData
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE std::optional<uint64_t> Module<A, G>::AccountData::GetConnectionId() const noexcept
+FORCE_INLINE [[nodiscard]] std::optional<uint64_t> Module<A, G>::AccountData::GetConnectionId() const noexcept
 {
 	return m_connectionId;
 }
@@ -1566,7 +1586,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::CheckPasswordRequirements(
 	bool hasUpper{};
 	bool hasDigit{};
 	bool hasSpecial{};
-	bool valid{ false };
+	bool valid{};
 
 	for (const char ch : password) {
 		if (std::isdigit(ch)) {
@@ -1632,7 +1652,8 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::CheckPasswordRequirements(
 }
 
 template <Accountable A, Gradable G>
-FORCE_INLINE bool Module<A, G>::CheckLoginAsPath(const std::string_view login, std::string& error) const noexcept
+FORCE_INLINE [[nodiscard]] bool Module<A, G>::CheckLoginAsPath(
+	const std::string_view login, std::string& error) const noexcept
 {
 	if (login == "." || login == "..") {
 		error = "Invalid login";

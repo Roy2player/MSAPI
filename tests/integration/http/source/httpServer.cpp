@@ -34,7 +34,7 @@ void HTTPServer::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 	LOG_ERROR("Unknown protocol: " + header.ToString());
 }
 
-void HTTPServer::HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate)
+void HTTPServer::HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
 {
 	MSAPI::Application::MergeParameters(parametersUpdate);
 

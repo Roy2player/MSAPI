@@ -44,10 +44,10 @@ void Json::Construct(const std::string_view body)
 	bool isKey{ true };
 	std::string key;
 	std::string value;
-	bool insideDoubleQuotes{ false };
+	bool insideDoubleQuotes{};
 	size_t objectDepth{ 1 };
-	size_t begin{ 0 };
-	size_t end{ 0 };
+	size_t begin{};
+	size_t end{};
 
 	size_t index{ 1 };
 	if (body[0] == '[') {
@@ -416,7 +416,7 @@ std::string Json::ToString() const noexcept
 		return "Json:\n{} <valid: " + _S(m_isValid) + ">";
 	}
 
-	size_t maxKeySize{ 0 };
+	size_t maxKeySize{};
 	for (const auto& [key, value] : m_keysAndValues) {
 		if (maxKeySize < key.size()) {
 			maxKeySize = key.size();
@@ -434,7 +434,7 @@ std::string Json::ToString() const noexcept
 		const auto& node{ value.GetValue() };
 		if (std::holds_alternative<Json>(node) || std::holds_alternative<std::list<JsonNode>>(node)) {
 			std::string node{ value.ToString() };
-			size_t pos{ 0 };
+			size_t pos{};
 			while ((pos = node.find('\n', pos)) != std::string::npos) {
 				node.replace(pos, 1, "\n\t");
 				pos += 2;
@@ -490,10 +490,10 @@ JsonNode::JsonNode(const std::string_view body, size_t begin, const size_t end)
 	std::list<JsonNode> array{};
 
 	std::string value;
-	bool insideDoubleQuotes{ false };
+	bool insideDoubleQuotes{};
 	size_t objectDepth{ 1 };
-	size_t _begin{ 0 };
-	size_t _end{ 0 };
+	size_t _begin{};
+	size_t _end{};
 
 	++begin;
 	for (; begin < end; ++begin) {

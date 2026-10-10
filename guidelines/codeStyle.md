@@ -12,6 +12,62 @@ description: "Naming conventions and code formatting expectations"
 - `m_` prefix for all non static abstraction fields.
 - `t_` prefix for all thread local variables.
 
+## Static fields
+
+- Static constants, which are used as template or function arguments, are named to give clear indication of what is managed in the place of usage, e.g. `Save<CLEAR>`. If the name of the function is not enough to understand it, the name has additional annotation, e.g. `Emplace<MODIFY_NOTIFY>` instead of `Emplace<NOTIFY>`.
+- Each static field has a comment explaining its purpose and usage.
+
+```cpp
+// Save policy: keep objects in the container after saving
+static inline constexpr bool REMAIN{ true };
+// Save policy: clear the container after saving
+static inline constexpr bool CLEAR{};
+```
+
+## Class layout
+
+- Members of a class follow blocks in the order below:
+  1. Types: enums, nested classes and type aliases.
+  2. Static fields.
+  3. Non static fields.
+  4. Functions: constructors, destructor, operators and other functions. Member public functions block is first, non public functions blocks follow it, and the static functions block is last. Sub-blocks: constructor, destructor and operators are grouped together even if they are under different access specifiers with empty lines separating sub-blocks.
+- Each block starts with its access specifier, even if it is the same as the access specifier of the previous block.
+
+```cpp
+class Single {
+public:
+    class Object {
+        ...
+    };
+
+public:
+    // Save policy: keep objects in the container after saving
+    static inline constexpr bool REMAIN{ true };
+
+private:
+    Container<Object> m_container;
+    mutable MSAPI::Lock::AtomicRW m_lock;
+
+public:
+    FORCE_INLINE Single(std::string_view dir, std::string_view name) noexcept;
+
+protected:
+    // Comment explaining why it is protected, because that is not obvious
+    FORCE_INLINE virtual ~Single() noexcept;
+
+public:
+    Single(const Single&) = delete;
+    Single(Single&&) = delete;
+    Single& operator=(const Single&) = delete;
+    Single& operator=(Single&&) = delete;
+
+    FORCE_INLINE [[nodiscard]] bool Read() noexcept;
+
+private:
+    FORCE_INLINE [[nodiscard]] bool ReadImpl() noexcept;
+};
+```
+
 ## Namespace
 
 - Declare each namespace separately, nested namespace definition `namespace A::B {` is prohibited.

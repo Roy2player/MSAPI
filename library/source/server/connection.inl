@@ -216,6 +216,10 @@ public:
 	};
 
 private:
+	// Counter to generate unique connection ids
+	static inline std::atomic<uint64_t> COUNTER{};
+
+private:
 	const uint64_t m_id;
 	const int32_t m_connection;
 	RecvFuncT m_recvFunc{ [](const int32_t fd, void* const buffer, const uint64_t size, const int32_t flags) noexcept {
@@ -230,8 +234,6 @@ private:
 	std::atomic<bool> m_isUsable{ true };
 	std::atomic<bool> m_isClosed{};
 
-	static inline std::atomic<uint64_t> m_counter{};
-
 public:
 	/**************************
 	 * @brief Construct new connection object with new unique id.
@@ -240,7 +242,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Connection(int32_t connection) noexcept;
+	FORCE_INLINE explicit Connection(int32_t connection) noexcept;
 
 	/**************************
 	 * @brief Construct new connection object with specific id.
@@ -280,7 +282,7 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t Recv(void* const buffer, uint64_t size, int32_t flags);
+	FORCE_INLINE [[nodiscard]] uint64_t Recv(void* buffer, uint64_t size, int32_t flags);
 
 	/**************************
 	 * @brief Perform one effective send to connection. Is concurrency safe and won't be called on closed connection.
@@ -299,7 +301,7 @@ public:
 	 *
 	 * @todo Add tests coverage.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t Send(const void* const buffer, uint64_t size, int32_t flags);
+	FORCE_INLINE [[nodiscard]] uint64_t Send(const void* buffer, uint64_t size, int32_t flags);
 
 	/**************************
 	 * @brief Override the default recv function. Is concurrency safe and won't be called on closed connection.
@@ -433,7 +435,7 @@ Connection
 ---------------------------------------------------------------------------------*/
 
 FORCE_INLINE Connection::Connection(const int32_t connection) noexcept
-	: m_id{ m_counter.fetch_add(1, std::memory_order_relaxed) }
+	: m_id{ COUNTER.fetch_add(1, std::memory_order_relaxed) }
 	, m_connection{ connection }
 {
 }
