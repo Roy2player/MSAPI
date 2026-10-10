@@ -19,6 +19,7 @@
 #include "standard.h"
 #include "../server/connection.inl"
 #include <cstring>
+#include <limits>
 #include <memory.h>
 #include <sys/socket.h>
 
@@ -32,7 +33,7 @@ namespace Standard {
 Data
 ---------------------------------------------------------------------------------*/
 
-Data::Data(const size_t cipher)
+Data::Data(const uint64_t cipher)
 	: DataHeader(cipher)
 {
 }
@@ -40,7 +41,7 @@ Data::Data(const size_t cipher)
 Data::Data(const DataHeader& header, const void* buffer)
 	: DataHeader(header)
 {
-	size_t offset{ sizeof(size_t) * 2 };
+	uint64_t offset{ DataHeader::HEADER_SIZE };
 	StandardType::Type type [[indeterminate]];
 	uint64_t key{};
 
@@ -157,11 +158,36 @@ Data::Data(const DataHeader& header, const void* buffer)
 			m_data.emplace(key, std::optional<float>{});
 			break;
 		case StandardType::Type::String: {
-			size_t size;
-			memcpy(&size, &static_cast<const char*>(buffer)[offset], sizeof(size_t));
-			offset += sizeof(size_t);
-			m_data.emplace(key, std::string{ &static_cast<const char*>(buffer)[offset], size });
-			offset += size;
+			if (offset > m_bufferSize || m_bufferSize - offset < sizeof(uint64_t)) [[unlikely]] {
+				LOG_ERROR_NEW("Incomplete string size in standard message, key: {}, offset: {}, buffer size: {}, "
+							  "required size: {}",
+					key, offset, m_bufferSize, sizeof(uint64_t));
+				return;
+			}
+
+			uint64_t stringSize [[intermediate]];
+			memcpy(&stringSize, &static_cast<const char*>(buffer)[offset], sizeof(uint64_t));
+			offset += sizeof(uint64_t);
+
+			if constexpr (sizeof(size_t) < sizeof(uint64_t)) {
+				if (stringSize > std::numeric_limits<size_t>::max()) [[unlikely]] {
+					LOG_ERROR_NEW("String size exceeds addressable size in standard message, key: {}, string size: {}, "
+								  "maximum size: {}",
+						key, stringSize, std::numeric_limits<size_t>::max());
+					return;
+				}
+			}
+
+			if (offset > m_bufferSize || stringSize > m_bufferSize - offset) [[unlikely]] {
+				LOG_ERROR_NEW(
+					"String exceeds standard message buffer, key: {}, string size: {}, offset: {}, buffer size: {}",
+					key, stringSize, offset, m_bufferSize);
+				return;
+			}
+
+			m_data.emplace(
+				key, std::string{ &static_cast<const char*>(buffer)[offset], static_cast<size_t>(stringSize) });
+			offset += stringSize;
 		} break;
 		case StandardType::Type::StringEmpty:
 			m_data.emplace(key, std::string{});
@@ -172,10 +198,27 @@ Data::Data(const DataHeader& header, const void* buffer)
 		case StandardType::Type::Duration:
 			TMP_MSAPI_STANDARD_SET_PRIMITIVE_DATA(Timer::Duration);
 			break;
-		case StandardType::Type::TableData:
+		case StandardType::Type::TableData: {
+			if (offset > m_bufferSize || m_bufferSize - offset < sizeof(size_t)) [[unlikely]] {
+				LOG_ERROR_NEW("Incomplete table size in standard message, key: {}, offset: {}, buffer size: {}, "
+							  "required size: {}",
+					key, offset, m_bufferSize, sizeof(size_t));
+				return;
+			}
+
+			size_t tableSize [[intermediate]];
+			memcpy(&tableSize, &static_cast<const char*>(buffer)[offset], sizeof(size_t));
+
+			if (tableSize < sizeof(size_t) || tableSize > m_bufferSize - offset) [[unlikely]] {
+				LOG_ERROR_NEW(
+					"Invalid table size in standard message, key: {}, table size: {}, offset: {}, buffer size: {}", key,
+					tableSize, offset, m_bufferSize);
+				return;
+			}
+
 			m_data.emplace(key, TableData{ &static_cast<const char*>(buffer)[offset] });
-			offset += *reinterpret_cast<const size_t*>(&static_cast<const char*>(buffer)[offset]);
-			break;
+			offset += tableSize;
+		} break;
 		default:
 			LOG_ERROR("Parsing of message object encountered an error, unsupported type: "
 				+ _S(static_cast<short>(type)) + ", key: " + _S(key));
@@ -195,11 +238,11 @@ void* Data::Encode() const
 		return nullptr;
 	}
 
-	memcpy(static_cast<char*>(buffer), &m_cipher, sizeof(size_t));
+	memcpy(static_cast<char*>(buffer), &m_cipher, sizeof(uint64_t));
 
-	size_t offset{ sizeof(size_t) };
-	memcpy(&static_cast<char*>(buffer)[offset], &m_bufferSize, sizeof(size_t));
-	offset += sizeof(size_t);
+	size_t offset{ sizeof(uint64_t) };
+	memcpy(&static_cast<char*>(buffer)[offset], &m_bufferSize, sizeof(uint64_t));
+	offset += sizeof(uint64_t);
 
 	if (m_data.empty()) [[unlikely]] {
 		return buffer;
@@ -230,13 +273,12 @@ void* Data::Encode() const
 					if (value.empty()) {
 						return;
 					}
-					const auto stringSize{ value.size() };
-					memcpy(&static_cast<char*>(buffer)[offset], &stringSize, sizeof(size_t));
-					offset += sizeof(size_t);
+					const uint64_t stringSize{ value.size() };
+					memcpy(&static_cast<char*>(buffer)[offset], &stringSize, sizeof(uint64_t));
+					offset += sizeof(uint64_t);
 
-					const auto stringSizeBytes{ stringSize };
-					memcpy(&static_cast<char*>(buffer)[offset], value.data(), stringSizeBytes);
-					offset += stringSizeBytes;
+					memcpy(&static_cast<char*>(buffer)[offset], value.data(), stringSize);
+					offset += stringSize;
 				}
 				else if constexpr (is_standard_primitive_type_optional<T>) {
 					if (value.has_value()) {
@@ -264,7 +306,7 @@ void Data::Clear()
 {
 	m_data.clear();
 	m_dataTypes.clear();
-	m_bufferSize = sizeof(size_t) * 2;
+	m_bufferSize = DataHeader::HEADER_SIZE;
 }
 
 std::string Data::ToString() const
@@ -329,67 +371,67 @@ void Send(Connection& connection, const Data& data)
 void SendActionPause(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ CIPHER_ACTION_PAUSE };
-		size_t bufferSize{ sizeof(size_t) * 2 };
+		uint64_t cipher{ CIPHER_ACTION_PAUSE };
+		uint64_t bufferSize{ DataHeader::HEADER_SIZE };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send action pause to connection id: {}", connection.GetId());
 
-	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
+	(void)connection.Send(&buffer, DataHeader::HEADER_SIZE, MSG_NOSIGNAL);
 }
 
 void SendActionRun(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ CIPHER_ACTION_RUN };
-		size_t bufferSize{ sizeof(size_t) * 2 };
+		uint64_t cipher{ CIPHER_ACTION_RUN };
+		uint64_t bufferSize{ DataHeader::HEADER_SIZE };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send action run to connection id: {}", connection.GetId());
 
-	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
+	(void)connection.Send(&buffer, DataHeader::HEADER_SIZE, MSG_NOSIGNAL);
 }
 
 void SendActionDelete(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ CIPHER_ACTION_DELETE };
-		size_t bufferSize{ sizeof(size_t) * 2 };
+		uint64_t cipher{ CIPHER_ACTION_DELETE };
+		uint64_t bufferSize{ DataHeader::HEADER_SIZE };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send action delete to connection id: {}", connection.GetId());
 
-	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
+	(void)connection.Send(&buffer, DataHeader::HEADER_SIZE, MSG_NOSIGNAL);
 }
 
 void SendActionHello(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ CIPHER_ACTION_HELLO };
-		size_t bufferSize{ sizeof(size_t) * 2 };
+		uint64_t cipher{ CIPHER_ACTION_HELLO };
+		uint64_t bufferSize{ DataHeader::HEADER_SIZE };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send action hello to connection id: {}", connection.GetId());
 
-	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
+	(void)connection.Send(&buffer, DataHeader::HEADER_SIZE, MSG_NOSIGNAL);
 }
 
 void SendMetadataRequest(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ CIPHER_METADATA_REQUEST };
-		size_t bufferSize{ sizeof(size_t) * 2 };
+		uint64_t cipher{ CIPHER_METADATA_REQUEST };
+		uint64_t bufferSize{ DataHeader::HEADER_SIZE };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send metadata request to connection id: {}", connection.GetId());
 
-	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
+	(void)connection.Send(&buffer, DataHeader::HEADER_SIZE, MSG_NOSIGNAL);
 }
 
 void SendParametersRequest(Connection& connection)
 {
 	static const struct Buffer {
-		size_t cipher{ CIPHER_PARAMETERS_REQUEST };
-		size_t bufferSize{ sizeof(size_t) * 2 };
+		uint64_t cipher{ CIPHER_PARAMETERS_REQUEST };
+		uint64_t bufferSize{ DataHeader::HEADER_SIZE };
 	} buffer;
 	LOG_PROTOCOL_NEW("Send parameters request to connection id: {}", connection.GetId());
 
-	(void)connection.Send(&buffer, sizeof(size_t) * 2, MSG_NOSIGNAL);
+	(void)connection.Send(&buffer, DataHeader::HEADER_SIZE, MSG_NOSIGNAL);
 }
 
 } // namespace Standard

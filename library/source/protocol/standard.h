@@ -71,7 +71,7 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	Data(size_t cipher);
+	Data(uint64_t cipher);
 
 	/**************************
 	 * @brief Constructor for parsing data from buffer.
@@ -207,7 +207,7 @@ public:
 			}
 			else {
 				m_dataTypes.emplace(key, StandardType::Type::String);
-				m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) + sizeof(size_t) + value.size();
+				m_bufferSize += sizeof(StandardType::Type) + sizeof(uint64_t) * 2 + value.size();
 				m_data.emplace(key, std::forward<T>(value));
 			}
 		}
@@ -235,10 +235,10 @@ public:
 	}
 
 	/**************************
-	 * @brief Encode contained data to buffer. Message template is: (size_t) cipher, (size_t) buffer size, then for each
-	 * item: (int8_t) type specifier, (uint64_t) key and value. Value is (T) value for primitive types, Timer, Duration
-	 * and optional with value, (size_t) string size and (char) characters for not empty string, table buffer for table.
-	 * Empty string and empty optional have no value, they are defined by their type specifier.
+	 * @brief Encode contained data to buffer. Message template is: (uint64_t) cipher, (uint64_t) buffer size, then for
+	 * each item: (int8_t) type specifier, (uint64_t) key and value. Value is (T) value for primitive types, Timer,
+	 * Duration and optional with value, (uint64_t) string size and (char) characters for not empty string, table buffer
+	 * for table. Empty string and empty optional have no value, they are defined by their type specifier.
 	 *
 	 * @attention Freeing up memory after using is required.
 	 *

@@ -28,6 +28,10 @@ namespace MSAPI {
  * @brief Object for collecting common data for all protocol data objects: cipher and buffer size.
  */
 class DataHeader {
+public:
+	// Serialized header contains a uint64_t cipher followed by a uint64_t buffer size.
+	static inline constexpr uint64_t HEADER_SIZE{ sizeof(uint64_t) * 2 };
+
 protected:
 	uint64_t m_cipher;
 	uint64_t m_bufferSize;

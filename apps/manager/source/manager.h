@@ -843,7 +843,7 @@ private:
 #undef TMP_MANAGER_CONTINUE_WITH_ERROR
 #undef TMP_MANAGER_TRY_SET_DATA_PARAMETER
 
-		if (parametersUpdate.GetBufferSize() > sizeof(size_t) * 2) {
+		if (parametersUpdate.GetBufferSize() > MSAPI::DataHeader::HEADER_SIZE) {
 			auto& connection{ createdAppData->connectionData->GetConnection() };
 			MSAPI::Protocol::Standard::Send(connection, parametersUpdate);
 			MSAPI::Protocol::Standard::SendParametersRequest(connection);

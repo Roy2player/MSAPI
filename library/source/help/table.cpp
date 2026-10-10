@@ -91,7 +91,7 @@ TableData::TableData(const void* buffer)
 	: m_sharedBuffer{ buffer }
 {
 	if (buffer != nullptr) {
-		m_bufferSize = *static_cast<const size_t*>(buffer);
+		memcpy(&m_bufferSize, buffer, sizeof(size_t));
 	}
 }
 
@@ -169,7 +169,7 @@ TableData::TableData(const std::list<JsonNode>& rows, const std::vector<Standard
 			allocationStep += 5;
 			break;
 		case StandardType::Type::String:
-			allocationStep += 72; /* 8 bytes for size and 64 bytes for content */
+			allocationStep += sizeof(size_t) + 64; // 8 bytes for size and 64 bytes for content
 			break;
 		case StandardType::Type::Timer:
 			allocationStep += sizeof(MSAPI::Timer);

@@ -175,7 +175,7 @@ private:
 	// Shared pointer to allow copy constructor and assignment operator.
 	std::shared_ptr<AutoClearPtr<void>> m_ownBuffer{ nullptr };
 	const void* m_sharedBuffer{};
-	size_t m_bufferSize{ 8 };
+	size_t m_bufferSize{ sizeof(size_t) };
 
 public:
 	/**************************
@@ -193,7 +193,7 @@ public:
 	 * nullptr is provided, the buffer will be address of buffer size. Has shared buffer and will not be cleared
 	 * automatically.
 	 *
-	 * @attention Buffer must contain at least 8 bytes for size of buffer.
+	 * @attention Buffer must contain at least sizeof(size_t) bytes for size of buffer.
 	 *
 	 * @param buffer Buffer with table data.
 	 *
