@@ -31,7 +31,7 @@ private:
 	std::shared_ptr<MSAPI::Connection::Data> m_outcomeConnection;
 	std::shared_ptr<MSAPI::Connection::Data> m_activeConnection;
 	std::string m_metadata;
-	std::map<size_t, std::variant<standardTypes>> m_parametersResponse;
+	std::map<uint64_t, std::variant<standardTypes>> m_parametersResponse;
 	MSAPI::ActionsCounter m_unhandledActions;
 
 	static constexpr size_t helloForHelloCipher{ 59837493028 };
@@ -42,12 +42,12 @@ public:
 	// MSAPI::Application
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;
-	void HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate) final;
+	void HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate) final;
 	void HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
 	void HandleMetadata(
 		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, std::string_view metadata) final;
 	void HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
-		const std::map<size_t, std::variant<standardTypes>>& parameters) final;
+		const std::map<uint64_t, std::variant<standardTypes>>& parameters) final;
 	void HandleIncomeDisconnect(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;
 
 	void UseOutcomeConnection();
@@ -63,7 +63,7 @@ public:
 	void SendParametersResponse();
 	std::string GetParameters() const;
 	const std::string& GetMetadata() const noexcept;
-	const std::map<size_t, std::variant<standardTypes>>& GetParametersResponse() const noexcept;
+	const std::map<uint64_t, std::variant<standardTypes>>& GetParametersResponse() const noexcept;
 	void Stop();
 	size_t GetUnhandledActions() const noexcept;
 };

@@ -83,7 +83,7 @@ std::string DomainToIp(const char* domain)
 void Separating(std::vector<std::string>& vector, const std::string& str, const char symbol)
 {
 	std::string property;
-	for (size_t index{ 0 }; index < str.size(); ++index) {
+	for (size_t index{}; index < str.size(); ++index) {
 		if (str[index] == symbol && !property.empty()) {
 			vector.push_back(property);
 			property.erase();
@@ -99,7 +99,7 @@ void Separating(std::vector<std::string>& vector, const std::string& str, const 
 void Separating(std::set<std::string>& vector, const std::string& str, const char symbol)
 {
 	std::string property;
-	for (size_t index{ 0 }; index < str.size(); ++index) {
+	for (size_t index{}; index < str.size(); ++index) {
 		if (str[index] == symbol && !property.empty()) {
 			vector.insert(property);
 			property.erase();
@@ -118,7 +118,7 @@ std::optional<int> HexStrToDecimal(const std::string& str)
 		return {};
 	}
 
-	int out{ 0 };
+	int out{};
 	int index{ static_cast<int>(str.size()) - 1 };
 	for (const auto& symbol : str) {
 		int multiplier = static_cast<int>(std::pow(16, index));
@@ -192,7 +192,7 @@ double ToDouble(const int64_t units, const int32_t nano)
 
 int32_t Round(const int32_t nano, double tick)
 {
-	double tickPow{ 0 };
+	double tickPow{};
 	while (FloatGreater(tick, floor(tick))) {
 		tick *= 10;
 		++tickPow;
@@ -204,7 +204,7 @@ int32_t Round(const int32_t nano, double tick)
 double Round(double price, double tick)
 {
 	double save{ price };
-	int tickPow{ 0 };
+	int tickPow{};
 
 	while (FloatGreater(tick, floor(tick))) {
 		tick *= 10;
@@ -216,7 +216,7 @@ double Round(double price, double tick)
 	price = round(price);
 	price /= multiplier;
 
-	size_t index{ 0 };
+	size_t index{};
 	while (FloatGreater(price, save)) {
 		price *= multiplier;
 		++index;

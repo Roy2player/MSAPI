@@ -17,14 +17,13 @@
  */
 
 #include "dataHeader.h"
-#include "../help/log.h"
 #include <cstring>
 
 namespace MSAPI {
 
 DataHeader::DataHeader(const std::span<const uint8_t> buffer) noexcept
 {
-	if (buffer.size() < 16) [[unlikely]] {
+	if (buffer.size() < HEADER_SIZE) [[unlikely]] {
 		m_cipher = 0;
 		m_bufferSize = 0;
 		return;
@@ -37,7 +36,7 @@ DataHeader::DataHeader(const std::span<const uint8_t> buffer) noexcept
 
 DataHeader::DataHeader(const uint64_t cipher) noexcept
 	: m_cipher{ cipher }
-	, m_bufferSize{ 16 }
+	, m_bufferSize{ HEADER_SIZE }
 {
 }
 

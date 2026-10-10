@@ -28,9 +28,9 @@ namespace MSAPI {
 Log logger;
 
 Log::Log(const bool toConsole, const bool toFile, const Level levelSave) noexcept
-	: m_toConsole(toConsole)
-	, m_toFile(toFile)
-	, m_levelSave(levelSave)
+	: m_toConsole{ toConsole }
+	, m_toFile{ toFile }
+	, m_levelSave{ levelSave }
 {
 	std::ios_base::sync_with_stdio(false);
 }

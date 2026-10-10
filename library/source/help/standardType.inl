@@ -78,6 +78,7 @@ public:
 		Max
 	};
 
+public:
 	/**************************
 	 * @return Reinterpretation of Type enum to string.
 	 */
@@ -163,7 +164,7 @@ public:
 		case Type::Max:
 			return "Max";
 		default:
-			LOG_ERROR("Unknown type: " + _S(U(type)));
+			LOG_ERROR_NEW("Unknown type: {}", U(type));
 			return "Unknown";
 		}
 	}

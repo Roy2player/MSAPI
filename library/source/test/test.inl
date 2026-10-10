@@ -34,7 +34,7 @@
 
 template <typename T, typename S>
 	requires std::is_same_v<std::decay_t<T>, std::decay_t<S>>
-bool operator==(const std::span<T> left, const std::span<S> right)
+FORCE_INLINE [[nodiscard]] bool operator==(const std::span<T> left, const std::span<S> right)
 {
 	return std::ranges::equal(left, right);
 }
@@ -71,16 +71,27 @@ concept has_to_string = requires(T t) {
  */
 class Test {
 private:
+	// Log pattern of passed assertion: name, elapsed time
+	static constexpr std::string_view PATTERN_PASSED{ "\033[0;32mPASSED: \033[0m{}. {} ns" };
+	// Log pattern of failed assertion: name, actual, expected, elapsed time
+	static constexpr std::string_view PATTERN_FAILED{ "\033[0;31mFAILED: \033[0m{}. Actual: {}. Expected: {}. {} ns" };
+
+private:
+	// Assert policy: check without counting and logging the result, used for polling in Wait
+	static inline constexpr bool SILENT{ true };
+	// Assert policy: count and log the result
+	static inline constexpr bool COUNT{};
+
+private:
 	int32_t m_counter{};
 	int32_t m_passedCounter{};
 	Timer m_timer;
 	Timer m_totalTimer;
 	mutable MSAPI::Lock::Atomic m_lock;
 
-	static constexpr std::string_view m_patternPassed{ "\033[0;32mPASSED: \033[0m{}. {} ns" };
-	static constexpr std::string_view m_patternFailed{ "\033[0;31mFAILED: \033[0m{}. Actual: {}. Expected: {}. {} ns" };
-
 public:
+	FORCE_INLINE Test() noexcept = default;
+
 	/**************************
 	 * @brief Reports the final assertion counters and elapsed time, or the absence of assertions.
 	 *
@@ -89,6 +100,11 @@ public:
 	 * @test Yes.
 	 */
 	FORCE_INLINE ~Test();
+
+	Test(const Test&) = delete;
+	Test(Test&&) = delete;
+	Test& operator=(const Test&) = delete;
+	Test& operator=(Test&&) = delete;
 
 	/**************************
 	 * @tparam T Boolean or integer type.
@@ -125,7 +141,7 @@ public:
 	 */
 	template <typename T, typename S>
 		requires comparable<T, S>
-	FORCE_INLINE [[nodiscard]] bool Assert(T&& actual, S&& expected, const std::string_view name);
+	FORCE_INLINE [[nodiscard]] bool Assert(T&& actual, S&& expected, std::string_view name);
 
 	/**************************
 	 * @brief Polls a getter in 100-microsecond steps and registers one final assertion result.
@@ -153,12 +169,9 @@ public:
 		requires std::invocable<F, Args...>
 		&& std::same_as<std::decay_t<std::invoke_result_t<F, Args...>>, std::decay_t<T>>
 	FORCE_INLINE [[nodiscard]] bool Wait(
-		uint64_t waitTime, F&& getter, T&& expected, const std::string_view name, Args&&... args);
+		uint64_t waitTime, F&& getter, T&& expected, std::string_view name, Args&&... args);
 
 private:
-	static inline constexpr bool SILENT{ true };
-	static inline constexpr bool COUNT{ false };
-
 	/**************************
 	 * @brief Registers the assertion of couple values and save result.
 	 *
@@ -181,7 +194,7 @@ private:
 	 */
 	template <bool Policy, typename T, typename S>
 		requires comparable<T, S>
-	FORCE_INLINE [[nodiscard]] bool AssertImpl(T&& actual, S&& expected, const std::string_view name);
+	FORCE_INLINE [[nodiscard]] bool AssertImpl(T&& actual, S&& expected, std::string_view name);
 };
 
 /*---------------------------------------------------------------------------------
@@ -253,7 +266,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 		else {
 			if constexpr (Policy == COUNT) {
-				LOG_INFO_NEW(m_patternFailed, name, _S(actual), _S(expected),
+				LOG_INFO_NEW(PATTERN_FAILED, name, _S(actual), _S(expected),
 					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
@@ -266,7 +279,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 		else {
 			if constexpr (Policy == COUNT) {
-				LOG_INFO_NEW(m_patternFailed, name, _S(actual), _S(expected),
+				LOG_INFO_NEW(PATTERN_FAILED, name, _S(actual), _S(expected),
 					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
@@ -277,7 +290,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 		else {
 			if constexpr (Policy == COUNT) {
-				LOG_INFO_NEW(m_patternFailed, name, _S(actual), _S(expected),
+				LOG_INFO_NEW(PATTERN_FAILED, name, _S(actual), _S(expected),
 					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
@@ -292,7 +305,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 		else {
 			if constexpr (Policy == COUNT) {
-				LOG_INFO_NEW(m_patternFailed, name, _S(actual), _S(expected),
+				LOG_INFO_NEW(PATTERN_FAILED, name, _S(actual), _S(expected),
 					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
@@ -304,7 +317,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		else {
 			if constexpr (Policy == COUNT) {
 				LOG_INFO_NEW(
-					m_patternFailed, name, actual, expected, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+					PATTERN_FAILED, name, actual, expected, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
 	}
@@ -328,7 +341,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 				else {
 					expectedString = Helper::WstringToString(std::wstring{ expected }.c_str());
 				}
-				LOG_INFO_NEW(m_patternFailed, name, actualString, expectedString,
+				LOG_INFO_NEW(PATTERN_FAILED, name, actualString, expectedString,
 					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
@@ -339,7 +352,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 		else {
 			if constexpr (Policy == COUNT) {
-				LOG_INFO_NEW(m_patternFailed, name, actual.ToString(), expected.ToString(),
+				LOG_INFO_NEW(PATTERN_FAILED, name, actual.ToString(), expected.ToString(),
 					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
@@ -350,7 +363,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 		else {
 			if constexpr (Policy == COUNT) {
-				LOG_INFO_NEW(m_patternFailed, name, actual.ToString(), expected.ToString(),
+				LOG_INFO_NEW(PATTERN_FAILED, name, actual.ToString(), expected.ToString(),
 					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
@@ -364,7 +377,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 		else {
 			if constexpr (Policy == COUNT) {
-				LOG_INFO_NEW(m_patternFailed, name, actualAddress, expectedAddress,
+				LOG_INFO_NEW(PATTERN_FAILED, name, actualAddress, expectedAddress,
 					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
@@ -375,7 +388,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 		else {
 			if constexpr (Policy == COUNT) {
-				LOG_INFO_NEW(m_patternFailed, name, "<unprintable>", "<unprintable>",
+				LOG_INFO_NEW(PATTERN_FAILED, name, "<unprintable>", "<unprintable>",
 					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			}
 		}
@@ -383,7 +396,7 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 
 	if constexpr (Policy == COUNT) {
 		if (isPassed) {
-			LOG_INFO_NEW(m_patternPassed, name, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+			LOG_INFO_NEW(PATTERN_PASSED, name, Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
 			++m_passedCounter;
 		}
 

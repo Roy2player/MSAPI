@@ -61,7 +61,7 @@ See [CMakeListsCommonOptions.txt](library/build/CMakeListsCommonOptions.txt) for
 - [**SHA256:**](library/source/help/sha256.inl) SHA-256 hashing implementation.
 - [**SHA1:**](library/source/help/sha1.inl) SHA-1 hashing implementation.
 - [**Static string:**](library/source/help/basicSString.inl) Functional static string container with explicit null termination.
-- [**Persistence:**](library/source/help/persistence.inl) Thread-safe single-type container persisted on disk in binary format, with incremental appending, full rewriting, and a manual timestamp.
+- [**Persistence:**](library/source/help/persistence.inl) Functional abstractions to keep containers persisted in binary format on disk.
 
 ### [Testing Framework](library/source/test/)
 
@@ -144,5 +144,5 @@ Project has a set of guidelines to ensure following best practices, maintain cod
 - [**Code syntax:**](guidelines/codeSyntax.md) Syntax and declaration rules.
 - [**Concurrency:**](guidelines/concurrency.md) Locking patterns and thread-safety requirements.
 - [**Doxygen inline documentation:**](guidelines/doxygenInlineDocumentation.md) Required inline documentation and comment structure.
-- [**File Organization:**](guidelines/fileOrganization.md): Inlinable library layout and structure of .inl files.
+- [**File Organization:**](guidelines/fileOrganization.md) Inlinable library layout and structure of .inl files.
 - [**Logging:**](guidelines/logging.md) Logging levels, message style, and runtime logging guidance.

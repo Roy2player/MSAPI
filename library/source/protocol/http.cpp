@@ -38,13 +38,13 @@ Data
 
 Data::Data(MSAPI::RecvBuffer& recvBuffer)
 {
-	bool isHeaders{ false };
+	bool isHeaders{};
 	bool isHtmlFormat{ true };
-	bool isUrl{ false };
-	bool isHTTPtype{ false };
-	bool isVersion{ false };
-	bool isCode{ false };
-	bool isCodeText{ false };
+	bool isUrl{};
+	bool isHTTPtype{};
+	bool isVersion{};
+	bool isCode{};
+	bool isCodeText{};
 	bool isKeyLine{ true };
 	std::string value{ "" };
 	std::string key{ "" };
@@ -91,9 +91,9 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 	};
 
 	{
-		bool hasSpace{ false };
-		bool validity{ false };
-		for (size_t index{ 0 }; index < bufferSize; ++index) {
+		bool hasSpace{};
+		bool validity{};
+		for (size_t index{}; index < bufferSize; ++index) {
 			if (static_cast<const char*>(buffer)[index] == ' ') {
 				hasSpace = true;
 			}
@@ -116,7 +116,7 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 
 	if (m_isRequest) {
 		bool isMessageType{ true };
-		for (size_t index{ 0 }; index < bufferSize; ++index) {
+		for (size_t index{}; index < bufferSize; ++index) {
 			if (!isHeaders) {
 				if (static_cast<const char*>(buffer)[index] != '\n') {
 					if (isMessageType) {
@@ -233,7 +233,7 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 	}
 	else {
 		isHTTPtype = true;
-		for (size_t index{ 0 }; index < bufferSize; ++index) {
+		for (size_t index{}; index < bufferSize; ++index) {
 			if (isHeaders) {
 				if (static_cast<const char*>(buffer)[index] != '\n') {
 					if (static_cast<const char*>(buffer)[index] == ':'
@@ -661,7 +661,7 @@ IHandler
 ---------------------------------------------------------------------------------*/
 
 IHandler::IHandler(const MSAPI::Application* application)
-	: m_application(application)
+	: m_application{ application }
 {
 }
 

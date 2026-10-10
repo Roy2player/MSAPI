@@ -39,10 +39,19 @@ private:
 	std::atomic<uint64_t> m_counter{};
 
 public:
+	FORCE_INLINE ActionsCounter() noexcept = default;
+
+	ActionsCounter(const ActionsCounter&) = delete;
+	ActionsCounter(ActionsCounter&&) = delete;
+	ActionsCounter& operator=(const ActionsCounter&) = delete;
+	ActionsCounter& operator=(ActionsCounter&&) = delete;
+
 	/**************************
 	 * @locking Not required.
 	 *
 	 * @return Readable reference to number of actions.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE [[nodiscard]] uint64_t GetActionsNumber() const noexcept;
 
@@ -50,6 +59,8 @@ public:
 	 * @locking Not required.
 	 *
 	 * @brief Increment number of actions.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE void IncrementActionsNumber() noexcept;
 
@@ -57,6 +68,8 @@ public:
 	 * @locking Not required.
 	 *
 	 * @brief Clear number of actions.
+	 *
+	 * @test Yes.
 	 */
 	FORCE_INLINE void ClearActionsNumber() noexcept;
 };

@@ -68,10 +68,21 @@ public:
 	public:
 		class IHandler {
 		public:
+			FORCE_INLINE IHandler() noexcept = default;
+
 			virtual ~IHandler() = default;
+
+			IHandler(const IHandler&) = delete;
+			IHandler(IHandler&&) = delete;
+			IHandler& operator=(const IHandler&) = delete;
+			IHandler& operator=(IHandler&&) = delete;
 
 			virtual void HandleEvent(const Event& event) = 0;
 		};
+
+	private:
+		// Counter to generate unique event ids
+		static inline std::atomic<int64_t> EVENTS_COUNTER{};
 
 	private:
 		std::function<void(int*)> m_callback;
@@ -86,9 +97,7 @@ public:
 		bool m_instantCall{};
 		sigevent m_sev{ 0, 0, 0, 0 };
 		itimerspec m_its;
-		int64_t m_uid{ m_eventsCounter.fetch_add(1, std::memory_order_relaxed) };
-
-		static inline std::atomic<int64_t> m_eventsCounter{};
+		int64_t m_uid{ EVENTS_COUNTER.fetch_add(1, std::memory_order_relaxed) };
 
 	public:
 		/**************************
@@ -110,6 +119,11 @@ public:
 		 * @brief Call Stop() function inside if event is running.
 		 */
 		~Event();
+
+		Event(const Event&) = delete;
+		Event(Event&&) = delete;
+		Event& operator=(const Event&) = delete;
+		Event& operator=(Event&&) = delete;
 
 		/**************************
 		 * @return Id of timer event.
@@ -158,6 +172,7 @@ public:
 		const uint8_t month;
 		const uint8_t day;
 
+	public:
 		/**************************
 		 * @brief Construct a new Date object, empty constructor.
 		 *
@@ -166,6 +181,11 @@ public:
 		 * @param day Date day.
 		 */
 		Date(uint16_t year, uint8_t month, uint8_t day);
+
+		FORCE_INLINE Date(const Date&) noexcept = default;
+		FORCE_INLINE Date(Date&&) noexcept = default;
+		Date& operator=(const Date&) = delete;
+		Date& operator=(Date&&) = delete;
 
 		/**************************
 		 * @example 2023-12-30
@@ -251,7 +271,7 @@ public:
 		};
 
 	private:
-		int64_t m_nanoseconds{ 0 };
+		int64_t m_nanoseconds{};
 
 	public:
 		/**************************
@@ -274,6 +294,11 @@ public:
 		 * @test Yes.
 		 */
 		Duration();
+
+		FORCE_INLINE Duration(const Duration&) noexcept = default;
+		FORCE_INLINE Duration(Duration&&) noexcept = default;
+		FORCE_INLINE Duration& operator=(const Duration&) noexcept = default;
+		FORCE_INLINE Duration& operator=(Duration&&) noexcept = default;
 
 		/**************************
 		 * @return True if duration nanoseconds is 0.
@@ -499,9 +524,11 @@ public:
 	};
 
 private:
-	std::chrono::system_clock::time_point m_point;
+	// Time point of the epoch, which represents an empty timer
+	static const std::chrono::system_clock::time_point ZERO_POINT;
 
-	static const std::chrono::system_clock::time_point m_zero_point;
+private:
+	std::chrono::system_clock::time_point m_point;
 
 public:
 	/**************************
@@ -523,6 +550,11 @@ public:
 	 * @param nanos Is 0 as default.
 	 */
 	Timer(int64_t seconds, int64_t nanos = 0);
+
+	FORCE_INLINE Timer(const Timer&) noexcept = default;
+	FORCE_INLINE Timer(Timer&&) noexcept = default;
+	FORCE_INLINE Timer& operator=(const Timer&) noexcept = default;
+	FORCE_INLINE Timer& operator=(Timer&&) noexcept = default;
 
 	/**************************
 	 * @brief Refresh time point to current timestamp.
@@ -676,7 +708,7 @@ public:
 	 *
 	 * @return Number of days from start of the year to month include, take into leap year.
 	 */
-	static uint16_t HowMuchDaysFromStartOfYearTillMonth(uint8_t month, const bool isLeap);
+	static uint16_t HowMuchDaysFromStartOfYearTillMonth(uint8_t month, bool isLeap);
 
 	/**************************
 	 * @brief Create particular timer.

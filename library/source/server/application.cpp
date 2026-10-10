@@ -31,7 +31,7 @@ Application::Parameter::Parameter(std::string&& name, bool* value)
 {
 }
 
-bool Application::Parameter::RegisterValidation(const size_t id)
+bool Application::Parameter::RegisterValidation(const uint64_t id)
 {
 	bool valid{ true };
 	std::visit(
@@ -296,7 +296,7 @@ bool Application::Parameter::RegisterValidation(const size_t id)
 	return valid;
 }
 
-bool Application::Parameter::Merge(const size_t id, const std::variant<standardTypes>& value)
+bool Application::Parameter::Merge(const uint64_t id, const std::variant<standardTypes>& value)
 {
 	bool valid{ true };
 	std::visit(
@@ -1018,7 +1018,7 @@ void Application::HandleRunRequest() { LOG_PROTOCOL("Action is skipped"); }
 
 void Application::HandlePauseRequest() { LOG_PROTOCOL("Action is skipped"); }
 
-void Application::HandleModifyRequest(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate)
+void Application::HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
 {
 	LOG_PROTOCOL("Default merge parameters action");
 	MergeParameters(parametersUpdate);
@@ -1038,7 +1038,7 @@ void Application::HandleMetadata(
 }
 
 void Application::HandleParameters(const std::shared_ptr<Connection::Data>& connectionData,
-	[[maybe_unused]] const std::map<size_t, std::variant<standardTypes>>& parameters)
+	[[maybe_unused]] const std::map<uint64_t, std::variant<standardTypes>>& parameters)
 {
 	LOG_PROTOCOL_NEW("Action is skipped, connection id: {}", connectionData->GetConnectionId());
 }
@@ -1062,7 +1062,7 @@ void Application::HandleReconnect(const std::shared_ptr<Connection::Data>& conne
 
 void Application::SetName(const std::string& name) { m_name = name; }
 
-void Application::RegisterParameter(const size_t id, Parameter&& parameter)
+void Application::RegisterParameter(const uint64_t id, Parameter&& parameter)
 {
 	if (m_parameters.find(id) == m_parameters.end()) {
 		if (const auto result{ m_parameters.emplace(id, std::move(parameter)) }; result.second) {
@@ -1081,7 +1081,7 @@ void Application::RegisterParameter(const size_t id, Parameter&& parameter)
 	LOG_WARNING("Parameter " + parameter.m_name + "(" + _S(id) + ") already exists, registration is skipped");
 }
 
-void Application::RegisterConstParameter(const size_t id, ConstParameter&& parameter)
+void Application::RegisterConstParameter(const uint64_t id, ConstParameter&& parameter)
 {
 	if (m_constParameters.find(id) == m_constParameters.end()) {
 		if (const auto result{ m_constParameters.emplace(id, std::move(parameter)) }; result.second) {
@@ -1137,14 +1137,14 @@ void Application::RegisterConstParameter(const size_t id, ConstParameter&& param
 	LOG_WARNING("Const parameter " + parameter.m_name + "(" + _S(id) + ") already exists, registration is skipped");
 }
 
-void Application::MergeParameters(const std::map<size_t, std::variant<standardTypes>>& parametersUpdate)
+void Application::MergeParameters(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
 {
 	for (const auto& [id, value] : parametersUpdate) {
 		MergeParameter(id, value);
 	}
 }
 
-void Application::MergeParameter(const size_t id, const std::variant<standardTypes>& value)
+void Application::MergeParameter(const uint64_t id, const std::variant<standardTypes>& value)
 {
 	if (auto it{ m_parameters.find(id) }; it != m_parameters.end()) {
 		if (it->second.Merge(id, value)) {
@@ -1159,7 +1159,7 @@ void Application::MergeParameter(const size_t id, const std::variant<standardTyp
 	LOG_WARNING("Parameter with id " + _S(id) + " is not found or it is const, merging is skipped");
 }
 
-void Application::SetCustomError(const size_t id, const std::string& error)
+void Application::SetCustomError(const uint64_t id, const std::string& error)
 {
 	if (auto it{ m_parameters.find(id) }; it != m_parameters.end()) {
 		if (it->second.m_error.empty()) {
@@ -1177,16 +1177,16 @@ void Application::SetCustomError(const size_t id, const std::string& error)
 	LOG_WARNING("Parameter with id " + _S(id) + " is not found, set custom error is skipped");
 }
 
-const std::map<size_t, Application::Parameter>& Application::GetParameters() const noexcept { return m_parameters; }
+const std::map<uint64_t, Application::Parameter>& Application::GetParameters() const noexcept { return m_parameters; }
 
-const std::map<size_t, Application::ConstParameter>& Application::GetConstParameters() const noexcept
+const std::map<uint64_t, Application::ConstParameter>& Application::GetConstParameters() const noexcept
 {
 	return m_constParameters;
 }
 
 bool Application::AreParametersValid() const noexcept { return m_errorParameters.empty(); }
 
-const std::map<size_t, const Application::Parameter* const>& Application::GetErrorParameters() const noexcept
+const std::map<uint64_t, const Application::Parameter* const>& Application::GetErrorParameters() const noexcept
 {
 	return m_errorParameters;
 }
