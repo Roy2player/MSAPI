@@ -165,7 +165,7 @@ Data::Data(const DataHeader& header, const void* buffer)
 				return;
 			}
 
-			uint64_t stringSize [[intermediate]];
+			uint64_t stringSize [[indeterminate]];
 			memcpy(&stringSize, &static_cast<const char*>(buffer)[offset], sizeof(uint64_t));
 			offset += sizeof(uint64_t);
 
@@ -206,7 +206,7 @@ Data::Data(const DataHeader& header, const void* buffer)
 				return;
 			}
 
-			size_t tableSize [[intermediate]];
+			size_t tableSize [[indeterminate]];
 			memcpy(&tableSize, &static_cast<const char*>(buffer)[offset], sizeof(size_t));
 
 			if (tableSize < sizeof(size_t) || tableSize > m_bufferSize - offset) [[unlikely]] {
