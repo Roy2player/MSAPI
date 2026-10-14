@@ -100,6 +100,8 @@ Declarations
  * @concurrency Yes.
  *
  * @todo Application class should be based on the Server class, not vice versa.
+ * @todo Server should support listening on multiple addresses and make its main loop wait for a lock to be unlocked
+ * instead of depending on listening activity.
  * @todo m_listenIpStr should be replaced by SString.
  * @todo Parameters m_maxConnectionsOneIp, m_limitConnectAttempts, m_recvBufferSizeLimit, m_secondsBetweenTryToConnect
  * and m_listenPort should be atomic.
@@ -957,10 +959,8 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		}
 
 		if (newConnection == nullptr) [[unlikely]] {
-			if (errno == EMFILE || errno == ENFILE) [[unlikely]] {
-				LOG_DEBUG("Too many open files, cannot accept new connection. Retrying in 100ms");
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			}
+			LOG_DEBUG("Retrying accept after error in 100ms");
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
 		}
 

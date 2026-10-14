@@ -1,0 +1,5 @@
+# Allow long documentation lines (MD013).
+# Explicitly numbered ordered lists (MD029).
+# Allow editor-compatible list indentation (MD007).
+# Do not require blank lines around lists (MD032), including nested lists.
+rules "~MD007", "~MD013", "~MD029", "~MD032"

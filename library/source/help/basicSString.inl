@@ -442,6 +442,7 @@ template <typename Type, size_t Capacity>
 FORCE_INLINE [[nodiscard]] bool BasicSString<Type, Capacity>::NullTerminate() noexcept
 {
 	if (m_size >= Capacity) [[unlikely]] {
+		LOG_WARNING_NEW("Cannot null terminate because size: {} >= capacity: {}", m_size, Capacity);
 		return false;
 	}
 

@@ -42,6 +42,19 @@ void HTTPServer::HandleModifyRequest(const std::map<uint64_t, std::variant<stand
 		MSAPI::Application::SetCustomError(1001, "Web source path does not exist");
 	}
 
+	// Rebuild fixed roots after configuration changes; LookupPath retains registration order.
+	ClearPaths();
+	for (const std::string_view key : { "html", "css", "images", "js" }) {
+		MSAPI::SString<256> root;
+		if (m_webSourcesPath.empty() || !root.Copy(m_webSourcesPath)
+			|| (m_webSourcesPath.back() != '/' && !root.Concatenate("/")) || !root.Concatenate(key)
+			|| !AddPath(key, root.Get())) {
+
+			MSAPI::Application::SetCustomError(1001, "Web source path does not fit HTTP root storage");
+			break;
+		}
+	}
+
 	if (!MSAPI::Application::AreParametersValid()) {
 		HandlePauseRequest();
 	}
@@ -57,10 +70,12 @@ void HTTPServer::HandleHttp(
 
 	struct R {
 		HTTPServer* t;
+
 		R(HTTPServer* t)
 			: t(t)
 		{
 		}
+
 		~R() { t->MSAPI::ActionsCounter::IncrementActionsNumber(); }
 	} r{ this };
 
@@ -73,12 +88,26 @@ void HTTPServer::HandleHttp(
 		return;
 	}
 
+	// Test canonical-host redirects through Data's shared response formatter.
+	if (data.GetHost().starts_with("www.")) {
+		MSAPI::SString<2048> target;
+		MSAPI::SString<2304> location;
+		if (target.Copy(data.GetUrl()) && target.Concatenate(data.GetQuery())
+			&& MSAPI::Protocol::HTTP::BuildRedirectLocation(location, "http", data.GetHost().substr(4), target.Get())) {
+			(void)data.SendRedirect(connectionData->GetConnection(), location.Get(),
+				MSAPI::Protocol::HTTP::StatusCode::MovedPermanently, MSAPI::Protocol::HTTP::CLOSE_CONNECTION);
+		}
+
+		return;
+	}
+
 	const std::string& format{ data.GetFormat() };
 	if (format == "html") {
 		if (url == "/index.html" || url == "/index" || url == "/") {
-			std::string indexPage;
-			if (MSAPI::IO::ReadStr<std::string_view>(indexPage, m_webSourcesPath + "html/index.html")) {
-				(void)data.SendResponse(connectionData->GetConnection(), indexPage, "text/html");
+			MSAPI::SString<512> source;
+			if (LookupPath("html", "/index.html", source)) {
+				(void)data.SendSource(
+					connectionData->GetConnection(), source.Get(), "text/html", data.IsConnectionClose());
 				return;
 			}
 
@@ -125,18 +154,16 @@ void HTTPServer::HandleHttp(
 		return;
 	}
 
-	if (format == "css") {
-		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "css" + url);
-		return;
-	}
+	const std::string_view key{ format == "css" ? "css" : format == "ico" ? "images" : format == "js" ? "js" : "" };
+	if (!key.empty()) {
+		MSAPI::SString<512> source;
+		const auto closeConnection{ data.IsConnectionClose() };
+		if (LookupPath(key, url, source)) {
+			(void)data.SendSource(connectionData->GetConnection(), source.Get(), /*contentType=*/"", closeConnection);
+			return;
+		}
 
-	if (format == "ico") {
-		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "images" + url);
-		return;
-	}
-
-	if (format == "js") {
-		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "js" + url);
+		(void)data.Send404(connectionData->GetConnection(), /*body=*/{}, /*contentType=*/{}, closeConnection);
 		return;
 	}
 

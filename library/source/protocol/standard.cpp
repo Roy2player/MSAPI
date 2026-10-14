@@ -354,7 +354,7 @@ const std::map<uint64_t, std::variant<standardTypes>>& Data::GetData() const noe
 const std::map<uint64_t, StandardType::Type>& Data::GetDataTypes() const noexcept { return m_dataTypes; }
 
 /*---------------------------------------------------------------------------------
-Global
+Free
 ---------------------------------------------------------------------------------*/
 
 void Send(Connection& connection, const Data& data)

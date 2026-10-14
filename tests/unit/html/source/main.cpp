@@ -46,5 +46,5 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	MSAPI::logger.SetToConsole(false);
 	MSAPI::logger.Start();
 
-	return static_cast<int>(!MSAPI::Test::Unit::HTML());
+	return static_cast<int32_t>(!MSAPI::Test::Unit::HTML());
 }

@@ -19,6 +19,9 @@
  *
  * 1. Destructor closes descriptor and peer reads end of file;
  * 2. Only the first Close closes descriptor, destructor after Close does not close reused descriptor number.
+ * 3. Send completes short writes and retries EINTR without losing progress;
+ * 4. Send reports failure after partial progress and rejects further sends;
+ * 5. Send rejects zero and oversized counts.
  */
 
 #ifndef MSAPI_UNIT_TEST_CONNECTION_INL
@@ -88,6 +91,73 @@ FORCE_INLINE [[nodiscard]] bool Connection()
 			t.Assert(fcntl(reused, F_GETFD) != -1, true, "Destructor after Close does not close reused descriptor"));
 		(void)close(reused);
 		(void)close(sockets[1]);
+	}
+
+	// 3. Short writes and EINTR preserve the byte offset, remaining size and flags.
+	{
+		int32_t sockets[2]{};
+		RETURN_IF_FALSE(t.Assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0, "Socket pair is created"));
+		MSAPI::Connection connection{ sockets[0] };
+		const MSAPI::Connection peer{ sockets[1] };
+		const std::string_view payload{ "abcdefgh" };
+		std::string output;
+		uint64_t attempts{};
+		bool argumentsCorrect{ true };
+		connection.SetSend([&output, &attempts, &argumentsCorrect, payload](
+							   int32_t, const void* buffer, const uint64_t size, const int32_t flags) -> int64_t {
+			++attempts;
+			argumentsCorrect = argumentsCorrect && buffer == payload.data() + output.size()
+				&& size == payload.size() - output.size() && flags == MSG_NOSIGNAL;
+			if (attempts == 2) {
+				errno = EINTR;
+				return -1;
+			}
+
+			const uint64_t count{ size > 3 ? 3 : size };
+			output.append(static_cast<const char*>(buffer), count);
+			return static_cast<int64_t>(count);
+		});
+		RETURN_IF_FALSE(t.Assert(connection.Send(payload.data(), payload.size(), MSG_NOSIGNAL), true,
+			"Send succeeds after sending all bytes"));
+		RETURN_IF_FALSE(t.Assert(output, std::string{ payload }, "Short writes preserve complete payload"));
+		RETURN_IF_FALSE(t.Assert(attempts, uint64_t{ 4 }, "EINTR retries remaining bytes"));
+		RETURN_IF_FALSE(t.Assert(argumentsCorrect, true, "Every attempt receives correct buffer, size and flags"));
+	}
+
+	// 4. A failure after partial progress must not look like a successful send.
+	{
+		int32_t sockets[2]{};
+		RETURN_IF_FALSE(t.Assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0, "Socket pair is created"));
+		MSAPI::Connection connection{ sockets[0] };
+		const MSAPI::Connection peer{ sockets[1] };
+		uint64_t attempts{};
+		connection.SetSend([&attempts](int32_t, const void*, uint64_t, int32_t) -> int64_t {
+			if (++attempts == 1) {
+				return 2;
+			}
+
+			errno = EPIPE;
+			return -1;
+		});
+		RETURN_IF_FALSE(t.Assert(connection.Send("abcd", 4, MSG_NOSIGNAL), false, "Partial failure returns false"));
+		RETURN_IF_FALSE(t.Assert(connection.Send("abcd", 4, MSG_NOSIGNAL), false, "Failed sender is inactive"));
+		RETURN_IF_FALSE(t.Assert(attempts, uint64_t{ 2 }, "Inactive sender is not called again"));
+	}
+
+	// 5. Zero and counts exceeding the remaining buffer invalidate the sender.
+	for (const int64_t result : { int64_t{}, int64_t{ 5 } }) {
+		int32_t sockets[2]{};
+		RETURN_IF_FALSE(t.Assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0, "Socket pair is created"));
+		MSAPI::Connection connection{ sockets[0] };
+		const MSAPI::Connection peer{ sockets[1] };
+		uint64_t attempts{};
+		connection.SetSend([&attempts, result](int32_t, const void*, uint64_t, int32_t) -> int64_t {
+			++attempts;
+			return result;
+		});
+		RETURN_IF_FALSE(t.Assert(connection.Send("abcd", 4, MSG_NOSIGNAL), false, "Invalid count returns false"));
+		RETURN_IF_FALSE(t.Assert(connection.Send("abcd", 4, MSG_NOSIGNAL), false, "Invalid sender is inactive"));
+		RETURN_IF_FALSE(t.Assert(attempts, uint64_t{ 1 }, "Invalid sender is not called again"));
 	}
 
 	return t.Passed<bool>();

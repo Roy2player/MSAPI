@@ -90,7 +90,7 @@ public:
 		timer_t m_id{};
 		// Callback, this, parameter
 		std::tuple<void*, int*, int*> m_data;
-		bool m_running{};
+		bool m_isRunning{};
 		time_t m_timeToCall{};
 		time_t m_timeToRepeatCall{};
 		bool m_repeat{};

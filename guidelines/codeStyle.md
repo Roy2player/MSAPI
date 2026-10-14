@@ -11,6 +11,32 @@ description: "Naming conventions and code formatting expectations"
 - Global and static variables naming style is `LIKE_THAT`.
 - `m_` prefix for all non static abstraction fields.
 - `t_` prefix for all thread local variables.
+- Name boolean flags so they read as questions at the point of use, for example `m_isRunning` or `m_hasData`.
+- Use /.clang-format.
+- Use /.mdlrc.
+
+## Statement grouping
+
+- Separate groups of statements that are not directly related by one empty line. Each group represents one logical step, such as input validation, response construction, or sending data.
+- Keep directly related statements together, such as a declaration and the check of its value, or an operation and handling of its result.
+- Keep a comment adjacent to the statements it describes; place the separating empty line before the comment.
+- After a multiline `if` condition, place the empty line between the condition's opening brace and the first statement in its body.
+
+```cpp
+if (location.empty() || scheme.empty()
+    || host.empty()) [[unlikely]] {
+
+    return false;
+}
+
+// Build the response before sending it.
+const auto length{ BuildResponse(location, response) };
+if (length == 0) {
+    return false;
+}
+
+return SendResponse(connection, response, length);
+```
 
 ## Static fields
 
@@ -31,7 +57,10 @@ static inline constexpr bool CLEAR{};
   2. Static fields.
   3. Non static fields.
   4. Functions: constructors, destructor, operators and other functions. Member public functions block is first, non public functions blocks follow it, and the static functions block is last. Sub-blocks: constructor, destructor and operators are grouped together even if they are under different access specifiers with empty lines separating sub-blocks.
+  5. Friendship declarations: place all friend declarations at the end of the abstraction, after all fields and functions, including in nested abstractions.
 - Each block starts with its access specifier, even if it is the same as the access specifier of the previous block.
+- Keep fields in small data abstractions as compact as possible to improve cache locality and reduce memory footprint. In larger abstractions, group fields by their related responsibility.
+- Place each lock immediately after the data it protects and name it `m_<data>Lock`.
 
 ```cpp
 class Single {
@@ -46,7 +75,7 @@ public:
 
 private:
     Container<Object> m_container;
-    mutable MSAPI::Lock::AtomicRW m_lock;
+    mutable MSAPI::Lock::AtomicRW m_containerLock;
 
 public:
     FORCE_INLINE Single(std::string_view dir, std::string_view name) noexcept;
@@ -109,5 +138,3 @@ class Observer;
 
 #endif // MSAPI_RECV_BUFFER_INL
 ```
-
-Use /.clang-format.

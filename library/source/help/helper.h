@@ -30,6 +30,7 @@
 #include <locale>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace MSAPI {
@@ -112,6 +113,92 @@ void Separating(std::vector<std::string>& container, const std::string& str, cha
  * @param symbol Symbol for separating.
  */
 void Separating(std::set<std::string>& container, const std::string& str, char symbol);
+
+/**************************
+ * @brief Compares strings for equality ignoring ASCII letter case, without allocating or modifying the strings.
+ * Non-ASCII bytes compare exactly.
+ *
+ * @param lhs First string.
+ * @param rhs Second string.
+ *
+ * @locking Is not required.
+ *
+ * @return True if the strings are equal ignoring ASCII letter case, false otherwise.
+ *
+ * @todo Add tests coverage.
+ */
+FORCE_INLINE [[nodiscard]] bool EqualIgnoreCase(const std::string_view lhs, const std::string_view rhs) noexcept
+{
+	if (lhs.size() != rhs.size()) {
+		return false;
+	}
+
+	for (size_t index{}; index < lhs.size(); ++index) {
+		const auto lower{ [](const char ch) noexcept { return ch >= 'A' && ch <= 'Z' ? ch + ('a' - 'A') : ch; } };
+		if (lower(lhs[index]) != lower(rhs[index])) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**************************
+ * @brief Removes leading and trailing spaces and horizontal tabs from a string view without allocating or modifying
+ * the underlying string. Preserves other whitespace characters.
+ *
+ * @param text String view to trim.
+ *
+ * @locking Is not required.
+ *
+ * @return Trimmed view into the original string, whose storage must remain valid while the view is used.
+ *
+ * @todo Add tests coverage.
+ */
+FORCE_INLINE [[nodiscard]] std::string_view Trim(std::string_view text) noexcept
+{
+	while (!text.empty() && (text.front() == ' ' || text.front() == '\t')) {
+		text.remove_prefix(1);
+	}
+
+	while (!text.empty() && (text.back() == ' ' || text.back() == '\t')) {
+		text.remove_suffix(1);
+	}
+
+	return text;
+}
+
+/**************************
+ * @brief Matches a complete comma-separated string ignoring ASCII letter case, without allocating or modifying input.
+ * Trims spaces and horizontal tabs around each candidate string. Does not interpret quotes or escapes.
+ *
+ * @param text Comma-separated strings.
+ * @param string String to find, without surrounding spaces or horizontal tabs.
+ *
+ * @locking Is not required.
+ *
+ * @return True if a matching string is found, false otherwise.
+ *
+ * @todo Add tests coverage.
+ */
+FORCE_INLINE [[nodiscard]] bool ContainsCommaSeparatedStringIgnoreCase(
+	std::string_view text, const std::string_view string) noexcept
+{
+	while (!text.empty()) {
+		const auto comma{ text.find(',') };
+		if (EqualIgnoreCase(Trim(text.substr(0, comma)), string)) {
+			return true;
+		}
+
+		if (comma == std::string_view::npos) {
+			break;
+		}
+
+		text.remove_prefix(comma + 1);
+	}
+
+	return false;
+}
 
 constexpr bool caseSensitive = true;
 constexpr bool caseInsensitive = false;

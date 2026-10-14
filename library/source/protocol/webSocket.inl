@@ -1423,7 +1423,7 @@ FORCE_INLINE [[nodiscard]] bool Data::SplitGenerator<T>::Get()
 }
 
 /*---------------------------------------------------------------------------------
-Global
+Free
 ---------------------------------------------------------------------------------*/
 
 FORCE_INLINE void Send(Connection& connection, const Data& data)

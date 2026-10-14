@@ -145,6 +145,7 @@ const auto result{ square(size + 1) };
 
 ## Friendships
 
+- Place friendship declarations at the end of the abstraction, as specified in [Class layout](codeStyle.md#class-layout).
 - Use `// Comment` to define the purpose of friendship.
 - Use `// Comment` to mark place where direct access via friendship is happening.
 - Consider usage of private methods of the class over direct access to its private members, e.g. `object.SetSaved(true)` instead of `object.m_isSaved = true`, so the class keeps control of its state.

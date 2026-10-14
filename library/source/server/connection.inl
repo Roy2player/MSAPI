@@ -269,7 +269,7 @@ public:
 	Connection& operator=(Connection&& other) = delete;
 
 	/**************************
-	 * @brief Perform one effective recv from connection. Is concurrency safe and won't be called on closed connection.
+	 * @brief Performs one effective recv from the connection. Works only on an active connection.
 	 *
 	 * @param buffer Pointer to buffer. It must have enough space.
 	 * @param size Number of bytes to be read. It must be greater than 0.
@@ -285,7 +285,7 @@ public:
 	FORCE_INLINE [[nodiscard]] uint64_t Recv(void* buffer, uint64_t size, int32_t flags);
 
 	/**************************
-	 * @brief Perform one effective send to connection. Is concurrency safe and won't be called on closed connection.
+	 * @brief Sends all requested bytes, retrying short writes and EINTR. Works only on an active connection.
 	 *
 	 * @attention In case of connection closing initiated by other side the send can be called on just closed, but not
 	 * marked as is closed connection. That is an incredibly rare, but still possible case. There is no connection
@@ -295,16 +295,17 @@ public:
 	 * @param size Number of bytes to be send. It must be greater than 0.
 	 * @param flags Flags for send.
 	 *
-	 * @locking Lock m_sendLock inside.
+	 * @locking Holds m_sendLock across all send attempts to prevent concurrent sends from interleaving their bytes.
 	 *
-	 * @return Number of send bytes; returns 0 on peer shutdown or on any send error and connection is no longer usable.
+	 * @return True if all requested bytes are sent; false on peer shutdown, unrecoverable send error or an invalid send
+	 * count, and connection is no longer usable. Some bytes may already have been sent before failure.
 	 *
-	 * @todo Add tests coverage.
+	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] uint64_t Send(const void* buffer, uint64_t size, int32_t flags);
+	FORCE_INLINE [[nodiscard]] bool Send(const void* buffer, uint64_t size, int32_t flags);
 
 	/**************************
-	 * @brief Override the default recv function. Is concurrency safe and won't be called on closed connection.
+	 * @brief Overrides the default recv function. Works only on an active connection.
 	 *
 	 * @tparam T Recv function.
 	 *
@@ -319,7 +320,7 @@ public:
 	FORCE_INLINE void SetRecv(T&& f) noexcept;
 
 	/**************************
-	 * @brief Override the default send function. Is concurrency safe and won't be called on closed connection.
+	 * @brief Overrides the default send function. Works only on an active connection.
 	 *
 	 * @tparam T Send function.
 	 *
@@ -493,33 +494,43 @@ FORCE_INLINE [[nodiscard]] uint64_t Connection::Recv(void* const buffer, const u
 	}
 }
 
-FORCE_INLINE [[nodiscard]] uint64_t Connection::Send(const void* const buffer, const uint64_t size, const int32_t flags)
+FORCE_INLINE [[nodiscard]] bool Connection::Send(const void* const buffer, const uint64_t size, const int32_t flags)
 {
-	int64_t result [[indeterminate]];
-	while (true) {
-		{
-			Lock::Atomic::Guard _{ m_sendLock };
-			if (!m_isUsable.load(std::memory_order_relaxed)) [[unlikely]] {
-				LOG_PROTOCOL_NEW("Attempt to send on inactive connection id: {} is interrupted", m_id);
-				return 0;
-			}
-			result = m_sendFunc(m_connection, buffer, size, flags);
+	// Keep one logical send contiguous even when the underlying sender requires several attempts.
+	Lock::Atomic::Guard _{ m_sendLock };
+	uint64_t sent{};
+	while (sent < size) {
+		if (!m_isUsable.load(std::memory_order_relaxed)) [[unlikely]] {
+			LOG_PROTOCOL_NEW("Attempt to send on inactive connection id: {} is interrupted", m_id);
+			return false;
 		}
 
+		const auto remaining{ size - sent };
+		const auto result{ m_sendFunc(m_connection, static_cast<const char*>(buffer) + sent, remaining, flags) };
+		const auto error{ result < 0 ? errno : 0 };
 		if (result > 0) [[likely]] {
-			return static_cast<uint64_t>(result);
+			const auto count{ static_cast<uint64_t>(result) };
+			if (count > remaining) [[unlikely]] {
+				m_isUsable.store(false, std::memory_order_release);
+				LOG_ERROR_NEW(
+					"Send returned invalid count: {}, requested: {}, connection id: {}", count, remaining, m_id);
+				return false;
+			}
+
+			sent += count;
+			continue;
 		}
 
 		if (result == 0) {
 			m_isUsable.store(false, std::memory_order_release);
 			LOG_DEBUG_NEW("Send returns zero, connection id: {}", m_id);
-			return 0;
+			return false;
 		}
 
-		if (errno == EINTR) {
+		if (error == EINTR) {
 			if (!m_isUsable.load(std::memory_order_relaxed)) {
 				LOG_DEBUG_NEW("Send returned EINTR on shutdown socket, connection id: {}", m_id);
-				return 0;
+				return false;
 			}
 
 			LOG_DEBUG_NEW("Send returned EINTR, connection id: {}", m_id);
@@ -527,9 +538,11 @@ FORCE_INLINE [[nodiscard]] uint64_t Connection::Send(const void* const buffer, c
 		}
 
 		m_isUsable.store(false, std::memory_order_release);
-		LOG_ERROR_NEW("Send failed with error №{}: {}, connection id: {}", errno, std::strerror(errno), m_id);
-		return 0;
+		LOG_ERROR_NEW("Send failed with error №{}: {}, connection id: {}", error, std::strerror(error), m_id);
+		return false;
 	}
+
+	return true;
 }
 
 template <typename T>

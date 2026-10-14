@@ -51,10 +51,18 @@ Use for class, struct, and union.
 - `@tparam` Description of a template parameter.
 - `@param` Description of a parameter.
 - `@pre` Precondition expectations.
-- `@locking` Internal locking behavior in their order and expectations about external locks in case if abstraction is marked as `@concurrency Yes.` or function is out of abstraction scope: `@locking Write lock m_lock inside.`. If internal calls can perform locks that should be noticed: `@locking Perform locking in FunctionName call.`. If function has no locks in its scope, or internal calls and does not expect any external locks, then it should be noticed: `@locking Is not required.`.
+- `@locking` Locking behavior within the module and expectations about external locks, see [Locking documentation scope](#locking-documentation-scope).
 - `@return` Description of return value, especially in case of multiple return values.
 - `@test Yes.` if the function has tests coverage.
 - `@todo` Description of future work, if any. If tests coverage, add `@todo Add tests coverage.`.
+
+## Locking documentation scope
+
+- Describe locking performed with locks owned by the documented abstraction or by other abstractions in the same module, including locking performed through calls within that module.
+- Identify the locks, read/write modes where applicable, acquisition order and caller requirements for external locking. For example: `@locking Write lock m_lock inside.` or `@locking Performs read locking of Entry::m_lock in Entry::Read call.`.
+- Do not enumerate nested locking chains inside other modules. Those modules document their own internal locking; callers still document any external-lock requirements imposed on them.
+- Use `@locking Is not required.` when no locking within this scope occurs and the caller has no external-lock requirements, even if called modules perform their own internal locking.
+- This scope keeps the module's actual locking behavior explicit without duplicating implementation details from its dependencies.
 
 ## Friend, enum, concept
 
