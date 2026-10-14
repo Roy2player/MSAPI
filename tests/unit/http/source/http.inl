@@ -321,6 +321,24 @@ FORCE_INLINE [[nodiscard]] bool Paths(MSAPI::Test::Test& t)
 	MSAPI::SString<256> boundary;
 	RETURN_IF_FALSE(t.Assert(priority.LookupPath("text", "/shared.txt", boundary), false,
 		"Oversized first existing file does not change root priority"));
+	RETURN_IF_FALSE(t.Assert(boundary.Empty(), true, "Oversized priority path leaves output empty"));
+	MSAPI::SString<257> exact;
+	RETURN_IF_FALSE(
+		t.Assert(priority.LookupPath("text", "/shared.txt", exact), true, "Priority path fits with terminator space"));
+	RETURN_IF_FALSE(t.Assert(exact.Get() == priorityRoot + "shared.txt", true, "Boundary path preserves first root"));
+	RETURN_IF_FALSE(t.Assert(exact.GetSize(), uint64_t{ 256 }, "Boundary path has exactly 256 bytes"));
+	RETURN_IF_FALSE(t.Assert(exact.GetBuffer()[256] == '\0', true, "Boundary path is null terminated"));
+
+	Handler missingPriority;
+	std::string missingRoot{ files.GetRoot() + "/first/" };
+	missingRoot.resize(246, '/');
+	RETURN_IF_FALSE(t.Assert(missingPriority.AddPath("text", missingRoot), true, "Longer missing-file root added"));
+	RETURN_IF_FALSE(
+		t.Assert(missingPriority.AddPath("text", files.GetRoot() + "/second"), true, "Existing fallback root added"));
+	RETURN_IF_FALSE(t.Assert(
+		missingPriority.LookupPath("text", "/fallback.txt", boundary), true, "Oversized missing path allows fallback"));
+	RETURN_IF_FALSE(t.Assert(boundary.Get() == files.GetRoot() + "/second/fallback.txt", true,
+		"Missing priority file returns fallback path"));
 
 	MSAPI::SString<8> tiny;
 	RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", "/shared.txt", tiny), false, "Long full path fails"));

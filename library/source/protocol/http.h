@@ -621,6 +621,7 @@ public:
 
 	/**************************
 	 * @brief Finds the first existing regular file under the roots for key without allocating. Clears out on failure.
+	 * Does not fall back to later roots if the first existing file's full path exceeds the output capacity.
 	 *
 	 * @tparam Capacity Caller buffer capacity, including its null terminator.
 	 *
@@ -657,18 +658,26 @@ public:
 			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_pathsLock };
 			const auto [begin, end]{ m_paths.equal_range(key) };
 			for (auto it{ begin }; it != end; ++it) {
-				out.Clear();
 				const auto& root{ it->second };
 
-				if (!out.Copy(root.Get()) || !out.Concatenate(filename.substr(1)) || !out.NullTerminate())
-					[[unlikely]] {
+				// Check file existence independently of output capacity to preserve root priority.
+				SString<DEFAULT_PATH_CAPACITY + Capacity> candidate;
+				if (!candidate.Copy(root.Get()) || !candidate.Concatenate(filename.substr(1))
+					|| !candidate.NullTerminate()) [[unlikely]] {
 
-					continue;
+					LOG_WARNING_NEW(
+						"Source path construction failed, root: \"{}\", filename: \"{}\"", root.Get(), filename);
+					return false;
 				}
 
 				struct stat info { };
-				if (stat(out.GetBuffer(), &info) == 0 && S_ISREG(info.st_mode)) {
-					return true;
+				if (stat(candidate.GetBuffer(), &info) == 0 && S_ISREG(info.st_mode)) {
+					if (candidate.GetSize() >= Capacity) [[unlikely]] {
+						LOG_WARNING_NEW("Source path exceeds buffer capacity: \"{}\"", candidate.Get());
+						return false;
+					}
+
+					return out.Copy(candidate.Get()) && out.NullTerminate();
 				}
 			}
 		}
