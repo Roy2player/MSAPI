@@ -657,23 +657,23 @@ public:
 			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_pathsLock };
 			const auto [begin, end]{ m_paths.equal_range(key) };
 			for (auto it{ begin }; it != end; ++it) {
+				out.Clear();
 				const auto& root{ it->second };
 
 				if (!out.Copy(root.Get()) || !out.Concatenate(filename.substr(1)) || !out.NullTerminate())
 					[[unlikely]] {
 
-					return false;
+					continue;
 				}
 
 				struct stat info { };
 				if (stat(out.GetBuffer(), &info) == 0 && S_ISREG(info.st_mode)) {
 					return true;
 				}
-
-				out.Clear();
 			}
 		}
 
+		out.Clear();
 		return false;
 	}
 
@@ -1033,6 +1033,9 @@ public:
 	 * @return True if every endpoint starts, false for invalid options or socket/pthread failure.
 	 *
 	 * @test Yes.
+	 *
+	 * @todo Stop rollback on failure is called after first lock is realized; consider revising to ensure proper
+	 * cleanup.
 	 */
 	[[nodiscard]] bool Start(StatusCode code = StatusCode::MovedPermanently, uint32_t receiveTimeoutMs = 2000,
 		uint64_t maxConnections = 32) noexcept;
@@ -1065,6 +1068,8 @@ private:
 	 * @param worker Slot owning the peer connection.
 	 *
 	 * @locking Lock m_workersLock inside while closing the socket and publishing completion.
+	 *
+	 * @todo Consider adding header only parcing mode to avoid unecessary work.
 	 */
 	void HandleConnection(Worker& worker) noexcept;
 

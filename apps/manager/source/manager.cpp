@@ -321,12 +321,11 @@ void Manager::HandleRunRequest()
 
 	for (const std::string_view key : { "html", "css", "images", "js" }) {
 		MSAPI::SString<MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY> root;
-		if (!buildRoot(root, m_webSourcesPath, key)) {
-			continue;
-		}
+		if (!buildRoot(root, m_webSourcesPath, key) || !MSAPI::Protocol::HTTP::IHandler::AddPath(key, root.Get()))
+			[[unlikely]] {
 
-		if (!MSAPI::Protocol::HTTP::IHandler::AddPath(key, root.Get())) {
-			break;
+			HandlePauseRequest();
+			return;
 		}
 	}
 }

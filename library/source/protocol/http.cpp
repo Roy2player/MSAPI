@@ -1190,30 +1190,19 @@ void Redirector::AcceptLoop(Endpoint& endpoint) noexcept
 		// Raw socket acceptance avoids Connection allocation and any Server lifecycle dependency.
 		const auto socket{ accept4(
 			endpoint.GetSocket(), nullptr, nullptr, SOCK_CLOEXEC /* close-on-exec atomically */) };
-		if (socket == -1) {
-			const auto error{ errno };
-			// Retry transient accept errors:
-			// 1. EINTR: interrupted by a signal.
-			// 2. ECONNABORTED: a pending connection was aborted.
-			// 3. ENETDOWN: the network subsystem is down.
-			// 4. EPROTO: a protocol error occurred.
-			// 5. ENOPROTOOPT: a protocol option is unavailable.
-			// 6. EHOSTDOWN: the peer host is down.
-			// 7. ENONET: the network is unreachable locally.
-			// 8. EHOSTUNREACH: the peer host is unreachable.
-			// 9. ENETUNREACH: the network is unreachable.
-			// 10. EOPNOTSUPP: a pending connection reported an unsupported operation.
-			if (error == EINTR || error == ECONNABORTED || error == ENETDOWN || error == EPROTO || error == ENOPROTOOPT
-				|| error == EHOSTDOWN || error == ENONET || error == EHOSTUNREACH || error == ENETUNREACH
-				|| error == EOPNOTSUPP) {
 
-				continue;
+		if (socket == -1) [[unlikely]] {
+			LOG_ERROR_NEW("Accept failed for address: {}:{}, Error №{}: {}", endpoint.GetAddress(), endpoint.GetPort(),
+				errno, std::strerror(errno));
+
+			if (!m_isRunning.load(std::memory_order_acquire)) {
+				return;
 			}
 
-			if (m_isRunning.load(std::memory_order_acquire)) {
-				LOG_ERROR_NEW("Redirect accept failed. Error №{}: {}", error, std::strerror(error));
-			}
-			return;
+			LOG_DEBUG_NEW(
+				"Retrying accept for address: {}:{} after error in 100ms", endpoint.GetAddress(), endpoint.GetPort());
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			continue;
 		}
 
 		// Keep receives blocking, but close peers that stop sending request data.
@@ -1221,10 +1210,7 @@ void Redirector::AcceptLoop(Endpoint& endpoint) noexcept
 		timeout.tv_sec = m_receiveTimeoutMs / 1000;
 		timeout.tv_usec = (m_receiveTimeoutMs % 1000) * 1000;
 		if (setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1) [[unlikely]] {
-			const auto error{ errno };
-			LOG_ERROR_NEW(
-				"Redirect receive timeout setup failed, errno: {}, error: \"{}\"", error, std::strerror(error));
-
+			LOG_ERROR_NEW("Redirect receive timeout setup failed. Error №{}: {}", errno, std::strerror(errno));
 			(void)close(socket);
 			continue;
 		}
