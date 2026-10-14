@@ -80,7 +80,7 @@ Timer::Event::Event(Timer::Event::IHandler* handler)
 
 Timer::Event::~Event()
 {
-	if (m_running) {
+	if (m_isRunning) {
 		Stop();
 	}
 }
@@ -94,14 +94,14 @@ int64_t Timer::Event::GetId() const { return m_uid; }
 		LOG_ERROR("timer_delete, id " + _S(m_uid) + ". Error №" + _S(errno) + ": " + std::strerror(errno));            \
 		return ret;                                                                                                    \
 	}                                                                                                                  \
-	m_running = false;
+	m_isRunning = false;
 
 bool Timer::Event::Start(const time_t timeToCall, const time_t timeToRepeatCall, const bool instantCall)
 {
 	if (std::get<2>(m_data) != nullptr) {
 
 #define TMP_MSAPI_TIMER_EVENT_START_BEGIN                                                                              \
-	if (m_running) {                                                                                                   \
+	if (m_isRunning) {                                                                                                 \
 		TMP_MSAPI_TIMER_EVENT_STOP(false);                                                                             \
 	}                                                                                                                  \
                                                                                                                        \
@@ -144,7 +144,7 @@ bool Timer::Event::Start(const time_t timeToCall, const time_t timeToRepeatCall,
 		+ ", repeat: " + _S(m_timeToRepeatCall != 0) + ", time to repeat call: " + _S(UINT64(m_timeToRepeatCall))      \
 		+ ", instant call: " + _S(m_instantCall));                                                                     \
                                                                                                                        \
-	m_running = true;                                                                                                  \
+	m_isRunning = true;                                                                                                \
 	return true;
 
 		TMP_MSAPI_TIMER_EVENT_START_END;
@@ -166,7 +166,7 @@ bool Timer::Event::Start(const time_t timeToCall, const time_t timeToRepeatCall,
 
 void Timer::Event::Stop()
 {
-	if (!m_running) {
+	if (!m_isRunning) {
 		return;
 	}
 
@@ -175,7 +175,7 @@ void Timer::Event::Stop()
 
 #undef TMP_MSAPI_TIMER_EVENT_STOP
 
-bool Timer::Event::IsRunning() const { return m_running; }
+bool Timer::Event::IsRunning() const { return m_isRunning; }
 
 bool Timer::Event::IsRepeat() const { return m_timeToRepeatCall != 0; }
 

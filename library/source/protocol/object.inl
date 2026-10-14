@@ -1586,7 +1586,7 @@ FORCE_INLINE [[nodiscard]] bool Send(Connection& connection, const Data& data, c
 		return false;
 	}
 
-	return connection.Send(packData.Get(), data.GetBufferSize(), MSG_NOSIGNAL) != 0;
+	return connection.Send(packData.Get(), data.GetBufferSize(), MSG_NOSIGNAL);
 }
 
 /*---------------------------------------------------------------------------------

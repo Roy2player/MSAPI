@@ -1,0 +1,25 @@
+name: Markdown check
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  markdown-check:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install markdownlint
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends markdownlint
+
+      - name: Check all tracked Markdown files
+        run: git ls-files -z -- '*.md' '*.markdown' '*.MD' '*.MARKDOWN' | xargs -0 -r mdl

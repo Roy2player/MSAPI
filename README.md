@@ -43,7 +43,7 @@ See [CMakeListsCommonOptions.txt](library/build/CMakeListsCommonOptions.txt) for
 
 - [**Object protocol:**](library/source/protocol/object.inl) Transfers simple copyable objects using stream and filter model.
 - [**Standard protocol:**](library/source/protocol/standard.h) Handles dynamic-size messages as array of key-value pairs.
-- [**HTTP protocol:**](library/source/protocol/http.h) HTTP message parsing and producing.
+- [**HTTP protocol:**](library/source/protocol/http.h) HTTP message parsing and producing, redirects and keyed static file lookup.
 - [**WebSocket protocol:**](library/source/protocol/webSocket.inl) Implementation of data and parallel execution safe functional abstractions for 13 version (RFC 6455) WebSocket protocol.
 - [**WebSocket events protocol:**](library/source/protocol/webSocketEvents.inl) Parallel execution distributing model which works on top of web socket protocol with json payload, supports single and stream events with filters. Uses [Authorization](library/source/server/authorization.inl) to control data access rights.
 

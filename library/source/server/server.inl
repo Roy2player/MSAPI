@@ -100,6 +100,8 @@ Declarations
  * @concurrency Yes.
  *
  * @todo Application class should be based on the Server class, not vice versa.
+ * @todo Server should support listening on multiple addresses and make its main loop wait for a lock to be unlocked
+ * instead of depending on listening activity.
  * @todo m_listenIpStr should be replaced by SString.
  * @todo Parameters m_maxConnectionsOneIp, m_limitConnectAttempts, m_recvBufferSizeLimit, m_secondsBetweenTryToConnect
  * and m_listenPort should be atomic.
