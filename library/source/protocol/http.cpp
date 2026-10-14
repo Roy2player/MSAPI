@@ -1192,7 +1192,7 @@ void Redirector::AcceptLoop(Endpoint& endpoint) noexcept
 			endpoint.GetSocket(), nullptr, nullptr, SOCK_CLOEXEC /* close-on-exec atomically */) };
 
 		if (socket == -1) [[unlikely]] {
-			LOG_ERROR_NEW("Accept failed for address: {}:{}, Error №{}: {}", endpoint.GetAddress(), endpoint.GetPort(),
+			LOG_ERROR_NEW("Accept failed for address: {}:{}, Error №{}: {}", endpoint.GetIp(), endpoint.GetPort(),
 				errno, std::strerror(errno));
 
 			if (!m_isRunning.load(std::memory_order_acquire)) {
@@ -1200,7 +1200,7 @@ void Redirector::AcceptLoop(Endpoint& endpoint) noexcept
 			}
 
 			LOG_DEBUG_NEW(
-				"Retrying accept for address: {}:{} after error in 100ms", endpoint.GetAddress(), endpoint.GetPort());
+				"Retrying accept for address: {}:{} after error in 100ms", endpoint.GetIp(), endpoint.GetPort());
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
 		}
