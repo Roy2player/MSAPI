@@ -41,9 +41,10 @@
  * 23) Send request with wrong HTTP type;
  * 24) Reserved response with 404 and JSON;
  * 25) Send request to load index page with symbol "?" in URL and following data;
- * 26) Reserved response with 200 and index page, symbol "?" and following data is ignored;
+ * 26) Reserved response with 200 and index page, query does not affect static file routing;
  * 27) Send request to load index page with symbol "#" in URL and following data;
  * 28) Reserved response with 200 and index page, symbol "#" and following data is ignored.
+ * 29) Close source request and response handling.
  */
 
 #ifndef MSAPI_INTEGRATION_TEST_HTTP_PROTOCOL_INL
@@ -54,6 +55,8 @@
 #include "../../../../library/source/test/test.inl"
 #include "httpClient.h"
 #include "httpServer.h"
+#include "redirector.inl"
+#include <format>
 #include <memory>
 #include <sys/resource.h>
 
@@ -76,6 +79,10 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol();
 
 /*---------------------------------------------------------------------------------
 Definitions
+---------------------------------------------------------------------------------*/
+
+/*---------------------------------------------------------------------------------
+Free
 ---------------------------------------------------------------------------------*/
 
 FORCE_INLINE [[nodiscard]] bool HttpProtocol()
@@ -289,13 +296,14 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 	// 12) Reserved response with 404
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		3000, [&client]() { return client.GetActionsNumber(); }, 12, "Client actions number is correct"));
-	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 119, "", "", "404", "Not Found",
-		{ { "Content-Type", "text/html; charset=utf-8" }, { "Connection", "keep-alive" },
+	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 138, "", "", "404", "Not Found",
+		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "0" }, { "Connection", "keep-alive" },
 			{ "Keep-Alive", "timeout=0,max=0" } },
-		"HTTP message:\n{\n\tis valid     : true\n\ttype         : Response\n\tmessage type : \n\turl          : "
-		"\n\tHTTP type    : HTTP\n\tversion      : 1.1\n\tformat       : \n\tcode         : 404\n\tcode text    : Not "
-		"Found\n\tmessage size : 119\n\tHeaders      :\n{\n\tConnection   : keep-alive\n\tContent-Type : text/html; "
-		"charset=utf-8\n\tKeep-Alive   : timeout=0,max=0\n}\n}"));
+		"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl            "
+		": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 404\n\tcode text "
+		"     : Not Found\n\tmessage size   : 138\n\tHeaders        :\n{\n\tConnection     : "
+		"keep-alive\n\tContent-Length : "
+		"0\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
 
 	// 13) Send request to load favicon
 	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /favicon.ico HTTP/1.1"),
@@ -448,7 +456,10 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 		"/index\n\tHTTP type    : HTTP\n\tversion      : 1.1\n\tformat       : html\n\tcode         : \n\tcode text    "
 		": \n\tmessage size : 58\n\tHeaders      :\n{\n}\n}"));
 
-	// 26) Reserved response with 200 and index page, symbol "?" and following data is ignored
+	RETURN_IF_FALSE(t.Assert(serverHTTPData->GetQuery(), std::string_view{ "?parameter=83648&additionalData=GTP" },
+		"Request query is retained"));
+
+	// 26) Reserved response with 200 and index page, query does not affect static file routing
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		3000, [&client]() { return client.GetActionsNumber(); }, 26, "Client actions number is correct"));
 	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5159, "", indexPage, "200", "OK",
@@ -480,6 +491,48 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 		": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 200\n\tcode text "
 		"     : OK\n\tmessage size   : 5159\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
 		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
+
+	// 29) Close source request and response handling
+	{
+		RedirectClient peer{ serverPtr->GetPort() };
+		RETURN_IF_FALSE(
+			t.Assert(peer.Send("GET / HTTP/1.1\r\nConnection: close\r\n\r\n"), true, "Close source request sent"));
+		const auto response{ peer.Read() };
+		RETURN_IF_FALSE(t.Assert(response.starts_with("HTTP/1.1 200 OK\r\n"), true, "Close source returns 200"));
+		RETURN_IF_FALSE(
+			t.Assert(response.find("Connection: close\r\n") != std::string::npos, true, "Close source header correct"));
+		RETURN_IF_FALSE(
+			t.Assert(response.find("Keep-Alive:") == std::string::npos, true, "Close source omits Keep-Alive"));
+
+		const std::string expected{ std::format(
+			"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\nContent-Length: "
+			"{}\r\n\r\n{}",
+			indexPage.size(), indexPage) };
+		RETURN_IF_FALSE(t.Assert(response, expected, "Entire source arrives before close"));
+		RETURN_IF_FALSE(t.Assert(peer.IsClosed(), true, "Source socket closes"));
+	}
+
+	{
+		RedirectClient peer{ serverPtr->GetPort() };
+		RETURN_IF_FALSE(t.Assert(peer.Send("GET /missing.css HTTP/1.1\r\nConnection: close\r\n\r\n"), true,
+			"Close missing source request sent"));
+		RETURN_IF_FALSE(t.Assert(peer.Read(),
+			std::string{ "HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=utf-8\r\nConnection: "
+						 "close\r\nContent-Length: 0\r\n\r\n" },
+			"Empty close 404 bytes correct"));
+		RETURN_IF_FALSE(t.Assert(peer.IsClosed(), true, "404 socket closes"));
+	}
+
+	{
+		RedirectClient peer{ serverPtr->GetPort() };
+		RETURN_IF_FALSE(t.Assert(
+			peer.Send("GET /a?b HTTP/1.1\r\nHost: www.site.com:8080\r\n\r\n"), true, "Canonical-host request sent"));
+		RETURN_IF_FALSE(t.Assert(peer.Read(),
+			std::string{ "HTTP/1.1 301 Moved Permanently\r\nLocation: http://site.com/a?b\r\nConnection: "
+						 "close\r\nContent-Length: 0\r\n\r\n" },
+			"www redirects to bare domain and keeps query"));
+		RETURN_IF_FALSE(t.Assert(peer.IsClosed(), true, "Data redirect socket closes"));
+	}
 
 	serverPtr.reset();
 	clientPtr.reset();

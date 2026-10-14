@@ -622,7 +622,7 @@ FORCE_INLINE void DirGuard::Clear()
 }
 
 /*---------------------------------------------------------------------------------
-Global
+Free
 ---------------------------------------------------------------------------------*/
 
 template <typename CurrentPathType, typename NewPathType>

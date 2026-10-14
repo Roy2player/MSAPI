@@ -122,27 +122,34 @@ void Manager::HandleHttp(
 		return;
 	}
 
+	std::string_view key;
+	std::string_view filename{ url };
 	if (url == "/") {
-		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "html/index.html");
+		key = "html";
+		filename = "/index.html";
+	}
+	else if (data.GetFormat() == "html") {
+		key = "html";
+	}
+	else if (data.GetFormat() == "css") {
+		key = "css";
+	}
+	else if (data.GetFormat() == "ico" || data.GetFormat() == "png" || data.GetFormat() == "jpg") {
+		key = "images";
+	}
+	else if (data.GetFormat() == "js") {
+		key = "js";
+	}
+
+	MSAPI::SString<512> source;
+	const auto closeConnection{ data.IsConnectionClose() };
+
+	if (!key.empty() && LookupPath(key, filename, source)) {
+		(void)data.SendSource(connectionData->GetConnection(), source.Get(), /*contentType=*/"", closeConnection);
 		return;
 	}
 
-	if (data.GetFormat() == "css") {
-		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "css" + url);
-		return;
-	}
-
-	if (data.GetFormat() == "ico" || data.GetFormat() == "png" || data.GetFormat() == "jpg") {
-		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "images" + url);
-		return;
-	}
-
-	if (data.GetFormat() == "js") {
-		(void)data.SendSource(connectionData->GetConnection(), m_webSourcesPath + "js" + url);
-		return;
-	}
-
-	(void)data.Send404(connectionData->GetConnection());
+	(void)data.Send404(connectionData->GetConnection(), /*body=*/"", /*contentType=*/"", closeConnection);
 }
 
 void Manager::HandleWebSocket(
@@ -305,6 +312,22 @@ void Manager::HandleRunRequest()
 		HandlePauseRequest();
 		return;
 	}
+
+	const auto buildRoot{ [](MSAPI::SString<MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY>& root,
+							  const std::string_view base, const std::string_view key) noexcept {
+		return !base.empty() && base.find('\0') == std::string_view::npos && root.Copy(base)
+			&& (base.back() == '/' || root.Concatenate("/")) && root.Concatenate(key) && root.Concatenate("/");
+	} };
+
+	for (const std::string_view key : { "html", "css", "images", "js" }) {
+		MSAPI::SString<MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY> root;
+		if (!buildRoot(root, m_webSourcesPath, key) || !MSAPI::Protocol::HTTP::IHandler::AddPath(key, root.Get()))
+			[[unlikely]] {
+
+			HandlePauseRequest();
+			return;
+		}
+	}
 }
 
 void Manager::HandlePauseRequest()
@@ -338,13 +361,14 @@ void Manager::HandlePauseRequest()
 	}
 
 	m_authorizationModule.Stop();
+	MSAPI::Protocol::HTTP::IHandler::ClearPaths();
 }
 
 void Manager::HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
 {
 	for (const auto& [id, value] : parametersUpdate) {
-		if (MSAPI::Application::IsRunning()) {
-			if (id == 1001) {
+		if (id == 1001) {
+			if (MSAPI::Application::IsRunning()) {
 				LOG_WARNING_NEW(
 					"Change web sources path from: {} is interrupted, because of application is in a running state",
 					m_webSourcesPath);
@@ -893,9 +917,9 @@ uint16_t Manager::CreateApp(const uint64_t hash, const MSAPI::Json& parameters, 
 
 void Manager::CheckVforkedApps()
 {
-	pid_t pid;
-	int status;
-	uint16_t port;
+	pid_t pid [[indeterminate]];
+	int status [[indeterminate]];
+	uint16_t port [[indeterminate]];
 	std::shared_ptr<CreatedAppData> createdAppData;
 
 	while (true) {

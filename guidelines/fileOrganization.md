@@ -10,6 +10,7 @@ description: "Inlinable library layout and structure of .inl files"
 - The library is expected to be fully inlinable. Each module is declared and defined in one `.inl` file.
 - All functions are declared and defined with `FORCE_INLINE`, see [Code Syntax](codeSyntax.md).
 - Static data members and namespace scope variables are `inline` (e.g. `static inline constexpr`), so they are defined once across all translation units.
+- Do not leave empty lines at the end of a file unless its format requires them.
 
 ## Structure of `.inl` file
 
@@ -21,7 +22,8 @@ Parts follow in the order below, separated by an empty line.
 4. Namespaces opening, see [Code Style](codeStyle.md#namespace).
 5. Declaration part, marked by `Declarations` separator. Contains concepts, constants, forward declarations and abstractions with their documentation. Functions are only declared here, except defaulted and deleted special members.
 6. Definition part, marked by `Definitions` separator. Contains definitions of all functions declared in the declaration part.
-   - Each submodule (abstraction, nested abstraction or group of free functions) is explicitly marked by its own separator with its qualified name, e.g. `Server::IpLimits`.
+   - Each abstraction or nested abstraction is explicitly marked by its own separator with its qualified name, e.g. `Server::IpLimits`.
+   - Namespace-scope free function definitions are grouped under a `Free` separator, not separate separators named after individual functions.
    - Submodules follow the order of their declarations.
 7. Namespaces closing.
 8. Specializations of standard templates (e.g. `std::formatter`, `std::hash`) for the module types, which must be defined outside of MSAPI namespace.
@@ -77,6 +79,13 @@ public:
     FORCE_INLINE [[nodiscard]] uint64_t GetSize() const noexcept;
 };
 
+/**************************
+ * @param buffer Buffer to inspect.
+ *
+ * @return True if the buffer contains no data.
+ */
+FORCE_INLINE [[nodiscard]] bool IsEmpty(const RecvBuffer& buffer) noexcept;
+
 /*---------------------------------------------------------------------------------
 Definitions
 ---------------------------------------------------------------------------------*/
@@ -92,6 +101,12 @@ RecvBuffer
 ---------------------------------------------------------------------------------*/
 
 FORCE_INLINE [[nodiscard]] uint64_t RecvBuffer::GetSize() const noexcept { return 0; }
+
+/*---------------------------------------------------------------------------------
+Free
+---------------------------------------------------------------------------------*/
+
+FORCE_INLINE [[nodiscard]] bool IsEmpty(const RecvBuffer& buffer) noexcept { return buffer.GetSize() == 0; }
 
 } // namespace MSAPI
 

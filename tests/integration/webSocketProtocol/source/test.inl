@@ -686,10 +686,13 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			169 + clientPortStr.size(), clientPortStr) };
 
 		const std::string& wsHandshakeResponseInvalid{
-			"HTTP message:\n{\n\tis valid     : true\n\ttype         : Response\n\tmessage type : \n\turl          : "
-			"\n\tHTTP type    : HTTP\n\tversion      : 1.1\n\tformat       : \n\tcode         : 404\n\tcode text    : "
-			"Not Found\n\tmessage size : 119\n\tHeaders      :\n{\n\tConnection   : keep-alive\n\tContent-Type : "
-			"text/html; charset=utf-8\n\tKeep-Alive   : timeout=0,max=0\n}\n}"
+			"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl        "
+			"    "
+			": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 404\n\tcode "
+			"text "
+			"     : Not Found\n\tmessage size   : 138\n\tHeaders        :\n{\n\tConnection     : "
+			"keep-alive\n\tContent-Length : "
+			"0\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"
 		};
 
 		// 2.1. Try to establish WebSocket handshake with unsupported protocol version
