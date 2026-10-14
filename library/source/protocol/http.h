@@ -1057,6 +1057,8 @@ private:
 	 * @param endpoint Listening endpoint.
 	 *
 	 * @locking Lock m_workersLock inside while accessing worker slots.
+	 *
+	 * @test Yes.
 	 */
 	void AcceptLoop(Endpoint& endpoint) noexcept;
 
@@ -1084,6 +1086,8 @@ private:
 	 *
 	 * @return Listener descriptor, or -1 if address validation or socket setup fails.
 	 *
+	 * @test Yes.
+	 *
 	 * @todo Add tests coverage.
 	 */
 	FORCE_INLINE [[nodiscard]] static int32_t OpenRedirectListener(const char* ip, uint16_t port) noexcept;
@@ -1096,6 +1100,8 @@ private:
 	 * @locking Locks m_workersLock in AcceptLoop call.
 	 *
 	 * @return Null pointer when the accept loop finishes.
+	 *
+	 * @test Yes.
 	 */
 	[[nodiscard]] static void* AcceptPthread(void* endpoint) noexcept;
 
@@ -1107,6 +1113,8 @@ private:
 	 * @locking Locks m_workersLock in HandleConnection call.
 	 *
 	 * @return Null pointer when peer handling finishes.
+	 *
+	 * @test Yes.
 	 */
 	[[nodiscard]] static void* RecvPthread(void* worker) noexcept;
 };
