@@ -144,7 +144,6 @@ void Manager::HandleHttp(
 	MSAPI::SString<512> source;
 	const auto closeConnection{ data.IsConnectionClose() };
 
-	
 	if (!key.empty() && LookupPath(key, filename, source)) {
 		(void)data.SendSource(connectionData->GetConnection(), source.Get(), /*contentType=*/"", closeConnection);
 		return;
