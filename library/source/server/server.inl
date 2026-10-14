@@ -959,10 +959,8 @@ FORCE_INLINE void Server::Start(const uint32_t ip, const uint16_t port) noexcept
 		}
 
 		if (newConnection == nullptr) [[unlikely]] {
-			if (errno == EMFILE || errno == ENFILE) [[unlikely]] {
-				LOG_DEBUG("Too many open files, cannot accept new connection. Retrying in 100ms");
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			}
+			LOG_DEBUG("Retrying accept after error in 100ms");
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
 		}
 

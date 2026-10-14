@@ -1188,14 +1188,30 @@ void Redirector::AcceptLoop(Endpoint& endpoint) noexcept
 {
 	while (m_isRunning.load(std::memory_order_acquire)) {
 		// Raw socket acceptance avoids Connection allocation and any Server lifecycle dependency.
-		const auto socket{ accept4(endpoint.GetSocket(), nullptr, nullptr, SOCK_CLOEXEC) };
+		const auto socket{ accept4(
+			endpoint.GetSocket(), nullptr, nullptr, SOCK_CLOEXEC /* close-on-exec atomically */) };
 		if (socket == -1) {
-			if (errno == EINTR) {
+			const auto error{ errno };
+			// Retry transient accept errors:
+			// 1. EINTR: interrupted by a signal.
+			// 2. ECONNABORTED: a pending connection was aborted.
+			// 3. ENETDOWN: the network subsystem is down.
+			// 4. EPROTO: a protocol error occurred.
+			// 5. ENOPROTOOPT: a protocol option is unavailable.
+			// 6. EHOSTDOWN: the peer host is down.
+			// 7. ENONET: the network is unreachable locally.
+			// 8. EHOSTUNREACH: the peer host is unreachable.
+			// 9. ENETUNREACH: the network is unreachable.
+			// 10. EOPNOTSUPP: a pending connection reported an unsupported operation.
+			if (error == EINTR || error == ECONNABORTED || error == ENETDOWN || error == EPROTO || error == ENOPROTOOPT
+				|| error == EHOSTDOWN || error == ENONET || error == EHOSTUNREACH || error == ENETUNREACH
+				|| error == EOPNOTSUPP) {
+
 				continue;
 			}
 
 			if (m_isRunning.load(std::memory_order_acquire)) {
-				LOG_ERROR_NEW("Redirect accept failed. Error №{}: {}", errno, std::strerror(errno));
+				LOG_ERROR_NEW("Redirect accept failed. Error №{}: {}", error, std::strerror(error));
 			}
 			return;
 		}

@@ -363,6 +363,7 @@ void Manager::HandlePauseRequest()
 	}
 
 	m_authorizationModule.Stop();
+	MSAPI::Protocol::HTTP::IHandler::ClearPaths();
 }
 
 void Manager::HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
@@ -375,9 +376,6 @@ void Manager::HandleModifyRequest(const std::map<uint64_t, std::variant<standard
 					m_webSourcesPath);
 				continue;
 			}
-
-			// Rebuild paths on HandleRunRequest
-			MSAPI::Protocol::HTTP::IHandler::ClearPaths();
 		}
 
 		MSAPI::Application::MergeParameter(id, value);
