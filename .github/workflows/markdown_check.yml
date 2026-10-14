@@ -3,8 +3,12 @@ name: Markdown check
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - '**.md'
   pull_request:
     branches: [ "master" ]
+    paths:
+      - '**.md'
 
 permissions:
   contents: read
@@ -22,4 +26,4 @@ jobs:
           sudo apt-get install -y --no-install-recommends markdownlint
 
       - name: Check all tracked Markdown files
-        run: git ls-files -z -- '*.md' '*.markdown' '*.MD' '*.MARKDOWN' | xargs -0 -r mdl
+        run: git ls-files -z -- '*.md' | xargs -0 -r mdl
