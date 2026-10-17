@@ -122,6 +122,8 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 - [**Grid settings view:**](apps/manager/web/js/views/gridSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options.
 - [**Account:**](apps/manager/web/js/views/account.js) View to display logging and sign up forms, manage account and its information.
 
+- [**Palette:**](apps/manager/web/js/views/palette.js) Compares existing light and dark color tokens with interactive UI examples.
+
 ## ⚖️ License
 
 This software is licensed under the **Polyform Noncommercial License 1.0.0**, see [LICENSE.md](LICENSE.md).
