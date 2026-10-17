@@ -16,6 +16,8 @@
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
  *
  * @brief Common helper functions.
+ *
+ * @todo Add function to build path from multiple components with proper validation and separators.
  */
 
 #ifndef MSAPI_HELPER_H
@@ -362,6 +364,8 @@ FORCE_INLINE int CompareFloats(const T first, const T second)
  * @return True if first < second, false otherwise.
  *
  * @test Yes.
+ *
+ * @todo The name of such methods should be like question.
  */
 template <std::floating_point T, T epsilon = Epsilon<T>::value>
 FORCE_INLINE bool FloatLess(const T first, const T second)
@@ -382,6 +386,8 @@ FORCE_INLINE bool FloatLess(const T first, const T second)
  * @return True if first > second, false otherwise.
  *
  * @test Yes.
+ *
+ * @todo The name of such methods should be like question.
  */
 template <std::floating_point T, T epsilon = Epsilon<T>::value>
 FORCE_INLINE bool FloatGreater(const T first, const T second)

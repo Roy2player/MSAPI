@@ -103,7 +103,6 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 		return false;
 	}
 	auto& server{ serverPtr->GetApp() };
-	server.HandleModifyRequest({ { 1001, serverWebPath } });
 	server.HandleRunRequest();
 	if (!server.MSAPI::Application::IsRunning()) [[unlikely]] {
 		LOG_ERROR("Server is not running, check parameters");

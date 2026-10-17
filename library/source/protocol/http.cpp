@@ -18,6 +18,7 @@
 
 #include "http.h"
 #include "../help/helper.h"
+#include "../help/io.inl"
 #include "../help/log.h"
 #include "../help/sha1.inl"
 #include "../server/application.h"
@@ -839,52 +840,67 @@ IHandler::IHandler(const MSAPI::Application* application)
 {
 }
 
-[[nodiscard]] bool IHandler::AddPath(const std::string_view key, const std::string_view root) noexcept
+[[nodiscard]] bool IHandler::AddSourcePath(const std::string_view key, const std::string_view path) noexcept
 {
 	if (key.empty() || key.size() > 32 || key.find('\0') != std::string_view::npos) [[unlikely]] {
 		LOG_WARNING_NEW("Invalid source key: \"{}\"", key);
 		return false;
 	}
 
-	if (root.empty() || root.size() > DEFAULT_PATH_CAPACITY || root.find('\0') != std::string_view::npos
-		|| (root.back() != '/' && root.size() == DEFAULT_PATH_CAPACITY)) [[unlikely]] {
+	if (path.empty() || path.size() > DEFAULT_PATH_CAPACITY || path.find('\0') != std::string_view::npos
+		|| (path.back() != '/' && path.size() == DEFAULT_PATH_CAPACITY)) [[unlikely]] {
 
-		LOG_WARNING_NEW("Invalid source root: \"{}\"", root);
+		LOG_WARNING_NEW("Invalid source path: \"{}\"", path);
 		return false;
 	}
 
-	SString<DEFAULT_PATH_CAPACITY> entryRoot{};
-	if (!entryRoot.Copy(root) || (root.back() != '/' && !entryRoot.Concatenate("/"))) {
+	SString<DEFAULT_PATH_CAPACITY> entryPath{};
+	if (!entryPath.Copy(path) || (path.back() != '/' && !entryPath.Concatenate("/"))) {
 		return false;
 	}
 
+	if (!entryPath.NullTerminate() || !MSAPI::IO::HasPath(entryPath.Get())) [[unlikely]] {
+		LOG_WARNING_NEW("Source path cannot be checked or does not exist: \"{}\"", path);
+		return false;
+	}
+
+	entryPath.PopBack();
+	if (!entryPath.NullTerminate() || !MSAPI::IO::HasPath(entryPath.Get())) [[unlikely]] {
+		LOG_WARNING_NEW("Source entry path cannot be checked or does not exist: \"{}\"", entryPath.Get());
+		return false;
+	}
+
+	decltype(m_paths)::iterator it;
+	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_pathsLock };
 	try {
-		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_pathsLock };
-		m_paths.emplace(key, std::move(entryRoot));
+		it = m_paths.emplace(key, std::move(entryPath));
 	}
 	catch (const std::exception& error) {
-		LOG_ERROR_NEW("Source registration failed, key: \"{}\", root: \"{}\", error: \"{}\"", key, root, error.what());
+		LOG_ERROR_NEW("Source registration failed, key: \"{}\", path: \"{}\", error: \"{}\"", key, path, error.what());
 		return false;
 	}
+	LOG_DEBUG_NEW("Source registered successfully, key: \"{}\", path: \"{}\"", key, it->second.Get());
 
 	return true;
 }
 
-[[nodiscard]] bool IHandler::RemovePath(const std::string_view key, const std::string_view root) noexcept
+[[nodiscard]] bool IHandler::RemoveSourcePath(const std::string_view key, const std::string_view path) noexcept
 {
-	// Apply the same trailing-slash normalization as AddPath before comparing registrations.
-	SString<DEFAULT_PATH_CAPACITY> normalizedRoot{};
-	if (root.empty() || root.find('\0') != std::string_view::npos || !normalizedRoot.Copy(root)
-		|| (root.back() != '/' && !normalizedRoot.Concatenate("/"))) [[unlikely]] {
+	// Remove one trailing slash, matching the path representation stored by AddSourcePath.
+	SString<DEFAULT_PATH_CAPACITY> normalizedPath{};
+	if (path.empty() || path.find('\0') != std::string_view::npos || !normalizedPath.Copy(path)
+		|| (path.back() != '/' && !normalizedPath.Concatenate("/"))) [[unlikely]] {
 
-		LOG_WARNING_NEW("Invalid source root for removal: \"{}\"", root);
+		LOG_WARNING_NEW("Invalid source path for removal: \"{}\"", path);
 		return false;
 	}
+
+	normalizedPath.PopBack();
 
 	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_pathsLock };
 	const auto [begin, end]{ m_paths.equal_range(key) };
 	for (auto it{ begin }; it != end; ++it) {
-		if (it->second.Get() == normalizedRoot.Get()) {
+		if (it->second.Get() == normalizedPath.Get()) {
 			m_paths.erase(it);
 			return true;
 		}
@@ -893,7 +909,7 @@ IHandler::IHandler(const MSAPI::Application* application)
 	return false;
 }
 
-void IHandler::ClearPaths() noexcept
+void IHandler::ClearSourcePaths() noexcept
 {
 	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_pathsLock };
 	m_paths.clear();
