@@ -1,0 +1,271 @@
+/**************************
+ * This file is part of MSAPI.
+ * License: see LICENSE.md
+ * Contributor terms: see CONTRIBUTING.md
+ *
+ * This software is licensed under the Polyform Noncommercial License 1.0.0.
+ * You may use, copy, modify, and distribute it for noncommercial purposes only.
+ *
+ * For commercial use, please contact: maks.angels@mail.ru
+ *
+ * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, maks.angels@mail.ru
+ */
+
+.view.paletteWindow {
+    width: min(1080px, 100vw);
+    height: min(850px, 92vh);
+}
+
+.view > .viewContent > .paletteView {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 16px;
+}
+
+.paletteIntro {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.paletteView h1 {
+    font-size: 21px;
+    font-weight: normal;
+    margin-bottom: 6px;
+}
+
+.paletteIntro p {
+    font-size: 12px;
+    max-width: 580px;
+    line-height: 1.5;
+}
+
+.paletteThemes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.paletteTheme {
+    flex: 1 1 360px;
+    min-width: 0;
+    padding: 14px;
+    color: var(--text-color-general);
+    background: var(--background-view);
+    border: 1px solid var(--border-color-general);
+}
+
+.paletteThemeHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.paletteTheme h2 {
+    font-size: 18px;
+    font-weight: normal;
+}
+
+.paletteCount, .paletteValue {
+    font-size: 11px;
+}
+
+.paletteExamples {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+    gap: 12px;
+}
+
+.paletteSample {
+    min-width: 0;
+    border: 1px solid var(--border-color-sub-general);
+}
+
+.paletteSampleHeader, .paletteTable caption {
+    background: var(--background-element-header);
+    padding: 9px;
+    text-align: left;
+    font-size: 12px;
+}
+
+.paletteForm {
+    padding: 10px;
+}
+
+.paletteForm label {
+    display: block;
+    font-size: 11px;
+    margin-bottom: 10px;
+}
+
+.paletteForm input {
+    display: block;
+    width: 100%;
+    margin-top: 5px;
+    padding: 8px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-color-general);
+    background: var(--background-element-general);
+    border: 1px solid var(--border-color-sub-general);
+}
+
+.paletteForm input:not(:disabled):hover, .paletteForm input:not(:disabled):focus {
+    background: var(--background-element-general-hover);
+}
+
+.paletteActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.paletteView .paletteButton {
+    padding: 7px 10px;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.2;
+    cursor: pointer;
+    color: var(--text-color-general);
+    background: var(--background-element-general);
+    border: 1px solid var(--border-color-sub-general);
+}
+
+.paletteView .paletteButton:not(:disabled):hover {
+    background: var(--background-element-general-hover);
+}
+
+.paletteView .paletteButton:focus-visible, .paletteForm input:focus-visible {
+    outline: 2px solid var(--border-color-general);
+    outline-offset: 2px;
+}
+
+.paletteView .paletteAction[aria-pressed="true"], .paletteEnabled {
+    background: var(--background-element-enabled);
+}
+
+.paletteView .paletteButton:disabled, .paletteForm input:disabled, .paletteDisabled {
+    background: var(--background-element-disabled);
+    cursor: default;
+}
+
+.paletteForm input.paletteInvalid, .paletteInvalid {
+    background: var(--background-element-invalid);
+}
+
+.paletteError {
+    color: var(--error-message-color);
+    margin-top: 10px;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.paletteTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.paletteTable th, .paletteTable td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color-sub-general);
+}
+
+.paletteTable th {
+    background: var(--background-element-sub-general);
+    font-weight: normal;
+}
+
+.paletteTable tr:hover td {
+    background: var(--background-element-general-hover);
+}
+
+.paletteStatus {
+    display: inline-block;
+    padding: 4px 6px;
+}
+
+.paletteHover {
+    padding: 9px;
+    background: var(--background-element-general-hover);
+    font-size: 11px;
+}
+
+.paletteLoading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 9px;
+    background: var(--background-element-general);
+    font-size: 11px;
+}
+
+.paletteSpinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--loader-background);
+    border-top-color: var(--loader-background-element);
+    border-radius: 50%;
+    animation: paletteSpin 1s linear infinite;
+}
+
+@keyframes paletteSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.paletteTokenHeading {
+    margin: 18px 0 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color-sub-general);
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.paletteTokens {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+    gap: 8px;
+}
+
+.paletteToken {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px;
+    min-width: 0;
+    border: 1px solid var(--border-color-sub-general);
+}
+
+.paletteSwatch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 34px;
+    height: 34px;
+    border: 1px solid var(--border-color-sub-general);
+    font-size: 12px;
+}
+
+.paletteToken code {
+    display: block;
+    margin-bottom: 3px;
+    font: inherit;
+    font-size: 10px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .paletteSpinner {
+        animation: none;
+    }
+}

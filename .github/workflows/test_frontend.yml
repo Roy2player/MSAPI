@@ -4,11 +4,11 @@ on:
   push:
     branches: [ "master" ]
     paths:
-      - 'apps/manager/web/js/**'
+      - 'apps/manager/web/**'
   pull_request:
     branches: [ "master" ]
     paths:
-      - 'apps/manager/web/js/**'
+      - 'apps/manager/web/**'
 
 jobs:
   build:
