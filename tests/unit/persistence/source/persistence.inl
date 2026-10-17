@@ -203,6 +203,7 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 		{
 			// Default construction does not bind files; failed assignment can be retried without losing pending values.
 			PersistenceType persistence;
+			RETURN_IF_FALSE(t.Assert(persistence.IsInitialized(), false, "Default single has no bound files"));
 			RETURN_IF_FALSE(t.Assert(persistence.GetTimestamp(), MSAPI::Timer{ 0 }, "Unbound single timestamp"));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), false, "Unbound single cannot read"));
 			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), false, "Unbound single cannot save"));
@@ -216,6 +217,7 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			const auto pendingTimestamp{ persistence.GetTimestamp() };
 			RETURN_IF_FALSE(
 				t.Assert(persistence.AssignPath(dirV, "assigned"), true, "Assign single files after construction"));
+			RETURN_IF_FALSE(t.Assert(persistence.IsInitialized(), true, "Single files are initialized before saving"));
 			RETURN_IF_FALSE(
 				t.Assert(persistence.GetTimestamp(), pendingTimestamp, "Assignment preserves pending timestamp"));
 			RETURN_IF_FALSE(checkState(persistence, { firstBatch[0] }, 0));
@@ -241,9 +243,12 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			PersistenceType persistence;
 			RETURN_IF_FALSE(t.Assert(
 				persistence.AssignPath(dirV, "assignmentRetry"), false, "Report timestamp assignment failure"));
+			RETURN_IF_FALSE(
+				t.Assert(persistence.IsInitialized(), false, "Failed timestamp open leaves files uninitialized"));
 			RETURN_IF_FALSE(t.Assert(IO::Remove(blocker.c_str()), true, "Remove timestamp assignment blocker"));
 			RETURN_IF_FALSE(t.Assert(
 				persistence.AssignPath(dirV, "assignmentRetry"), true, "Retry assignment after failed file open"));
+			RETURN_IF_FALSE(t.Assert(persistence.IsInitialized(), true, "Assignment retry initializes both files"));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), true, "Read after assignment retry"));
 		}
 
@@ -308,6 +313,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			PersistenceType directoryPersistence;
 			RETURN_IF_FALSE(
 				t.Assert(directoryPersistence.AssignPath(dirV, "directoryFile"), false, "Reject data-path directory"));
+			RETURN_IF_FALSE(
+				t.Assert(directoryPersistence.IsInitialized(), false, "Failed data open leaves files uninitialized"));
 			RETURN_IF_FALSE(t.Assert(directoryPersistence.Read(), false, "Directory data read"));
 			RETURN_IF_FALSE(t.Assert(directoryPersistence.template Save<REMAIN>(), false, "Directory data save"));
 
@@ -366,6 +373,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			PersistenceType removed;
 			RETURN_IF_FALSE(t.Assert(removed.AssignPath(dirV, "removed"), true, "Assign persistence path"));
 			RETURN_IF_FALSE(t.Assert(IO::Remove((dir + ".removed").c_str()), true, "Remove created data file"));
+			RETURN_IF_FALSE(
+				t.Assert(removed.IsInitialized(), true, "Unlinked files keep their initialized descriptors"));
 			RETURN_IF_FALSE(t.Assert(removed.AssignPath(dirV, "removed"), false,
 				"Rejected reassignment retains opened descriptors after unlink"));
 			RETURN_IF_FALSE(t.Assert(
@@ -493,6 +502,7 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			PersistenceType loaded;
 			RETURN_IF_FALSE(t.Assert(loaded.AssignPath(dirV, "retry"), true, "Assign persistence path"));
 			RETURN_IF_FALSE(t.Assert(loaded.Read(), false, "Reject malformed timestamp"));
+			RETURN_IF_FALSE(t.Assert(loaded.IsInitialized(), true, "Failed read keeps files initialized for retry"));
 			RETURN_IF_FALSE(checkState(loaded, {}, 0));
 			RETURN_IF_FALSE(t.Assert(loaded.GetTimestamp(), MSAPI::Timer{ 0 }, "Failed read keeps timestamp"));
 			RETURN_IF_FALSE(t.Assert(IO::SaveBinary(timestamp, timestampPath.c_str()), true, "Repair timestamp file"));
@@ -751,11 +761,13 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 
 		{
 			PersistenceType assigned;
+			RETURN_IF_FALSE(t.Assert(assigned.IsInitialized(), false, "Default pair has no bound files"));
 			RETURN_IF_FALSE(t.Assert(assigned.GetTimestamp(), MSAPI::Timer{ 0 }, "Unbound pair timestamp"));
 			RETURN_IF_FALSE(t.Assert(assigned.Read(), false, "Unbound pair cannot read"));
 			RETURN_IF_FALSE(t.Assert(assigned.AssignPath(dirV, {}), false, "Reject invalid pair assignment"));
 			RETURN_IF_FALSE(
 				t.Assert(assigned.AssignPath(dirV, "assignedPair"), true, "Assign pair files after construction"));
+			RETURN_IF_FALSE(t.Assert(assigned.IsInitialized(), true, "Pair files are initialized before reading"));
 			RETURN_IF_FALSE(t.Assert(assigned.Read(), true, "Read an assigned empty pair"));
 			RETURN_IF_FALSE(t.Assert(
 				assigned.template Emplace<SAVE_IMMEDIATE, MODIFY_SILENT>(7, 70), true, "Save an assigned pair value"));
@@ -764,6 +776,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 				t.Assert(assigned.AssignPath(dirV, "assignedPair"), false, "Reject repeated pair assignment"));
 			RETURN_IF_FALSE(
 				t.Assert(assigned.AssignPath(dirV, "otherAssignedPair"), false, "Reject a different pair binding"));
+			RETURN_IF_FALSE(
+				t.Assert(assigned.IsInitialized(), true, "Rejected reassignment preserves initialized files"));
 			RETURN_IF_FALSE(
 				t.Assert(assigned.GetTimestamp(), timestamp, "Rejected pair reassignment preserves timestamp"));
 			RETURN_IF_FALSE(checkObject(assigned, 7, 70, true));

@@ -129,6 +129,17 @@ public:
 	FORCE_INLINE [[nodiscard]] bool AssignPath(std::string_view dir, std::string_view name) noexcept;
 
 	/**************************
+	 * @attention Does not indicate whether Read has succeeded.
+	 *
+	 * @locking Read lock m_lock.
+	 *
+	 * @return True if both files are open after successful AssignPath, false otherwise.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE [[nodiscard]] bool IsInitialized() const noexcept;
+
+	/**************************
 	 * @brief Reads all records of the data file into an empty container and marks them as saved, then reads the
 	 * timestamp file if it exists and is not empty.
 	 *
@@ -751,6 +762,12 @@ FORCE_INLINE [[nodiscard]] bool Base<Derived>::AssignPath(
 	LOG_DEBUG_NEW("Persistence files opened, data path: \"{}\", data fd: {}, timestamp path: \"{}\", timestamp fd: {}",
 		path.Get(), m_file.value, timestampPath.Get(), m_timestampFile.value);
 	return true;
+}
+
+template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::IsInitialized() const noexcept
+{
+	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_lock };
+	return m_file.value != -1 && m_timestampFile.value != -1;
 }
 
 template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Read() noexcept
