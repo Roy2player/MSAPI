@@ -29,15 +29,12 @@
 class HTTPServer : public MSAPI::Server, public MSAPI::ActionsCounter, MSAPI::Protocol::HTTP::IHandler {
 private:
 	std::optional<MSAPI::Protocol::HTTP::Data> m_HTTPData;
-	std::string m_webSourcesPath;
 
 public:
 	HTTPServer();
 
 	// MSAPI::Server
 	void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
-	// MSAPI::Application
-	void HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate) final;
 	// MSAPI::Protocol::HTTP::IHandler
 	void HandleHttp(
 		const std::shared_ptr<MSAPI::Connection::Data>& connectionData, const MSAPI::Protocol::HTTP::Data& data) final;

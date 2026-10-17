@@ -99,13 +99,13 @@ public:
 };
 
 /**************************
- * @brief Owns executable-relative testData roots to test registration order, file existence and directory exclusion.
+ * @brief Owns executable-relative testData paths to test registration order, file existence and directory exclusion.
  *
  * @concurrency No.
  */
 class Files {
 private:
-	std::string m_root;
+	std::string m_path;
 	bool m_created{};
 	bool m_isValid{};
 
@@ -119,9 +119,9 @@ public:
 	Files& operator=(Files&&) = delete;
 
 	/**************************
-	 * @return Executable-relative test data root path.
+	 * @return Executable-relative test data directory path.
 	 */
-	FORCE_INLINE [[nodiscard]] const std::string& GetRoot() const noexcept;
+	FORCE_INLINE [[nodiscard]] const std::string& GetPath() const noexcept;
 
 	/**************************
 	 * @return True if all fixture directories and files are created.
@@ -239,43 +239,43 @@ Files
 
 FORCE_INLINE Files::Files()
 {
-	m_root.resize(512);
-	MSAPI::Helper::GetExecutableDir(m_root);
-	if (m_root.empty()) [[unlikely]] {
+	m_path.resize(512);
+	MSAPI::Helper::GetExecutableDir(m_path);
+	if (m_path.empty()) [[unlikely]] {
 		LOG_ERROR_NEW("{}", "Cannot get executable path");
 		return;
 	}
 
-	m_root += "testData";
-	if (MSAPI::IO::HasPath(std::string_view{ m_root })) {
-		LOG_ERROR_NEW("Test directory already exists, path: \"{}\", clean it before next test execution", m_root);
+	m_path += "testData";
+	if (MSAPI::IO::HasPath(std::string_view{ m_path })) {
+		LOG_ERROR_NEW("Test directory already exists, path: \"{}\", clean it before next test execution", m_path);
 		return;
 	}
 
-	m_created = MSAPI::IO::CreateDir(std::string_view{ m_root });
+	m_created = MSAPI::IO::CreateDir(std::string_view{ m_path });
 	if (!m_created) {
-		LOG_ERROR_NEW("Cannot create test directory, path: \"{}\"", m_root);
+		LOG_ERROR_NEW("Cannot create test directory, path: \"{}\"", m_path);
 		return;
 	}
 
-	m_isValid = MSAPI::IO::CreateDir(std::string_view{ m_root + "/first" })
-		&& MSAPI::IO::CreateDir(std::string_view{ m_root + "/second" })
-		&& MSAPI::IO::SaveStr("first", std::string_view{ m_root + "/first/shared.txt" })
-		&& MSAPI::IO::SaveStr("second", std::string_view{ m_root + "/second/shared.txt" })
-		&& MSAPI::IO::SaveStr("fallback", std::string_view{ m_root + "/second/fallback.txt" });
+	m_isValid = MSAPI::IO::CreateDir(std::string_view{ m_path + "/first" })
+		&& MSAPI::IO::CreateDir(std::string_view{ m_path + "/second" })
+		&& MSAPI::IO::SaveStr("first", std::string_view{ m_path + "/first/shared.txt" })
+		&& MSAPI::IO::SaveStr("second", std::string_view{ m_path + "/second/shared.txt" })
+		&& MSAPI::IO::SaveStr("fallback", std::string_view{ m_path + "/second/fallback.txt" });
 	if (!m_isValid) {
-		LOG_ERROR_NEW("Cannot create HTTP test fixtures, path: \"{}\"", m_root);
+		LOG_ERROR_NEW("Cannot create HTTP test fixtures, path: \"{}\"", m_path);
 	}
 }
 
 FORCE_INLINE Files::~Files() noexcept
 {
-	if (m_created && !MSAPI::IO::Remove(m_root)) {
-		LOG_ERROR_NEW("Cannot remove test directory, path: \"{}\", clean it before next test execution", m_root);
+	if (m_created && !MSAPI::IO::Remove(m_path)) {
+		LOG_ERROR_NEW("Cannot remove test directory, path: \"{}\", clean it before next test execution", m_path);
 	}
 }
 
-FORCE_INLINE [[nodiscard]] const std::string& Files::GetRoot() const noexcept { return m_root; }
+FORCE_INLINE [[nodiscard]] const std::string& Files::GetPath() const noexcept { return m_path; }
 
 FORCE_INLINE [[nodiscard]] bool Files::IsValid() const noexcept { return m_isValid; }
 
@@ -290,96 +290,132 @@ FORCE_INLINE [[nodiscard]] bool Paths(MSAPI::Test::Test& t)
 
 	Handler handler;
 	RETURN_IF_FALSE(
-		t.Assert(handler.AddPath("text", files.GetRoot() + "/first"), true, "First root accepts missing slash"));
-	RETURN_IF_FALSE(t.Assert(handler.AddPath("text", files.GetRoot() + "/second/"), true, "Second root accepts slash"));
+		t.Assert(handler.AddSourcePath("text", files.GetPath() + "/first"), true, "First path accepts missing slash"));
+	RETURN_IF_FALSE(
+		t.Assert(handler.AddSourcePath("text", files.GetPath() + "/second/"), true, "Second path accepts slash"));
 
 	MSAPI::SString<512> out;
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", "/shared.txt", out), true, "File exists in both roots"));
-	RETURN_IF_FALSE(t.Assert(out.Get() == files.GetRoot() + "/first/shared.txt", true, "First root wins"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("text", "/shared.txt", out), true, "File exists in both paths"));
+	RETURN_IF_FALSE(t.Assert(out.Get() == files.GetPath() + "/first/shared.txt", true, "First path wins"));
 	RETURN_IF_FALSE(
-		t.Assert(handler.LookupPath("text", "/fallback.txt", out), true, "Later root supplies missing file"));
+		t.Assert(handler.SourceLookup("text", "/fallback.txt", out), true, "Later path supplies missing file"));
 	RETURN_IF_FALSE(
-		t.Assert(out.Get() == files.GetRoot() + "/second/fallback.txt", true, "Full fallback path returned"));
+		t.Assert(out.Get() == files.GetPath() + "/second/fallback.txt", true, "Full fallback path returned"));
 
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("missing", "/shared.txt", out), false, "Unknown key fails"));
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", "/missing", out), false, "Missing file fails"));
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", "/", out), false, "Directory fails"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("missing", "/shared.txt", out), false, "Unknown key fails"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("text", "/missing", out), false, "Missing file fails"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("text", "/", out), false, "Directory fails"));
 	for (const std::string_view filename : { "/../shared.txt", "/a..b", "/a\\b", "shared.txt", "", "/.." }) {
-		RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", filename, out), false, "Unsafe filename fails"));
+		RETURN_IF_FALSE(t.Assert(handler.SourceLookup("text", filename, out), false, "Unsafe filename fails"));
 	}
 	RETURN_IF_FALSE(t.Assert(
-		handler.LookupPath("text", std::string_view{ "/shared.txt\0suffix", 18 }, out), false, "Embedded NUL fails"));
+		handler.SourceLookup("text", std::string_view{ "/shared.txt\0suffix", 18 }, out), false, "Embedded NUL fails"));
 
 	Handler priority;
-	std::string priorityRoot{ files.GetRoot() + "/second/" };
-	RETURN_IF_FALSE(t.Assert(priorityRoot.size() <= 246, true, "Priority root fits boundary fixture"));
+	std::string priorityPath{ files.GetPath() + "/second/" };
+	RETURN_IF_FALSE(t.Assert(priorityPath.size() <= 246, true, "Priority path fits boundary fixture"));
 	// Repeated separators preserve the file location while making its full path exactly 256 bytes.
-	priorityRoot.resize(246, '/');
-	RETURN_IF_FALSE(t.Assert(priority.AddPath("text", priorityRoot), true, "Longer priority root added"));
+	priorityPath.resize(246, '/');
+	RETURN_IF_FALSE(t.Assert(priority.AddSourcePath("text", priorityPath), true, "Longer priority path added"));
 	RETURN_IF_FALSE(
-		t.Assert(priority.AddPath("text", files.GetRoot() + "/first"), true, "Shorter fallback root added"));
+		t.Assert(priority.AddSourcePath("text", files.GetPath() + "/first"), true, "Shorter fallback path added"));
 	MSAPI::SString<256> boundary;
-	RETURN_IF_FALSE(t.Assert(priority.LookupPath("text", "/shared.txt", boundary), false,
-		"Oversized first existing file does not change root priority"));
+	RETURN_IF_FALSE(t.Assert(priority.SourceLookup("text", "/shared.txt", boundary), false,
+		"Oversized first existing file does not change path priority"));
 	RETURN_IF_FALSE(t.Assert(boundary.Empty(), true, "Oversized priority path leaves output empty"));
 	MSAPI::SString<257> exact;
-	RETURN_IF_FALSE(
-		t.Assert(priority.LookupPath("text", "/shared.txt", exact), true, "Priority path fits with terminator space"));
-	RETURN_IF_FALSE(t.Assert(exact.Get() == priorityRoot + "shared.txt", true, "Boundary path preserves first root"));
+	RETURN_IF_FALSE(t.Assert(
+		priority.SourceLookup("text", "/shared.txt", exact), true, "Priority path fits with terminator space"));
+	RETURN_IF_FALSE(t.Assert(exact.Get() == priorityPath + "shared.txt", true, "Boundary path preserves first path"));
 	RETURN_IF_FALSE(t.Assert(exact.GetSize(), uint64_t{ 256 }, "Boundary path has exactly 256 bytes"));
 	RETURN_IF_FALSE(t.Assert(exact.GetBuffer()[256] == '\0', true, "Boundary path is null terminated"));
 
 	Handler missingPriority;
-	std::string missingRoot{ files.GetRoot() + "/first/" };
-	missingRoot.resize(246, '/');
-	RETURN_IF_FALSE(t.Assert(missingPriority.AddPath("text", missingRoot), true, "Longer missing-file root added"));
+	std::string missingPath{ files.GetPath() + "/first/" };
+	missingPath.resize(246, '/');
 	RETURN_IF_FALSE(
-		t.Assert(missingPriority.AddPath("text", files.GetRoot() + "/second"), true, "Existing fallback root added"));
+		t.Assert(missingPriority.AddSourcePath("text", missingPath), true, "Longer missing-file path added"));
 	RETURN_IF_FALSE(t.Assert(
-		missingPriority.LookupPath("text", "/fallback.txt", boundary), true, "Oversized missing path allows fallback"));
-	RETURN_IF_FALSE(t.Assert(boundary.Get() == files.GetRoot() + "/second/fallback.txt", true,
+		missingPriority.AddSourcePath("text", files.GetPath() + "/second"), true, "Existing fallback path added"));
+	RETURN_IF_FALSE(t.Assert(missingPriority.SourceLookup("text", "/fallback.txt", boundary), true,
+		"Oversized missing path allows fallback"));
+	RETURN_IF_FALSE(t.Assert(boundary.Get() == files.GetPath() + "/second/fallback.txt", true,
 		"Missing priority file returns fallback path"));
 
 	MSAPI::SString<8> tiny;
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", "/shared.txt", tiny), false, "Long full path fails"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("text", "/shared.txt", tiny), false, "Long full path fails"));
 	RETURN_IF_FALSE(t.Assert(tiny.Empty(), true, "No truncated path returned"));
 	RETURN_IF_FALSE(
-		t.Assert(handler.LookupPath("text", "/" + std::string(600, 'x'), out), false, "Long filename fails"));
-	RETURN_IF_FALSE(t.Assert(handler.AddPath(std::string(33, 'x'), "/tmp"), false, "Oversized key fails"));
-	RETURN_IF_FALSE(t.Assert(handler.AddPath("text", std::string(256, 'x')), false, "Trailing slash must fit"));
-	RETURN_IF_FALSE(t.Assert(handler.AddPath("text", std::string(257, '/')), false, "Oversized root fails"));
-	RETURN_IF_FALSE(t.Assert(handler.AddPath("text", std::string_view{ "/tmp\0x", 6 }), false, "NUL root fails"));
-	RETURN_IF_FALSE(t.Assert(handler.AddPath(std::string_view{ "a\0b", 3 }, "/tmp"), false, "NUL key fails"));
+		t.Assert(handler.SourceLookup("text", "/" + std::string(600, 'x'), out), false, "Long filename fails"));
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath(std::string(33, 'x'), "/tmp"), false, "Oversized key fails"));
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath("text", std::string(256, 'x')), false, "Trailing slash must fit"));
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath("text", std::string(257, '/')), false, "Oversized path fails"));
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath("text", std::string_view{ "/tmp\0x", 6 }), false, "NUL path fails"));
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath(std::string_view{ "a\0b", 3 }, "/tmp"), false, "NUL key fails"));
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath("", files.GetPath()), false, "Empty key fails"));
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath("text", ""), false, "Empty path fails"));
+	RETURN_IF_FALSE(
+		t.Assert(handler.AddSourcePath("text", "/"), false, "Path that becomes empty after removing slash fails"));
+	RETURN_IF_FALSE(
+		t.Assert(handler.AddSourcePath("absent", files.GetPath() + "/absent"), false, "Missing path fails"));
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath("file", files.GetPath() + "/first/shared.txt"), false,
+		"Existing file fails after trailing-slash normalization"));
+	const std::string pathWithSuffix{ files.GetPath() + "/first/absent" };
+	RETURN_IF_FALSE(
+		t.Assert(handler.AddSourcePath("view", std::string_view{ pathWithSuffix }.substr(0, pathWithSuffix.size() - 7)),
+			true, "Path view does not require a trailing NUL"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("view", "/shared.txt", out), true, "Path view supports file lookup"));
+	RETURN_IF_FALSE(t.Assert(
+		out.Get() == files.GetPath() + "/first/shared.txt", true, "Stored path joins the filename with one slash"));
 
-	// Additional registrations preserve existing roots and their priority.
+	// Additional registrations preserve existing paths and their priority.
 	for (uint64_t index{}; index < 32; ++index) {
-		RETURN_IF_FALSE(t.Assert(handler.AddPath("text", "/tmp"), true, "Additional root accepted"));
+		RETURN_IF_FALSE(t.Assert(handler.AddSourcePath("text", "/tmp"), true, "Additional path accepted"));
 	}
 	RETURN_IF_FALSE(
-		t.Assert(handler.AddPath("late", files.GetRoot() + "/second"), true, "Root beyond former cap added"));
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", "/shared.txt", out), true, "Existing roots survive growth"));
+		t.Assert(handler.AddSourcePath("late", files.GetPath() + "/second"), true, "Path beyond former cap added"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("text", "/shared.txt", out), true, "Existing paths survive growth"));
 	RETURN_IF_FALSE(
-		t.Assert(out.Get() == files.GetRoot() + "/first/shared.txt", true, "Growth preserves root priority"));
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("late", "/fallback.txt", out), true, "Root beyond former cap found"));
+		t.Assert(out.Get() == files.GetPath() + "/first/shared.txt", true, "Growth preserves path priority"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("late", "/fallback.txt", out), true, "Path beyond former cap found"));
 	RETURN_IF_FALSE(
-		t.Assert(out.Get() == files.GetRoot() + "/second/fallback.txt", true, "Late root returns full path"));
+		t.Assert(out.Get() == files.GetPath() + "/second/fallback.txt", true, "Late path returns full path"));
 
 	RETURN_IF_FALSE(t.Assert(
-		handler.RemovePath("missing", files.GetRoot() + "/first"), false, "Removal does not affect other keys"));
-	RETURN_IF_FALSE(t.Assert(handler.RemovePath("text", files.GetRoot() + "/first"), true,
-		"First root removed with trailing-slash normalization"));
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", "/shared.txt", out), true, "Remaining root found"));
+		handler.RemoveSourcePath("missing", files.GetPath() + "/first"), false, "Removal does not affect other keys"));
+	RETURN_IF_FALSE(t.Assert(handler.RemoveSourcePath("text", files.GetPath() + "/first"), true,
+		"First path removed with trailing-slash normalization"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("text", "/shared.txt", out), true, "Remaining path found"));
 	RETURN_IF_FALSE(
-		t.Assert(out.Get() == files.GetRoot() + "/second/shared.txt", true, "Removal preserves remaining priority"));
-	RETURN_IF_FALSE(t.Assert(handler.AddPath("text", files.GetRoot() + "/first"), true, "Removed root added again"));
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", "/shared.txt", out), true, "Reinserted key found"));
+		t.Assert(out.Get() == files.GetPath() + "/second/shared.txt", true, "Removal preserves remaining priority"));
 	RETURN_IF_FALSE(
-		t.Assert(out.Get() == files.GetRoot() + "/second/shared.txt", true, "Reinserted root follows existing roots"));
+		t.Assert(handler.AddSourcePath("text", files.GetPath() + "/first"), true, "Removed path added again"));
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("text", "/shared.txt", out), true, "Reinserted key found"));
+	RETURN_IF_FALSE(
+		t.Assert(out.Get() == files.GetPath() + "/second/shared.txt", true, "Reinserted path follows existing paths"));
+	RETURN_IF_FALSE(t.Assert(handler.RemoveSourcePath("text", files.GetPath() + "/first/"), true,
+		"Registered path removed using a trailing slash"));
 
-	handler.ClearPaths();
-	RETURN_IF_FALSE(t.Assert(handler.LookupPath("text", "/shared.txt", out), false, "Cleared roots are unavailable"));
+	handler.ClearSourcePaths();
+	RETURN_IF_FALSE(t.Assert(handler.SourceLookup("text", "/shared.txt", out), false, "Cleared paths are unavailable"));
+	// The directory form needs one byte for the slash and one for the null terminator.
+	const uint64_t pathCapacity{ MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY };
+	std::string maximumPath{ files.GetPath() + "/" };
+	maximumPath.resize(pathCapacity - 1, '/');
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath(std::string(32, 'x'), maximumPath), true,
+		"Maximum key and directory form fit with null terminator"));
+	maximumPath += '/';
 	RETURN_IF_FALSE(
-		t.Assert(handler.AddPath(std::string(32, 'x'), std::string(255, 'x') + "/"), true, "Maximum values fit"));
+		t.Assert(handler.AddSourcePath("full", maximumPath), false, "Full directory form leaves no terminator space"));
+	maximumPath.resize(pathCapacity - 2 - std::string_view{ "first" }.size());
+	maximumPath += "first";
+	RETURN_IF_FALSE(t.Assert(handler.AddSourcePath("boundary", maximumPath), true,
+		"Maximum path without slash reserves slash and terminator space"));
+	RETURN_IF_FALSE(
+		t.Assert(handler.SourceLookup("boundary", "/shared.txt", out), true, "Maximum path supports file lookup"));
+	RETURN_IF_FALSE(t.Assert(out.Get() == maximumPath + "/shared.txt", true, "Maximum path preserves the full path"));
+	RETURN_IF_FALSE(t.Assert(handler.RemoveSourcePath("boundary", maximumPath + "/"), true,
+		"Maximum path removed using its directory form"));
 
 	return true;
 }
@@ -500,7 +536,7 @@ FORCE_INLINE [[nodiscard]] bool Responses(MSAPI::Test::Test& t)
 	Files files;
 	RETURN_IF_FALSE(t.Assert(files.IsValid(), true, "Response source files created"));
 	output.clear();
-	const std::string path{ files.GetRoot() + "/first/shared.txt" };
+	const std::string path{ files.GetPath() + "/first/shared.txt" };
 	const std::string pathWithSuffix{ path + "extra" };
 	RETURN_IF_FALSE(t.Assert(
 		input.Get().SendSource(input.GetConnection(), std::string_view{ pathWithSuffix }.substr(0, path.size())), true,
