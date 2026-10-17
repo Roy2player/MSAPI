@@ -42,18 +42,18 @@ Declarations
 ---------------------------------------------------------------------------------*/
 
 /**************************
- * @brief Common part of persistences: data and timestamp file paths, timestamp of the last change, lock, Read and
- * Save. Records are saved to the data file in append mode, so saved records are never removed from the data file.
- * Records handling is provided by Derived at compile time.
+ * @brief Common part of persistences: data and timestamp file descriptors, timestamp of the last change, lock,
+ * Read and Save. Records are saved to the data file in append mode, so saved records are never removed from the data
+ * file. Records handling is provided by Derived at compile time.
  *
- * @attention Data file and timestamp file paths are derived once from constructor arguments and never change.
+ * @attention Data and timestamp files are bound by the first successful AssignPath and never change.
  *
  * @note Each data file record is a raw copy of the Derived object wrapper, so the record size is the size of the
  * wrapper. The stored saved status is not meaningful and is overwritten on Read. Any change of the wrapper layout
  * makes existing data files unreadable. The timestamp file holds a raw copy of MSAPI::Timer.
  * @note After Save with CLEAR policy the container is empty, while its objects stay in the data file. Read must be
  * called before the next change.
- * @note Data and timestamp files are opened on construction and stay open until destruction, so reading and saving do
+ * @note Data and timestamp files are opened by AssignPath and stay open until destruction, so reading and saving do
  * not open files. Files are bound to the opened descriptors: if a file is renamed or removed while the object exists,
  * reading and saving continue with the renamed or removed file and a new file at the path is not used.
  *
@@ -77,8 +77,6 @@ public:
 
 protected:
 	MSAPI::Timer m_timestamp{ 0 };
-	MSAPI::SString<512> m_path;
-	MSAPI::SString<512> m_timestampPath;
 	// Opened for reading and for saving in append mode
 	MSAPI::IO::FileGuard m_file;
 	// Opened for reading and writing, overwritten on each save
@@ -87,21 +85,13 @@ protected:
 
 public:
 	/**************************
-	 * @brief Normalizes the directory, creates it with missing parents, stores the data and timestamp file paths and
-	 * opens both files for reading and writing, creating them empty if missing and keeping existing content. The data
-	 * file path is "dir/.name" and the timestamp file path is "dir/.name_timestamp".
-	 *
-	 * @attention Empty directory, empty name, name with '/', path exceeding capacity, failed directory creation or
-	 * failed opening of a file leave the paths empty, and Read, Save and emplacement with SAVE_IMMEDIATE policy fail.
-	 *
-	 * @param dir Directory containing the data and timestamp files.
-	 * @param name Base name of the data and timestamp files.
+	 * @brief Constructs an unbound persistence without opening files. AssignPath is required before disk IO.
 	 *
 	 * @locking Is not required.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Base(std::string_view dir, std::string_view name) noexcept;
+	FORCE_INLINE Base() noexcept = default;
 
 protected:
 	// Protected to forbid destruction via pointer to Base
@@ -119,13 +109,44 @@ public:
 	Base& operator=(Base&&) = delete;
 
 	/**************************
+	 * @brief Normalizes the trailing directory separator, creates missing directories and opens the data and
+	 * timestamp files without truncating them. The paths are "dir/.name" and "dir/.name_timestamp". The first
+	 * successful call binds the files for the object lifetime. Further calls are rejected, including the same path.
+	 *
+	 * @attention Empty directory or name, a name containing '/', paths exceeding capacity, failed directory creation
+	 * or failed file opening return false. Failure preserves the existing binding or leaves an unbound object
+	 * available for retry. No records or timestamps are loaded, cleared or changed.
+	 *
+	 * @param dir Directory containing the data and timestamp files.
+	 * @param name Base name of the data and timestamp files.
+	 *
+	 * @locking Write lock m_lock.
+	 *
+	 * @return True if the files are successfully opened and bound, false otherwise.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE [[nodiscard]] bool AssignPath(std::string_view dir, std::string_view name) noexcept;
+
+	/**************************
+	 * @attention Does not indicate whether Read has succeeded.
+	 *
+	 * @locking Read lock m_lock.
+	 *
+	 * @return True if both files are open after successful AssignPath, false otherwise.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE [[nodiscard]] bool IsInitialized() const noexcept;
+
+	/**************************
 	 * @brief Reads all records of the data file into an empty container and marks them as saved, then reads the
 	 * timestamp file if it exists and is not empty.
 	 *
-	 * @attention Files opened on construction are read, see the class note. Empty data file has no records. Timestamp
-	 * is left at its previous value if the timestamp file is empty, as it is created empty on construction. Failed
-	 * reads, including invalid file descriptors after failed construction, leave the container empty and the timestamp
-	 * unchanged.
+	 * @attention Files opened by AssignPath are read, see the class note. Empty data file has no records. Timestamp
+	 * is left at its previous value if the timestamp file is empty, as it is created empty by AssignPath. Failed
+	 * reads, including invalid file descriptors before successful path assignment, leave the container empty and the
+	 * timestamp unchanged.
 	 *
 	 * @locking Write lock m_lock.
 	 *
@@ -323,16 +344,13 @@ private:
 
 public:
 	/**************************
-	 * @brief Construct a new Single object.
-	 *
-	 * @param dir Directory containing the data and timestamp files.
-	 * @param name Base name of the data and timestamp files.
+	 * @brief Constructs an empty persistence without binding files. AssignPath provides the directory and name later.
 	 *
 	 * @locking Is not required.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Single(std::string_view dir, std::string_view name) noexcept;
+	FORCE_INLINE Single() noexcept = default;
 
 	Single(const Single&) = delete;
 	Single(Single&&) = delete;
@@ -565,16 +583,13 @@ private:
 
 public:
 	/**************************
-	 * @brief Construct a new Pair object, see Base constructor.
-	 *
-	 * @param dir Directory containing the data and timestamp files.
-	 * @param name Base name of the data and timestamp files.
+	 * @brief Constructs an empty persistence without binding files. AssignPath provides the directory and name later.
 	 *
 	 * @locking Is not required.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Pair(std::string_view dir, std::string_view name) noexcept;
+	FORCE_INLINE Pair() noexcept = default;
 
 	Pair(const Pair&) = delete;
 	Pair(Pair&&) = delete;
@@ -680,74 +695,87 @@ Base
 ---------------------------------------------------------------------------------*/
 
 template <typename Derived>
-FORCE_INLINE Base<Derived>::Base(const std::string_view dir, const std::string_view name) noexcept
+FORCE_INLINE [[nodiscard]] bool Base<Derived>::AssignPath(
+	const std::string_view dir, const std::string_view name) noexcept
 {
+	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_lock };
 	if (dir.empty() || name.empty() || name.find('/') != std::string_view::npos) [[unlikely]] {
-		LOG_WARNING_NEW("Cannot initialize persistence, directory: \"{}\", name: \"{}\"", dir, name);
-		return;
+		LOG_WARNING_NEW("Cannot assign persistence path, directory: \"{}\", name: \"{}\"", dir, name);
+		return false;
 	}
 
+	if (m_file.value != -1 || m_timestampFile.value != -1) [[unlikely]] {
+		LOG_WARNING_NEW(
+			"Cannot change assigned persistence files, data fd: {}, timestamp fd: {}, directory: \"{}\", name: \"{}\"",
+			m_file.value, m_timestampFile.value, dir, name);
+		return false;
+	}
+
+	constexpr static size_t CAPACITY{ 512 };
+	MSAPI::SString<CAPACITY> path;
+	MSAPI::SString<CAPACITY> timestampPath;
 	constexpr std::string_view SUFFIX{ "_timestamp" };
-	constexpr auto CAPACITY{ std::min(m_path.GetCapacity(), m_timestampPath.GetCapacity()) };
 
 	const bool addSeparator{ dir.back() != '/' };
 
 	// Reserve space for the null terminator of the longest path
 	if (dir.size() + addSeparator + 1 /* dot */ + name.size() + SUFFIX.size() >= CAPACITY) [[unlikely]] {
 		LOG_ERROR_NEW("Persistence path exceeds capacity: {}, directory: \"{}\", name: \"{}\"", CAPACITY, dir, name);
-		return;
+		return false;
 	}
 
-	if (!m_path.Copy(dir) || (addSeparator && !m_path.Concatenate(std::string_view{ "/" }))) [[unlikely]] {
+	if (!path.Copy(dir) || (addSeparator && !path.Concatenate(std::string_view{ "/" }))) [[unlikely]] {
 		LOG_ERROR_NEW("Failed to build persistence directory path, directory: \"{}\"", dir);
-		m_path.Clear();
-		return;
+		return false;
 	}
 
-	if (!m_path.NullTerminate() || (!MSAPI::IO::HasPath(m_path.Get()) && !MSAPI::IO::CreateDir(m_path.Get())))
+	if (!path.NullTerminate() || (!MSAPI::IO::HasPath(path.Get()) && !MSAPI::IO::CreateDir(path.Get()))) [[unlikely]] {
+		return false;
+	}
+
+	if (!path.Concatenate(std::string_view{ "." }) || !path.Concatenate(name) || !path.NullTerminate()
+		|| !timestampPath.Copy(path.Get()) || !timestampPath.Concatenate(SUFFIX) || !timestampPath.NullTerminate())
 		[[unlikely]] {
 
-		m_path.Clear();
-		return;
-	}
-
-	if (!m_path.Concatenate(std::string_view{ "." }) || !m_path.Concatenate(name) || !m_path.NullTerminate()
-		|| !m_timestampPath.Copy(m_path.Get()) || !m_timestampPath.Concatenate(SUFFIX)
-		|| !m_timestampPath.NullTerminate()) [[unlikely]] {
-
-		LOG_ERROR_NEW("Failed to build persistence paths, path: \"{}\"", m_path.Get());
-		m_path.Clear();
-		m_timestampPath.Clear();
-		return;
+		LOG_ERROR_NEW("Failed to build persistence paths, path: \"{}\"", path.Get());
+		return false;
 	}
 
 	// Files are opened once to avoid opening them on each save, existing content is kept
-	m_file = MSAPI::IO::FileGuard{ m_path.Get(), O_RDWR | O_CREAT | O_APPEND, 0644 };
+	m_file = MSAPI::IO::FileGuard{ path.Get(), O_RDWR | O_CREAT | O_APPEND, 0644 };
 	if (m_file.value == -1) [[unlikely]] {
+		const auto error{ errno };
 		LOG_ERROR_NEW(
-			"Cannot open persistence data file: \"{}\". Error №{}: {}", m_path.Get(), errno, std::strerror(errno));
-		m_path.Clear();
-		m_timestampPath.Clear();
-		return;
+			"Cannot open persistence data file: \"{}\". Error №{}: {}", path.Get(), error, std::strerror(error));
+		return false;
 	}
 
-	m_timestampFile = MSAPI::IO::FileGuard{ m_timestampPath.Get(), O_RDWR | O_CREAT, 0644 };
+	m_timestampFile = MSAPI::IO::FileGuard{ timestampPath.Get(), O_RDWR | O_CREAT, 0644 };
 	if (m_timestampFile.value == -1) [[unlikely]] {
-		LOG_ERROR_NEW("Cannot open persistence timestamp file: \"{}\". Error №{}: {}", m_timestampPath.Get(), errno,
-			std::strerror(errno));
+		const auto error{ errno };
+		LOG_ERROR_NEW("Cannot open persistence timestamp file: \"{}\". Error №{}: {}", timestampPath.Get(), error,
+			std::strerror(error));
 		m_file.Clear();
-		m_path.Clear();
-		m_timestampPath.Clear();
-		return;
+		return false;
 	}
+
+	LOG_DEBUG_NEW("Persistence files opened, data path: \"{}\", data fd: {}, timestamp path: \"{}\", timestamp fd: {}",
+		path.Get(), m_file.value, timestampPath.Get(), m_timestampFile.value);
+	return true;
+}
+
+template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::IsInitialized() const noexcept
+{
+	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_lock };
+	return m_file.value != -1 && m_timestampFile.value != -1;
 }
 
 template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Read() noexcept
 {
-	// Invalid file descriptors after failed construction are rejected by IO
+	// Invalid file descriptors before successful path assignment are rejected by IO
 	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_lock };
 	if (!Self().IsEmptyImpl()) [[unlikely]] {
-		LOG_WARNING_NEW("Interrupt the attempt to read records into a nonempty container, path: \"{}\"", m_path.Get());
+		LOG_WARNING_NEW("Interrupt the attempt to read records into a nonempty container, data fd: {}", m_file.value);
 		return false;
 	}
 
@@ -759,13 +787,14 @@ template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Read(
 
 	struct stat timestampStat { };
 	if (fstat(m_timestampFile.value, &timestampStat) == -1) [[unlikely]] {
-		LOG_ERROR_NEW("Cannot get status of persistence timestamp file: \"{}\". Error №{}: {}", m_timestampPath.Get(),
-			errno, std::strerror(errno));
+		const auto error{ errno };
+		LOG_ERROR_NEW("Cannot get status of persistence timestamp file, fd: {}. Error №{}: {}", m_timestampFile.value,
+			error, std::strerror(error));
 		Self().ClearImpl();
 		return false;
 	}
 
-	// Timestamp file is created empty on construction, so an empty file has no timestamp yet
+	// AssignPath creates a missing timestamp file empty, so it has no timestamp yet
 	if (timestampStat.st_size != 0) {
 		MSAPI::Timer timestamp{ 0 };
 		if (!MSAPI::IO::ReadBinary(&timestamp, m_timestampFile.value)) [[unlikely]] {
@@ -776,13 +805,13 @@ template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Read(
 		m_timestamp = timestamp;
 	}
 
-	LOG_DEBUG_NEW("Records from path: {} are read successfully", m_path.Get());
+	LOG_DEBUG_NEW("Records are read successfully, data fd: {}", m_file.value);
 	return true;
 }
 
 template <typename Derived> template <bool Policy> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Save() noexcept
 {
-	// Invalid file descriptors after failed construction are rejected by IO
+	// Invalid file descriptors before successful path assignment are rejected by IO
 	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_lock };
 	if (!Self().SaveImpl() || !SaveTimestamp()) [[unlikely]] {
 		return false;
@@ -810,12 +839,12 @@ template <typename Derived>
 template <typename Record>
 FORCE_INLINE [[nodiscard]] bool Base<Derived>::SaveRecord(const Record& record) noexcept
 {
-	// Invalid file descriptor after failed construction is rejected by IO
+	// Invalid file descriptor before successful path assignment is rejected by IO
 	if (!IO::SaveBinary<IO::APPEND>(record, m_file.value)) [[unlikely]] {
 		return false;
 	}
 
-	LOG_DEBUG_NEW("Record at: {} saved to: {}", m_timestamp.ToString(), m_path.Get());
+	LOG_DEBUG_NEW("Record at: {} saved, data fd: {}", m_timestamp.ToString(), m_file.value);
 	return true;
 }
 
@@ -888,13 +917,6 @@ Single
 
 template <template <typename> typename Container, typename Type>
 	requires std::is_trivially_copyable_v<Type>
-FORCE_INLINE Single<Container, Type>::Single(const std::string_view dir, const std::string_view name) noexcept
-	: BaseT{ dir, name }
-{
-}
-
-template <template <typename> typename Container, typename Type>
-	requires std::is_trivially_copyable_v<Type>
 FORCE_INLINE [[nodiscard]] const Container<typename Single<Container, Type>::Object>&
 Single<Container, Type>::Get() const noexcept
 {
@@ -960,8 +982,8 @@ FORCE_INLINE [[nodiscard]] bool Single<Container, Type>::SaveImpl() noexcept
 		return false;
 	}
 
-	LOG_DEBUG_NEW("Records at: {} saved to: {}, new entries: {}", BaseT::m_timestamp.ToString(), BaseT::m_path.Get(),
-		std::ranges::distance(unsaved));
+	LOG_DEBUG_NEW("Records at: {} saved, data fd: {}, new entries: {}", BaseT::m_timestamp.ToString(),
+		BaseT::m_file.value, std::ranges::distance(unsaved));
 
 	while (begin != end) {
 		// Friend access
@@ -1057,13 +1079,6 @@ Pair
 
 template <template <typename...> typename Map, typename Key, typename Value>
 	requires std::is_trivially_copyable_v<Key> && std::is_trivially_copyable_v<Value>
-FORCE_INLINE Pair<Map, Key, Value>::Pair(const std::string_view dir, const std::string_view name) noexcept
-	: BaseT{ dir, name }
-{
-}
-
-template <template <typename...> typename Map, typename Key, typename Value>
-	requires std::is_trivially_copyable_v<Key> && std::is_trivially_copyable_v<Value>
 FORCE_INLINE [[nodiscard]] const Map<Key, typename Pair<Map, Key, Value>::Object>&
 Pair<Map, Key, Value>::Get() const noexcept
 {
@@ -1080,6 +1095,7 @@ FORCE_INLINE [[nodiscard]] bool Pair<Map, Key, Value>::Emplace(const Key& key, V
 {
 	// Copies of the modified object to print them after the lock is released
 	std::optional<std::pair<Object, Object>> modification;
+	[[maybe_unused]] int32_t file{ -1 };
 	bool result{ true };
 	{
 		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ BaseT::m_lock };
@@ -1092,6 +1108,7 @@ FORCE_INLINE [[nodiscard]] bool Pair<Map, Key, Value>::Emplace(const Key& key, V
 		if (!isInserted) {
 			if constexpr (ModifyPolicy == MODIFY_NOTIFY) {
 				modification.emplace(it->second, it->second);
+				file = BaseT::m_file.value;
 			}
 
 			// Friend access
@@ -1119,10 +1136,10 @@ FORCE_INLINE [[nodiscard]] bool Pair<Map, Key, Value>::Emplace(const Key& key, V
 	if constexpr (ModifyPolicy == MODIFY_NOTIFY) {
 		if (modification.has_value()) {
 			const auto& [before, after] = *modification;
-			LOG_INFO_NEW("Persistence object is modified from: {}, to: {}. Path: \"{}\", key: {}, create time: {}, "
+			LOG_INFO_NEW("Persistence object is modified from: {}, to: {}, data fd: {}, key: {}, create time: {}, "
 						 "previous modify time: {}, current modify time: {}",
-				before.GetValue(), after.GetValue(), BaseT::m_path.Get(), before.GetKey(),
-				before.GetCreateTime().ToString(), before.GetModifyTime().ToString(), after.GetModifyTime().ToString());
+				before.GetValue(), after.GetValue(), file, before.GetKey(), before.GetCreateTime().ToString(),
+				before.GetModifyTime().ToString(), after.GetModifyTime().ToString());
 		}
 	}
 
@@ -1167,8 +1184,8 @@ FORCE_INLINE [[nodiscard]] bool Pair<Map, Key, Value>::SaveImpl() noexcept
 		return false;
 	}
 
-	LOG_DEBUG_NEW("Records at: {} saved to: {}, new entries: {}", BaseT::m_timestamp.ToString(), BaseT::m_path.Get(),
-		std::ranges::distance(unsaved));
+	LOG_DEBUG_NEW("Records at: {} saved, data fd: {}, new entries: {}", BaseT::m_timestamp.ToString(),
+		BaseT::m_file.value, std::ranges::distance(unsaved));
 
 	for (const auto& key : m_unsavedKeys) {
 		// Friend access
