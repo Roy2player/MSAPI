@@ -420,6 +420,17 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 	}
 
 	{
+		// Date is a small value type; assignment is required when a persistence record is replayed by key.
+		static_assert(std::is_trivially_copyable_v<MSAPI::Timer::Date>);
+		static_assert(std::is_trivially_copy_assignable_v<MSAPI::Timer::Date>);
+		MSAPI::Timer::Date date{ 2024, 9, 21 };
+		const MSAPI::Timer::Date replacement{ 2026, 10, 17 };
+		date = replacement;
+		RETURN_IF_FALSE(t.Assert(date.ToString(), "2026-10-17", "Date copy assignment"));
+		date = MSAPI::Timer::Date{ 2025, 1, 2 };
+		RETURN_IF_FALSE(t.Assert(date.ToString(), "2025-01-02", "Date move assignment"));
+	}
+	{
 		const MSAPI::Timer::Date first{ 2024, 9, 21 }, second{ 2024, 9, 22 };
 		RETURN_IF_FALSE(t.Assert(first < second, true, "Date < operator: 2024-09-21 < 2024-09-22"));
 		RETURN_IF_FALSE(t.Assert(first <= second, true, "Date <= operator: 2024-09-21 <= 2024-09-22"));
