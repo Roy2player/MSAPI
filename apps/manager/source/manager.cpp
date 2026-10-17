@@ -35,8 +35,6 @@ Manager::Manager()
 		return;
 	}
 
-	RegisterParameter(1001, { "Web sources path", &m_webSourcesPath });
-
 	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("installedApp"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->FillInstalledApps(out, single);
@@ -100,6 +98,33 @@ Manager::Manager()
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Stream& stream) {
 			return this->FillAppParameters(out, stream);
 		});
+
+	std::string path;
+	path.resize(512);
+	MSAPI::Helper::GetExecutableDir(path);
+	if (path.empty()) [[unlikely]] {
+		LOG_ERROR("Error getting executable directory path");
+		HandleDeleteRequest();
+	}
+
+	path += "../web/";
+
+	const auto buildSourcePath{ [] [[nodiscard]] (
+									MSAPI::SString<MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY> & sourcePath,
+									const std::string_view base, const std::string_view key) noexcept {
+		return !base.empty() && base.find('\0') == std::string_view::npos && sourcePath.Copy(base)
+			&& (base.back() == '/' || sourcePath.Concatenate("/")) && sourcePath.Concatenate(key)
+			&& sourcePath.Concatenate("/");
+	} };
+
+	for (const std::string_view key : { "html", "css", "images", "js" }) {
+		MSAPI::SString<MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY> sourcePath;
+		if (!buildSourcePath(sourcePath, path, key)
+			|| !MSAPI::Protocol::HTTP::IHandler::AddSourcePath(key, sourcePath.Get())) [[unlikely]] {
+
+			LOG_WARNING_NEW("Cannot add path for key: \"{}\", path: \"{}\"", key, path);
+		}
+	}
 }
 
 void Manager::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
@@ -144,7 +169,7 @@ void Manager::HandleHttp(
 	MSAPI::SString<512> source;
 	const auto closeConnection{ data.IsConnectionClose() };
 
-	if (!key.empty() && LookupPath(key, filename, source)) {
+	if (!key.empty() && SourceLookup(key, filename, source)) {
 		(void)data.SendSource(connectionData->GetConnection(), source.Get(), /*contentType=*/"", closeConnection);
 		return;
 	}
@@ -312,22 +337,6 @@ void Manager::HandleRunRequest()
 		HandlePauseRequest();
 		return;
 	}
-
-	const auto buildRoot{ [](MSAPI::SString<MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY>& root,
-							  const std::string_view base, const std::string_view key) noexcept {
-		return !base.empty() && base.find('\0') == std::string_view::npos && root.Copy(base)
-			&& (base.back() == '/' || root.Concatenate("/")) && root.Concatenate(key) && root.Concatenate("/");
-	} };
-
-	for (const std::string_view key : { "html", "css", "images", "js" }) {
-		MSAPI::SString<MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY> root;
-		if (!buildRoot(root, m_webSourcesPath, key) || !MSAPI::Protocol::HTTP::IHandler::AddPath(key, root.Get()))
-			[[unlikely]] {
-
-			HandlePauseRequest();
-			return;
-		}
-	}
 }
 
 void Manager::HandlePauseRequest()
@@ -361,27 +370,6 @@ void Manager::HandlePauseRequest()
 	}
 
 	m_authorizationModule.Stop();
-	MSAPI::Protocol::HTTP::IHandler::ClearPaths();
-}
-
-void Manager::HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
-{
-	for (const auto& [id, value] : parametersUpdate) {
-		if (id == 1001) {
-			if (MSAPI::Application::IsRunning()) {
-				LOG_WARNING_NEW(
-					"Change web sources path from: {} is interrupted, because of application is in a running state",
-					m_webSourcesPath);
-				continue;
-			}
-		}
-
-		MSAPI::Application::MergeParameter(id, value);
-	}
-
-	if (!MSAPI::Application::AreParametersValid()) {
-		HandlePauseRequest();
-	}
 }
 
 void Manager::HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,

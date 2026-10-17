@@ -49,7 +49,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	Manager manager;
 	app = &manager;
 	manager.SetName("MSAPI Manager");
-	manager.HandleModifyRequest({ { 1001, path + "web/" }, { 1000003, size_t{ 99999 } } });
+	manager.HandleModifyRequest({ { 1000003, size_t{ 99999 } } });
 	manager.HandleRunRequest();
 	manager.Start(INADDR_ANY, 1134);
 

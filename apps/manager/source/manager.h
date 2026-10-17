@@ -53,8 +53,6 @@
  * Bin is a path to app bin file, it must be executable.
  * View is an optional parameter, it is a parameter where port where app view can be accessed is stored.
  *
- * @brief Parameter 1001 "Web sources path" is a path to directory contains web files.
- *
  * @brief The idea of metadata in MSAPI Manager frontend can be described as "FE must know about metadata item only when
  * it can be needed". That is why an app metadata is asked only when app instance is available in the system and
  * populated by app itself. FE can use metadata items which are not a part of any app, they can be registered there
@@ -202,7 +200,6 @@ private:
 	};
 
 private:
-	std::string m_webSourcesPath;
 	std::map<size_t, std::shared_ptr<InstalledAppData>> m_hashToInstalledAppData;
 	mutable MSAPI::Lock::AtomicRW m_hashToInstalledAppDataLock;
 	std::map<uint16_t, std::shared_ptr<CreatedAppData>> m_portToCreatedApp;
@@ -220,7 +217,7 @@ private:
 
 public:
 	/**************************
-	 * @brief Construct a new Manager object, check access to /bin/bash, register parameters.
+	 * @brief Construct a new Manager object, check access to /bin/bash.
 	 */
 	Manager();
 
@@ -234,7 +231,6 @@ public:
 	// MSAPI::Application
 	void HandleRunRequest() final;
 	void HandlePauseRequest() final;
-	void HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate) final;
 	void HandleParameters(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
 		const std::map<uint64_t, std::variant<standardTypes>>& parameters) final;
 	void HandleHello(const std::shared_ptr<MSAPI::Connection::Data>& connectionData) final;

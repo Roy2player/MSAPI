@@ -720,6 +720,8 @@ public:
 	 * @param json Request json.
 	 *
 	 * @todo Add tests coverage.
+	 *
+	 * @todo Consider additional callback to signal handler about stream action interruptions.
 	 */
 	FORCE_INLINE void Collect(
 		uint64_t id, uint64_t hash, const std::shared_ptr<Connection::Data>& connectionData, Json&& json);

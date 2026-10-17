@@ -551,11 +551,12 @@ public:
  *
  * @concurrency Yes.
  *
- * @purging RemovePath releases one keyed root; ClearPaths and destruction release every root and its storage.
+ * @purging RemoveSourcePath releases one keyed path; ClearSourcePaths and destruction release every path and its
+ * storage.
  */
 class IHandler {
 public:
-	// Default capacity of a registered source root in bytes, including its trailing slash.
+	// Source path buffer capacity in bytes, including its trailing slash and null terminator.
 	static inline constexpr uint64_t DEFAULT_PATH_CAPACITY{ 256 };
 	// Default capacity of an endpoint destination (scheme://host[:port]) in bytes.
 	static inline constexpr uint64_t DEFAULT_DESTINATION_CAPACITY{ 256 };
@@ -583,49 +584,53 @@ public:
 	IHandler& operator=(IHandler&&) = delete;
 
 	/**************************
-	 * @brief Appends a keyed root, adding / if missing. Multiple roots per key retain insertion order.
+	 * @brief Adds a trailing / if missing, null terminates the path and checks its existence with MSAPI::IO::HasPath.
+	 * Removes one trailing /, null terminates and checks the resulting path, then stores it under key.
+	 * Preserves insertion order for multiple paths registered under the same key.
 	 *
-	 * @param key Key of up to 32 bytes.
-	 * @param root Nonempty root of up to DEFAULT_PATH_CAPACITY bytes after adding its trailing /.
-	 *
-	 * @locking Write lock m_pathsLock inside.
-	 *
-	 * @return False if either value is empty, contains NUL, does not fit, or registration allocation fails.
-	 *
-	 * @test Yes.
-	 */
-	[[nodiscard]] bool AddPath(std::string_view key, std::string_view root) noexcept;
-
-	/**************************
-	 * @brief Removes the first registration matching key and root, preserving the order of all other roots.
-	 *
-	 * @param key Key of the root to remove.
-	 * @param root Registered root, with or without its trailing /.
+	 * @param key Nonempty key of up to 32 bytes without NUL characters.
+	 * @param path Existing directory path without NUL characters. Its trailing-slash form and null terminator must
+	 * fit in DEFAULT_PATH_CAPACITY bytes. The path must remain nonempty after removing one trailing /.
 	 *
 	 * @locking Write lock m_pathsLock inside.
 	 *
-	 * @return True if a matching registration is removed, false if root is invalid or no match exists.
+	 * @return True if the checked path is registered. Returns false for invalid key or path, insufficient capacity,
+	 * either failed path check, or registration allocation failure.
 	 *
 	 * @test Yes.
 	 */
-	[[nodiscard]] bool RemovePath(std::string_view key, std::string_view root) noexcept;
+	[[nodiscard]] bool AddSourcePath(std::string_view key, std::string_view path) noexcept;
 
 	/**************************
-	 * @brief Clears registered roots for configuration reloads.
+	 * @brief Removes the first registration matching key and path, preserving the order of all other paths.
+	 *
+	 * @param key Key of the path to remove.
+	 * @param path Registered path, with or without one trailing /. Removes one trailing / before comparison.
+	 *
+	 * @locking Write lock m_pathsLock inside.
+	 *
+	 * @return True if a matching registration is removed, false if path is invalid or no match exists.
+	 *
+	 * @test Yes.
+	 */
+	[[nodiscard]] bool RemoveSourcePath(std::string_view key, std::string_view path) noexcept;
+
+	/**************************
+	 * @brief Clears registered paths for configuration reloads.
 	 *
 	 * @locking Write lock m_pathsLock inside.
 	 *
 	 * @test Yes.
 	 */
-	void ClearPaths() noexcept;
+	void ClearSourcePaths() noexcept;
 
 	/**************************
-	 * @brief Finds the first existing regular file under the roots for key without allocating. Clears out on failure.
-	 * Does not fall back to later roots if the first existing file's full path exceeds the output capacity.
+	 * @brief Finds the first existing regular file under the paths for key without allocating. Clears out on failure.
+	 * Does not fall back to later paths if the first existing file's full path exceeds the output capacity.
 	 *
 	 * @tparam Capacity Caller buffer capacity, including its null terminator.
 	 *
-	 * @param key Registered root key.
+	 * @param key Registered path key.
 	 * @param filename Path beginning with /; rejects .., NUL and backslash anywhere.
 	 * @param out Receives the full path of the first existing regular file.
 	 *
@@ -636,7 +641,7 @@ public:
 	 * @test Yes.
 	 */
 	template <uint64_t Capacity>
-	FORCE_INLINE [[nodiscard]] bool LookupPath(
+	FORCE_INLINE [[nodiscard]] bool SourceLookup(
 		std::string_view key, std::string_view filename, SString<Capacity>& out) const noexcept
 	{
 		out.Clear();
@@ -658,15 +663,15 @@ public:
 			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ m_pathsLock };
 			const auto [begin, end]{ m_paths.equal_range(key) };
 			for (auto it{ begin }; it != end; ++it) {
-				const auto& root{ it->second };
+				const auto& path{ it->second };
 
-				// Check file existence independently of output capacity to preserve root priority.
+				// Check file existence independently of output capacity to preserve path priority.
 				SString<DEFAULT_PATH_CAPACITY + Capacity> candidate;
-				if (!candidate.Copy(root.Get()) || !candidate.Concatenate(filename.substr(1))
-					|| !candidate.NullTerminate()) [[unlikely]] {
+				if (!candidate.Copy(path.Get()) || !candidate.Concatenate(filename) || !candidate.NullTerminate())
+					[[unlikely]] {
 
 					LOG_WARNING_NEW(
-						"Source path construction failed, root: \"{}\", filename: \"{}\"", root.Get(), filename);
+						"Source path construction failed, path: \"{}\", filename: \"{}\"", path.Get(), filename);
 					return false;
 				}
 

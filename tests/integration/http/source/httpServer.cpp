@@ -17,13 +17,40 @@
  */
 
 #include "httpServer.h"
-#include "../../../../library/source/help/io.inl"
+#include "../../../../library/source/help/helper.h"
 
 HTTPServer::HTTPServer()
 	: MSAPI::Protocol::HTTP::IHandler(this)
 {
-	RegisterParameter(1001, { "Web source path", &m_webSourcesPath });
 	MSAPI::Application::SetState(MSAPI::Application::State::Paused);
+
+	std::string path{};
+	path.resize(512);
+	MSAPI::Helper::GetExecutableDir(path);
+	if (path.empty()) [[unlikely]] {
+		LOG_ERROR_NEW("{}", "Error getting executable directory path");
+		MSAPI::Server::HandleDeleteRequest();
+		return;
+	}
+
+	path += "../web/";
+
+	const auto buildSourcePath{ [] [[nodiscard]] (
+									MSAPI::SString<MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY> & sourcePath,
+									const std::string_view base, const std::string_view key) noexcept {
+		return !base.empty() && base.find('\0') == std::string_view::npos && sourcePath.Copy(base)
+			&& (base.back() == '/' || sourcePath.Concatenate("/")) && sourcePath.Concatenate(key)
+			&& sourcePath.Concatenate("/");
+	} };
+
+	for (const std::string_view key : { "html", "css", "images", "js" }) {
+		MSAPI::SString<MSAPI::Protocol::HTTP::IHandler::DEFAULT_PATH_CAPACITY> sourcePath{};
+		if (!buildSourcePath(sourcePath, path, key)
+			|| !MSAPI::Protocol::HTTP::IHandler::AddSourcePath(key, sourcePath.Get())) [[unlikely]] {
+
+			LOG_WARNING_NEW("Cannot add path for key: \"{}\", path: \"{}\"", key, path);
+		}
+	}
 }
 
 void HTTPServer::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
@@ -32,32 +59,6 @@ void HTTPServer::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)
 	MSAPI::DataHeader header{ recvBuffer.GetBuffer() };
 	MSAPI_HANDLER_HTTP_PRESET
 	LOG_ERROR("Unknown protocol: " + header.ToString());
-}
-
-void HTTPServer::HandleModifyRequest(const std::map<uint64_t, std::variant<standardTypes>>& parametersUpdate)
-{
-	MSAPI::Application::MergeParameters(parametersUpdate);
-
-	if (!MSAPI::IO::HasPath(m_webSourcesPath.c_str())) {
-		MSAPI::Application::SetCustomError(1001, "Web source path does not exist");
-	}
-
-	// Rebuild fixed roots after configuration changes; LookupPath retains registration order.
-	ClearPaths();
-	for (const std::string_view key : { "html", "css", "images", "js" }) {
-		MSAPI::SString<256> root;
-		if (m_webSourcesPath.empty() || !root.Copy(m_webSourcesPath)
-			|| (m_webSourcesPath.back() != '/' && !root.Concatenate("/")) || !root.Concatenate(key)
-			|| !AddPath(key, root.Get())) {
-
-			MSAPI::Application::SetCustomError(1001, "Web source path does not fit HTTP root storage");
-			break;
-		}
-	}
-
-	if (!MSAPI::Application::AreParametersValid()) {
-		HandlePauseRequest();
-	}
 }
 
 void HTTPServer::HandleHttp(
@@ -105,7 +106,7 @@ void HTTPServer::HandleHttp(
 	if (format == "html") {
 		if (url == "/index.html" || url == "/index" || url == "/") {
 			MSAPI::SString<512> source;
-			if (LookupPath("html", "/index.html", source)) {
+			if (SourceLookup("html", "/index.html", source)) {
 				(void)data.SendSource(
 					connectionData->GetConnection(), source.Get(), "text/html", data.IsConnectionClose());
 				return;
@@ -158,7 +159,7 @@ void HTTPServer::HandleHttp(
 	if (!key.empty()) {
 		MSAPI::SString<512> source;
 		const auto closeConnection{ data.IsConnectionClose() };
-		if (LookupPath(key, url, source)) {
+		if (SourceLookup(key, url, source)) {
 			(void)data.SendSource(connectionData->GetConnection(), source.Get(), /*contentType=*/"", closeConnection);
 			return;
 		}
