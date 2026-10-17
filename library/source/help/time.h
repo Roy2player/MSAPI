@@ -168,9 +168,9 @@ public:
 	 * @brief Structure for containing date in format year-month-day.
 	 */
 	struct Date {
-		const uint16_t year;
-		const uint8_t month;
-		const uint8_t day;
+		uint16_t year;
+		uint8_t month;
+		uint8_t day;
 
 	public:
 		/**************************
@@ -184,8 +184,8 @@ public:
 
 		FORCE_INLINE Date(const Date&) noexcept = default;
 		FORCE_INLINE Date(Date&&) noexcept = default;
-		Date& operator=(const Date&) = delete;
-		Date& operator=(Date&&) = delete;
+		FORCE_INLINE Date& operator=(const Date&) noexcept = default;
+		FORCE_INLINE Date& operator=(Date&&) noexcept = default;
 
 		/**************************
 		 * @example 2023-12-30
