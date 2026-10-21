@@ -22,6 +22,9 @@
 #include "../help/helper.h"
 #include "../protocol/standard.h"
 #include "connection.inl"
+#include <array>
+#include <cstdlib>
+#include <execinfo.h>
 #include <string>
 #include <variant>
 
@@ -789,14 +792,42 @@ protected:
 	HandlePauseRequest();
 
 /**************************
- * @brief Create signal handler for UNIX signals. Should be placed before a main function.
+ * @brief Creates a UNIX signal handler that logs up to 64 stack frames at ERROR level for SIGSEGV, SIGABRT, SIGFPE
+ * and SIGILL. Logs other signals at INFO level without capturing a stack. Requests application deletion after logging.
+ * Requires placement before a main function.
+ *
+ * @attention Stack capture and logging are best-effort. The logger uses a mutex and allocations, so a signal that
+ * interrupts logging or allocation can prevent the report from completing.
  *
  * @param app (out) Pointer to application [MSAPI::Application*].
  * @param SignalDelete (out) Signal handler for deleting application [void(*)(int)].
  */
 #define MSAPI_APPLICATION_SIGNAL_HANDLER                                                                               \
-	MSAPI::Application* app;                                                                                           \
-	void SignalDelete([[maybe_unused]] const int signal) { app->HandleDeleteRequest(); }
+	MSAPI::Application* app{};                                                                                         \
+	FORCE_INLINE void SignalDelete(const int32_t signal)                                                               \
+	{                                                                                                                  \
+		if (signal == SIGSEGV || signal == SIGABRT || signal == SIGFPE || signal == SIGILL) [[unlikely]] {             \
+			std::array<void*, 64> frames{};                                                                            \
+			const auto count{ ::backtrace(frames.data(), static_cast<int32_t>(frames.size())) };                       \
+			auto* const symbols{ ::backtrace_symbols(frames.data(), count) };                                          \
+			std::string stackTrace;                                                                                    \
+			/* Preserve raw frame addresses if symbol lookup fails. */                                                 \
+			for (int32_t index{}; index < count; ++index) {                                                            \
+				stackTrace += symbols != nullptr                                                                       \
+					? std::format("\n#{} {}", index, symbols[index])                                                   \
+					: std::format("\n#{} {}", index, frames[static_cast<uint64_t>(index)]);                            \
+			}                                                                                                          \
+			std::free(symbols);                                                                                        \
+			LOG_ERROR_NEW("Application received signal: {}, stack trace:{}", signal, stackTrace);                      \
+		}                                                                                                              \
+		else {                                                                                                         \
+			LOG_INFO_NEW("Application received signal: {}", signal);                                                   \
+		}                                                                                                              \
+                                                                                                                       \
+		if (app != nullptr) [[likely]] {                                                                               \
+			app->HandleDeleteRequest();                                                                                \
+		}                                                                                                              \
+	}
 
 /**************************
  * @brief Set of actions for UNIX signals handling. Should be placed in the beginning of a main function.
@@ -805,7 +836,9 @@ protected:
  * @param SignalDelete (in) Signal handler for deleting application [void(*)(int)].
  */
 #define MSAPI_APPLICATION_SIGNAL_ACTION                                                                                \
-	struct sigaction sa;                                                                                               \
+	/* Initialize all fields and explicitly block no additional signals while the handler runs. */                     \
+	struct sigaction sa { };                                                                                           \
+	sigemptyset(&sa.sa_mask);                                                                                          \
 	sa.sa_handler = SignalDelete;                                                                                      \
 	sa.sa_flags = static_cast<int>(SA_RESETHAND);                                                                      \
 	/*                                                                                                                 \
