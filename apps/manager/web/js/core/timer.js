@@ -23,6 +23,8 @@
  * @brief Has "input" event listener to normalize input value. If input is invalid, it will be set to previous value.
  * Does not take into account UTC in set value. After click outside input, value will be normalized and validated by
  * additional document event listener.
+ * Empty editable inputs show a timestamp mask on focus with the year selected. An untouched mask is removed on blur
+ * without committing a timestamp.
  *
  * @test Yes.
  */
@@ -52,7 +54,29 @@ class Timer {
 		let timers = Timer.#privateFields.m_timers;
 		timers.set(input, isActive);
 
-		input.addEventListener("input", () => { isActive.isActive = true; });
+		let hasFocusMask = false;
+		input.addEventListener("focus", () => {
+			if (input.value != "" || input.readOnly || input.disabled) {
+				return;
+			}
+
+			// Display the existing format without committing the guide as a timestamp.
+			input.value = Timer.ToString(BigInt(input.getAttribute("timestamp")), input.getAttribute("utc"));
+			input.setSelectionRange(0, 4);
+			hasFocusMask = true;
+		});
+
+		input.addEventListener("blur", () => {
+			if (hasFocusMask && input.getAttribute("timestamp") == "") {
+				input.value = "";
+			}
+			hasFocusMask = false;
+		});
+
+		input.addEventListener("input", () => {
+			hasFocusMask = false;
+			isActive.isActive = true;
+		});
 
 		if (!Timer.#privateFields.m_hasGlobalEventListener) {
 			Timer.#privateFields.m_hasGlobalEventListener = true;

@@ -348,4 +348,62 @@ testRunner.Test('Cast input to select and check', async () => {
 	input3.remove();
 });
 
+testRunner.Test('Keep select open when an internal click removes or moves its target', async () => {
+	const input = document.createElement("input");
+	input.setAttribute("parameter-id", parameter_const);
+	body.appendChild(input);
+	Select.Apply({ input });
+	let view;
+	let movedButton;
+	let outsideButton;
+
+	try {
+		input.click();
+		view = View.GetLastCreatedView();
+		await TestRunner.WaitFor(() => view.m_created);
+
+		TestRunner.Step('Remove the clicked internal element before the click reaches document');
+		const removeButton = document.createElement("button");
+		view.m_view.appendChild(removeButton);
+		removeButton.addEventListener("click", () => removeButton.remove());
+		removeButton.click();
+		testRunner.Assert(removeButton.isConnected, false);
+		testRunner.Assert(view.m_parentView.isConnected, true);
+
+		TestRunner.Step('Move the clicked internal element outside the view');
+		movedButton = document.createElement("button");
+		view.m_view.appendChild(movedButton);
+		movedButton.addEventListener("click", () => body.appendChild(movedButton));
+		movedButton.click();
+		testRunner.Assert(movedButton.parentNode, body);
+		testRunner.Assert(view.m_parentView.isConnected, true);
+
+		TestRunner.Step('Selecting an option still closes the view');
+		view.m_view.querySelectorAll(".options > div")[1].querySelector("span").click();
+		testRunner.Assert(input.value, "Fair");
+		testRunner.Assert(input.getAttribute("select"), "1");
+		testRunner.Assert(view.m_parentView.isConnected, false);
+
+		TestRunner.Step('An outside click still closes the view when its target removes itself');
+		input.click();
+		view = View.GetLastCreatedView();
+		await TestRunner.WaitFor(() => view.m_created);
+		outsideButton = document.createElement("button");
+		body.appendChild(outsideButton);
+		outsideButton.addEventListener("click", () => outsideButton.remove());
+		outsideButton.click();
+		testRunner.Assert(outsideButton.isConnected, false);
+		testRunner.Assert(view.m_parentView.isConnected, false);
+	}
+	finally {
+		if (view && view.m_parentView.isConnected) {
+			view.Destructor();
+		}
+		input.remove();
+		movedButton?.remove();
+		outsideButton?.remove();
+		document.dispatchEvent(new Event("click"));
+	}
+});
+
 testRunner.Run();
