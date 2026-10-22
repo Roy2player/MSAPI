@@ -27,6 +27,7 @@
     border: 1px solid var(--border-color-general);
     min-width: 50px;
     min-height: 50px;
+    box-shadow: 0 2px 5px rgb(from var(--border-color-general) r g b / 36%), 0 6px 16px rgb(from var(--border-color-general) r g b / 18%);
 }
 
 .view.sticked>.handleResize {

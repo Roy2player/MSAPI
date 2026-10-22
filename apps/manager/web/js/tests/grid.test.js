@@ -176,6 +176,14 @@ const system_create_parameter = 1;
 MetadataCollector.AddMetadata(system_create_parameter, { name : "Create", type : "system" }, true);
 
 class GridChecking {
+	static PointerEvent(type, { clientX = 0, pointerId = 1, button = 0, isPrimary = true } = {})
+	{
+		const event = new window.MouseEvent(type, { bubbles : true, cancelable : true, clientX, button });
+		Object.defineProperty(event, 'pointerId', { value : pointerId });
+		Object.defineProperty(event, 'isPrimary', { value : isPrimary });
+		return event;
+	}
+
 	static RenderAllRows(grid)
 	{
 		const pool = grid.m_pool;
@@ -552,17 +560,9 @@ class GridChecking {
 			}
 
 			if (filters) {
-				const filteredBefore = GridChecking.SizeOfFilteredRows(grid);
 				await GridChecking.SetFilters(settingsView.getAttribute('uid'), filters);
-				const filteredAfter = GridChecking.SizeOfFilteredRows(grid);
 				fillPropertyInData('filters', filters);
-
-				if (filters.length == 0 || filteredAfter == 0) {
-					fillPropertyInData('isFilterActive', false);
-				}
-				else if (filteredBefore != filteredAfter) {
-					fillPropertyInData('isFilterActive', true);
-				}
+				fillPropertyInData('isFilterActive', filters.length != 0);
 			}
 
 			if (filter != null) {
@@ -2155,6 +2155,119 @@ testRunner.Test('Test virtualized pool navigation, sorting and filtering', async
 	grid.Destructor();
 });
 
+testRunner.Test('Test sorting groups empty values and reorders live updates', async () => {
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid = new Grid(
+		{ parent, indexColumnId : timer_parameter, columns : [ timer_parameter, optional_float_parameter ] });
+	const values = [ 3, undefined, -2, null, 0, undefined, 3 ];
+	values.forEach((value, index) => {
+		const row = { [timer_parameter] : BigInt(index) };
+		if (index != 5) {
+			row[optional_float_parameter] = value;
+		}
+		grid.AddOrUpdateRow(row);
+	});
+	GridChecking.RenderAllRows(grid);
+	const sortColumn = grid.m_columnById.get(optional_float_parameter);
+	const checkOrder = (expected) => {
+		testRunner.Assert(grid.m_visibleRows.map(row => Number(row.values[timer_parameter])), expected);
+		GridChecking.CheckPoolWindow(grid, expected.map((value, index) => index));
+	};
+
+	sortColumn.sorting = Grid.SORTING_TYPE.ascending;
+	grid.ApplySorting({ columnObject : sortColumn });
+	checkOrder([ 1, 3, 5, 2, 4, 0, 6 ]);
+
+	sortColumn.sorting = Grid.SORTING_TYPE.descending;
+	grid.ApplySorting({ columnObject : sortColumn });
+	checkOrder([ 0, 6, 4, 2, 1, 3, 5 ]);
+
+	grid.UpdateRow(1n, { [optional_float_parameter] : -3 });
+	grid.UpdateRow(0n, { [optional_float_parameter] : undefined });
+	await GridChecking.FlushGridUpdates(grid);
+	checkOrder([ 6, 4, 2, 1, 0, 3, 5 ]);
+	grid.Destructor();
+});
+
+testRunner.Test('Test numeric filters reject undefined values in ordering comparisons', async () => {
+	for (const columnId of [timer_parameter, scalar_parameter, optional_float_parameter]) {
+		const parent = document.createElement('div');
+		body.appendChild(parent);
+		const grid = new Grid({ parent, indexColumnId : string_parameter, columns : [ string_parameter, columnId ] });
+		const values = columnId == optional_float_parameter ? [ undefined, null, undefined, -2, 0, 2, 4 ]
+															: [ undefined, null, undefined, -2n, 0n, 2n, 4n ];
+		values.forEach((value, index) => {
+			const row = { [string_parameter] : String(index) };
+			if (index != 2) {
+				row[columnId] = value;
+			}
+			grid.AddOrUpdateRow(row);
+		});
+		const column = grid.m_columnById.get(columnId);
+		const threshold = columnId == optional_float_parameter ? 2 : 2n;
+		const cases = [
+			[ Grid.NUMBER_FILTER.greater, [ '6' ] ], [ Grid.NUMBER_FILTER.less, [ '1', '3', '4' ] ],
+			[ Grid.NUMBER_FILTER.lessOrEqual, [ '1', '3', '4', '5' ] ], [ Grid.NUMBER_FILTER.equal, [ '5' ] ],
+			[ Grid.NUMBER_FILTER.notEqual, [ '0', '1', '2', '3', '4', '6' ] ],
+			[ Grid.NUMBER_FILTER.greaterOrEqual, [ '5', '6' ] ]
+		];
+		for (const [operator, expected] of cases) {
+			column.filters = [ [ operator, threshold ] ];
+			column.isFilterActive = true;
+			grid.ApplyFilters({ columnObject : column });
+			testRunner.Assert(grid.m_visibleRows.map(row => row.values[string_parameter]).sort(), expected,
+				`Unexpected matches for column ${columnId}, operator ${operator}`);
+		}
+
+		grid.UpdateRow('0', { [columnId] : threshold });
+		await GridChecking.FlushGridUpdates(grid);
+		testRunner.Assert(grid.m_visibleRows.map(row => row.values[string_parameter]).sort(), [ '0', '5', '6' ]);
+
+		column.isFilterActive = false;
+		grid.ApplyFilters({ columnObject : column });
+		testRunner.Assert(grid.m_visibleRows.length, values.length);
+		grid.Destructor();
+	}
+});
+
+testRunner.Test('Test configured filters stay active before rows and after all rows match', async () => {
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid
+		= new Grid({ parent, indexColumnId : scalar_parameter, columns : [ scalar_parameter, timer_parameter ] });
+	const column = grid.m_columnById.get(timer_parameter);
+	const cutoff = 1741120856000000000n;
+	column.filters = [ [ Grid.NUMBER_FILTER.greater, cutoff ] ];
+	column.isFilterActive = true;
+	grid.ApplyFilters({ columnObject : column });
+	testRunner.Assert(column.isFilterActive, true, 'Empty grid must retain its configured filter');
+	testRunner.Assert(column.headerCell.querySelector('.filter').classList.contains('active'), true);
+
+	grid.AddOrUpdateRow({ [scalar_parameter] : 1n, [timer_parameter] : cutoff + 1n });
+	await GridChecking.FlushGridUpdates(grid);
+	testRunner.Assert(column.isFilterActive, true, 'All matching rows must leave the filter enabled');
+	grid.AddOrUpdateRow({ [scalar_parameter] : 2n, [timer_parameter] : cutoff });
+	grid.AddOrUpdateRow({ [scalar_parameter] : 3n });
+	await GridChecking.FlushGridUpdates(grid);
+	testRunner.Assert(grid.m_visibleRows.map(row => row.values[scalar_parameter]), [ 1n ]);
+
+	grid.UpdateRow(2n, { [timer_parameter] : cutoff + 2n });
+	grid.UpdateRow(3n, { [timer_parameter] : cutoff + 3n });
+	await GridChecking.FlushGridUpdates(grid);
+	testRunner.Assert(grid.m_visibleRows.length, 3);
+	testRunner.Assert(column.isFilterActive, true, 'Matching live updates must leave the filter enabled');
+	grid.UpdateRow(1n, { [timer_parameter] : cutoff - 1n });
+	await GridChecking.FlushGridUpdates(grid);
+	testRunner.Assert(grid.m_visibleRows.map(row => row.values[scalar_parameter]), [ 2n, 3n ]);
+
+	column.isFilterActive = false;
+	grid.ApplyFilters({ columnObject : column });
+	testRunner.Assert(grid.m_visibleRows.length, 3);
+	testRunner.Assert(column.headerCell.querySelector('.filter').classList.contains('active'), false);
+	grid.Destructor();
+});
+
 testRunner.Test('Test grid update coalesces sorting requests', async () => {
 	const parent = document.createElement('div');
 	body.appendChild(parent);
@@ -2284,6 +2397,226 @@ testRunner.Test('Test grid destruction disposes pool resources', async () => {
 	const keydown = new Event('keydown');
 	Object.defineProperty(keydown, 'key', { value : 'End' });
 	wrapper.dispatchEvent(keydown);
+});
+
+testRunner.Test('Test column drag widths follow reordered, pooled and new rows', () => {
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid
+		= new Grid({ parent, indexColumnId : scalar_parameter, columns : [ scalar_parameter, string_parameter ] });
+	const column = grid.m_columnById.get(string_parameter);
+	const handle = column.resizeHandle;
+	testRunner.Assert(handle.getAttribute('role'), 'separator');
+	testRunner.Assert(handle.getAttribute('aria-label'), `Resize ${column.metadata.metadata.name} column`);
+	testRunner.Assert(handle.getAttribute('aria-orientation'), 'vertical');
+	testRunner.Assert(handle.getAttribute('aria-valuemin'), String(Grid.MIN_COLUMN_WIDTH));
+	testRunner.Assert(handle.getAttribute('aria-valuenow'), String(Grid.DEFAULT_COLUMN_WIDTH));
+	testRunner.Assert(handle.getAttribute('aria-valuetext'), `${Grid.DEFAULT_COLUMN_WIDTH} pixels`);
+	testRunner.Assert(Number(handle.getAttribute('aria-valuemax')) >= column.width, true,
+		'The current accessible width must fall within its declared range');
+	let capturedPointer = null;
+	handle.setPointerCapture = (id) => { capturedPointer = id; };
+	handle.hasPointerCapture = (id) => capturedPointer == id;
+	handle.releasePointerCapture = () => { capturedPointer = null; };
+
+	for (let index = 0; index < 10; ++index) {
+		grid.AddOrUpdateRow({ [scalar_parameter] : BigInt(index), [string_parameter] : `Row ${index}` });
+	}
+	GridChecking.ConfigurePool(grid, 3, 1);
+	try {
+		handle.dispatchEvent(GridChecking.PointerEvent('pointerdown', { button : 2 }));
+		testRunner.Assert(grid.m_resizingColumn, null, 'Secondary mouse button must not resize');
+		handle.dispatchEvent(GridChecking.PointerEvent('pointerdown', { isPrimary : false }));
+		testRunner.Assert(grid.m_resizingColumn, null, 'A second touch must not start a resize');
+		handle.dispatchEvent(GridChecking.PointerEvent('pointerdown', { clientX : 100, pointerId : 7 }));
+		testRunner.Assert(capturedPointer, 7, 'The drag must capture its pointer');
+		document.dispatchEvent(GridChecking.PointerEvent('pointermove', { clientX : 180, pointerId : 8 }));
+		testRunner.Assert(column.width, 150, 'Another pointer must not change the width');
+		document.dispatchEvent(GridChecking.PointerEvent('pointermove', { clientX : 180, pointerId : 7 }));
+		testRunner.Assert(column.width, 230);
+		testRunner.Assert(handle.getAttribute('aria-valuenow'), '230', 'Dragging updates the accessible width');
+		testRunner.Assert(handle.getAttribute('aria-valuetext'), '230 pixels');
+		testRunner.Assert(grid.m_view.style.getPropertyValue(column.widthVariable), '230px');
+		testRunner.Assert(column.headerCell.style.width, `var(${column.widthVariable})`);
+		testRunner.Assert(grid.m_columnById.get(scalar_parameter).width, 150, 'Adjacent column must keep its width');
+		document.dispatchEvent(GridChecking.PointerEvent('pointerup', { pointerId : 8 }));
+		testRunner.Assert(grid.m_resizingColumn == column, true, 'Another pointer must not end the drag');
+		document.dispatchEvent(GridChecking.PointerEvent('pointerup', { pointerId : 7 }));
+		testRunner.Assert(capturedPointer, null, 'Pointer capture must be released');
+		document.dispatchEvent(GridChecking.PointerEvent('pointermove', { clientX : 500, pointerId : 7 }));
+		testRunner.Assert(column.width, 230, 'Released pointer must stop resizing');
+
+		grid.MoveColumn({ order : 1, newOrder : 0 });
+		testRunner.Assert(grid.m_columnByOrder.get(0) == column, true);
+		grid.m_pool.SetShift(5);
+		grid.AddOrUpdateRow({ [scalar_parameter] : 10n, [string_parameter] : 'New row' });
+		grid.m_pool.SetShift(8);
+		for (const cell of column.cells.values()) {
+			testRunner.Assert(cell.style.width, `var(${column.widthVariable})`);
+		}
+		testRunner.Assert(grid.m_view.style.getPropertyValue(column.widthVariable), '230px');
+
+		grid.ClearRows();
+		grid.AddOrUpdateRow({ [scalar_parameter] : 11n, [string_parameter] : 'After clearing' });
+		testRunner.Assert(column.width, 230, 'Clearing rows must preserve column widths');
+		testRunner.Assert(column.cells.values().next().value.style.width, `var(${column.widthVariable})`);
+	}
+	finally {
+		grid.Destructor();
+	}
+});
+
+testRunner.Test('Test column resize minimum, reset controls and grid isolation', () => {
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid = new Grid({ parent, indexColumnId : scalar_parameter, columns : [ scalar_parameter ] });
+	const column = grid.m_columnById.get(scalar_parameter);
+	const handle = column.resizeHandle;
+	try {
+		for (let index = 0; index < 10; ++index) {
+			grid.AddOrUpdateRow({ [scalar_parameter] : BigInt(index) });
+		}
+		GridChecking.ConfigurePool(grid, 3, 1);
+		grid.m_pool.SetShift(3);
+		handle.dispatchEvent(GridChecking.PointerEvent('pointerdown', { clientX : 100 }));
+		document.dispatchEvent(GridChecking.PointerEvent('pointermove', { clientX : -1000 }));
+		testRunner.Assert(column.width, Grid.MIN_COLUMN_WIDTH, 'Dragging cannot collapse a column');
+		document.dispatchEvent(GridChecking.PointerEvent('pointerup'));
+
+		for (const [key, expected] of [[ 'ArrowLeft', Grid.MIN_COLUMN_WIDTH ],
+				 [ 'ArrowRight', Grid.MIN_COLUMN_WIDTH + 10 ], [ 'Home', Grid.DEFAULT_COLUMN_WIDTH ]]) {
+			const event = new window.KeyboardEvent('keydown', { key, bubbles : true, cancelable : true });
+			handle.dispatchEvent(event);
+			testRunner.Assert(column.width, expected);
+			testRunner.Assert(handle.getAttribute('aria-valuenow'), String(expected));
+			testRunner.Assert(handle.getAttribute('aria-valuetext'), `${expected} pixels`);
+			testRunner.Assert(event.defaultPrevented, true);
+			testRunner.Assert(grid.m_pool.m_shift, 3, 'Resize keyboard controls must not scroll the row pool');
+		}
+
+		// A nested grid must shadow inherited width variables with its own default widths.
+		grid.SetColumnWidth({ columnObject : column, width : 250 });
+		testRunner.Assert(
+			handle.getAttribute('aria-valuenow'), '250', 'Programmatic resizing updates the accessible width');
+		const nestedParent = document.createElement('div');
+		grid.m_view.appendChild(nestedParent);
+		const nested
+			= new Grid({ parent : nestedParent, indexColumnId : scalar_parameter, columns : [ scalar_parameter ] });
+		try {
+			testRunner.Assert(nested.m_view.style.getPropertyValue(column.widthVariable), '150px');
+			testRunner.Assert(grid.m_view.style.getPropertyValue(column.widthVariable), '250px');
+		}
+		finally {
+			nested.Destructor();
+		}
+
+		const reset = new window.MouseEvent('dblclick', { bubbles : true, cancelable : true });
+		handle.dispatchEvent(reset);
+		testRunner.Assert(column.width, Grid.DEFAULT_COLUMN_WIDTH, 'Double-click restores the default column width');
+		testRunner.Assert(handle.getAttribute('aria-valuenow'), String(Grid.DEFAULT_COLUMN_WIDTH));
+		testRunner.Assert(handle.getAttribute('aria-valuetext'), `${Grid.DEFAULT_COLUMN_WIDTH} pixels`);
+		testRunner.Assert(grid.m_view.style.getPropertyValue(column.widthVariable), '150px',
+			'Double-click resets the shared header and body width');
+		testRunner.Assert(reset.defaultPrevented, true);
+	}
+	finally {
+		grid.Destructor();
+	}
+});
+
+testRunner.Test('Test column resize listeners are disposed on every exit', () => {
+	const listenerCount = (target, type) => getEventListeners(target)[type]?.length ?? 0;
+	for (const reason of ['pointerup', 'pointercancel', 'lostpointercapture', 'blur', 'remove', 'destroy']) {
+		const parent = document.createElement('div');
+		body.appendChild(parent);
+		const grid = new Grid({ parent, indexColumnId : scalar_parameter, columns : [ scalar_parameter ] });
+		const column = grid.m_columnById.get(scalar_parameter);
+		const handle = column.resizeHandle;
+		const moveListeners = listenerCount(document, 'pointermove');
+		const upListeners = listenerCount(document, 'pointerup');
+		const cancelListeners = listenerCount(document, 'pointercancel');
+		const blurListeners = listenerCount(window, 'blur');
+		handle.dispatchEvent(GridChecking.PointerEvent('pointerdown', { clientX : 100 }));
+		testRunner.Assert(listenerCount(document, 'pointermove'), moveListeners + 1);
+		try {
+			if (reason == 'destroy') {
+				grid.Destructor();
+			}
+			else if (reason == 'remove') {
+				grid.RemoveColumn({ order : 0 });
+				grid.AddColumn({ id : scalar_parameter });
+				testRunner.Assert(grid.m_columnById.get(scalar_parameter).width, 150,
+					'Readding a removed column restores its default width');
+			}
+			else if (reason == 'blur') {
+				window.dispatchEvent(new Event('blur'));
+			}
+			else {
+				const target = reason == 'lostpointercapture' ? handle : document;
+				target.dispatchEvent(GridChecking.PointerEvent(reason));
+			}
+
+			testRunner.Assert(listenerCount(document, 'pointermove'), moveListeners, reason);
+			testRunner.Assert(listenerCount(document, 'pointerup'), upListeners, reason);
+			testRunner.Assert(listenerCount(document, 'pointercancel'), cancelListeners, reason);
+			testRunner.Assert(listenerCount(window, 'blur'), blurListeners, reason);
+			testRunner.Assert(listenerCount(handle, 'lostpointercapture'), 0, reason);
+			testRunner.Assert(grid.m_stopColumnResize, null, reason);
+			document.dispatchEvent(GridChecking.PointerEvent('pointermove', { clientX : 500 }));
+			testRunner.Assert(column.width, 150, 'An ended drag must not change its column');
+		}
+		finally {
+			grid.Destructor();
+		}
+	}
+});
+
+testRunner.Test('Test removing an unsaved filter row is an internal settings click', () => {
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid = new Grid({ parent, indexColumnId : scalar_parameter, columns : [ scalar_parameter ] });
+	try {
+		const column = grid.m_columnById.get(scalar_parameter);
+		const settingsButton = column.headerCell.querySelector('.settings');
+		settingsButton.click();
+		const settings = View.GetLastCreatedView();
+		testRunner.Assert(settings.m_viewType, 'GridSettingsView');
+		const table = settings.m_tables.get(column.systemTableMetadataId);
+		table.AddRow([ Grid.NUMBER_FILTER.greater, 10n ]);
+		const addedRow = table.m_wrapper.querySelector('.row.added');
+		testRunner.Assert(addedRow != null, true);
+		testRunner.Assert(settings.m_parentView.contains(addedRow), true);
+		addedRow.querySelector('.remove').click();
+		testRunner.Assert(addedRow.isConnected, false, 'The unsaved row must be removed immediately');
+		testRunner.Assert(settings.m_parentView.isConnected, true, 'Removing an internal row must keep settings open');
+		testRunner.Assert(table.m_newRowsReferences.length, 0);
+
+		// An option click can also destroy its own popup before it reaches the document listener.
+		table.m_wrapper.querySelector('.row.new input.select').click();
+		const select = View.GetLastCreatedView();
+		testRunner.Assert(select.m_viewType, 'SelectView');
+		select.m_view.querySelector('.options > div > span').click();
+		testRunner.Assert(select.m_parentView.isConnected, false);
+		testRunner.Assert(
+			settings.m_parentView.isConnected, true, 'Choosing a filter operator must keep settings open');
+
+		const triggerChild = document.createElement('span');
+		settingsButton.appendChild(triggerChild);
+		triggerChild.click();
+		testRunner.Assert(
+			settings.m_parentView.isConnected, true, 'A child of the settings trigger is an internal click');
+
+		// Detached external targets must still close the popup; disconnection alone does not make a click internal.
+		const outside = document.createElement('button');
+		body.appendChild(outside);
+		outside.addEventListener('click', () => { outside.remove(); });
+		outside.click();
+		testRunner.Assert(
+			settings.m_parentView.isConnected, false, 'A removed external target is still an outside click');
+	}
+	finally {
+		grid.Destructor();
+	}
 });
 
 testRunner.Run();

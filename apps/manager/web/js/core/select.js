@@ -125,14 +125,16 @@ class Select {
 			if (!Select.#privateFields.m_hasGlobalEventListener) {
 				Select.#privateFields.m_hasGlobalEventListener = true;
 				document.addEventListener("click", (event) => {
+					// Child handlers can remove the clicked node before bubbling reaches this listener.
+					const eventPath = event.composedPath();
 					selectViews.forEach(selectView => {
 						if (!selectView.m_parentView.parentNode) {
 							selectViews.delete(selectView);
 							return;
 						}
 
-						if (!selectView.m_parentView.contains(event.target)) {
-							if (event.target == selectView.m_eventTarget) {
+						if (!eventPath.includes(selectView.m_parentView)) {
+							if (eventPath.includes(selectView.m_eventTarget)) {
 								View.UpdateZIndex(selectView);
 								return;
 							}

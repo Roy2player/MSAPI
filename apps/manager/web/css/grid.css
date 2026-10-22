@@ -27,7 +27,6 @@
 }
 
 .grid>.row.header {
-    font-weight: bold;
     text-transform: uppercase;
     display: flex;
     grid-row: 1;
@@ -44,6 +43,7 @@
 .grid .row>.cell {
     display: block;
     width: 150px;
+    flex-shrink: 0;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
@@ -67,14 +67,41 @@
     background: var(--background-element-header);
     display: flex;
     padding: 0;
+    position: relative;
 }
 
 .grid>.row.header>.cell>.text {
     padding: 1px 5px;
+    padding-right: 10px;
+    overflow: hidden;
+    min-width: 0;
+    flex: 1;
 }
 
 .grid>.row.header>.cell>.group {
     display: flex;
+    flex-shrink: 0;
+}
+
+.grid>.row.header>.cell>.resizeHandle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 6px;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+}
+
+.grid>.row.header>.cell>.resizeHandle:hover,
+.grid>.row.header>.cell>.resizeHandle:focus {
+    background: var(--border-color-general);
+}
+
+.grid.resizingColumns {
+    cursor: col-resize;
+    user-select: none;
 }
 
 .grid>.row.header>.cell>.group>.settings::before {
