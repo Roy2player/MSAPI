@@ -12,8 +12,10 @@
  *
  * @brief Represents a grid with pool of rendered rows. The grid keeps all currently visible row objects in memory but
  * renders only the pool window, so DOM work is proportional to the viewport capacity rather than the total row count.
- * Columns can be added and swapped. Cell can be updated. Cell can represent any of MSAPI data types, if it is a
- * TableData, it will be clickable and will open a new table view with dynamically updated data.
+ * Columns can be added, swapped and resized by dragging their right header edges. Double-clicking a resize handle
+ * restores the default width. Focused resize handles also accept
+ * Left/Right arrows in ten-pixel steps and Home to restore the default width. Cell can represent any of MSAPI data
+ * types, if it is a TableData, it will be clickable and will open a new table view with dynamically updated data.
  *
  * Required parameters:
  * 1) parent - parent node to append grid to.
@@ -44,7 +46,7 @@
  *
  * @test Yes.
  *
- * @todo Add ability to resize columns width.
+ * @todo Add ability to move columns.
  */
 class Grid {
 	static #template = `<div class="grid"><div class="header row"></div><div class="content"></div></div>`;
@@ -58,6 +60,8 @@ class Grid {
 	})();
 
 	static ALIGN_TYPE = Object.freeze({ left : -1, center: 0, right: 1 });
+	static MIN_COLUMN_WIDTH = 60;
+	static DEFAULT_COLUMN_WIDTH = 150;
 
 	/**************************
 	 * @brief ascending is (from top) Z-A and descending is (from top) A-Z.
@@ -137,6 +141,8 @@ class Grid {
 		this.m_pendingFilterColumns = new Set();
 		this.m_isSortingPending = false;
 		this.m_isUpdateScheduled = false;
+		this.m_resizingColumn = null;
+		this.m_stopColumnResize = null;
 		this.m_pool = new Pool(this);
 
 		if (!Grid.#templateElement) {
@@ -173,21 +179,23 @@ class Grid {
 			let tablesViews = Grid.#privateFields.m_tablesViewsForColumnsByRows;
 
 			document.addEventListener("click", (event) => {
+				// Child handlers can remove the clicked node before bubbling reaches this listener.
+				const eventPath = event.composedPath();
 				settingsViews.forEach(settingView => {
 					if (!settingView.m_parentView.parentNode) {
 						settingsViews.delete(settingView);
 						return;
 					}
 
-					if (!settingView.m_parentView.contains(event.target)) {
+					if (!eventPath.includes(settingView.m_parentView)) {
 						const lastView = View.GetLastCreatedView();
 						if (lastView && lastView.m_viewType == "SelectView"
-							&& lastView.m_parentView.contains(event.target)) {
+							&& eventPath.includes(lastView.m_parentView)) {
 
 							return;
 						}
 
-						if (event.target == settingView.m_eventTarget) {
+						if (eventPath.includes(settingView.m_eventTarget)) {
 							View.UpdateZIndex(settingView);
 							return;
 						}
@@ -203,16 +211,16 @@ class Grid {
 							return;
 						}
 
-						if (!tableView.m_parentView.contains(event.target)) {
+						if (!eventPath.includes(tableView.m_parentView)) {
 
 							const lastView = View.GetLastCreatedView();
 							if (lastView && lastView.m_viewType == "TableView"
-								&& lastView.m_parentView.contains(event.target)) {
+								&& eventPath.includes(lastView.m_parentView)) {
 
 								return;
 							}
 
-							if (event.target == tableView.m_eventTarget) {
+							if (eventPath.includes(tableView.m_eventTarget)) {
 								View.UpdateZIndex(tableView);
 								return;
 							}
@@ -328,17 +336,28 @@ class Grid {
 		headerCell.classList.add("cell");
 		headerCell.style.order = order;
 		headerCell.setAttribute("parameter-id", id);
+		headerCell.title = metadata.metadata.name;
+		const widthVariable = `--grid-column-${id}-width`;
+		headerCell.style.width = `var(${widthVariable})`;
 
 		let text = document.createElement("span");
 		text.classList.add("text");
 		text.innerHTML = metadata.metadata.name;
 		headerCell.appendChild(text);
+		const resizeHandle = document.createElement("span");
+		resizeHandle.classList.add("resizeHandle");
+		resizeHandle.title = "Drag to resize column";
+		resizeHandle.tabIndex = 0;
+		headerCell.appendChild(resizeHandle);
 		this.m_header.appendChild(headerCell);
 		let columnObject = {
 			metadata,
 			id,
 			index : order,
 			headerCell,
+			resizeHandle,
+			widthVariable,
+			width : Grid.DEFAULT_COLUMN_WIDTH,
 			cells : new Map(),
 			aligned : Grid.ALIGN_TYPE.center,
 			isFilterActive : false,
@@ -348,6 +367,34 @@ class Grid {
 		};
 		this.m_columnById.set(id, columnObject);
 		this.m_columnByOrder.set(order, columnObject);
+		this.SetColumnWidth({ columnObject, width : Grid.DEFAULT_COLUMN_WIDTH });
+
+		resizeHandle.addEventListener("pointerdown", (event) => { this.StartColumnResize({ columnObject, event }); });
+		resizeHandle.addEventListener("dblclick", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			this.SetColumnWidth({ columnObject, width : Grid.DEFAULT_COLUMN_WIDTH });
+		});
+
+		resizeHandle.addEventListener("keydown", (event) => {
+			let width = columnObject.width;
+			if (event.key == "ArrowLeft") {
+				width -= 10;
+			}
+			else if (event.key == "ArrowRight") {
+				width += 10;
+			}
+			else if (event.key == "Home") {
+				width = Grid.DEFAULT_COLUMN_WIDTH;
+			}
+			else {
+				return;
+			}
+
+			event.preventDefault();
+			event.stopPropagation();
+			this.SetColumnWidth({ columnObject, width });
+		});
 
 		this.m_rowByIndexValue.forEach((rowObject, indexValue) => { this.InsertCell({ columnObject, rowObject }); });
 
@@ -371,12 +418,15 @@ class Grid {
 		grouping.classList.add("group");
 		let settings = document.createElement("span");
 		settings.classList.add("settings", "action");
+		settings.title = "Open column settings";
 		grouping.appendChild(settings);
 		let sorting = document.createElement("span");
 		sorting.classList.add("sorting", "action", "disabled");
+		sorting.title = "Sorting is off; configure it in column settings";
 		grouping.appendChild(sorting);
 		let filter = document.createElement("span");
 		filter.classList.add("filter", "action", "disabled");
+		filter.title = "No filters configured; open column settings to add filters";
 		grouping.appendChild(filter);
 		headerCell.insertBefore(grouping, headerCell.firstChild);
 
@@ -528,6 +578,7 @@ class Grid {
 				sortingNone.classList.add("active");
 				sortingDescending.classList.remove("active");
 				columnObject.sorting = Grid.SORTING_TYPE.none;
+				sorting.title = "Sorting is off; configure it in column settings";
 			});
 
 			sortingDescending.addEventListener("click", () => {
@@ -660,6 +711,8 @@ class Grid {
 	ApplySorting({ columnObject, clear = false })
 	{
 		if (columnObject.sorting == Grid.SORTING_TYPE.none) {
+			columnObject.headerCell.querySelector(".sorting")
+				?.setAttribute("title", "Sorting is off; configure it in column settings");
 			this.m_sortingColumnObject = undefined;
 			return;
 		}
@@ -671,6 +724,7 @@ class Grid {
 			if (sorting) {
 				sorting.classList.remove("active", "ascending", "descending");
 				sorting.classList.add("disabled");
+				sorting.title = "Sorting is off; configure it in column settings";
 			}
 			else {
 				console.error("Sorting ico element is not found in header cell");
@@ -682,8 +736,8 @@ class Grid {
 		if (columnObject.sorting == Grid.SORTING_TYPE.ascending) {
 			this.m_sortingColumnObject = columnObject;
 			this.m_visibleRows.sort((a, b) => {
-				const av = a.values[columnObject.id];
-				const bv = b.values[columnObject.id];
+				const av = a.values[columnObject.id] ?? null;
+				const bv = b.values[columnObject.id] ?? null;
 				if (av === null || bv === null) {
 					if (av === null && bv === null) {
 						return 0;
@@ -702,6 +756,7 @@ class Grid {
 			if (sorting) {
 				sorting.classList.remove("disabled", "descending");
 				sorting.classList.add("active", "ascending");
+				sorting.title = "Sorted ascending; click to sort descending";
 			}
 			else {
 				console.error("Sorting ico element is not found in header cell");
@@ -710,8 +765,8 @@ class Grid {
 		else if (columnObject.sorting == Grid.SORTING_TYPE.descending) {
 			this.m_sortingColumnObject = columnObject;
 			this.m_visibleRows.sort((a, b) => {
-				const av = a.values[columnObject.id];
-				const bv = b.values[columnObject.id];
+				const av = a.values[columnObject.id] ?? null;
+				const bv = b.values[columnObject.id] ?? null;
 				if (av === null || bv === null) {
 					if (av === null && bv === null) {
 						return 0;
@@ -731,6 +786,7 @@ class Grid {
 			if (sorting) {
 				sorting.classList.remove("disabled", "ascending");
 				sorting.classList.add("active", "descending");
+				sorting.title = "Sorted descending; click to sort ascending";
 			}
 		}
 		else {
@@ -752,6 +808,7 @@ class Grid {
 
 			sorting.classList.remove("active", "ascending", "descending");
 			sorting.classList.add("disabled");
+			sorting.title = "Sorting is off; configure it in column settings";
 			break;
 		}
 
@@ -841,6 +898,19 @@ class Grid {
 	 */
 	ApplyFilters({ columnObject })
 	{
+		const filterAction = columnObject.headerCell.querySelector(".filter");
+		if (filterAction) {
+			if (columnObject.filters.length == 0) {
+				filterAction.title = "No filters configured; open column settings to add filters";
+			}
+			else if (columnObject.isFilterActive) {
+				filterAction.title = "Filters are enabled; click to disable";
+			}
+			else {
+				filterAction.title = "Filters are disabled; click to enable";
+			}
+		}
+
 		if (columnObject.filters.length == 0) {
 			let anyUpdate = false;
 			this.m_rowByIndexValue.forEach((rowObject, indexValue) => {
@@ -976,7 +1046,9 @@ class Grid {
 						}
 
 						if (columnObject.filters[i][0] == Grid.NUMBER_FILTER.lessOrEqual) {
-							if (Helper.FloatGreater(rowObject.values[columnObject.id], columnObject.filters[i][1])) {
+							if (rowObject.values[columnObject.id] === undefined
+								|| Helper.FloatGreater(rowObject.values[columnObject.id], columnObject.filters[i][1])) {
+
 								applyFilter(index, rowObject);
 								return;
 							}
@@ -984,7 +1056,9 @@ class Grid {
 						}
 
 						if (columnObject.filters[i][0] == Grid.NUMBER_FILTER.greaterOrEqual) {
-							if (Helper.FloatLess(rowObject.values[columnObject.id], columnObject.filters[i][1])) {
+							if (rowObject.values[columnObject.id] === undefined
+								|| Helper.FloatLess(rowObject.values[columnObject.id], columnObject.filters[i][1])) {
+
 								applyFilter(index, rowObject);
 								return;
 							}
@@ -1011,7 +1085,7 @@ class Grid {
 						}
 
 						if (columnObject.filters[i][0] == Grid.NUMBER_FILTER.less) {
-							if (rowObject.values[columnObject.id] >= columnObject.filters[i][1]) {
+							if (!(rowObject.values[columnObject.id] < columnObject.filters[i][1])) {
 								applyFilter(index, rowObject);
 								return;
 							}
@@ -1019,7 +1093,7 @@ class Grid {
 						}
 
 						if (columnObject.filters[i][0] == Grid.NUMBER_FILTER.greater) {
-							if (rowObject.values[columnObject.id] <= columnObject.filters[i][1]) {
+							if (!(rowObject.values[columnObject.id] > columnObject.filters[i][1])) {
 								applyFilter(index, rowObject);
 								return;
 							}
@@ -1027,7 +1101,7 @@ class Grid {
 						}
 
 						if (columnObject.filters[i][0] == Grid.NUMBER_FILTER.lessOrEqual) {
-							if (rowObject.values[columnObject.id] > columnObject.filters[i][1]) {
+							if (!(rowObject.values[columnObject.id] <= columnObject.filters[i][1])) {
 								applyFilter(index, rowObject);
 								return;
 							}
@@ -1035,7 +1109,7 @@ class Grid {
 						}
 
 						if (columnObject.filters[i][0] == Grid.NUMBER_FILTER.greaterOrEqual) {
-							if (rowObject.values[columnObject.id] < columnObject.filters[i][1]) {
+							if (!(rowObject.values[columnObject.id] >= columnObject.filters[i][1])) {
 								applyFilter(index, rowObject);
 								return;
 							}
@@ -1147,23 +1221,13 @@ class Grid {
 			}
 		}
 
-		if (hasFilteredRows) {
-			filter.classList.add("active");
-			if (settingsView) {
-				settingsView.m_view.querySelector(".group > .action.filter").classList.add("active");
-			}
-
-			this.RequestSorting();
-			return;
-		}
-
-		filter.classList.remove("active");
-		columnObject.isFilterActive = false;
+		// Keep the configured filter enabled even when all current rows match, including an empty grid.
+		filter.classList.add("active");
 		if (settingsView) {
-			settingsView.m_view.querySelector(".group > .action.filter").classList.remove("active");
+			settingsView.m_view.querySelector(".group > .action.filter").classList.add("active");
 		}
 
-		if (anyNewVisible) {
+		if (anyNewVisible || hasFilteredRows) {
 			this.RequestSorting();
 		}
 	}
@@ -1204,6 +1268,81 @@ class Grid {
 		this.m_columnByOrder.set(newOrder, column);
 	}
 
+	/**************************
+	 * @brief Applies one inherited CSS width to the header and all existing, detached and future cells of a column.
+	 *
+	 * @param columnObject Column to resize.
+	 * @param width Requested width in pixels, clamped to the minimum column width.
+	 */
+	SetColumnWidth({ columnObject, width })
+	{
+		if (!Number.isFinite(width)) {
+			console.error("Invalid column width", width);
+			return;
+		}
+
+		columnObject.width = Math.max(Grid.MIN_COLUMN_WIDTH, width);
+		this.m_view.style.setProperty(columnObject.widthVariable, `${columnObject.width}px`);
+	}
+
+	/**************************
+	 * @brief Tracks a primary pointer drag and resizes its column. Releases capture and temporary listeners on release,
+	 * cancellation, lost capture, window blur, column removal or grid destruction.
+	 *
+	 * @param columnObject Column whose header edge was pressed.
+	 * @param event Pointer-down event.
+	 */
+	StartColumnResize({ columnObject, event })
+	{
+		if (event.button != 0 || event.isPrimary === false) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		this.m_stopColumnResize?.();
+		const handle = columnObject.resizeHandle;
+		const pointerId = event.pointerId;
+		const startX = event.clientX;
+		const startWidth = columnObject.headerCell.getBoundingClientRect().width || columnObject.width;
+
+		const onMove = (moveEvent) => {
+			if (moveEvent.pointerId == pointerId) {
+				this.SetColumnWidth({ columnObject, width : startWidth + moveEvent.clientX - startX });
+			}
+		};
+
+		const onEnd = (endEvent) => {
+			if (endEvent.pointerId == pointerId) {
+				stop();
+			}
+		};
+
+		const stop = () => {
+			document.removeEventListener("pointermove", onMove);
+			document.removeEventListener("pointerup", onEnd);
+			document.removeEventListener("pointercancel", onEnd);
+			handle.removeEventListener("lostpointercapture", onEnd);
+			window.removeEventListener("blur", stop);
+			if (handle.hasPointerCapture?.(pointerId)) {
+				handle.releasePointerCapture(pointerId);
+			}
+			this.m_view.classList.remove("resizingColumns");
+			this.m_resizingColumn = null;
+			this.m_stopColumnResize = null;
+		};
+
+		this.m_resizingColumn = columnObject;
+		this.m_stopColumnResize = stop;
+		this.m_view.classList.add("resizingColumns");
+		document.addEventListener("pointermove", onMove);
+		document.addEventListener("pointerup", onEnd);
+		document.addEventListener("pointercancel", onEnd);
+		handle.addEventListener("lostpointercapture", onEnd);
+		window.addEventListener("blur", stop);
+		handle.setPointerCapture?.(pointerId);
+	}
+
 	RemoveColumn({ order })
 	{
 		if (order < 0 || order >= this.m_columnByOrder.size) {
@@ -1232,6 +1371,11 @@ class Grid {
 			}
 		}
 
+		if (this.m_resizingColumn == columnObject) {
+			this.m_stopColumnResize();
+		}
+		this.m_view.style.removeProperty(columnObject.widthVariable);
+
 		columnObject.headerCell.remove();
 		columnObject.cells.forEach((cell) => cell.remove());
 		this.m_columnById.delete(columnObject.id);
@@ -1251,6 +1395,7 @@ class Grid {
 		cell.classList.add("cell");
 		cell.style.order = columnObject.index;
 		cell.setAttribute("parameter-id", columnObject.id);
+		cell.style.width = `var(${columnObject.widthVariable})`;
 
 		if (columnObject.metadata.metadata.type == "TableData") {
 			cell.classList.add("action", "table");
@@ -1626,6 +1771,7 @@ class Grid {
 
 	Destructor()
 	{
+		this.m_stopColumnResize?.();
 		if (this.m_pool) {
 			this.m_pool.Destructor();
 			this.m_pool = null;

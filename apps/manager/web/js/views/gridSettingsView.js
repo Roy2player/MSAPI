@@ -32,19 +32,19 @@ class GridSettingsView extends View {
 View.AddViewTemplate("GridSettingsView", `<div class="gridSettingsView customView">
     <div class="group">
         <span class="text">Align:</span>
-        <span class="action alignLeft"></span>
-        <span class="action alignCenter"></span>
-        <span class="action alignRight"></span>
+        <span class="action alignLeft" title="Align text left"></span>
+        <span class="action alignCenter" title="Center text"></span>
+        <span class="action alignRight" title="Align text right"></span>
     </div>
     <div class="group">
         <span class="text">Sorting:</span>
-        <span class="action ascending"></span>
-        <span class="action none"></span>
-        <span class="action descending"></span>
+        <span class="action ascending" title="Sort ascending"></span>
+        <span class="action none" title="Disable sorting"></span>
+        <span class="action descending" title="Sort descending"></span>
     </div>
     <div class="group">
         <span class="text">Filter:</span>
-        <span class="action filter"></span>
+        <span class="action filter" title="Enable or disable column filters"></span>
     </div>
     <div class="filters"></div>
 </div>`);

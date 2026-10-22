@@ -237,6 +237,7 @@ class Table {
 		if (this.m_isMutable) {
 			let addNewRow = document.createElement("div");
 			addNewRow.classList.add("add");
+			addNewRow.title = "Add row";
 			newRow.appendChild(addNewRow);
 			newRow.querySelector(".add").addEventListener("click", () => this.AddRow());
 
@@ -341,6 +342,7 @@ class Table {
 		newRowCopy.classList.add("added");
 		newRowCopy.querySelector(".add").remove();
 		let remove = document.createElement("div");
+		remove.title = "Remove row";
 		remove.classList.add("remove");
 		newRowCopy.appendChild(remove);
 

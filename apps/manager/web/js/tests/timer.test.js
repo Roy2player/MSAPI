@@ -151,4 +151,64 @@ testRunner.Test('Cast input to timer and check', () => {
 	input3.remove();
 });
 
+testRunner.Test('Show the timer mask when an empty editable input receives focus', () => {
+	const input = document.createElement('input');
+	body.appendChild(input);
+	Timer.Apply(input);
+	const mask = Timer.ToString(0n, input.getAttribute('utc'));
+
+	input.focus();
+	testRunner.Assert(document.activeElement, input);
+	testRunner.Assert(input.value, mask);
+	testRunner.Assert(input.getAttribute('timestamp'), '');
+	testRunner.Assert(input.classList.contains('invalid'), false);
+	testRunner.Assert(input.selectionStart, 0);
+	testRunner.Assert(input.selectionEnd, 4);
+	input.click();
+	testRunner.Assert(input.value, mask);
+	input.blur();
+	testRunner.Assert(input.value, '');
+	testRunner.Assert(input.getAttribute('timestamp'), '');
+
+	input.setAttribute('canBeEmpty', 'true');
+	input.focus();
+	testRunner.Assert(input.value, mask);
+	input.blur();
+	testRunner.Assert(input.value, '');
+
+	input.readOnly = true;
+	input.focus();
+	testRunner.Assert(input.value, '');
+	input.blur();
+	input.readOnly = false;
+	input.disabled = true;
+	input.dispatchEvent(new Event('focus'));
+	testRunner.Assert(input.value, '');
+	input.disabled = false;
+
+	input.focus();
+	const timestamp = 1741120856012345678n;
+	Timer.SetValue(input, timestamp);
+	const value = input.value;
+	input.blur();
+	testRunner.Assert(input.value, value);
+	input.focus();
+	testRunner.Assert(input.value, value);
+	input.blur();
+	testRunner.Assert(input.getAttribute('timestamp'), timestamp.toString());
+
+	const editable = document.createElement('input');
+	body.appendChild(editable);
+	Timer.Apply(editable);
+	editable.focus();
+	editable.value = value;
+	editable.dispatchEvent(new Event('input', { bubbles : true }));
+	editable.blur();
+	body.click();
+	testRunner.Assert(editable.value, value);
+	testRunner.Assert(editable.getAttribute('timestamp'), timestamp.toString());
+	input.remove();
+	editable.remove();
+});
+
 testRunner.Run();
