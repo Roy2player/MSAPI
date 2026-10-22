@@ -348,6 +348,12 @@ class Grid {
 		resizeHandle.classList.add("resizeHandle");
 		resizeHandle.title = "Drag to resize column";
 		resizeHandle.tabIndex = 0;
+		resizeHandle.setAttribute("role", "separator");
+		resizeHandle.setAttribute("aria-label", `Resize ${text.textContent} column`);
+		resizeHandle.setAttribute("aria-orientation", "vertical");
+		resizeHandle.setAttribute("aria-valuemin", Grid.MIN_COLUMN_WIDTH);
+		// Widths have no layout cap; SetColumnWidth accepts any finite number.
+		resizeHandle.setAttribute("aria-valuemax", Number.MAX_VALUE);
 		headerCell.appendChild(resizeHandle);
 		this.m_header.appendChild(headerCell);
 		let columnObject = {
@@ -1270,6 +1276,7 @@ class Grid {
 
 	/**************************
 	 * @brief Applies one inherited CSS width to the header and all existing, detached and future cells of a column.
+	 * Updates the resize separator's accessible width in pixels.
 	 *
 	 * @param columnObject Column to resize.
 	 * @param width Requested width in pixels, clamped to the minimum column width.
@@ -1282,6 +1289,8 @@ class Grid {
 		}
 
 		columnObject.width = Math.max(Grid.MIN_COLUMN_WIDTH, width);
+		columnObject.resizeHandle.setAttribute("aria-valuenow", columnObject.width);
+		columnObject.resizeHandle.setAttribute("aria-valuetext", `${columnObject.width} pixels`);
 		this.m_view.style.setProperty(columnObject.widthVariable, `${columnObject.width}px`);
 	}
 

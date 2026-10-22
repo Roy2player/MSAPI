@@ -2406,6 +2406,14 @@ testRunner.Test('Test column drag widths follow reordered, pooled and new rows',
 		= new Grid({ parent, indexColumnId : scalar_parameter, columns : [ scalar_parameter, string_parameter ] });
 	const column = grid.m_columnById.get(string_parameter);
 	const handle = column.resizeHandle;
+	testRunner.Assert(handle.getAttribute('role'), 'separator');
+	testRunner.Assert(handle.getAttribute('aria-label'), `Resize ${column.metadata.metadata.name} column`);
+	testRunner.Assert(handle.getAttribute('aria-orientation'), 'vertical');
+	testRunner.Assert(handle.getAttribute('aria-valuemin'), String(Grid.MIN_COLUMN_WIDTH));
+	testRunner.Assert(handle.getAttribute('aria-valuenow'), String(Grid.DEFAULT_COLUMN_WIDTH));
+	testRunner.Assert(handle.getAttribute('aria-valuetext'), `${Grid.DEFAULT_COLUMN_WIDTH} pixels`);
+	testRunner.Assert(Number(handle.getAttribute('aria-valuemax')) >= column.width, true,
+		'The current accessible width must fall within its declared range');
 	let capturedPointer = null;
 	handle.setPointerCapture = (id) => { capturedPointer = id; };
 	handle.hasPointerCapture = (id) => capturedPointer == id;
@@ -2426,6 +2434,8 @@ testRunner.Test('Test column drag widths follow reordered, pooled and new rows',
 		testRunner.Assert(column.width, 150, 'Another pointer must not change the width');
 		document.dispatchEvent(GridChecking.PointerEvent('pointermove', { clientX : 180, pointerId : 7 }));
 		testRunner.Assert(column.width, 230);
+		testRunner.Assert(handle.getAttribute('aria-valuenow'), '230', 'Dragging updates the accessible width');
+		testRunner.Assert(handle.getAttribute('aria-valuetext'), '230 pixels');
 		testRunner.Assert(grid.m_view.style.getPropertyValue(column.widthVariable), '230px');
 		testRunner.Assert(column.headerCell.style.width, `var(${column.widthVariable})`);
 		testRunner.Assert(grid.m_columnById.get(scalar_parameter).width, 150, 'Adjacent column must keep its width');
@@ -2478,12 +2488,16 @@ testRunner.Test('Test column resize minimum, reset controls and grid isolation',
 			const event = new window.KeyboardEvent('keydown', { key, bubbles : true, cancelable : true });
 			handle.dispatchEvent(event);
 			testRunner.Assert(column.width, expected);
+			testRunner.Assert(handle.getAttribute('aria-valuenow'), String(expected));
+			testRunner.Assert(handle.getAttribute('aria-valuetext'), `${expected} pixels`);
 			testRunner.Assert(event.defaultPrevented, true);
 			testRunner.Assert(grid.m_pool.m_shift, 3, 'Resize keyboard controls must not scroll the row pool');
 		}
 
 		// A nested grid must shadow inherited width variables with its own default widths.
 		grid.SetColumnWidth({ columnObject : column, width : 250 });
+		testRunner.Assert(
+			handle.getAttribute('aria-valuenow'), '250', 'Programmatic resizing updates the accessible width');
 		const nestedParent = document.createElement('div');
 		grid.m_view.appendChild(nestedParent);
 		const nested
@@ -2499,6 +2513,8 @@ testRunner.Test('Test column resize minimum, reset controls and grid isolation',
 		const reset = new window.MouseEvent('dblclick', { bubbles : true, cancelable : true });
 		handle.dispatchEvent(reset);
 		testRunner.Assert(column.width, Grid.DEFAULT_COLUMN_WIDTH, 'Double-click restores the default column width');
+		testRunner.Assert(handle.getAttribute('aria-valuenow'), String(Grid.DEFAULT_COLUMN_WIDTH));
+		testRunner.Assert(handle.getAttribute('aria-valuetext'), `${Grid.DEFAULT_COLUMN_WIDTH} pixels`);
 		testRunner.Assert(grid.m_view.style.getPropertyValue(column.widthVariable), '150px',
 			'Double-click resets the shared header and body width');
 		testRunner.Assert(reset.defaultPrevented, true);
