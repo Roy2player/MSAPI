@@ -320,8 +320,8 @@ public:
  * @brief The representation of the request with many responses. First call of handler will be addressed to just opened
  * stream. In places, where additional data can be sent, all related opened streams will be notified with it.
  *
- * Distributor does not contain stream event, but send updates to client in next way: pending -> opened (send available
- * data) -> snapshot done -> send new data -> closed by the client or failed.
+ * Distributor stores accepted stream events and sends updates in this order: pending -> opened -> initial response
+ * data -> snapshot done -> additional SendData updates -> interrupted by the client, purged, cleared or failed.
  */
 class Stream : public Event<Stream> {
 public:
@@ -1028,7 +1028,7 @@ FORCE_INLINE void SendFailed(const uint64_t id, Connection& connection, const st
 		"Send stream event failed state, stream id: {}, error: {}, connection id: {}", id, error, connection.GetId());
 	std::string payload{ std::format("{{\"uids\":[{}],\"state\":4,\"error\":\"{}\"}}", id, error) };
 	Data data{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
-		Data::Opcode::Text };
+		Data::Opcode::Text, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 	Send(connection, data);
 }
 
@@ -1172,7 +1172,7 @@ FORCE_INLINE void Stream::SendState(const State state) const
 		connection.GetId());
 	std::string payload{ std::format("{{\"uids\":[{}],\"state\":{}}}", GetId(), U(state)) };
 	Data data{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
-		Data::Opcode::Text };
+		Data::Opcode::Text, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 	Send(connection, data);
 }
 
@@ -1390,7 +1390,7 @@ template <typename Module, typename EventType, typename Filter, typename Impl>
 FORCE_INLINE [[nodiscard]] bool Distributor<Module, EventType, Filter, Impl>::EventsData::EraseEvent(
 	const uint64_t id) noexcept
 {
-	Timer targetTimestamp{ 0 };
+	Timer targetTimestamp{ 0, 0 };
 	const Lock::AtomicRW::Guard<Lock::READ> _{ m_filterToEventsLock };
 	for (auto& [filter, events] : m_filterToEvents) {
 		{
@@ -1754,7 +1754,7 @@ FORCE_INLINE [[nodiscard]] SendResult Distributor<Module, EventType, Filter, Imp
 		Send(destination.GetConnection(),
 			{ std::span<const uint8_t>(
 				  reinterpret_cast<const uint8_t*>(payload.data() + headerShift), payloadTotalSize - headerShift),
-				Data::Opcode::Text });
+				Data::Opcode::Text, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false });
 	}
 
 	return SendResult::Success;
@@ -1851,7 +1851,7 @@ FORCE_INLINE void SinglesDistributor<Module>::Handle(const uint64_t id, const ui
 		LOG_PROTOCOL_NEW("Send single event id: {} success response, connection id: {}", id, connectionId);
 		Send(connectionData->GetConnection(),
 			{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
-				Data::Opcode::Text });
+				Data::Opcode::Text, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false });
 		return;
 	case HandleResult::Fail:
 		SendFailed(id, connectionData->GetConnection(), payload);
@@ -1909,7 +1909,7 @@ FORCE_INLINE void StreamsDistributor<Module>::Handle(const uint64_t id, const ui
 		LOG_PROTOCOL_NEW("Send stream event success response, id {} connection id {}", id, connectionId);
 		Send(connectionData->GetConnection(),
 			{ std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size()),
-				Data::Opcode::Text });
+				Data::Opcode::Text, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false });
 		stream->SendState(Stream::State::Done);
 		return;
 	}

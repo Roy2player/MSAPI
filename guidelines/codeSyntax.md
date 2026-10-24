@@ -30,7 +30,8 @@ const auto connection{ OpenConnection(ip, port, /*doReconnection=*/false) };
 - Use FORCE_INLINE for all declarations and definitions.
 - Use `[[nodiscard]]` for all declarations and definitions of functions that return a value.
 - Use `noexcept` for all declarations and definitions of functions that do not throw exceptions. Make sure that internal calls do not throw exceptions as well or make sure that exceptions are caught and handled inside the function.
-- On function call use `/*tag=*/value` for constants whose meaning is not obvious from the call, e.g. `OpenConnection(ip, port, /*doReconnection=*/false)`. The purpose of the tag is to make non-obvious things explicit, so it is omitted when the function name already tells what the argument is, e.g. `SetSaved(true)`, `SetPort(8080)`.
+- Avoid default values for function parameters and template parameters. Require callers to provide them explicitly so behavior remains visible at each call site. An intrinsic, unambiguous default that does not hide a behavioral choice is allowed, such as the standard comparison epsilon selected from a floating-point type.
+- On function and template calls use `/*tag=*/value` for constants whose meaning is not obvious from the call, e.g. `OpenConnection(ip, port, /*doReconnection=*/false)` and `SaveStr<OVERWRITE, /*Mode=*/0644>()`. The purpose of the tag is to make non-obvious things explicit, so it is omitted when the function or template argument name already tells what the value means, e.g. `SetSaved(true)`, `SetPort(8080)`.
 - Arguments passed by value are declared without `const` qualifier, as it is not a part of the function signature. Definition adds `const` to the argument if it is not modified in the function body.
 
 ```cpp

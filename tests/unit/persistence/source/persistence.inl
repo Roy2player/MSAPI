@@ -54,6 +54,9 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 {
 	LOG_INFO("MSAPI UNIT TEST Persistence");
 
+	static_assert(MSAPI::Persistence::APPEND, "Append mode is true");
+	static_assert(!MSAPI::Persistence::OVERWRITE, "Overwrite mode is false");
+
 	std::string path;
 	path.resize(512);
 	MSAPI::Helper::GetExecutableDir(path);
@@ -76,7 +79,7 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 		FORCE_INLINE ~Cleaner() noexcept
 		{
 			if (!path.empty() && IO::HasPath(path)) {
-				if (!IO::Remove(path)) {
+				if (!IO::Remove</*Buffer=*/512>(path)) {
 					LOG_ERROR_NEW("Cannot remove test dir: {}, clean it before next test execution", path);
 				}
 			}
@@ -86,7 +89,7 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 	MSAPI::Test::Test t;
 
 	RETURN_IF_FALSE(t.Assert(IO::HasPath(pathV), false, "Test directory absent"));
-	RETURN_IF_FALSE(t.Assert(IO::CreateDir(pathV), true, "Create test directory"));
+	RETURN_IF_FALSE(t.Assert(IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(pathV), true, "Create test directory"));
 
 	class TestObject {
 	private:
@@ -192,21 +195,23 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 		const auto checkTimestamp{ [&t](const std::string& dataPath, const MSAPI::Timer expected) -> bool {
 			const auto timestampPath{ dataPath + "_timestamp" };
 			RETURN_IF_FALSE(t.Assert(IO::HasPath(timestampPath.c_str()), true, "Timestamp file exists"));
-			MSAPI::Timer actual{ 0 };
+			MSAPI::Timer actual{ 0, 0 };
 			RETURN_IF_FALSE(t.Assert(IO::ReadBinary(&actual, timestampPath.c_str()), true, "Read timestamp"));
 			RETURN_IF_FALSE(t.Assert(actual, expected, "Disk timestamp"));
 			return true;
 		} };
 
-		RETURN_IF_FALSE(t.Assert(IO::CreateDir(dir.c_str()), true, "Create suite directory"));
+		RETURN_IF_FALSE(
+			t.Assert(IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(dir.c_str()), true, "Create suite directory"));
 
 		{
 			// Default construction does not bind files; failed assignment can be retried without losing pending values.
 			PersistenceType persistence;
 			RETURN_IF_FALSE(t.Assert(persistence.IsInitialized(), false, "Default single has no bound files"));
-			RETURN_IF_FALSE(t.Assert(persistence.GetTimestamp(), MSAPI::Timer{ 0 }, "Unbound single timestamp"));
+			RETURN_IF_FALSE(t.Assert(persistence.GetTimestamp(), MSAPI::Timer{ 0, 0 }, "Unbound single timestamp"));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), false, "Unbound single cannot read"));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), false, "Unbound single cannot save"));
+			RETURN_IF_FALSE(t.Assert(
+				persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), false, "Unbound single cannot save"));
 			RETURN_IF_FALSE(
 				t.Assert(persistence.AssignPath({}, "assigned"), false, "Reject empty assignment directory"));
 			RETURN_IF_FALSE(t.Assert(persistence.AssignPath(dirV, {}), false, "Reject empty assignment name"));
@@ -230,8 +235,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 				t.Assert(persistence.AssignPath(dirV, "otherAssigned"), false, "Reject a different single binding"));
 			RETURN_IF_FALSE(t.Assert(
 				IO::HasPath((dir + ".otherAssigned").c_str()), false, "Rejected reassignment creates no data file"));
-			RETURN_IF_FALSE(
-				t.Assert(persistence.template Save<REMAIN>(), true, "Save through the original single binding"));
+			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true,
+				"Save through the original single binding"));
 			RETURN_IF_FALSE(checkData(dir + ".assigned", { firstBatch[0] }));
 			RETURN_IF_FALSE(checkTimestamp(dir + ".assigned", pendingTimestamp));
 		}
@@ -239,13 +244,15 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 		{
 			// A failed timestamp open releases the data descriptor and allows retry.
 			const auto blocker{ dir + ".assignmentRetry_timestamp" };
-			RETURN_IF_FALSE(t.Assert(IO::CreateDir(blocker.c_str()), true, "Block timestamp assignment"));
+			RETURN_IF_FALSE(t.Assert(
+				IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(blocker.c_str()), true, "Block timestamp assignment"));
 			PersistenceType persistence;
 			RETURN_IF_FALSE(t.Assert(
 				persistence.AssignPath(dirV, "assignmentRetry"), false, "Report timestamp assignment failure"));
 			RETURN_IF_FALSE(
 				t.Assert(persistence.IsInitialized(), false, "Failed timestamp open leaves files uninitialized"));
-			RETURN_IF_FALSE(t.Assert(IO::Remove(blocker.c_str()), true, "Remove timestamp assignment blocker"));
+			RETURN_IF_FALSE(
+				t.Assert(IO::Remove</*Buffer=*/512>(blocker.c_str()), true, "Remove timestamp assignment blocker"));
 			RETURN_IF_FALSE(t.Assert(
 				persistence.AssignPath(dirV, "assignmentRetry"), true, "Retry assignment after failed file open"));
 			RETURN_IF_FALSE(t.Assert(persistence.IsInitialized(), true, "Assignment retry initializes both files"));
@@ -265,10 +272,11 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 				IO::HasPath((missingDir + "/.data_timestamp").c_str()), true, "AssignPath creates timestamp file"));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), true, "New directory reads empty data"));
 			RETURN_IF_FALSE(checkState(persistence, {}, 0));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Save in created directory"));
+			RETURN_IF_FALSE(t.Assert(
+				persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Save in created directory"));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), true, "Read after first save"));
 			RETURN_IF_FALSE(checkData(missingDir + "/.data", {}));
-			RETURN_IF_FALSE(checkTimestamp(missingDir + "/.data", MSAPI::Timer{ 0 }));
+			RETURN_IF_FALSE(checkTimestamp(missingDir + "/.data", MSAPI::Timer{ 0, 0 }));
 			PersistenceType trailing;
 			RETURN_IF_FALSE(t.Assert(
 				trailing.AssignPath(std::string_view{ missingDir + "/" }, "data"), true, "Assign persistence path"));
@@ -276,15 +284,18 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			PersistenceType emptyDirectory;
 			RETURN_IF_FALSE(t.Assert(emptyDirectory.AssignPath("", "data"), false, "Reject empty directory"));
 			RETURN_IF_FALSE(t.Assert(emptyDirectory.Read(), false, "Empty directory read"));
-			RETURN_IF_FALSE(t.Assert(emptyDirectory.template Save<REMAIN>(), false, "Empty directory save"));
+			RETURN_IF_FALSE(t.Assert(
+				emptyDirectory.template Save<REMAIN, MSAPI::Persistence::APPEND>(), false, "Empty directory save"));
 			PersistenceType emptyName;
 			RETURN_IF_FALSE(t.Assert(emptyName.AssignPath(dirV, ""), false, "Reject empty name"));
 			RETURN_IF_FALSE(t.Assert(emptyName.Read(), false, "Empty name read"));
-			RETURN_IF_FALSE(t.Assert(emptyName.template Save<REMAIN>(), false, "Empty name save"));
+			RETURN_IF_FALSE(
+				t.Assert(emptyName.template Save<REMAIN, MSAPI::Persistence::APPEND>(), false, "Empty name save"));
 			PersistenceType separatorName;
 			RETURN_IF_FALSE(
 				t.Assert(separatorName.AssignPath(dirV, "nested/data"), false, "Reject name with separator"));
-			RETURN_IF_FALSE(t.Assert(separatorName.template Save<REMAIN>(), false, "Name with separator save"));
+			RETURN_IF_FALSE(t.Assert(
+				separatorName.template Save<REMAIN, MSAPI::Persistence::APPEND>(), false, "Name with separator save"));
 			RETURN_IF_FALSE(
 				t.Assert(IO::HasPath((dir + ".nested").c_str()), false, "Name with separator creates no file"));
 
@@ -298,81 +309,91 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			PersistenceType fullPath;
 			RETURN_IF_FALSE(t.Assert(fullPath.AssignPath(dirV, fullName.Get()), false, "Reject oversized path"));
 			RETURN_IF_FALSE(t.Assert(fullPath.Read(), false, "Reject path without terminator space on read"));
-			RETURN_IF_FALSE(
-				t.Assert(fullPath.template Save<REMAIN>(), false, "Reject path without terminator space on save"));
+			RETURN_IF_FALSE(t.Assert(fullPath.template Save<REMAIN, MSAPI::Persistence::APPEND>(), false,
+				"Reject path without terminator space on save"));
 
 			const auto parent{ dir + "parentFile" };
-			RETURN_IF_FALSE(t.Assert(IO::SaveStr("block", parent.c_str()), true, "Create regular-file parent"));
+			RETURN_IF_FALSE(t.Assert(IO::SaveStr<IO::OVERWRITE, /*Mode=*/0644>("block", parent.c_str()), true,
+				"Create regular-file parent"));
 			PersistenceType blocked;
 			RETURN_IF_FALSE(t.Assert(
 				blocked.AssignPath(std::string_view{ parent + "/" }, "data"), false, "Reject regular-file parent"));
 			RETURN_IF_FALSE(t.Assert(blocked.Read(), false, "Regular-file parent read"));
-			RETURN_IF_FALSE(t.Assert(blocked.template Save<REMAIN>(), false, "Regular-file parent save"));
+			RETURN_IF_FALSE(t.Assert(
+				blocked.template Save<REMAIN, MSAPI::Persistence::APPEND>(), false, "Regular-file parent save"));
 			const auto directoryFile{ dir + ".directoryFile" };
-			RETURN_IF_FALSE(t.Assert(IO::CreateDir(directoryFile.c_str()), true, "Create data-path blocker"));
+			RETURN_IF_FALSE(t.Assert(
+				IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(directoryFile.c_str()), true, "Create data-path blocker"));
 			PersistenceType directoryPersistence;
 			RETURN_IF_FALSE(
 				t.Assert(directoryPersistence.AssignPath(dirV, "directoryFile"), false, "Reject data-path directory"));
 			RETURN_IF_FALSE(
 				t.Assert(directoryPersistence.IsInitialized(), false, "Failed data open leaves files uninitialized"));
 			RETURN_IF_FALSE(t.Assert(directoryPersistence.Read(), false, "Directory data read"));
-			RETURN_IF_FALSE(t.Assert(directoryPersistence.template Save<REMAIN>(), false, "Directory data save"));
+			RETURN_IF_FALSE(t.Assert(directoryPersistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), false,
+				"Directory data save"));
 
 			// Failed persisting keeps the emplaced object unsaved
 			RETURN_IF_FALSE(t.Assert(directoryPersistence.template EmplaceBack<SAVE_IMMEDIATE>(firstBatch[0]), false,
 				"Persist emplacement without opened files"));
 			RETURN_IF_FALSE(checkState(directoryPersistence, { firstBatch[0] }, 0));
-			RETURN_IF_FALSE(t.Assert(IO::Remove(directoryFile.c_str()), true, "Remove data-path blocker"));
+			RETURN_IF_FALSE(
+				t.Assert(IO::Remove</*Buffer=*/512>(directoryFile.c_str()), true, "Remove data-path blocker"));
 			RETURN_IF_FALSE(t.Assert(directoryPersistence.AssignPath(dirV, "directoryFile"), true,
 				"Retry assignment after failed data open"));
 			RETURN_IF_FALSE(checkState(directoryPersistence, { firstBatch[0] }, 0));
-			RETURN_IF_FALSE(
-				t.Assert(directoryPersistence.template Save<CLEAR>(), true, "Save pending value after retry"));
+			RETURN_IF_FALSE(t.Assert(directoryPersistence.template Save<CLEAR, MSAPI::Persistence::APPEND>(), true,
+				"Save pending value after retry"));
 			RETURN_IF_FALSE(t.Assert(directoryPersistence.Read(), true, "Read pending value after retry"));
 			RETURN_IF_FALSE(checkState(directoryPersistence, { firstBatch[0] }, 1));
 			const auto directoryTimestamp{ dir + ".directoryTimestamp_timestamp" };
-			RETURN_IF_FALSE(t.Assert(IO::CreateDir(directoryTimestamp.c_str()), true, "Create timestamp-path blocker"));
+			RETURN_IF_FALSE(t.Assert(IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(directoryTimestamp.c_str()), true,
+				"Create timestamp-path blocker"));
 			PersistenceType timestampBlocked;
 			RETURN_IF_FALSE(t.Assert(
 				timestampBlocked.AssignPath(dirV, "directoryTimestamp"), false, "Reject timestamp-path directory"));
 			RETURN_IF_FALSE(t.Assert(timestampBlocked.Read(), false, "Directory timestamp read"));
-			RETURN_IF_FALSE(t.Assert(timestampBlocked.template Save<REMAIN>(), false, "Directory timestamp save"));
+			RETURN_IF_FALSE(t.Assert(timestampBlocked.template Save<REMAIN, MSAPI::Persistence::APPEND>(), false,
+				"Directory timestamp save"));
 		}
 
 		{
 			// Nothing to read
 			PersistenceType persistence;
 			RETURN_IF_FALSE(t.Assert(persistence.AssignPath(dirV, "empty"), true, "Assign persistence path"));
-			RETURN_IF_FALSE(t.Assert(persistence.GetTimestamp(), MSAPI::Timer{ 0 }, "Initial timestamp"));
+			RETURN_IF_FALSE(t.Assert(persistence.GetTimestamp(), MSAPI::Timer{ 0, 0 }, "Initial timestamp"));
 			RETURN_IF_FALSE(checkData(dir + ".empty", {}));
 			std::string timestampBytes;
 			RETURN_IF_FALSE(t.Assert(
 				IO::ReadStr(timestampBytes, (dir + ".empty_timestamp").c_str()), true, "Read created timestamp file"));
 			RETURN_IF_FALSE(t.Assert(timestampBytes.empty(), true, "Created timestamp file is empty"));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), true, "Read created empty files"));
-			RETURN_IF_FALSE(t.Assert(persistence.GetTimestamp(), MSAPI::Timer{ 0 }, "Empty timestamp file is ignored"));
+			RETURN_IF_FALSE(
+				t.Assert(persistence.GetTimestamp(), MSAPI::Timer{ 0, 0 }, "Empty timestamp file is ignored"));
 
 			// Nothing to save, timestamp stays initial without emplaced objects
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Save empty persistence"));
+			RETURN_IF_FALSE(t.Assert(
+				persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Save empty persistence"));
 			RETURN_IF_FALSE(checkData(dir + ".empty", {}));
-			RETURN_IF_FALSE(checkTimestamp(dir + ".empty", MSAPI::Timer{ 0 }));
+			RETURN_IF_FALSE(checkTimestamp(dir + ".empty", MSAPI::Timer{ 0, 0 }));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), true, "Read after empty save"));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), true, "Empty persistence permits repeated read"));
 
 			// Missing timestamp file keeps the current timestamp.
-			RETURN_IF_FALSE(
-				t.Assert(IO::Remove((dir + ".empty_timestamp").c_str()), true, "Remove optional timestamp"));
+			RETURN_IF_FALSE(t.Assert(
+				IO::Remove</*Buffer=*/512>((dir + ".empty_timestamp").c_str()), true, "Remove optional timestamp"));
 			PersistenceType optional;
 			RETURN_IF_FALSE(t.Assert(optional.AssignPath(dirV, "empty"), true, "Assign persistence path"));
 			RETURN_IF_FALSE(t.Assert(optional.Read(), true, "Read without timestamp"));
 			RETURN_IF_FALSE(
-				t.Assert(optional.GetTimestamp(), MSAPI::Timer{ 0 }, "Keep timestamp without timestamp file"));
+				t.Assert(optional.GetTimestamp(), MSAPI::Timer{ 0, 0 }, "Keep timestamp without timestamp file"));
 			RETURN_IF_FALSE(checkState(optional, {}, 0));
 
 			// Files are bound by AssignPath, removed data file is still saved and read through the opened descriptor
 			PersistenceType removed;
 			RETURN_IF_FALSE(t.Assert(removed.AssignPath(dirV, "removed"), true, "Assign persistence path"));
-			RETURN_IF_FALSE(t.Assert(IO::Remove((dir + ".removed").c_str()), true, "Remove created data file"));
+			RETURN_IF_FALSE(
+				t.Assert(IO::Remove</*Buffer=*/512>((dir + ".removed").c_str()), true, "Remove created data file"));
 			RETURN_IF_FALSE(
 				t.Assert(removed.IsInitialized(), true, "Unlinked files keep their initialized descriptors"));
 			RETURN_IF_FALSE(t.Assert(removed.AssignPath(dirV, "removed"), false,
@@ -380,7 +401,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			RETURN_IF_FALSE(t.Assert(
 				removed.template EmplaceBack<SAVE_IMMEDIATE>(firstBatch[0]), true, "Save into removed data file"));
 			RETURN_IF_FALSE(t.Assert(IO::HasPath((dir + ".removed").c_str()), false, "No new data file at the path"));
-			RETURN_IF_FALSE(t.Assert(removed.template Save<CLEAR>(), true, "Clear objects saved into removed file"));
+			RETURN_IF_FALSE(t.Assert(removed.template Save<CLEAR, MSAPI::Persistence::APPEND>(), true,
+				"Clear objects saved into removed file"));
 			RETURN_IF_FALSE(t.Assert(removed.Read(), true, "Read removed data file"));
 			RETURN_IF_FALSE(checkState(removed, { firstBatch[0] }, 1));
 		}
@@ -400,7 +422,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			RETURN_IF_FALSE(
 				t.Assert(emplacedTimestamp >= firstTimestamp, true, "Next EmplaceBack moves timestamp forward"));
 			RETURN_IF_FALSE(checkState(persistence, firstBatch, 0));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Save first batch"));
+			RETURN_IF_FALSE(
+				t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Save first batch"));
 			RETURN_IF_FALSE(checkState(persistence, firstBatch, 2));
 			RETURN_IF_FALSE(checkData(dir + ".roundTrip", firstBatch));
 			RETURN_IF_FALSE(checkTimestamp(dir + ".roundTrip", emplacedTimestamp));
@@ -416,7 +439,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			// Repeated save must leave the data file and the timestamp unchanged.
 			std::string before;
 			RETURN_IF_FALSE(t.Assert(IO::ReadStr(before, (dir + ".roundTrip").c_str()), true, "Snapshot first save"));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Repeat save without insertions"));
+			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true,
+				"Repeat save without insertions"));
 			std::string after;
 			RETURN_IF_FALSE(t.Assert(IO::ReadStr(after, (dir + ".roundTrip").c_str()), true, "Snapshot repeat save"));
 			RETURN_IF_FALSE(t.Assert(after, before, "No repeated payload writes"));
@@ -430,7 +454,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			auto allObjects{ firstBatch };
 			allObjects.insert(allObjects.end(), secondBatch.begin(), secondBatch.end());
 			RETURN_IF_FALSE(checkState(persistence, allObjects, 2));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Save incremental batch"));
+			RETURN_IF_FALSE(t.Assert(
+				persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Save incremental batch"));
 			RETURN_IF_FALSE(checkState(persistence, allObjects, 4));
 			auto diskObjects{ firstBatch };
 			diskObjects.insert(diskObjects.end(), secondBatch.begin(), secondBatch.end());
@@ -445,22 +470,41 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 		}
 
 		{
+			// Overwrite replaces existing history with the complete current container.
+			const auto dataPath{ dir + ".overwrite" };
+			RETURN_IF_FALSE(t.Assert(IO::SaveBinaries<IO::OVERWRITE, /*Mode=*/0644>(wrap(firstBatch), dataPath.c_str()),
+				true, "Preseed overwrite file"));
+			PersistenceType persistence;
+			RETURN_IF_FALSE(t.Assert(persistence.AssignPath(dirV, "overwrite"), true, "Assign overwrite path"));
+			RETURN_IF_FALSE(t.Assert(
+				persistence.template EmplaceBack<SAVE_DELAY>(secondBatch[0]), true, "Emplace overwrite payload"));
+			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::OVERWRITE>(), true,
+				"Overwrite single persistence"));
+			RETURN_IF_FALSE(checkData(dataPath, { secondBatch[0] }));
+			RETURN_IF_FALSE(checkState(persistence, { secondBatch[0] }, 1));
+			RETURN_IF_FALSE(t.Assert(
+				persistence.template Save<REMAIN, MSAPI::Persistence::OVERWRITE>(), true, "Repeat single overwrite"));
+			RETURN_IF_FALSE(checkData(dataPath, { secondBatch[0] }));
+		}
+
+		{
 			// Saving appends to existing files, CLEAR policy releases memory without removing persisted records.
 			const auto dataPath{ dir + ".clear" };
-			RETURN_IF_FALSE(
-				t.Assert(IO::SaveBinaries(wrap(firstBatch), dataPath.c_str()), true, "Preseed append file"));
+			RETURN_IF_FALSE(t.Assert(IO::SaveBinaries<IO::OVERWRITE, /*Mode=*/0644>(wrap(firstBatch), dataPath.c_str()),
+				true, "Preseed append file"));
 			PersistenceType persistence;
 			RETURN_IF_FALSE(t.Assert(persistence.AssignPath(dirV, "clear"), true, "Assign persistence path"));
 			RETURN_IF_FALSE(t.Assert(
 				persistence.template EmplaceBack<SAVE_DELAY>(secondBatch[0]), true, "Delayed emplacement before read"));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), false, "Reject nonempty first read"));
-			RETURN_IF_FALSE(
-				t.Assert(persistence.template Save<REMAIN>(), true, "Fresh persistence appends existing file"));
+			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true,
+				"Fresh persistence appends existing file"));
 			auto appended{ firstBatch };
 			appended.emplace_back(secondBatch[0]);
 			RETURN_IF_FALSE(checkData(dataPath, appended));
 			RETURN_IF_FALSE(checkState(persistence, { secondBatch[0] }, 1));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<CLEAR>(), true, "Save with clearing"));
+			RETURN_IF_FALSE(
+				t.Assert(persistence.template Save<CLEAR, MSAPI::Persistence::APPEND>(), true, "Save with clearing"));
 			RETURN_IF_FALSE(checkState(persistence, {}, 0));
 			RETURN_IF_FALSE(checkData(dataPath, appended));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), true, "Read after save with clearing"));
@@ -473,7 +517,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			expected.emplace_back(secondBatch[1]);
 			const auto renamedPath{ dataPath + ".renamed" };
 			RETURN_IF_FALSE(t.Assert(IO::Rename(dataPath.c_str(), renamedPath.c_str()), true, "Rename data file"));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<CLEAR>(), true, "Save into renamed data file"));
+			RETURN_IF_FALSE(t.Assert(
+				persistence.template Save<CLEAR, MSAPI::Persistence::APPEND>(), true, "Save into renamed data file"));
 			RETURN_IF_FALSE(checkState(persistence, {}, 0));
 			RETURN_IF_FALSE(t.Assert(IO::HasPath(dataPath.c_str()), false, "No new data file at the path"));
 			RETURN_IF_FALSE(checkData(renamedPath, expected));
@@ -481,7 +526,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			RETURN_IF_FALSE(checkData(dataPath, expected));
 			RETURN_IF_FALSE(t.Assert(persistence.Read(), true, "Read restores all persisted records"));
 			RETURN_IF_FALSE(checkState(persistence, expected, 4));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<CLEAR>(), true, "Clear read objects"));
+			RETURN_IF_FALSE(
+				t.Assert(persistence.template Save<CLEAR, MSAPI::Persistence::APPEND>(), true, "Clear read objects"));
 			RETURN_IF_FALSE(checkData(dataPath, expected));
 		}
 
@@ -493,31 +539,36 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			RETURN_IF_FALSE(t.Assert(persistence.AssignPath(dirV, "retry"), true, "Assign persistence path"));
 			RETURN_IF_FALSE(
 				t.Assert(persistence.template EmplaceBack<SAVE_DELAY>(firstBatch[0]), true, "Delayed emplacement"));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Save record and timestamp"));
+			RETURN_IF_FALSE(t.Assert(
+				persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Save record and timestamp"));
 			RETURN_IF_FALSE(checkData(dataPath, { firstBatch[0] }));
 			RETURN_IF_FALSE(checkTimestamp(dataPath, persistence.GetTimestamp()));
 
 			// Malformed timestamp reads must preserve memory and permit a repaired retry.
-			RETURN_IF_FALSE(t.Assert(IO::SaveStr("x", timestampPath.c_str()), true, "Truncate timestamp fixture"));
+			RETURN_IF_FALSE(t.Assert(IO::SaveStr<IO::OVERWRITE, /*Mode=*/0644>("x", timestampPath.c_str()), true,
+				"Truncate timestamp fixture"));
 			PersistenceType loaded;
 			RETURN_IF_FALSE(t.Assert(loaded.AssignPath(dirV, "retry"), true, "Assign persistence path"));
 			RETURN_IF_FALSE(t.Assert(loaded.Read(), false, "Reject malformed timestamp"));
 			RETURN_IF_FALSE(t.Assert(loaded.IsInitialized(), true, "Failed read keeps files initialized for retry"));
 			RETURN_IF_FALSE(checkState(loaded, {}, 0));
-			RETURN_IF_FALSE(t.Assert(loaded.GetTimestamp(), MSAPI::Timer{ 0 }, "Failed read keeps timestamp"));
-			RETURN_IF_FALSE(t.Assert(IO::SaveBinary(timestamp, timestampPath.c_str()), true, "Repair timestamp file"));
+			RETURN_IF_FALSE(t.Assert(loaded.GetTimestamp(), MSAPI::Timer{ 0, 0 }, "Failed read keeps timestamp"));
+			RETURN_IF_FALSE(
+				t.Assert(IO::SaveBinary<IO::OVERWRITE, /*Mode=*/0644, IO::SINGLE>(timestamp, timestampPath.c_str()),
+					true, "Repair timestamp file"));
 			RETURN_IF_FALSE(t.Assert(loaded.Read(), true, "Retry malformed timestamp read"));
 			RETURN_IF_FALSE(checkState(loaded, { firstBatch[0] }, 1));
 
 			// A partial trailing record must not commit earlier staged payloads to memory.
 			const int8_t partial{ 1 };
+			RETURN_IF_FALSE(t.Assert(IO::SaveBinary<IO::APPEND, /*Mode=*/0644, IO::SINGLE>(partial, dataPath.c_str()),
+				true, "Append partial record"));
 			RETURN_IF_FALSE(
-				t.Assert(IO::SaveBinary<IO::APPEND>(partial, dataPath.c_str()), true, "Append partial record"));
-			RETURN_IF_FALSE(t.Assert(loaded.template Save<CLEAR>(), true, "Clear read objects"));
+				t.Assert(loaded.template Save<CLEAR, MSAPI::Persistence::APPEND>(), true, "Clear read objects"));
 			RETURN_IF_FALSE(t.Assert(loaded.Read(), false, "Reject malformed data after valid record"));
 			RETURN_IF_FALSE(checkState(loaded, {}, 0));
-			RETURN_IF_FALSE(
-				t.Assert(IO::SaveBinaries(wrap(firstBatch), dataPath.c_str()), true, "Repair malformed data"));
+			RETURN_IF_FALSE(t.Assert(IO::SaveBinaries<IO::OVERWRITE, /*Mode=*/0644>(wrap(firstBatch), dataPath.c_str()),
+				true, "Repair malformed data"));
 			RETURN_IF_FALSE(t.Assert(loaded.Read(), true, "Retry malformed data read"));
 			RETURN_IF_FALSE(checkState(loaded, firstBatch, 2));
 		}
@@ -538,7 +589,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			RETURN_IF_FALSE(checkTimestamp(dataPath, persistence.GetTimestamp()));
 
 			// Save saves the delayed object only, the immediately saved one is not duplicated
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Save after persisted emplacement"));
+			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true,
+				"Save after persisted emplacement"));
 			RETURN_IF_FALSE(checkState(persistence, firstBatch, 2));
 			std::vector<Type> expected{ firstBatch[1], firstBatch[0] };
 			RETURN_IF_FALSE(checkData(dataPath, expected));
@@ -546,7 +598,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 				persistence.template EmplaceBack<SAVE_IMMEDIATE>(secondBatch[0]), true, "Next persisted emplacement"));
 			expected.emplace_back(secondBatch[0]);
 			RETURN_IF_FALSE(checkData(dataPath, expected));
-			RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Save without unsaved objects"));
+			RETURN_IF_FALSE(t.Assert(
+				persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Save without unsaved objects"));
 			RETURN_IF_FALSE(checkData(dataPath, expected));
 			PersistenceType loaded;
 			RETURN_IF_FALSE(t.Assert(loaded.AssignPath(dirV, "persist"), true, "Assign persistence path"));
@@ -597,8 +650,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 							succeeded[UINT64(worker)] = valid && succeeded[UINT64(worker)];
 						}
 						else {
-							const bool saved{ t.Assert(
-								persistence.template Save<REMAIN>(), true, "Concurrent incremental save") };
+							const bool saved{ t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(),
+								true, "Concurrent incremental save") };
 							succeeded[UINT64(worker)] = saved && succeeded[UINT64(worker)];
 						}
 					}
@@ -618,11 +671,13 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			std::array<bool, 2> saves{};
 			std::jthread firstSave{ [&] {
 				saveStart.arrive_and_wait();
-				saves[0] = t.Assert(persistence.template Save<REMAIN>(), true, "First competing save");
+				saves[0] = t.Assert(
+					persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "First competing save");
 			} };
 			std::jthread secondSave{ [&] {
 				saveStart.arrive_and_wait();
-				saves[1] = t.Assert(persistence.template Save<REMAIN>(), true, "Second competing save");
+				saves[1] = t.Assert(
+					persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Second competing save");
 			} };
 			firstSave.join();
 			secondSave.join();
@@ -684,14 +739,14 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			} };
 			clearStart.arrive_and_wait();
 
-			const bool cleared{ persistence.template Save<CLEAR>() };
+			const bool cleared{ persistence.template Save<CLEAR, MSAPI::Persistence::APPEND>() };
 			const bool reloaded{ persistence.Read() };
 			bool emplaced{ true };
 			for (const auto& object : secondBatch) {
 				emplaced = persistence.template EmplaceBack<SAVE_DELAY>(object) && emplaced;
 			}
 
-			const bool saved{ persistence.template Save<REMAIN>() };
+			const bool saved{ persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>() };
 			lookup.join();
 			RETURN_IF_FALSE(t.Assert(
 				lookupsValid && cleared && reloaded && emplaced && saved, true, "Guarded lookup during clearing save"));
@@ -730,7 +785,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 
 		const auto dir{ path + std::string{ suiteName } + "/" };
 		const std::string_view dirV{ dir };
-		RETURN_IF_FALSE(t.Assert(IO::CreateDir(dir.c_str()), true, "Create pair suite directory"));
+		RETURN_IF_FALSE(
+			t.Assert(IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(dir.c_str()), true, "Create pair suite directory"));
 		const auto dataPath{ dir + ".pair" };
 
 		// Copy of the object of the key, empty if the key does not exist
@@ -762,7 +818,7 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 		{
 			PersistenceType assigned;
 			RETURN_IF_FALSE(t.Assert(assigned.IsInitialized(), false, "Default pair has no bound files"));
-			RETURN_IF_FALSE(t.Assert(assigned.GetTimestamp(), MSAPI::Timer{ 0 }, "Unbound pair timestamp"));
+			RETURN_IF_FALSE(t.Assert(assigned.GetTimestamp(), MSAPI::Timer{ 0, 0 }, "Unbound pair timestamp"));
 			RETURN_IF_FALSE(t.Assert(assigned.Read(), false, "Unbound pair cannot read"));
 			RETURN_IF_FALSE(t.Assert(assigned.AssignPath(dirV, {}), false, "Reject invalid pair assignment"));
 			RETURN_IF_FALSE(
@@ -813,7 +869,7 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 		RETURN_IF_FALSE(t.Assert(persistence.AssignPath(dirV, "pair"), true, "Assign persistence path"));
 
 		// Emplace new keys
-		RETURN_IF_FALSE(t.Assert(persistence.GetTimestamp(), MSAPI::Timer{ 0 }, "Initial pair timestamp"));
+		RETURN_IF_FALSE(t.Assert(persistence.GetTimestamp(), MSAPI::Timer{ 0, 0 }, "Initial pair timestamp"));
 		RETURN_IF_FALSE(
 			t.Assert(persistence.template Emplace<SAVE_DELAY, MODIFY_SILENT>(1, 10), true, "Delayed pair emplacement"));
 		RETURN_IF_FALSE(
@@ -860,13 +916,14 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			RETURN_IF_FALSE(t.Assert(persistence.Get().size(), 2, "Modification does not add keys"));
 		}
 
-		RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Save pairs"));
+		RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Save pairs"));
 		RETURN_IF_FALSE(checkObject(persistence, 1, 12, true));
 		RETURN_IF_FALSE(checkObject(persistence, 2, 20, true));
 		std::vector<Object> records;
 		RETURN_IF_FALSE(readRecords(records));
 		RETURN_IF_FALSE(t.Assert(records.size(), 2, "One record per key emplaced and modified before save"));
-		RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Repeat pair save without changes"));
+		RETURN_IF_FALSE(t.Assert(
+			persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Repeat pair save without changes"));
 		records.clear();
 		RETURN_IF_FALSE(readRecords(records));
 		RETURN_IF_FALSE(t.Assert(records.size(), 2, "Repeat save appends nothing"));
@@ -878,12 +935,25 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			t.Assert(persistence.template Emplace<SAVE_DELAY, MODIFY_NOTIFY>(2, 22), true, "Delayed pair emplacement"));
 		RETURN_IF_FALSE(checkObject(persistence, 2, 22, false));
 		RETURN_IF_FALSE(checkObject(persistence, 1, 12, true));
-		RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN>(), true, "Save modified pair"));
+		RETURN_IF_FALSE(
+			t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Save modified pair"));
 		records.clear();
 		RETURN_IF_FALSE(readRecords(records));
 		RETURN_IF_FALSE(t.Assert(records.size(), 3, "Modification appends one record"));
 		RETURN_IF_FALSE(t.Assert(records.back().GetKey(), 2, "Appended record key"));
 		RETURN_IF_FALSE(t.Assert(records.back().GetValue(), 22, "Appended record value"));
+
+		// Overwrite compacts modification history to one current record per key.
+		RETURN_IF_FALSE(t.Assert(persistence.template Save<REMAIN, MSAPI::Persistence::OVERWRITE>(), true,
+			"Overwrite pair modification history"));
+		records.clear();
+		RETURN_IF_FALSE(readRecords(records));
+		RETURN_IF_FALSE(t.Assert(records.size(), 2, "Overwrite keeps one record per key"));
+		RETURN_IF_FALSE(t.Assert(
+			persistence.template Save<REMAIN, MSAPI::Persistence::OVERWRITE>(), true, "Repeat pair overwrite"));
+		records.clear();
+		RETURN_IF_FALSE(readRecords(records));
+		RETURN_IF_FALSE(t.Assert(records.size(), 2, "Repeat overwrite does not grow the file"));
 
 		// Read replays records, the last record of a key wins
 		const auto secondModified{ *find(persistence, 2) };
@@ -899,7 +969,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 		RETURN_IF_FALSE(t.Assert(loaded.Read(), false, "Read pair persistence rejects second read"));
 
 		// Save with clearing releases memory, Read restores pairs and emplace of a read key modifies it
-		RETURN_IF_FALSE(t.Assert(loaded.template Save<CLEAR>(), true, "Save pairs with clearing"));
+		RETURN_IF_FALSE(
+			t.Assert(loaded.template Save<CLEAR, MSAPI::Persistence::APPEND>(), true, "Save pairs with clearing"));
 		{
 			const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::READ> _{ loaded.GetLock() };
 			RETURN_IF_FALSE(t.Assert(loaded.Get().empty(), true, "Pairs are cleared"));
@@ -949,10 +1020,12 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			RETURN_IF_FALSE(countRecords(3, "Persisted key appends the latest value"));
 
 			// Save saves the delayed key only, the immediately saved key is skipped
-			RETURN_IF_FALSE(t.Assert(persisted.template Save<REMAIN>(), true, "Save after persisted modification"));
+			RETURN_IF_FALSE(t.Assert(persisted.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true,
+				"Save after persisted modification"));
 			RETURN_IF_FALSE(checkObject(persisted, 1, 10, true));
 			RETURN_IF_FALSE(countRecords(4, "Save skips persisted keys"));
-			RETURN_IF_FALSE(t.Assert(persisted.template Save<REMAIN>(), true, "Repeat save after persisting"));
+			RETURN_IF_FALSE(t.Assert(
+				persisted.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Repeat save after persisting"));
 			RETURN_IF_FALSE(countRecords(4, "Repeat save appends nothing"));
 			PersistenceType loadedPersisted;
 			RETURN_IF_FALSE(t.Assert(loadedPersisted.AssignPath(dirV, "persisted"), true, "Assign persistence path"));
@@ -983,7 +1056,8 @@ FORCE_INLINE [[nodiscard]] bool Persistence()
 			}
 
 			RETURN_IF_FALSE(t.Assert(keys == std::vector<int32_t>{ 3, 4, 5 }, true, "Ordered map keeps keys order"));
-			RETURN_IF_FALSE(t.Assert(ordered.template Save<REMAIN>(), true, "Save ordered pairs"));
+			RETURN_IF_FALSE(
+				t.Assert(ordered.template Save<REMAIN, MSAPI::Persistence::APPEND>(), true, "Save ordered pairs"));
 			std::vector<Object> orderedRecords;
 			RETURN_IF_FALSE(t.Assert(
 				IO::ReadBinaries(orderedRecords, (dir + ".ordered").c_str()), true, "Read ordered pair records"));

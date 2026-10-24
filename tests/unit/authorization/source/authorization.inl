@@ -84,8 +84,8 @@ FORCE_INLINE [[nodiscard]] bool Authorization();
  */
 struct AccountTestData {
 	size_t logsCount{};
-	Timer blockedTill{ 0 };
-	Timer lastActivity{ 0 };
+	Timer blockedTill{ 0, 0 };
+	Timer lastActivity{ 0, 0 };
 	std::string login;
 	std::string password;
 	std::string expectedError;
@@ -152,7 +152,7 @@ FORCE_INLINE [[nodiscard]] bool Authorization()
 		FORCE_INLINE ~Cleaner() noexcept
 		{
 			if (!path.empty() && IO::HasPath(path)) {
-				if (!IO::Remove(path)) {
+				if (!IO::Remove</*Buffer=*/512>(path)) {
 					LOG_ERROR_NEW("Cannot remove test dir: {}, clean it before next test execution", path);
 				}
 			}
@@ -167,7 +167,8 @@ FORCE_INLINE [[nodiscard]] bool Authorization()
 	static_assert(accountSize % 8 == 0, "Account size is not aligned to 8 bytes");
 
 	// 2. Start default Authorization module and check accounts data path creation, stop it and start again
-	Authorization::Base::Module mod;
+	Authorization::Base::Module<Authorization::Base::Account<Authorization::Base::Grade>, Authorization::Base::Grade>
+		mod;
 	using G = decltype(mod)::grade_t;
 	using A = decltype(mod)::account_t;
 	using U = std::underlying_type_t<G>;
@@ -415,7 +416,7 @@ FORCE_INLINE [[nodiscard]] bool Authorization()
 
 			++registeredAccounts;
 			++accountData.logsCount;
-			Timer logTimestamp{ 0 };
+			Timer logTimestamp{ 0, 0 };
 			RETURN_IF_FALSE(checkAccountLogs(
 				accountData, accountData.logsCount - 1, "Registered at XXXX-XX-XX XX:XX:XX.XXXXXXXXX"));
 
@@ -464,7 +465,7 @@ FORCE_INLINE [[nodiscard]] bool Authorization()
 	} };
 
 	// 5. Check saved account binary data after registration
-	const auto emptyTimer{ Timer{ 0 } };
+	const auto emptyTimer{ Timer{ 0, 0 } };
 	for (auto& accountData : testAccounts) {
 		if (accountData.shouldRegister) {
 			auto account{ getSavedAccount.operator()<A>(accountData.login) };
@@ -594,7 +595,7 @@ FORCE_INLINE [[nodiscard]] bool Authorization()
 			RETURN_IF_FALSE(
 				t.Assert(BlockTillResult::Unblock, expectedResult, "Expected result of blocking is not matched"));
 
-			current.blockedTill = Timer{ 0 };
+			current.blockedTill = Timer{ 0, 0 };
 		}
 		else {
 			RETURN_IF_FALSE(checkAccountLogs(

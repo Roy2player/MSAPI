@@ -335,8 +335,8 @@ FORCE_INLINE std::string Replace(T&& str, const char from, const char to)
  * @brief Compare floating point values. Default epsilons are: 1.0E-6 for float, 1.0E-10 for double, 1.0E-20 for
  * long double.
  *
- * @tparam T floating point type.
- * @tparam Epsilon floating point epsilon for comparing based on T type.
+ * @tparam T Floating point type.
+ * @tparam Epsilon Comparison tolerance selected from T by default.
  *
  * @param first Left argument.
  * @param second Right argument.
@@ -345,18 +345,18 @@ FORCE_INLINE std::string Replace(T&& str, const char from, const char to)
  *
  * @test Yes.
  */
-template <std::floating_point T, T epsilon = Epsilon<T>::value>
+template <std::floating_point T, T Epsilon = Epsilon<T>::value>
 FORCE_INLINE int CompareFloats(const T first, const T second)
 {
-	return (std::abs(first - second) >= epsilon) * ((first > second) - (first < second));
+	return (std::abs(first - second) >= Epsilon) * ((first > second) - (first < second));
 }
 
 /**************************
  * @brief Compare floating point values. Default epsilons are: 1.0E-6 for float, 1.0E-10 for double, 1.0E-20 for
  * long double.
  *
- * @tparam T floating point type.
- * @tparam Epsilon floating point epsilon for comparing based on T type.
+ * @tparam T Floating point type.
+ * @tparam Epsilon Comparison tolerance selected from T by default.
  *
  * @param first Left argument.
  * @param second Right argument.
@@ -367,18 +367,18 @@ FORCE_INLINE int CompareFloats(const T first, const T second)
  *
  * @todo The name of such methods should be like question.
  */
-template <std::floating_point T, T epsilon = Epsilon<T>::value>
+template <std::floating_point T, T Epsilon = Epsilon<T>::value>
 FORCE_INLINE bool FloatLess(const T first, const T second)
 {
-	return second - first > epsilon;
+	return second - first > Epsilon;
 }
 
 /**************************
  * @brief Compare floating point values. Default epsilons are: 1.0E-6 for float, 1.0E-10 for double, 1.0E-20 for
  * long double.
  *
- * @tparam T floating point type.
- * @tparam Epsilon floating point epsilon for comparing based on T type.
+ * @tparam T Floating point type.
+ * @tparam Epsilon Comparison tolerance selected from T by default.
  *
  * @param first Left argument.
  * @param second Right argument.
@@ -389,18 +389,18 @@ FORCE_INLINE bool FloatLess(const T first, const T second)
  *
  * @todo The name of such methods should be like question.
  */
-template <std::floating_point T, T epsilon = Epsilon<T>::value>
+template <std::floating_point T, T Epsilon = Epsilon<T>::value>
 FORCE_INLINE bool FloatGreater(const T first, const T second)
 {
-	return first - second > epsilon;
+	return first - second > Epsilon;
 }
 
 /**************************
  * @brief Compare floating point values. Default epsilons are: 1.0E-6 for float, 1.0E-10 for double, 1.0E-20 for
  * long double.
  *
- * @tparam T floating point type.
- * @tparam Epsilon floating point epsilon for comparing based on T type.
+ * @tparam T Floating point type.
+ * @tparam Epsilon Comparison tolerance selected from T by default.
  *
  * @param first Left argument.
  * @param second Right argument.
@@ -409,10 +409,10 @@ FORCE_INLINE bool FloatGreater(const T first, const T second)
  *
  * @test Yes.
  */
-template <std::floating_point T, T epsilon = Epsilon<T>::value>
+template <std::floating_point T, T Epsilon = Epsilon<T>::value>
 FORCE_INLINE bool FloatEqual(const T first, const T second)
 {
-	return std::abs(first - second) < epsilon;
+	return std::abs(first - second) < Epsilon;
 }
 
 /**************************

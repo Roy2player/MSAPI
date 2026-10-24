@@ -132,7 +132,7 @@ public:
 	 * @todo Messages by email.
 	 * @todo Messages in Telegram.
 	 */
-	Log(bool toConsole = false, bool toFile = false, Level levelSave = Level::PROTOCOL) noexcept;
+	Log(bool toConsole, bool toFile, Level levelSave) noexcept;
 
 	/**************************
 	 * @brief Destroy the Log object

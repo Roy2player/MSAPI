@@ -145,11 +145,11 @@ public:
 	 * @brief Construct a new StreamStateResponse object.
 	 *
 	 * @param state Stream state.
-	 * @param issue Issue of the stream, empty by default.
+	 * @param issue Issue of the stream.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE explicit StreamStateResponse(State state, Issue issue = Issue::Empty) noexcept;
+	FORCE_INLINE explicit StreamStateResponse(State state, Issue issue) noexcept;
 
 	FORCE_INLINE StreamStateResponse(const StreamStateResponse&) noexcept = default;
 	FORCE_INLINE StreamStateResponse(StreamStateResponse&&) noexcept = default;
@@ -2269,7 +2269,7 @@ FORCE_INLINE void Stream<Object, FObject>::Close() noexcept
 
 	LOG_PROTOCOL_NEW("Client closes stream id: {}, new stream id is: {}", oldId, newId);
 
-	StreamStateResponse state{ State::Closed };
+	StreamStateResponse state{ State::Closed, Issue::Undefined };
 	(void)Send(m_connectionData->GetConnection(),
 		{ oldId, typeid(StreamStateResponse).hash_code(), sizeof(StreamStateResponse) }, &state);
 
@@ -2630,7 +2630,7 @@ FORCE_INLINE void Distributor<FObjects...>::StreamExternalAction(
 	case State::Closed: {
 		LOG_PROTOCOL_NEW("Client closed stream id: {}, connection id: {}", streamId, connectionId);
 
-		const StreamStateResponse state{ State::Closed };
+		const StreamStateResponse state{ State::Closed, Issue::Undefined };
 		std::shared_ptr<StreamData> streamData;
 		{
 			const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };
@@ -2746,7 +2746,7 @@ FORCE_INLINE void Distributor<FObjects...>::Collect(
 				streamData->ToString());
 		}
 
-		StreamStateResponse response{ State::Opened };
+		StreamStateResponse response{ State::Opened, Issue::Empty };
 		const Data dataResponse{ streamId, typeid(StreamStateResponse).hash_code(), sizeof(StreamStateResponse) };
 
 		auto& connection{ connectionData->GetConnection() };
@@ -2822,7 +2822,7 @@ FORCE_INLINE void Distributor<FObjects...>::Collect(
 			LOG_PROTOCOL_NEW(
 				"Got last filter object and open stream id: {}, connection id: {}", streamId, connectionId);
 
-			StreamStateResponse response{ State::Opened };
+			StreamStateResponse response{ State::Opened, Issue::Empty };
 			const Data dataResponse{ streamId, typeid(StreamStateResponse).hash_code(), sizeof(StreamStateResponse) };
 
 			if (!Send(connectionData->GetConnection(), dataResponse, &response)) [[unlikely]] {

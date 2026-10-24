@@ -298,7 +298,9 @@ FORCE_INLINE [[nodiscard]] bool RedirectorProtocol()
 	const auto rollback{ ports[2] };
 
 	MSAPI::Protocol::HTTP::Redirector redirector;
-	RETURN_IF_FALSE(t.Assert(redirector.Start(), false, "No endpoints fails"));
+	RETURN_IF_FALSE(t.Assert(redirector.Start(MSAPI::Protocol::HTTP::StatusCode::MovedPermanently,
+								 /*receiveTimeoutMs=*/2000, /*maxConnections=*/32),
+		false, "No endpoints fails"));
 	RETURN_IF_FALSE(
 		t.Assert(redirector.AddEndpoint("127.0.0.1", 0, "http://site.com"), false, "Zero listener port rejected"));
 	RETURN_IF_FALSE(t.Assert(redirector.AddEndpoint("bad-ip", first, "http://site.com"), false, "Invalid IP fails"));
@@ -311,10 +313,12 @@ FORCE_INLINE [[nodiscard]] bool RedirectorProtocol()
 		t.Assert(redirector.AddEndpoint("127.0.0.1", first, "http://site.com"), true, "First endpoint added"));
 	RETURN_IF_FALSE(t.Assert(
 		redirector.AddEndpoint("127.0.0.1", second, "https://other.site:8443"), true, "Second endpoint added"));
-	RETURN_IF_FALSE(
-		t.Assert(redirector.Start(MSAPI::Protocol::HTTP::StatusCode::Found), false, "Only 301 and 308 allowed"));
 	RETURN_IF_FALSE(t.Assert(
-		redirector.Start(MSAPI::Protocol::HTTP::StatusCode::MovedPermanently, 0), false, "Zero timeout fails"));
+		redirector.Start(MSAPI::Protocol::HTTP::StatusCode::Found, /*receiveTimeoutMs=*/2000, /*maxConnections=*/32),
+		false, "Only 301 and 308 allowed"));
+	RETURN_IF_FALSE(
+		t.Assert(redirector.Start(MSAPI::Protocol::HTTP::StatusCode::MovedPermanently, 0, /*maxConnections=*/32), false,
+			"Zero timeout fails"));
 	RETURN_IF_FALSE(t.Assert(
 		redirector.Start(MSAPI::Protocol::HTTP::StatusCode::MovedPermanently, 250, 33), false, "Oversized cap fails"));
 	RETURN_IF_FALSE(t.Assert(
@@ -330,12 +334,16 @@ FORCE_INLINE [[nodiscard]] bool RedirectorProtocol()
 			t.Assert(failure.AddEndpoint("127.0.0.1", rollback, "http://site.com"), true, "Rollback listener added"));
 		RETURN_IF_FALSE(
 			t.Assert(failure.AddEndpoint("127.0.0.1", first, "http://site.com"), true, "Occupied listener added"));
-		RETURN_IF_FALSE(t.Assert(failure.Start(), false, "Occupied port fails startup"));
+		RETURN_IF_FALSE(t.Assert(failure.Start(MSAPI::Protocol::HTTP::StatusCode::MovedPermanently,
+									 /*receiveTimeoutMs=*/2000, /*maxConnections=*/32),
+			false, "Occupied port fails startup"));
 
 		MSAPI::Protocol::HTTP::Redirector recovered;
 		RETURN_IF_FALSE(t.Assert(
 			recovered.AddEndpoint("127.0.0.1", rollback, "http://site.com"), true, "Rollback port registered again"));
-		RETURN_IF_FALSE(t.Assert(recovered.Start(), true, "Earlier listener released on startup failure"));
+		RETURN_IF_FALSE(t.Assert(recovered.Start(MSAPI::Protocol::HTTP::StatusCode::MovedPermanently,
+									 /*receiveTimeoutMs=*/2000, /*maxConnections=*/32),
+			true, "Earlier listener released on startup failure"));
 		RETURN_IF_FALSE(ExpectRedirect(
 			t, rollback, "/recovered", "http://site.com", MSAPI::Protocol::HTTP::StatusCode::MovedPermanently));
 	}

@@ -76,7 +76,7 @@ concept Gradable = std::is_enum_v<T> && sizeof(T) == 2;
  *
  * @concurrency No.
  */
-template <Gradable G = Grade> class Account {
+template <Gradable G> class Account {
 private:
 	char m_login[MAX_LOGIN_SIZE + 1]{};
 	uint8_t m_salt[SALT_SIZE]{};
@@ -214,7 +214,7 @@ public:
 };
 
 template <typename T>
-concept Accountable = std::is_base_of_v<Account<>, T>;
+concept Accountable = std::is_base_of_v<Account<Grade>, T>;
 
 /**************************
  * @brief Generic authorization module class, provides thread-safe account management and authentication. Can be used as
@@ -252,7 +252,7 @@ private:
 		std::string m_dataPath;
 		mutable Lock::AtomicRW m_rwLock;
 		std::optional<uint64_t> m_connectionId;
-		Timer m_lastActivity{ 0 };
+		Timer m_lastActivity{ 0, 0 };
 
 	public:
 		/**************************
@@ -388,7 +388,7 @@ private:
 	std::string m_dataPath;
 	Timer::Event m_logoutEvent{ this };
 	Timer::Duration m_logoutTimeout{ Timer::Duration::CreateHours(12) };
-	Timer m_startTime{ 0 };
+	Timer m_startTime{ 0, 0 };
 	bool m_isStarted{};
 
 public:
@@ -800,7 +800,7 @@ template <Gradable G>
 		memcpy(m_salt, randomValues, SALT_SIZE);
 
 		m_isInitialized = true;
-		m_blockedTill = Timer{ 0 };
+		m_blockedTill = Timer{ 0, 0 };
 	}
 
 	Sha256 hash;
@@ -898,7 +898,7 @@ FORCE_INLINE [[nodiscard]] Lock::AtomicRW& Module<A, G>::AccountData::GetRWLock(
 
 template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G>::AccountData::Save() const
 {
-	return IO::SaveBinaryOnOffset<0640>(m_account, m_dataPath.c_str(), 0);
+	return IO::SaveBinaryOnOffset</*Mode=*/0640>(m_account, m_dataPath.c_str(), 0);
 }
 
 template <Accountable A, Gradable G>
@@ -973,14 +973,14 @@ template <Accountable A, Gradable G> FORCE_INLINE [[nodiscard]] bool Module<A, G
 		LOG_DEBUG_NEW("Loaded {} accounts from file: {}", m_loginHashToAccountData.size(), m_dataPath);
 	}
 	else {
-		if (!IO::CreateDir<0750>(m_dataPath.c_str())) [[unlikely]] {
+		if (!IO::CreateDir</*Mode=*/0750, /*Buffer=*/512>(m_dataPath.c_str())) [[unlikely]] {
 			return false;
 		}
 
 		LOG_DEBUG_NEW("Accounts data path does not exist: {}, starting with zero accounts", m_dataPath);
 	}
 
-	m_logoutEvent.Start(m_logoutTimeout.GetSeconds(), 60);
+	m_logoutEvent.Start(/*timeToCall=*/m_logoutTimeout.GetSeconds(), /*timeToRepeatCall=*/60, /*instantCall=*/false);
 	m_isStarted = true;
 	m_startTime = Timer{};
 	LOG_DEBUG("Authorization module started");
@@ -1015,7 +1015,7 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::Stop()
 	m_loginHashToAccountData.clear();
 
 	m_isStarted = false;
-	m_startTime = Timer{ 0 };
+	m_startTime = Timer{ 0, 0 };
 	LOG_DEBUG("Authorization module stopped");
 }
 
@@ -1039,10 +1039,10 @@ template <Accountable A, Gradable G> FORCE_INLINE void Module<A, G>::SetLogoutTi
 	else {
 		const auto toFirstCheck{ Timer::Duration{ now - (m_startTime + m_logoutTimeout) }.GetSeconds() };
 		if (toFirstCheck < 60) {
-			m_logoutEvent.Start(60, 60);
+			m_logoutEvent.Start(/*timeToCall=*/60, /*timeToRepeatCall=*/60, /*instantCall=*/false);
 		}
 		else {
-			m_logoutEvent.Start(toFirstCheck, 60);
+			m_logoutEvent.Start(/*timeToCall=*/toFirstCheck, /*timeToRepeatCall=*/60, /*instantCall=*/false);
 		}
 	}
 
@@ -1547,7 +1547,7 @@ FORCE_INLINE [[nodiscard]] bool Module<A, G>::BlockAccountTill(const std::string
 	}
 
 	TMP_MSAPI_AUTHORIZATION_SET_BLOCKED_TILL_AND_RETURN(
-		std::format("Unblocked at {}", timestamp.ToString()), Timer{ 0 });
+		std::format("Unblocked at {}", timestamp.ToString()), (Timer{ 0, 0 }));
 #undef TMP_MSAPI_AUTHORIZATION_SET_BLOCKED_TILL_AND_RETURN
 }
 
@@ -1674,7 +1674,7 @@ FORCE_INLINE void Module<A, G>::OnAccountActivity(
 {
 	accountData.UpdateLastActivity(std::move(timestamp));
 	LOG_DEBUG_NEW("Account: {} activity updated, description: {}", accountData.GetAccount().GetLogin(), description);
-	(void)IO::SaveStr<true, 0640>(description, accountData.GetDataPath().c_str());
+	(void)IO::SaveStr<IO::APPEND, /*Mode=*/0640>(description, accountData.GetDataPath().c_str());
 }
 
 template <Accountable A, Gradable G>

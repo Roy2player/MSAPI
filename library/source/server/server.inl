@@ -839,13 +839,21 @@ FORCE_INLINE Server::Server() noexcept
 {
 	static_assert(CHAR_BIT == 8, "CHAR_BIT is not 8");
 
-	RegisterParameter(1000001, { "Seconds between try to connect", &m_secondsBetweenTryToConnect, 1 });
-	RegisterParameter(1000002, { "Limit of attempts to connection", &m_limitConnectAttempts, 1 });
-	RegisterParameter(1000003, { "Limit of connections from one IP", &m_maxConnectionsOneIp, 1 });
-	RegisterParameter(1000004, { "Recv buffer size limit", &m_recvBufferSizeLimit, 1024 });
-	RegisterConstParameter(1000005, { "Server state", &m_stateTmp, &EnumToString });
-	RegisterConstParameter(1000006, { "Listen IP", &m_listenIpStr });
-	RegisterConstParameter(1000007, { "Listen port", &m_listenPort });
+	RegisterParameter(1000001,
+		{ /*name=*/"Seconds between try to connect", /*value=*/&m_secondsBetweenTryToConnect, /*.min=*/1, /*max=*/{},
+			/*canBeEmpty=*/false });
+	RegisterParameter(1000002,
+		{ /*name=*/"Limit of attempts to connection", /*value=*/&m_limitConnectAttempts, /*.min=*/1, /*max=*/{},
+			/*canBeEmpty=*/false });
+	RegisterParameter(1000003,
+		{ /*name=*/"Limit of connections from one IP", /*value=*/&m_maxConnectionsOneIp, /*.min=*/1, /*max=*/{},
+			/*canBeEmpty=*/false });
+	RegisterParameter(1000004,
+		{ /*name=*/"Recv buffer size limit", /*value=*/&m_recvBufferSizeLimit, /*.min=*/1024, /*max=*/{},
+			/*canBeEmpty=*/false });
+	RegisterConstParameter(1000005, { /*name=*/"Server state", /*value=*/&m_stateTmp, &EnumToString });
+	RegisterConstParameter(1000006, { /*name=*/"Listen IP", /*value=*/&m_listenIpStr });
+	RegisterConstParameter(1000007, { /*name=*/"Listen port", /*value=*/&m_listenPort });
 }
 
 FORCE_INLINE Server::~Server() noexcept

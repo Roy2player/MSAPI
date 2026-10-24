@@ -31,3 +31,12 @@ For every pull request or code review:
 - Verify concurrency, ownership, protocol parsing, error handling, logging, and documentation where the change makes them relevant.
 - Verify tests or test metadata when behavior changes or coverage is added.
 - Do not report or require fixes for unrelated, pre-existing deviations unless they directly affect the changed code or introduce a regression.
+
+## Engineering Approach
+
+- Preserve the established engineering philosophy, architecture, and conventions of MSAPI. Do not introduce conflicting design patterns or unnecessary abstractions.
+- Before making changes, examine the relevant code, interfaces, call sites, tests, and engineering guidelines to understand the existing design and intended behavior.
+- If the task description lacks sufficient context, first investigate the repository to resolve ambiguities. Ask for clarification only when the intended behavior cannot be reliably determined or requires an explicit engineering decision.
+- Prefer explicit and understandable implementations. Important behavior, assumptions, and trade-offs must be evident from the code or its documentation. Do not force engineers to infer undocumented intent.
+- Make minimal, focused changes. Preserve existing behavior and avoid unrelated refactoring unless explicitly requested.
+- After completing a task, briefly explain significant design decisions, their rationale, and any remaining limitations. Avoid repeating self-explanatory code or providing unnecessary line-by-line descriptions.
