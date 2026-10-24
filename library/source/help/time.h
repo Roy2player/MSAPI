@@ -139,7 +139,7 @@ public:
 		 *
 		 * @return True if event started, false if event was not started or data is nullptr.
 		 */
-		bool Start(time_t timeToCall, time_t timeToRepeatCall = 0, bool instantCall = false);
+		bool Start(time_t timeToCall, time_t timeToRepeatCall, bool instantCall);
 
 		/**************************
 		 * @brief Stop event if it's running.
@@ -357,13 +357,13 @@ public:
 		int64_t GetNanoseconds() const;
 
 		/**************************
-		 * @return String interpretation of duration in particular type, default is nanoseconds.
+		 * @return String interpretation of duration in the specified type.
 		 *
 		 * @example 108 hours
 		 *
 		 * @test Yes.
 		 */
-		std::string ToString(Type type = Type::Nanoseconds) const;
+		std::string ToString(Type type) const;
 
 		/**************************
 		 * @brief Call ToString() inside.
@@ -451,8 +451,7 @@ public:
 		 *
 		 * @test Yes.
 		 */
-		static Duration Create(
-			int64_t days = 0, int64_t hours = 0, int64_t minutes = 0, int64_t seconds = 0, int32_t nanoseconds = 0);
+		static Duration Create(int64_t days, int64_t hours, int64_t minutes, int64_t seconds, int32_t nanoseconds);
 
 		/**************************
 		 * @brief Create a days duration.
@@ -547,9 +546,9 @@ public:
 	 * @brief Construct a new Timer object with time point from seconds and nanos.
 	 *
 	 * @param seconds Set both params as 0 for creating empty timer, cannot be negative.
-	 * @param nanos Is 0 as default.
+	 * @param nanos Nanosecond component.
 	 */
-	Timer(int64_t seconds, int64_t nanos = 0);
+	Timer(int64_t seconds, int64_t nanos);
 
 	FORCE_INLINE Timer(const Timer&) noexcept = default;
 	FORCE_INLINE Timer(Timer&&) noexcept = default;
@@ -713,7 +712,7 @@ public:
 	/**************************
 	 * @brief Create particular timer.
 	 *
-	 * @attention To create empty timer use Timer{ 0 } constructor.
+	 * @attention To create empty timer use Timer{ 0, 0 } constructor.
 	 *
 	 * @param year Year, if less than 1970, return empty timer.
 	 * @param month Month, if less than 1 or more than 12, return empty timer.
@@ -727,8 +726,8 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	static Timer Create(uint16_t year = 1970, uint8_t month = 1, uint8_t day = 1, uint8_t hour = 0, uint8_t minute = 0,
-		uint8_t second = 0, uint32_t nanosecond = 0);
+	static Timer Create(
+		uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second, uint32_t nanosecond);
 
 	/**************************
 	 * @brief Create a Timer from a string in "XXXX.XX.XX.XX.XX.XX.XXXXXXXXX" format, where dot can be any non-digit

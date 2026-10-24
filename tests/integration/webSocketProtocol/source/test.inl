@@ -288,7 +288,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			else {
 				// In case if masking does not mutate small payload
 				if (payloadSize < 5 && message.GetPayload() == payload) {
-					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message);
+					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
 					if (message.GetPayload() != payload) {
 						RETURN_IF_FALSE(t.Assert(message.GetPayload(), payload,
 							std::format("Masked message payload content {}", clientPortStr)));
@@ -299,11 +299,11 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 						std::format("Masked message payload content {}", clientPortStr)));
 				}
 				RETURN_IF_FALSE(t.Assert(maskingKey != 0, true, std::format("Masking key {}", clientPortStr)));
-				MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message);
+				MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
 				RETURN_IF_FALSE(t.Assert(
 					message.GetPayload(), payload, std::format("Unasked message payload content {}", clientPortStr)));
 				// Message can be used after checking and must save original state
-				MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message);
+				MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
 			}
 		}
 		else {
@@ -333,7 +333,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			dataTo, true, true, false, true, MSAPI::Protocol::WebSocket::Data::Opcode::Text, isMasked, payloadTo, ""));
 
 		MSAPI::Protocol::WebSocket::Data dataFrom{ payloadFrom, MSAPI::Protocol::WebSocket::Data::Opcode::Continuation,
-			mask, false };
+			mask, false, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		const auto totalPayloadSize{ payloadTo.size() + payloadFrom.size() };
 		if (payloadTo.empty()) {
 			dataFrom.MergePayload(dataTo);
@@ -389,7 +389,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 	// 1.6. Constructor with only required parameters
 	{
 		MSAPI::Protocol::WebSocket::Data data{ payloadSpan.subspan(0, 125),
-			MSAPI::Protocol::WebSocket::Data::Opcode::Text };
+			MSAPI::Protocol::WebSocket::Data::Opcode::Text, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false,
+			/*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
 		RETURN_IF_FALSE(checkMessage(data, true, false, false, false, MSAPI::Protocol::WebSocket::Data::Opcode::Text,
 			false, payloadSpan.subspan(0, 125), "Constructor with only required parameters"));
@@ -397,15 +398,18 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 	// 1.7. Try to create SplitGenerator with empty payload
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, /*mask=*/0,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
-		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, std::span<const uint8_t>{}, 10 };
+		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, std::span<const uint8_t>{}, 10,
+			/*masking=*/false };
 		RETURN_IF_FALSE(
 			t.Assert(generator.Get(), false, "SplitGenerator with empty payload should not have fragments"));
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
 	}
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 1234 };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 1234,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 1234, "Masking key is expected"));
 		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, std::span<const uint8_t>{}, 10, true };
 		RETURN_IF_FALSE(
@@ -415,15 +419,18 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 	// 1.8. Try to create SplitGenerator with payload less than minimum
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, /*mask=*/0,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
-		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 3), 10 };
+		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 3), 10,
+			/*masking=*/false };
 		RETURN_IF_FALSE(
 			t.Assert(generator.Get(), false, "SplitGenerator with too small payload should not have fragments"));
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
 	}
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 23423 };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 23423,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 23423, "Masking key is expected"));
 		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 3), 10, true };
 		RETURN_IF_FALSE(
@@ -431,7 +438,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey() == 23423, true, "Masking key is expected"));
 	}
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, /*mask=*/0,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
 		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 3), 10, true };
 		RETURN_IF_FALSE(
@@ -440,9 +448,11 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
 	}
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 23423 };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 23423,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 23423, "Masking key is expected"));
-		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 3), 10 };
+		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 3), 10,
+			/*masking=*/false };
 		RETURN_IF_FALSE(
 			t.Assert(generator.Get(), false, "SplitGenerator with too small payload should not have fragments"));
 		RETURN_IF_FALSE(t.Assert(data.IsMasked(), true, "Is masked is expected"));
@@ -451,16 +461,19 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 	// 1.9. Try to create SplitGenerator with zero step
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, /*mask=*/0,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
-		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 4), 0 };
+		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 4), 0,
+			/*masking=*/false };
 		RETURN_IF_FALSE(t.Assert(generator.Get(), true, "SplitGenerator get with zero"));
 		RETURN_IF_FALSE(checkMessage(data, false, false, false, false, MSAPI::Protocol::WebSocket::Data::Opcode::Text,
 			false, payloadSpan.subspan(0, 1), ""));
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
 	}
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 6542342 };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 6542342,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 6542342, "Masking key is expected"));
 		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 4), 0, true };
 		RETURN_IF_FALSE(t.Assert(generator.Get(), true, "SplitGenerator get with zero"));
@@ -470,7 +483,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey() != 0, true, "Masking key is expected"));
 	}
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, /*mask=*/0,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 0, "Masking key is expected"));
 		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 4), 0, true };
 		RETURN_IF_FALSE(t.Assert(generator.Get(), true, "SplitGenerator get with zero"));
@@ -479,9 +493,11 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey() != 0, true, "Masking key is expected"));
 	}
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 543345 };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, 543345,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		RETURN_IF_FALSE(t.Assert(data.GetMaskingKey(), 543345, "Masking key is expected"));
-		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 4), 0 };
+		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 4), 0,
+			/*masking=*/false };
 		RETURN_IF_FALSE(t.Assert(generator.Get(), true, "SplitGenerator get with zero"));
 		RETURN_IF_FALSE(checkMessage(data, false, false, false, false, MSAPI::Protocol::WebSocket::Data::Opcode::Text,
 			false, payloadSpan.subspan(0, 1), ""));
@@ -490,9 +506,10 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 	// 1.10. Try to create SplitGenerator with step greater than payload size
 	{
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text };
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, /*mask=*/0,
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 65535 * 4 + 1),
-			65535 * 4 + 2 };
+			65535 * 4 + 2, /*masking=*/false };
 		RETURN_IF_FALSE(t.Assert(generator.Get(), true, "SplitGenerator get with step greater than payload size"));
 		RETURN_IF_FALSE(checkMessage(data, false, false, false, false, MSAPI::Protocol::WebSocket::Data::Opcode::Text,
 			false, payloadSpan.subspan(0, 65535), ""));
@@ -515,8 +532,10 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		};
 
 		for (const auto testData : opcodes) {
-			MSAPI::Protocol::WebSocket::Data data{ {}, testData.opcode };
-			MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 5), 1 };
+			MSAPI::Protocol::WebSocket::Data data{ {}, testData.opcode, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false,
+				/*rsv2=*/false, /*rsv3=*/false };
+			MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, payloadSpan.subspan(0, 5), 1,
+				/*masking=*/false };
 			RETURN_IF_FALSE(t.Assert(generator.Get(), testData.expectedResult,
 				std::format("SplitGenerator try with opcode {}",
 					MSAPI::Protocol::WebSocket::Data::EnumToString(testData.opcode))));
@@ -527,9 +546,10 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 	{
 #define TMP_MSAPI_PROTOCOL_WEBSOCKET_DATA_SPLIT_GENERATOR_CONSTRUCT_WITH_PAYLOAD_TYPE(type)                            \
 	{                                                                                                                  \
-		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text };                   \
+		MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, /*mask=*/0,         \
+			/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };                                        \
 		std::span<type> specificPayload(reinterpret_cast<type*>(nonConstPayloadSpan.data()), 5);                       \
-		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, specificPayload, 4 };                        \
+		MSAPI::Protocol::WebSocket::Data::SplitGenerator generator{ data, specificPayload, 4, /*masking=*/false };     \
 		RETURN_IF_FALSE(t.Assert(generator.Get(), true, "Successfully get from split generator"));                     \
 		RETURN_IF_FALSE(checkMessage(data, false, false, false, false, MSAPI::Protocol::WebSocket::Data::Opcode::Text, \
 			false, payloadSpan.subspan(0, 4), ""));                                                                    \
@@ -578,7 +598,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 #define TMP_MSAPI_PROTOCOL_WEBSOCKET_DATA_CLOSE_CONSTRUCT_WITH_PAYLOAD_TYPE(type)                                      \
 	{                                                                                                                  \
 		std::span<type> specificPayload(reinterpret_cast<type*>(nonConstPayloadSpan.data() + 2), 5);                   \
-		auto message{ MSAPI::Protocol::WebSocket::Data::CreateClose(closeCodeInBuffer, specificPayload) };             \
+		auto message{ MSAPI::Protocol::WebSocket::Data::CreateClose(closeCodeInBuffer, specificPayload, /*mask=*/0) }; \
 		RETURN_IF_FALSE(checkMessage(message, true, false, false, false,                                               \
 			MSAPI::Protocol::WebSocket::Data::Opcode::Close, false, payloadSpan.subspan(0, 7), ""));                   \
 	}
@@ -796,7 +816,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 			std::format("Server does not have fragmented data with client {} after handshake", clientPortStr)));
 		RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-			MSAPI::Timer{ 0 },
+			MSAPI::Timer{ 0, 0 },
 			std::format("Server does not have timestamp of last fragmented data with client {} after handshake",
 				clientPortStr)));
 		RETURN_IF_FALSE(t.Assert(clientObserver.HasFragmentedDataForConnection(CTSCD->GetConnectionId()), false,
@@ -863,7 +883,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 						std::format("Masking is reversed for answer on ping {}", clientPortStr)));
 					if (message.IsMasked()) {
 						// Collected message always unmasked, checkMessage expect masked payload for masked message
-						MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message);
+						MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
 					}
 					else {
 						MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(
@@ -880,7 +900,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 							RETURN_IF_FALSE(t.Assert(message.GetPayload() != lastServerMessage.GetPayload(), true,
 								std::format("Masked message payload content {}", clientPortStr)));
 							// Collected message always unmasked, checkMessage expect masked payload for masked message
-							MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message);
+							MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
 						}
 					}
 					RETURN_IF_FALSE(t.Assert(lastServerMessage, message,
@@ -897,10 +917,10 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			if constexpr (O == MSAPI::Protocol::WebSocket::Data::Opcode::Close) {
 				// Different path instead of same with generic parameter is used for testing purpose
 				if (isMasked) {
-					return MSAPI::Protocol::WebSocket::Data::CreateClose(
+					return MSAPI::Protocol::WebSocket::Data::CreateClose<int16_t, uint8_t>(
 						int16_t{ -1 }, {}, MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey());
 				}
-				return MSAPI::Protocol::WebSocket::Data::CreateClose();
+				return MSAPI::Protocol::WebSocket::Data::CreateClose<int16_t, uint8_t>(int16_t{ -1 }, {}, /*mask=*/0);
 			}
 			else {
 				if (isMasked) {
@@ -961,18 +981,19 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					}
 					// Different path instead of same with generic parameter is used for testing purpose
 					if (isMasked) {
-						return MSAPI::Protocol::WebSocket::Data::CreateClose(
+						return MSAPI::Protocol::WebSocket::Data::CreateClose<int16_t, uint8_t>(
 							int16_t{ -1 }, {}, MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey());
 					}
 					return MSAPI::Protocol::WebSocket::Data::CreateClose<
-						MSAPI::Protocol::WebSocket::Data::CloseStatusCode>();
+						MSAPI::Protocol::WebSocket::Data::CloseStatusCode, uint8_t>(
+						static_cast<MSAPI::Protocol::WebSocket::Data::CloseStatusCode>(-1), {}, /*mask=*/0);
 				}
 				if (isMasked) {
 					return MSAPI::Protocol::WebSocket::Data::CreateClose(closeCodeInBuffer,
 						payload.subspan(sizeof(int16_t)), MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey());
 				}
 				return MSAPI::Protocol::WebSocket::Data::CreateClose(
-					closeCodeInBuffer, payload.subspan(sizeof(int16_t)));
+					closeCodeInBuffer, payload.subspan(sizeof(int16_t)), /*mask=*/0);
 			}
 			else {
 				if (isMasked) {
@@ -1044,13 +1065,15 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				"Testing creation of control message with payload size {}, client {}", payloadSize, clientPortStr);
 			MSAPI::Protocol::WebSocket::Data pingMessage{ payloadSpan.subspan(0, payloadSize),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Ping,
-				isMasked ? MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey() : 0 };
+				isMasked ? MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey() : 0, /*isFinal=*/true, /*rsv1=*/false,
+				/*rsv2=*/false, /*rsv3=*/false };
 			RETURN_IF_FALSE(checkMessage(pingMessage, true, false, false, false,
 				MSAPI::Protocol::WebSocket::Data::Opcode::Ping, isMasked, std::span<const uint8_t>{}, clientPortStr));
 
 			MSAPI::Protocol::WebSocket::Data pongMessage{ payloadSpan.subspan(0, payloadSize),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Pong,
-				isMasked ? MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey() : 0 };
+				isMasked ? MSAPI::Protocol::WebSocket::Data::GenerateMaskingKey() : 0, /*isFinal=*/true, /*rsv1=*/false,
+				/*rsv2=*/false, /*rsv3=*/false };
 			RETURN_IF_FALSE(checkMessage(pongMessage, true, false, false, false,
 				MSAPI::Protocol::WebSocket::Data::Opcode::Pong, isMasked, std::span<const uint8_t>{}, clientPortStr));
 		}
@@ -1104,7 +1127,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			std::format(
 				"Server does not have fragmented data with client {} before fragmented messages", clientPortStr)));
 		RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-			MSAPI::Timer{ 0 },
+			MSAPI::Timer{ 0, 0 },
 			std::format(
 				"Server does not have timestamp of last fragmented data with client {} before fragmented messages",
 				clientPortStr)));
@@ -1112,12 +1135,13 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			std::format(
 				"Client {} does not have fragmented data with server before fragmented messages", clientPortStr)));
 		{
-			MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text };
+			MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Text, /*mask=*/0,
+				/*isFinal=*/true, /*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 			size_t sendedPayload{};
 			size_t expectedFragments{};
 			size_t sendedFragments{};
 			size_t expectedLastFragmentPayloadSize{};
-			MSAPI::Timer lastFragmentTime{ 0 };
+			MSAPI::Timer lastFragmentTime{ 0, 0 };
 			uint32_t previousMaskingKey{};
 			auto originalOpcode{ data.GetOpcode() };
 
@@ -1129,7 +1153,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				}
 
 				sendedPayload = 0;
-				lastFragmentTime = MSAPI::Timer{ 0 };
+				lastFragmentTime = MSAPI::Timer{ 0, 0 };
 				expectedFragments = payloadSize / step;
 				sendedFragments = 0;
 				if (payloadSize % step != 0) {
@@ -1240,7 +1264,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				auto& lastServerWebSocketData{ serverWebSocketData->back() };
 				if (lastServerWebSocketData.IsMasked()) {
 					// Collected message always unmasked, checkMessage expect masked payload for masked message
-					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(lastServerWebSocketData);
+					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(lastServerWebSocketData, /*mask=*/0);
 				}
 
 				RETURN_IF_FALSE(checkMessage(lastServerWebSocketData, true, false, false, false, originalOpcode,
@@ -1250,11 +1274,12 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					std::format(
 						"Server does not have fragmented data messages for client {} after final fragmented message",
 						clientPortStr)));
-				RETURN_IF_FALSE(t.Assert(
-					serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()), MSAPI::Timer{ 0 },
-					std::format("Server does not have timestamp of last fragmented data with client {} after final "
-								"fragmented message",
-						clientPortStr)));
+				RETURN_IF_FALSE(
+					t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
+						MSAPI::Timer{ 0, 0 },
+						std::format("Server does not have timestamp of last fragmented data with client {} after final "
+									"fragmented message",
+							clientPortStr)));
 				RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
 					std::format("Size of fragmented data connections on client {} after final fragmented message",
 						clientPortStr)));
@@ -1290,13 +1315,15 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 			LOG_INFO_NEW("Testing overwriting fragmented message with new initial message, client {}", clientPortStr);
 			MSAPI::Protocol::WebSocket::Data initialMessage{ payloadSpan.subspan(0, 100),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Text, getMaskingKeyIfNeeded(), false };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Text, getMaskingKeyIfNeeded(), false, /*rsv1=*/false,
+				/*rsv2=*/false, /*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialMessage);
-			MSAPI::Timer lastFragmentTime{ 0 };
+			MSAPI::Timer lastFragmentTime{ 0, 0 };
 			RETURN_IF_FALSE(waitForFragmentedData(lastFragmentTime));
 
 			MSAPI::Protocol::WebSocket::Data continuationMessage{ payloadSpan.subspan(100, 100),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, getMaskingKeyIfNeeded(), false };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, getMaskingKeyIfNeeded(), false, /*rsv1=*/false,
+				/*rsv2=*/false, /*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationMessage);
 			RETURN_IF_FALSE(waitForFragmentedData(lastFragmentTime));
 
@@ -1304,7 +1331,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(waitForFragmentedData(lastFragmentTime));
 
 			MSAPI::Protocol::WebSocket::Data finalMessage{ payloadSpan.subspan(0, 100),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, getMaskingKeyIfNeeded() };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, getMaskingKeyIfNeeded(), /*isFinal=*/true,
+				/*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), finalMessage);
 			++expectedServerWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
@@ -1316,7 +1344,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			auto& lastServerWebSocketData1{ serverWebSocketData->back() };
 			if (isMasked) {
 				// Collected message always unmasked, checkMessage expect masked payload for masked message
-				MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(lastServerWebSocketData1);
+				MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(lastServerWebSocketData1, /*mask=*/0);
 			}
 
 			RETURN_IF_FALSE(checkMessage(lastServerWebSocketData1, true, false, false, false,
@@ -1334,7 +1362,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					clientPortStr)));
 
 			MSAPI::Protocol::WebSocket::Data finalFragmentMessage{ payloadSpan.subspan(100, 100),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, getMaskingKeyIfNeeded(), true };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, getMaskingKeyIfNeeded(), true, /*rsv1=*/false,
+				/*rsv2=*/false, /*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), finalFragmentMessage);
 			++expectedServerWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
@@ -1346,7 +1375,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			auto& lastServerWebSocketData2{ serverWebSocketData->back() };
 			if (isMasked) {
 				// Collected message always unmasked, checkMessage expect masked payload for masked message
-				MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(lastServerWebSocketData2);
+				MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(lastServerWebSocketData2, /*mask=*/0);
 			}
 
 			RETURN_IF_FALSE(checkMessage(lastServerWebSocketData2, true, false, false, false,
@@ -1356,7 +1385,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					"Server does not have fragmented data messages for client {} after final fragmented message",
 					clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-				MSAPI::Timer{ 0 },
+				MSAPI::Timer{ 0, 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {} after final "
 							"fragmented message",
 					clientPortStr)));
@@ -1422,7 +1451,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 						static_cast<size_t>(
 							std::ceil(server.GetFragmentedDataLimit() * MSAPI::Protocol::WebSocket::Data::MB))
 							+ 1),
-					MSAPI::Protocol::WebSocket::Data::Opcode::Text, 0, false
+					MSAPI::Protocol::WebSocket::Data::Opcode::Text, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+					/*rsv3=*/false
 				};
 				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
 			}
@@ -1431,7 +1461,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					payloadSpan.subspan(0,
 						static_cast<size_t>(
 							std::ceil(server.GetFragmentedDataLimit() * MSAPI::Protocol::WebSocket::Data::MB / 2))),
-					MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false
+					MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+					/*rsv3=*/false
 				};
 				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
 			}
@@ -1440,7 +1471,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					payloadSpan.subspan(0,
 						static_cast<size_t>(
 							std::ceil(server.GetFragmentedDataLimit() * MSAPI::Protocol::WebSocket::Data::MB / 2))),
-					MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, true
+					MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, true, /*rsv1=*/false, /*rsv2=*/false,
+					/*rsv3=*/false
 				};
 				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
 			}
@@ -1449,13 +1481,15 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					payloadSpan.subspan(0,
 						static_cast<size_t>(
 							std::ceil(server.GetFragmentedDataLimit() * MSAPI::Protocol::WebSocket::Data::MB / 2))),
-					MSAPI::Protocol::WebSocket::Data::Opcode::Text, 0, false
+					MSAPI::Protocol::WebSocket::Data::Opcode::Text, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+					/*rsv3=*/false
 				};
 				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
 			}
 			{
 				const MSAPI::Protocol::WebSocket::Data emptyFragment{ {},
-					MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false };
+					MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+					/*rsv3=*/false };
 				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
 				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
 				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
@@ -1473,8 +1507,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				true,
 				std::format(
 					"Server has fragmented data messages for client {} after fragmented message", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(
-				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId())
+					!= MSAPI::Timer{ 0, 0 },
 				true,
 				std::format("Server has timestamp of last fragmented data with client {} after fragmented message",
 					clientPortStr)));
@@ -1487,7 +1521,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					static_cast<size_t>(
 						std::ceil(server.GetFragmentedDataLimit() * MSAPI::Protocol::WebSocket::Data::MB / 2))
 						+ 1),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation
+				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false,
+				/*rsv2=*/false, /*rsv3=*/false
 			};
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
 			RETURN_IF_FALSE(t.Wait(
@@ -1501,7 +1536,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					clientPortStr)));
 
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-				MSAPI::Timer{ 0 },
+				MSAPI::Timer{ 0, 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {} after sending "
 							"fragmented message with payload size greater than fragmented data limit",
 					clientPortStr)));
@@ -1536,7 +1571,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				payloadSpan.subspan(0,
 					static_cast<size_t>(
 						std::ceil(server.GetFragmentedDataLimit() * MSAPI::Protocol::WebSocket::Data::MB / 2))),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false
+				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+				/*rsv3=*/false
 			};
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
 			RETURN_IF_FALSE(t.Wait(
@@ -1547,8 +1583,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				true,
 				std::format(
 					"Server has fragmented data messages for client {} after fragmented message", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(
-				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId())
+					!= MSAPI::Timer{ 0, 0 },
 				true,
 				std::format("Server has timestamp of last fragmented data with client {} after fragmented message",
 					clientPortStr)));
@@ -1560,7 +1596,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					static_cast<size_t>(
 						std::ceil(server.GetFragmentedDataLimit() * MSAPI::Protocol::WebSocket::Data::MB))
 						+ 1),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation
+				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false,
+				/*rsv2=*/false, /*rsv3=*/false
 			};
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), newData);
 			RETURN_IF_FALSE(t.Wait(
@@ -1573,7 +1610,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 							"message with payload size greater than fragmented data limit",
 					clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-				MSAPI::Timer{ 0 },
+				MSAPI::Timer{ 0, 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {} after sending "
 							"fragmented message with payload size greater than fragmented data limit",
 					clientPortStr)));
@@ -1609,18 +1646,21 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				server.GetFragmentedDataLimit(), 0., "Fragmented data limit should be 0 after successful set"));
 
 			const MSAPI::Protocol::WebSocket::Data initialFragment{ payloadSpan.subspan(0, 1),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+				/*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment);
 
 			const MSAPI::Protocol::WebSocket::Data continuationFragment{ payloadSpan.subspan(0, 1),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+				/*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
 
 			const MSAPI::Protocol::WebSocket::Data data{ payloadSpan.subspan(0, 1),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, true };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, true, /*rsv1=*/false, /*rsv2=*/false,
+				/*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
 			++serverWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
@@ -1631,7 +1671,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-				MSAPI::Timer{ 0 },
+				MSAPI::Timer{ 0, 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {} after sending "
 							"fragmented messages with zero fragmented data limit",
 					clientPortStr)));
@@ -1652,18 +1692,20 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 		// 3.2.6. Check zero fragmented data limit with empty payload messages
 		{
 			const MSAPI::Protocol::WebSocket::Data initialFragment{ {},
-				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+				/*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment);
 
 			const MSAPI::Protocol::WebSocket::Data continuationFragment{ {},
-				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+				/*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
 
-			const MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0,
-				true };
+			const MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, true,
+				/*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
 			++serverWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
@@ -1674,7 +1716,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-				MSAPI::Timer{ 0 },
+				MSAPI::Timer{ 0, 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {} after sending "
 							"fragmented messages with zero fragmented data limit",
 					clientPortStr)));
@@ -1702,7 +1744,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 			const MSAPI::Protocol::WebSocket::Data initialFragment{ payloadSpan.subspan(
 																		0, MSAPI::Protocol::WebSocket::Data::MB / 2),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+				/*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment);
 
 			RETURN_IF_FALSE(t.Wait(
@@ -1711,8 +1754,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					return serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true, std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(
-				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId())
+					!= MSAPI::Timer{ 0, 0 },
 				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
@@ -1734,11 +1777,12 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 			const MSAPI::Protocol::WebSocket::Data continuationFragment{ payloadSpan.subspan(0,
 																			 MSAPI::Protocol::WebSocket::Data::MB / 2),
-				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false };
+				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
+				/*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
 
-			const MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0,
-				true };
+			const MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, true,
+				/*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
 			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
 			++serverWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
@@ -1748,8 +1792,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), true,
 				std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(
-				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId())
+					!= MSAPI::Timer{ 0, 0 },
 				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
@@ -1776,8 +1820,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), true,
 				std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(
-				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId())
+					!= MSAPI::Timer{ 0, 0 },
 				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
@@ -1805,7 +1849,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-				MSAPI::Timer{ 0 },
+				MSAPI::Timer{ 0, 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
@@ -1825,8 +1869,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					return serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true, std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(
-				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId())
+					!= MSAPI::Timer{ 0, 0 },
 				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
@@ -1845,7 +1889,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-				MSAPI::Timer{ 0 },
+				MSAPI::Timer{ 0, 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
@@ -1865,8 +1909,8 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					return serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId());
 				},
 				true, std::format("Server has fragmented data messages for client {}", clientPortStr)));
-			RETURN_IF_FALSE(t.Assert(
-				serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()) != MSAPI::Timer{ 0 },
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId())
+					!= MSAPI::Timer{ 0, 0 },
 				true, std::format("Server has timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));
@@ -1885,7 +1929,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
 				std::format("Server does not have fragmented data messages for client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-				MSAPI::Timer{ 0 },
+				MSAPI::Timer{ 0, 0 },
 				std::format("Server does not have timestamp of last fragmented data with client {}", clientPortStr)));
 			RETURN_IF_FALSE(t.Assert(clientWebSocketDataSize, client.GetWebSocketData(CTSCD)->size(),
 				std::format("Size of WebSocket data on client {} should not change", clientPortStr)));

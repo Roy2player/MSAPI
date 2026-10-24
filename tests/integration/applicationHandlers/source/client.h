@@ -62,8 +62,8 @@ private:
 	std::optional<double> m_parameter33;
 	std::string m_parameter34{ "34" };
 	std::string m_parameter35;
-	MSAPI::Timer m_parameter36{ MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30) };
-	MSAPI::Timer m_parameter37{ 0 };
+	MSAPI::Timer m_parameter36{ MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30, /*nanosecond=*/0) };
+	MSAPI::Timer m_parameter37{ 0, 0 };
 	MSAPI::Timer::Duration m_parameter38{ MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653) };
 	MSAPI::Timer::Duration m_parameter39;
 	bool m_parameter40{ false };

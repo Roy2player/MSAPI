@@ -32,7 +32,7 @@ class NewApp extends View {
 				return;
 			}
 
-			this.m_parentView.classList.add("loading");
+			this.SetLoading(true);
 
 			let data = {};
 			data["appType"] = Helper.StringHash32Uint(this.m_appType);
@@ -42,7 +42,7 @@ class NewApp extends View {
 				event : Helper.StringHash32Uint("createApp"),
 				handleResponse : (result) => { this.Destructor(); },
 				handleFailed : (error) => {
-					this.m_parentView.classList.remove("loading");
+					this.SetLoading(false);
 					this.DisplayErrorMessage(error);
 				},
 				data : data,

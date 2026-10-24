@@ -70,7 +70,7 @@ class InstalledApps extends View {
 			event : Helper.StringHash32Uint("installedApp"),
 			handleResponse : handleResponse,
 			handleFailed : (error) => {
-				this.m_parentView.classList.remove("loading");
+				this.SetLoading(false);
 				this.DisplayErrorMessage(error);
 			},
 			viewUid : this.m_uid

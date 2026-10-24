@@ -34,7 +34,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 	std::vector<std::string> files;
 	if (MSAPI::IO::List<MSAPI::IO::FileType::Regular>(files, path.c_str())) {
 		for (const auto& file : files) {
-			(void)MSAPI::IO::Remove((path + file).c_str());
+			(void)MSAPI::IO::Remove</*Buffer=*/512>((path + file).c_str());
 		}
 	}
 

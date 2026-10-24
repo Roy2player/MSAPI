@@ -168,17 +168,16 @@ public:
 		 *
 		 * @param name Name of parameter.
 		 * @param value Value of parameter.
-		 * @param min Minimum value of parameter. Empty by default.
-		 * @param max Maximum value of parameter. Empty by default.
-		 * @param canBeEmpty True if parameter can be empty. False by default.
+		 * @param min Minimum value of parameter.
+		 * @param max Maximum value of parameter.
+		 * @param canBeEmpty True if parameter can be empty.
 		 *
 		 * @test Yes.
 		 */
 		template <typename T>
 			requires(is_standard_simple_type_ptr<T> && !std::is_same_v<T, bool*>)
-		Parameter(std::string&& name, T value,
-			const std::optional<remove_optional_t<std::remove_pointer_t<T>>>& min = {},
-			const std::optional<remove_optional_t<std::remove_pointer_t<T>>>& max = {}, const bool canBeEmpty = false)
+		Parameter(std::string&& name, T value, const std::optional<remove_optional_t<std::remove_pointer_t<T>>>& min,
+			const std::optional<remove_optional_t<std::remove_pointer_t<T>>>& max, const bool canBeEmpty)
 			: m_name{ std::move(name) }
 			, m_value{ value }
 			, m_min{ min }
@@ -209,7 +208,7 @@ public:
 		 * @param name Name of parameter.
 		 * @param value Value of parameter.
 		 * @param printFunc Custom print function for enum type.
-		 * @param canBeUndefined Set minimum as Enum::Undefined, false by default.
+		 * @param canBeUndefined Set minimum as Enum::Undefined.
 		 *
 		 * @test Yes.
 		 */
@@ -219,8 +218,7 @@ public:
 						&& is_any_of<std::underlying_type_t<std::remove_pointer_t<T>>, integerTypes>
 						&& Enum<std::remove_pointer_t<T>>)
 		Parameter(std::string&& name, T value,
-			std::string_view (*const printFunc)(remove_optional_t<std::remove_pointer_t<T>>) = nullptr,
-			const bool canBeUndefined = false)
+			std::string_view (*const printFunc)(remove_optional_t<std::remove_pointer_t<T>>), const bool canBeUndefined)
 			: m_name{ std::move(name) }
 			, m_value{ reinterpret_cast<std::add_pointer_t<std::underlying_type_t<std::remove_pointer_t<T>>>>(value) }
 			, m_min{ static_cast<std::underlying_type_t<std::remove_pointer_t<T>>>(canBeUndefined
@@ -242,13 +240,13 @@ public:
 		 *
 		 * @param name Name of parameter.
 		 * @param value Value of parameter.
-		 * @param canBeEmpty True if parameter can be empty. False by default.
+		 * @param canBeEmpty True if parameter can be empty.
 		 *
 		 * @test Yes.
 		 */
 		template <typename T>
 			requires std::is_same_v<T, std::string*> || std::is_same_v<T, Timer*>
-		Parameter(std::string&& name, T value, const bool canBeEmpty = false)
+		Parameter(std::string&& name, T value, const bool canBeEmpty)
 			: m_name{ std::move(name) }
 			, m_value{ value }
 			, m_canBeEmpty{ canBeEmpty }
@@ -263,17 +261,16 @@ public:
 		 * @param name Name of parameter.
 		 * @param value Value of parameter.
 		 * @param durationType Type of duration, should be valid or nanoseconds will be used.
-		 * @param min Minimum value of parameter. Empty by default.
-		 * @param max Maximum value of parameter. Empty by default.
-		 * @param canBeEmpty True if parameter can be empty. False by default.
+		 * @param min Minimum value of parameter.
+		 * @param max Maximum value of parameter.
+		 * @param canBeEmpty True if parameter can be empty.
 		 *
 		 * @test Yes.
 		 */
 		template <typename T>
 			requires std::is_same_v<T, Timer::Duration*> || std::is_same_v<T, std::optional<Timer::Duration>*>
 		Parameter(std::string&& name, T value, const Timer::Duration::Type durationType,
-			const std::optional<Timer::Duration>& min = {}, const std::optional<Timer::Duration>& max = {},
-			const bool canBeEmpty = false)
+			const std::optional<Timer::Duration>& min, const std::optional<Timer::Duration>& max, const bool canBeEmpty)
 			: m_name{ std::move(name) }
 			, m_value{ value }
 			, m_min{ min }
@@ -295,12 +292,12 @@ public:
 		 *
 		 * @param name Name of parameter.
 		 * @param value Value of parameter.
-		 * @param canBeEmpty True if parameter can be empty. False by default.
+		 * @param canBeEmpty True if parameter can be empty.
 		 *
 		 * @test Yes.
 		 */
 		template <typename... Ts>
-		Parameter(std::string&& name, Table<Ts...>* value, const bool canBeEmpty = false)
+		Parameter(std::string&& name, Table<Ts...>* value, const bool canBeEmpty)
 			: m_name{ std::move(name) }
 			, m_value{ reinterpret_cast<TableData*>(value) }
 			, m_canBeEmpty{ canBeEmpty }
@@ -441,7 +438,7 @@ public:
 			requires std::is_pointer_v<T> && std::is_enum_v<std::remove_pointer_t<T>>
 						 && is_any_of<std::underlying_type_t<std::remove_cv_t<std::remove_pointer_t<T>>>, integerTypes>
 		ConstParameter(std::string&& name, const T value,
-			std::string_view (*const printFunc)(remove_optional_t<std::remove_pointer_t<T>>) = nullptr)
+			std::string_view (*const printFunc)(remove_optional_t<std::remove_pointer_t<T>>))
 			: m_name{ std::move(name) }
 			, m_value{ reinterpret_cast<
 				  std::add_pointer_t<std::add_const_t<std::underlying_type_t<std::remove_pointer_t<T>>>>>(value) }

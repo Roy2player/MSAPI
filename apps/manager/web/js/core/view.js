@@ -613,6 +613,13 @@ class View {
 		WebSocketHandler.ClearViewRelatedEvents(this.m_uid);
 	}
 
+	/**************************
+	 * @brief Sets or clears the loading animation on the view's content element.
+	 *
+	 * @param isLoading True to show the loading animation, false to hide it.
+	 */
+	SetLoading(isLoading) { this.m_view.classList.toggle("loading", isLoading); }
+
 	ToggleStick()
 	{
 		if (!this.m_canBeSticked) {

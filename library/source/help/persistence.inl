@@ -41,10 +41,15 @@ namespace Persistence {
 Declarations
 ---------------------------------------------------------------------------------*/
 
+// Save mode: append unsaved objects to the data file
+constexpr bool APPEND{ true };
+// Save mode: overwrite the data file with the complete current container
+constexpr bool OVERWRITE{};
+
 /**************************
  * @brief Common part of persistences: data and timestamp file descriptors, timestamp of the last change, lock,
- * Read and Save. Records are saved to the data file in append mode, so saved records are never removed from the data
- * file. Records handling is provided by Derived at compile time.
+ * Read and Save. Append saving writes unsaved records, while overwrite saving replaces the data file with the complete
+ * current container. Records handling is provided by Derived at compile time.
  *
  * @attention Data and timestamp files are bound by the first successful AssignPath and never change.
  *
@@ -76,8 +81,8 @@ public:
 	static inline constexpr bool SAVE_DELAY{};
 
 protected:
-	MSAPI::Timer m_timestamp{ 0 };
-	// Opened for reading and for saving in append mode
+	MSAPI::Timer m_timestamp{ 0, 0 };
+	// Opened for reading and saving data
 	MSAPI::IO::FileGuard m_file;
 	// Opened for reading and writing, overwritten on each save
 	MSAPI::IO::FileGuard m_timestampFile;
@@ -157,16 +162,19 @@ public:
 	FORCE_INLINE [[nodiscard]] bool Read() noexcept;
 
 	/**************************
-	 * @brief Saves unsaved objects to the data file and marks them as saved, then saves the timestamp. With CLEAR
-	 * policy clears the container after successful saving to release memory.
+	 * @brief Saves objects to the data file and marks them as saved, then saves the timestamp. APPEND saves unsaved
+	 * objects, while OVERWRITE replaces the file with the complete current container. With CLEAR policy clears the
+	 * container after successful saving to release memory.
 	 *
-	 * @attention If saving of objects fails, no object is marked as saved, while records written before the failure
-	 * stay in the data file and a partially written record is not removed. A retry saves these objects again, and a
-	 * partial record misaligns all following records, so Read fails and the data file requires manual repair. If only
-	 * the timestamp save fails, saved objects stay saved and a retry saves only the timestamp. The container is cleared
-	 * by CLEAR policy only if both data and timestamp are saved, so no object is lost on failure.
+	 * @attention If APPEND saving fails, no object is marked as saved, while records written before the failure stay in
+	 * the data file and a partial record is not removed. A retry saves these objects again, and a partial record
+	 * misaligns all following records, so Read fails and the data file requires manual repair. If OVERWRITE saving
+	 * fails, the previous file has already been truncated and the failed snapshot must be retried before restart. If
+	 * only the timestamp save fails, saved objects stay saved and a retry saves only the timestamp. The container is
+	 * cleared by CLEAR policy only if both data and timestamp are saved, so no in-memory object is lost on failure.
 	 *
 	 * @tparam Policy REMAIN to keep objects in the container, CLEAR to clear the container after saving.
+	 * @tparam Mode APPEND to append unsaved objects, OVERWRITE to replace the file with all current objects.
 	 *
 	 * @locking Write lock m_lock.
 	 *
@@ -174,10 +182,16 @@ public:
 	 *
 	 * @test Yes.
 	 *
+	 * @todo Prevent data loss on failed OVERWRITE saves in Single and Pair: truncation currently destroys the previous
+	 * snapshot before its replacement is complete. Copy the bound data and timestamp files to local name.backup files
+	 * without loading snapshots into RAM, and make the backups durable before truncation. Restore through the same
+	 * descriptors on failure and recover interrupted overwrites after restart. Preserve descriptor binding after rename
+	 * or unlink; define backup discovery and durable commit/cleanup ordering. Cover short writes, disk-full failures
+	 * and interrupted backup, overwrite and recovery operations in tests.
 	 * @todo Make IO::SaveBinaries return std::expected with true on success and the number of written records on
 	 * failure, to mark written objects as saved and to truncate a partially written record.
 	 */
-	template <bool Policy> FORCE_INLINE [[nodiscard]] bool Save() noexcept;
+	template <bool Policy, bool Mode> FORCE_INLINE [[nodiscard]] bool Save() noexcept;
 
 	/**************************
 	 * @locking Read lock m_lock.
@@ -238,8 +252,8 @@ private:
 };
 
 /**************************
- * @brief Stores payload wrappers in a sequence container and incrementally saves unsaved wrappers to the data file
- * alongside the timestamp of the last emplaced object.
+ * @brief Stores payload wrappers in a sequence container and saves them alongside the timestamp of the last emplaced
+ * object. Append mode saves unsaved wrappers incrementally; overwrite mode saves the complete current container.
  *
  * @tparam Container Sequence container with emplace_back support.
  * @tparam Type Type of the objects stored in the container.
@@ -416,8 +430,9 @@ private:
 	FORCE_INLINE [[nodiscard]] bool ReadImpl() noexcept;
 
 	/**************************
-	 * @brief Saves unsaved objects to the data file and marks them as saved. Unsaved objects are always at the end of
-	 * the container, mixed with objects saved by emplacement with SAVE_IMMEDIATE policy, which are skipped.
+	 * @brief With APPEND, saves unsaved objects and marks them as saved. Unsaved objects are always at the end of the
+	 * container, mixed with objects saved by emplacement with SAVE_IMMEDIATE policy, which are skipped. With OVERWRITE,
+	 * replaces the data file with all current objects and marks them as saved.
 	 *
 	 * @locking Requires caller-held write lock m_lock.
 	 *
@@ -425,7 +440,7 @@ private:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool SaveImpl() noexcept;
+	template <bool Mode> FORCE_INLINE [[nodiscard]] bool SaveImpl() noexcept;
 
 	/**************************
 	 * @brief Clears the container.
@@ -441,9 +456,9 @@ private:
 };
 
 /**************************
- * @brief Stores values by keys in a map and incrementally saves emplaced and modified wrappers to the data
- * file alongside the timestamp of the last change. Each wrapper keeps the key, the value, the create time and the
- * modify time.
+ * @brief Stores values by keys in a map and saves them alongside the timestamp of the last change. Append mode saves
+ * emplaced and modified wrappers incrementally; overwrite mode saves one current wrapper per key. Each wrapper keeps
+ * the key, the value, the create time and the modify time.
  *
  * @attention Emplace of an existing key modifies its value and saves a new record of the key, so the data file
  * contains a record per emplacement and per saved modification. Read replays the records in order and the last record
@@ -662,8 +677,9 @@ private:
 	FORCE_INLINE [[nodiscard]] bool ReadImpl() noexcept;
 
 	/**************************
-	 * @brief Saves objects of unsaved keys to the data file and marks them as saved. Objects of the keys saved by
-	 * emplacement with SAVE_IMMEDIATE policy after the last save are skipped.
+	 * @brief With APPEND, saves objects of unsaved keys and marks them as saved. Objects of keys saved by emplacement
+	 * with SAVE_IMMEDIATE policy after the last save are skipped. With OVERWRITE, replaces the data file with one
+	 * current object per key and marks every object as saved.
 	 *
 	 * @locking Requires caller-held write lock m_lock.
 	 *
@@ -671,7 +687,7 @@ private:
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE [[nodiscard]] bool SaveImpl() noexcept;
+	template <bool Mode> FORCE_INLINE [[nodiscard]] bool SaveImpl() noexcept;
 
 	/**************************
 	 * @brief Clears the map and unsaved keys.
@@ -729,7 +745,10 @@ FORCE_INLINE [[nodiscard]] bool Base<Derived>::AssignPath(
 		return false;
 	}
 
-	if (!path.NullTerminate() || (!MSAPI::IO::HasPath(path.Get()) && !MSAPI::IO::CreateDir(path.Get()))) [[unlikely]] {
+	if (!path.NullTerminate()
+		|| (!MSAPI::IO::HasPath(path.Get()) && !MSAPI::IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(path.Get())))
+		[[unlikely]] {
+
 		return false;
 	}
 
@@ -796,7 +815,7 @@ template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Read(
 
 	// AssignPath creates a missing timestamp file empty, so it has no timestamp yet
 	if (timestampStat.st_size != 0) {
-		MSAPI::Timer timestamp{ 0 };
+		MSAPI::Timer timestamp{ 0, 0 };
 		if (!MSAPI::IO::ReadBinary(&timestamp, m_timestampFile.value)) [[unlikely]] {
 			Self().ClearImpl();
 			return false;
@@ -809,11 +828,13 @@ template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Read(
 	return true;
 }
 
-template <typename Derived> template <bool Policy> FORCE_INLINE [[nodiscard]] bool Base<Derived>::Save() noexcept
+template <typename Derived>
+template <bool Policy, bool Mode>
+FORCE_INLINE [[nodiscard]] bool Base<Derived>::Save() noexcept
 {
 	// Invalid file descriptors before successful path assignment are rejected by IO
 	const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_lock };
-	if (!Self().SaveImpl() || !SaveTimestamp()) [[unlikely]] {
+	if (!Self().template SaveImpl<Mode>() || !SaveTimestamp()) [[unlikely]] {
 		return false;
 	}
 
@@ -840,7 +861,7 @@ template <typename Record>
 FORCE_INLINE [[nodiscard]] bool Base<Derived>::SaveRecord(const Record& record) noexcept
 {
 	// Invalid file descriptor before successful path assignment is rejected by IO
-	if (!IO::SaveBinary<IO::APPEND>(record, m_file.value)) [[unlikely]] {
+	if (!IO::SaveBinary<IO::APPEND, /*Mode=*/0644, IO::SINGLE>(record, m_file.value)) [[unlikely]] {
 		return false;
 	}
 
@@ -850,7 +871,7 @@ FORCE_INLINE [[nodiscard]] bool Base<Derived>::SaveRecord(const Record& record) 
 
 template <typename Derived> FORCE_INLINE [[nodiscard]] bool Base<Derived>::SaveTimestamp() noexcept
 {
-	return IO::SaveBinary(m_timestamp, m_timestampFile.value);
+	return IO::SaveBinary<IO::OVERWRITE, /*Mode=*/0644, IO::SINGLE>(m_timestamp, m_timestampFile.value);
 }
 
 template <typename Derived> FORCE_INLINE [[nodiscard]] Derived& Base<Derived>::Self() noexcept
@@ -970,15 +991,35 @@ FORCE_INLINE [[nodiscard]] bool Single<Container, Type>::ReadImpl() noexcept
 
 template <template <typename> typename Container, typename Type>
 	requires std::is_trivially_copyable_v<Type>
+template <bool Mode>
 FORCE_INLINE [[nodiscard]] bool Single<Container, Type>::SaveImpl() noexcept
 {
+	if constexpr (Mode == OVERWRITE) {
+		if (!IO::SaveBinaries<IO::OVERWRITE, /*Mode=*/0644>(
+				m_container.begin(), m_container.end(), BaseT::m_file.value)) [[unlikely]] {
+			return false;
+		}
+
+		LOG_DEBUG_NEW("Records at: {} overwritten, data fd: {}, entries: {}", BaseT::m_timestamp.ToString(),
+			BaseT::m_file.value, m_container.size());
+
+		for (auto& object : m_container) {
+			// Friend access
+			object.SetSaved(true);
+		}
+
+		return true;
+	}
+
 	const auto end{ m_container.end() };
 	auto begin{ std::find_if(m_container.begin(), end, [](const auto& object) { return !object.IsSaved(); }) };
 	// Objects saved by emplacement with SAVE_IMMEDIATE policy can follow the first unsaved object
 	auto unsaved{ std::ranges::subrange(begin, end)
 		| std::views::filter([](const auto& object) { return !object.IsSaved(); }) };
 
-	if (!IO::SaveBinaries<IO::APPEND>(unsaved.begin(), unsaved.end(), BaseT::m_file.value)) [[unlikely]] {
+	if (!IO::SaveBinaries<IO::APPEND, /*Mode=*/0644>(unsaved.begin(), unsaved.end(), BaseT::m_file.value))
+		[[unlikely]] {
+
 		return false;
 	}
 
@@ -1173,14 +1214,37 @@ FORCE_INLINE [[nodiscard]] bool Pair<Map, Key, Value>::ReadImpl() noexcept
 
 template <template <typename...> typename Map, typename Key, typename Value>
 	requires std::is_trivially_copyable_v<Key> && std::is_trivially_copyable_v<Value>
+template <bool Mode>
 FORCE_INLINE [[nodiscard]] bool Pair<Map, Key, Value>::SaveImpl() noexcept
 {
+	if constexpr (Mode == OVERWRITE) {
+		auto objects{ m_map | std::views::values };
+		if (!IO::SaveBinaries<IO::OVERWRITE, /*Mode=*/0644>(objects.begin(), objects.end(), BaseT::m_file.value))
+			[[unlikely]] {
+
+			return false;
+		}
+
+		LOG_DEBUG_NEW("Records at: {} overwritten, data fd: {}, entries: {}", BaseT::m_timestamp.ToString(),
+			BaseT::m_file.value, m_map.size());
+
+		for (auto& [_, object] : m_map) {
+			// Friend access
+			object.SetSaved(true);
+		}
+
+		m_unsavedKeys.clear();
+		return true;
+	}
+
 	// Object of the key can be saved by emplacement with SAVE_IMMEDIATE policy after the key is listed
 	const auto toObject{ [this](const Key& key) -> const Object& { return m_map.find(key)->second; } };
 	const auto isUnsaved{ [](const Object& object) { return !object.IsSaved(); } };
 	auto unsaved{ m_unsavedKeys | std::views::transform(toObject) | std::views::filter(isUnsaved) };
 
-	if (!IO::SaveBinaries<IO::APPEND>(unsaved.begin(), unsaved.end(), BaseT::m_file.value)) [[unlikely]] {
+	if (!IO::SaveBinaries<IO::APPEND, /*Mode=*/0644>(unsaved.begin(), unsaved.end(), BaseT::m_file.value))
+		[[unlikely]] {
+
 		return false;
 	}
 

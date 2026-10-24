@@ -352,8 +352,15 @@ FORCE_INLINE [[nodiscard]] bool Test::AssertImpl(T&& actual, S&& expected, const
 		}
 		else {
 			if constexpr (Policy == COUNT) {
-				LOG_INFO_NEW(PATTERN_FAILED, name, actual.ToString(), expected.ToString(),
-					Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+				if constexpr (std::is_same_v<N, MSAPI::Timer>) {
+					LOG_INFO_NEW(PATTERN_FAILED, name, actual.ToString(), expected.ToString(),
+						Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+				}
+				else {
+					LOG_INFO_NEW(PATTERN_FAILED, name, actual.ToString(Timer::Duration::Type::Nanoseconds),
+						expected.ToString(Timer::Duration::Type::Nanoseconds),
+						Timer::Duration{ Timer{} - m_timer }.GetNanoseconds());
+				}
 			}
 		}
 	}

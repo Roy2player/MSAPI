@@ -271,7 +271,7 @@ class ModifyApp extends View {
 				}
 			}
 
-			this.m_parentView.classList.add("loading");
+			this.SetLoading(true);
 			let newParameters
 				= View.ParseInputs(containerWithInputs, false, MetadataCollector.GetAppMetadata(this.m_appType));
 			for (const table of this.m_tables.values()) {
@@ -279,9 +279,9 @@ class ModifyApp extends View {
 			}
 			new WebSocketSingle({
 				event : Helper.StringHash32Uint("modify"),
-				handleResponse : (response) => { this.m_parentView.classList.remove("loading"); },
+				handleResponse : (response) => { this.SetLoading(false); },
 				handleFailed : (error) => {
-					this.m_parentView.classList.remove("loading");
+					this.SetLoading(false);
 					this.DisplayErrorMessage(error);
 				},
 				viewUid : this.m_uid,

@@ -146,7 +146,7 @@ class Account extends View {
 
 			let newLogin = "";
 			modifyButton.addEventListener("click", () => {
-				this.m_parentView.classList.add("loading");
+				this.SetLoading(true);
 				this.HideErrorMessage();
 
 				let data = View.ParseInputs(infoForm, true);
@@ -159,7 +159,7 @@ class Account extends View {
 				}
 
 				const handleResponse = (response) => {
-					this.m_parentView.classList.remove("loading");
+					this.SetLoading(false);
 					this.HideErrorMessage();
 
 					let noErrors = true;
@@ -190,7 +190,7 @@ class Account extends View {
 					event : Helper.StringHash32Uint("modifyAccount"),
 					handleResponse : handleResponse,
 					handleFailed : (error) => {
-						this.m_parentView.classList.remove("loading");
+						this.SetLoading(false);
 						this.DisplayErrorMessage(error);
 					},
 					data : data,
@@ -199,11 +199,11 @@ class Account extends View {
 			});
 
 			logoutButton.addEventListener("click", () => {
-				this.m_parentView.classList.add("loading");
+				this.SetLoading(true);
 				this.HideErrorMessage();
 
 				const handleResponse = (response) => {
-					this.m_parentView.classList.remove("loading");
+					this.SetLoading(false);
 					this.HideErrorMessage();
 					Account.m_isAuthorized = false;
 					Account.m_login = "";
@@ -214,7 +214,7 @@ class Account extends View {
 					event : Helper.StringHash32Uint("logout"),
 					handleResponse : handleResponse,
 					handleFailed : (error) => {
-						this.m_parentView.classList.remove("loading");
+						this.SetLoading(false);
 						this.DisplayErrorMessage(error);
 					},
 					viewUid : this.m_uid
@@ -278,11 +278,11 @@ class Account extends View {
 		Dynamic.InitForm(signupForm);
 
 		loginButton.addEventListener("click", () => {
-			this.m_parentView.classList.add("loading");
+			this.SetLoading(true);
 			this.HideErrorMessage();
 
 			const handleResponse = (response) => {
-				this.m_parentView.classList.remove("loading");
+				this.SetLoading(false);
 				this.HideErrorMessage();
 				Account.m_isAuthorized = true;
 				Account.m_login = loginNameInput.value;
@@ -293,7 +293,7 @@ class Account extends View {
 				event : Helper.StringHash32Uint("login"),
 				handleResponse : handleResponse,
 				handleFailed : (error) => {
-					this.m_parentView.classList.remove("loading");
+					this.SetLoading(false);
 					this.DisplayErrorMessage(error);
 				},
 				data : View.ParseInputs(loginForm, true),
@@ -302,11 +302,11 @@ class Account extends View {
 		});
 
 		signupButton.addEventListener("click", () => {
-			this.m_parentView.classList.add("loading");
+			this.SetLoading(true);
 			this.HideErrorMessage();
 
 			const handleResponse = (response) => {
-				this.m_parentView.classList.remove("loading");
+				this.SetLoading(false);
 				this.HideErrorMessage();
 				loginNameInput.value = signupLoginInput.value;
 				Dynamic.ClearForm(signupForm);
@@ -317,7 +317,7 @@ class Account extends View {
 				event : Helper.StringHash32Uint("register"),
 				handleResponse : handleResponse,
 				handleFailed : (error) => {
-					this.m_parentView.classList.remove("loading");
+					this.SetLoading(false);
 					this.DisplayErrorMessage(error);
 				},
 				data : View.ParseInputs(signupForm, true),

@@ -132,7 +132,7 @@ public:
 	 * @todo Messages by email.
 	 * @todo Messages in Telegram.
 	 */
-	Log(bool toConsole = false, bool toFile = false, Level levelSave = Level::PROTOCOL) noexcept;
+	Log(bool toConsole, bool toFile, Level levelSave) noexcept;
 
 	/**************************
 	 * @brief Destroy the Log object
@@ -365,15 +365,21 @@ template <typename T> FORCE_INLINE std::string _S(const T x)
 		&& std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, std::string>) {
 		return *x;
 	}
-	else if constexpr (std::is_same_v<T, MSAPI::Timer> || std::is_same_v<T, MSAPI::Timer::Duration>) {
+	else if constexpr (std::is_same_v<T, MSAPI::Timer>) {
 		return x.ToString();
 	}
-	else if constexpr ((std::is_pointer_v<T>
-						   && std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, MSAPI::Timer>)
-		|| (std::is_pointer_v<T>
-			&& std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, MSAPI::Timer::Duration>)) {
+	else if constexpr (std::is_same_v<T, MSAPI::Timer::Duration>) {
+		return x.ToString(MSAPI::Timer::Duration::Type::Nanoseconds);
+	}
+	else if constexpr (std::is_pointer_v<T>
+		&& std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, MSAPI::Timer>) {
 
 		return x->ToString();
+	}
+	else if constexpr (std::is_pointer_v<T>
+		&& std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, MSAPI::Timer::Duration>) {
+
+		return x->ToString(MSAPI::Timer::Duration::Type::Nanoseconds);
 	}
 	else {
 		static_assert(sizeof(T) + 1 == 0, "Unsupported type");

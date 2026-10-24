@@ -118,7 +118,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 	 */
 	const auto checkNotEmpty{ [&check]<typename T> [[nodiscard]] (T & v1, const T& v2, const T& v3, T& v4, T& v5,
 								  const MSAPI::Application::State state,
-								  std::string_view (*const f)(remove_optional_t<T>) = nullptr) {
+								  std::string_view (*const f)(remove_optional_t<T>)) {
 		// int8_t = int8_t
 		// Enum : int8_t = int8_t
 		// std::optional<int8_t> = std::optional<int8_t>
@@ -139,22 +139,24 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		const T max{ v5 };
 
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
-			app.RegisterParameter(1, { "Some name", &v1, Timer::Duration::Type::Days });
-			app.RegisterParameter(1, { "Some name", &v1, Timer::Duration::Type::Days });
+			app.RegisterParameter(
+				1, { "Some name", &v1, Timer::Duration::Type::Days, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+			app.RegisterParameter(
+				1, { "Some name", &v1, Timer::Duration::Type::Days, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 		}
 		else if constexpr (std::is_enum_v<T>) {
 			if (f == nullptr) {
-				app.RegisterParameter(1, { "Some name", &v1, nullptr, true });
-				app.RegisterParameter(1, { "Some name", &v1 });
+				app.RegisterParameter(1, { "Some name", &v1, /*printFunc=*/nullptr, /*canBeUndefined=*/true });
+				app.RegisterParameter(1, { "Some name", &v1, /*printFunc=*/nullptr, /*canBeUndefined=*/false });
 			}
 			else {
-				app.RegisterParameter(1, { "Some name", &v1, f, true });
-				app.RegisterParameter(1, { "Some name", &v1, f });
+				app.RegisterParameter(1, { "Some name", &v1, f, /*canBeUndefined=*/true });
+				app.RegisterParameter(1, { "Some name", &v1, f, /*canBeUndefined=*/false });
 			}
 		}
 		else {
-			app.RegisterParameter(1, { "Some name", &v1 });
-			app.RegisterParameter(1, { "Some name", &v1 });
+			app.RegisterParameter(1, { "Some name", &v1, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+			app.RegisterParameter(1, { "Some name", &v1, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 		}
 		std::string expectedParameters;
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
@@ -220,7 +222,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::map<uint64_t, std::string> expectedErrors;
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
 			tmp2 = min - Timer::Duration::CreateDays(1);
-			app.RegisterParameter(2, { "Some name", &tmp2, Timer::Duration::Type::Days, min });
+			app.RegisterParameter(
+				2, { "Some name", &tmp2, Timer::Duration::Type::Days, min, /*max=*/{}, /*canBeEmpty=*/false });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + v3.ToString(Timer::Duration::Type::Days)
 				+ "\n\tSome name(2) : " + tmp2.ToString(Timer::Duration::Type::Days) + ASE(state);
 			expectedErrors = { { 2,
@@ -230,7 +233,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		else if constexpr (std::is_enum_v<T>) {
 			tmp2 = static_cast<T>(static_cast<UnderlyingType>(min) - 1);
 			if (f == nullptr) {
-				app.RegisterParameter(2, { "Some name", &tmp2 });
+				app.RegisterParameter(2, { "Some name", &tmp2, /*printFunc=*/nullptr, /*canBeUndefined=*/false });
 				expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(static_cast<UnderlyingType>(v3))
 					+ "\n\tSome name(2) : " + _S(static_cast<UnderlyingType>(tmp2)) + ASE(state);
 				expectedErrors = { { 2,
@@ -238,7 +241,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 						+ _S(static_cast<UnderlyingType>(min) + 1) } };
 			}
 			else {
-				app.RegisterParameter(2, { "Some name", &tmp2, f });
+				app.RegisterParameter(2, { "Some name", &tmp2, f, /*canBeUndefined=*/false });
 				expectedParameters = "Parameters:\n{\n\tSome name(1) : " + std::string((*f)(v3))
 					+ "\n\tSome name(2) : " + std::string((*f)(tmp2)) + ASE(state);
 				expectedErrors = { { 2,
@@ -248,14 +251,14 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		}
 		else if constexpr (std::is_same_v<T, UnderlyingPrimitiveType>) {
 			tmp2 = min - 1;
-			app.RegisterParameter(2, { "Some name", &tmp2, min });
+			app.RegisterParameter(2, { "Some name", &tmp2, min, /*max=*/{}, /*canBeEmpty=*/false });
 			expectedParameters
 				= "Parameters:\n{\n\tSome name(1) : " + _S(v3) + "\n\tSome name(2) : " + _S(tmp2) + ASE(state);
 			expectedErrors = { { 2, "Parameter Some name(2) is less than min value: " + _S(tmp2) + " < " + _S(min) } };
 		}
 		else if constexpr (std::is_same_v<T, std::optional<UnderlyingPrimitiveType>>) {
 			tmp2 = min.value() - 1;
-			app.RegisterParameter(2, { "Some name", &tmp2, min });
+			app.RegisterParameter(2, { "Some name", &tmp2, min, /*max=*/{}, /*canBeEmpty=*/false });
 			expectedParameters
 				= "Parameters:\n{\n\tSome name(1) : " + _S(v3) + "\n\tSome name(2) : " + _S(tmp2) + ASE(state);
 			expectedErrors = { { 2, "Parameter Some name(2) is less than min value: " + _S(tmp2) + " < " + _S(min) } };
@@ -265,7 +268,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		T tmp3;
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
 			tmp3 = max + Timer::Duration::CreateDays(1);
-			app.RegisterParameter(3, { "Some name", &tmp3, Timer::Duration::Type::Days, {}, max });
+			app.RegisterParameter(
+				3, { "Some name", &tmp3, Timer::Duration::Type::Days, /*min=*/{}, max, /*canBeEmpty=*/false });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + v3.ToString(Timer::Duration::Type::Days)
 				+ "\n\tSome name(2) : " + tmp2.ToString(Timer::Duration::Type::Days)
 				+ "\n\tSome name(3) : " + tmp3.ToString(Timer::Duration::Type::Days) + ASE(state);
@@ -280,7 +284,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		else if constexpr (std::is_enum_v<T>) {
 			tmp3 = static_cast<T>(static_cast<UnderlyingType>(max) + 1);
 			if (f == nullptr) {
-				app.RegisterParameter(3, { "Some name", &tmp3 });
+				app.RegisterParameter(3, { "Some name", &tmp3, /*printFunc=*/nullptr, /*canBeUndefined=*/false });
 				expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(static_cast<UnderlyingType>(v3))
 					+ "\n\tSome name(2) : " + _S(static_cast<UnderlyingType>(tmp2))
 					+ "\n\tSome name(3) : " + _S(static_cast<UnderlyingType>(tmp3)) + ASE(state);
@@ -293,7 +297,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 							+ " > " + _S(static_cast<UnderlyingType>(max)) } };
 			}
 			else {
-				app.RegisterParameter(3, { "Some name", &tmp3, f });
+				app.RegisterParameter(3, { "Some name", &tmp3, f, /*canBeUndefined=*/false });
 				expectedParameters = "Parameters:\n{\n\tSome name(1) : " + std::string((*f)(v3)) + "\n\tSome name(2) : "
 					+ std::string((*f)(tmp2)) + "\n\tSome name(3) : " + std::string((*f)(tmp3)) + ASE(state);
 				expectedErrors
@@ -307,7 +311,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		}
 		else if constexpr (std::is_same_v<T, UnderlyingPrimitiveType>) {
 			tmp3 = max + 1;
-			app.RegisterParameter(3, { "Some name", &tmp3, {}, max });
+			app.RegisterParameter(3, { "Some name", &tmp3, /*min=*/{}, max, /*canBeEmpty=*/false });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(v3) + "\n\tSome name(2) : " + _S(tmp2)
 				+ "\n\tSome name(3) : " + _S(tmp3) + ASE(state);
 			expectedErrors = { { 2, "Parameter Some name(2) is less than min value: " + _S(tmp2) + " < " + _S(min) },
@@ -315,7 +319,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		}
 		else if constexpr (std::is_same_v<T, std::optional<UnderlyingPrimitiveType>>) {
 			tmp3 = max.value() + 1;
-			app.RegisterParameter(3, { "Some name", &tmp3, {}, max });
+			app.RegisterParameter(3, { "Some name", &tmp3, /*min=*/{}, max, /*canBeEmpty=*/false });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(v3) + "\n\tSome name(2) : " + _S(tmp2)
 				+ "\n\tSome name(3) : " + _S(tmp3) + ASE(state);
 			expectedErrors = { { 2, "Parameter Some name(2) is less than min value: " + _S(tmp2) + " < " + _S(min) },
@@ -324,7 +328,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		RETURN_IF_FALSE(check(4, app, expectedParameters, 3, expectedErrors));
 
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
-			app.RegisterParameter(4, { "Some name", &v4, Timer::Duration::Type::Days, min, max });
+			app.RegisterParameter(4, { "Some name", &v4, Timer::Duration::Type::Days, min, max, /*canBeEmpty=*/false });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + v3.ToString(Timer::Duration::Type::Days)
 				+ "\n\tSome name(2) : " + tmp2.ToString(Timer::Duration::Type::Days)
 				+ "\n\tSome name(3) : " + tmp3.ToString(Timer::Duration::Type::Days)
@@ -332,21 +336,21 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		}
 		else if constexpr (std::is_enum_v<T>) {
 			if (f == nullptr) {
-				app.RegisterParameter(4, { "Some name", &v4, nullptr, true });
+				app.RegisterParameter(4, { "Some name", &v4, /*printFunc=*/nullptr, /*canBeUndefined=*/true });
 				expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(static_cast<UnderlyingType>(v3))
 					+ "\n\tSome name(2) : " + _S(static_cast<UnderlyingType>(tmp2))
 					+ "\n\tSome name(3) : " + _S(static_cast<UnderlyingType>(tmp3))
 					+ "\n\tSome name(4) : " + _S(static_cast<UnderlyingType>(v4)) + ASE(state);
 			}
 			else {
-				app.RegisterParameter(4, { "Some name", &v4, f, true });
+				app.RegisterParameter(4, { "Some name", &v4, f, /*canBeUndefined=*/true });
 				expectedParameters = "Parameters:\n{\n\tSome name(1) : " + std::string((*f)(v3))
 					+ "\n\tSome name(2) : " + std::string((*f)(tmp2)) + "\n\tSome name(3) : " + std::string((*f)(tmp3))
 					+ "\n\tSome name(4) : " + std::string((*f)(v4)) + ASE(state);
 			}
 		}
 		else {
-			app.RegisterParameter(4, { "Some name", &v4, min, max });
+			app.RegisterParameter(4, { "Some name", &v4, min, max, /*canBeEmpty=*/false });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(v3) + "\n\tSome name(2) : " + _S(tmp2)
 				+ "\n\tSome name(3) : " + _S(tmp3) + "\n\tSome name(4) : " + _S(v4) + ASE(state);
 		}
@@ -527,8 +531,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		RETURN_IF_FALSE(check(8, app, expectedParameters, 4, expectedErrors));
 
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
-			app.RegisterParameter(5, { "Some name", &v5, Timer::Duration::Type::Days, min, max });
-			app.RegisterParameter(5, { "Some name", &v5, Timer::Duration::Type::Days, min, max });
+			app.RegisterParameter(5, { "Some name", &v5, Timer::Duration::Type::Days, min, max, /*canBeEmpty=*/false });
+			app.RegisterParameter(5, { "Some name", &v5, Timer::Duration::Type::Days, min, max, /*canBeEmpty=*/false });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + v3.ToString(Timer::Duration::Type::Days)
 				+ "\n\tSome name(2) : " + tmp2.ToString(Timer::Duration::Type::Days)
 				+ "\n\tSome name(3) : " + tmp3.ToString(Timer::Duration::Type::Days)
@@ -537,8 +541,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		}
 		else if constexpr (std::is_enum_v<T>) {
 			if (f == nullptr) {
-				app.RegisterParameter(5, { "Some name", &v5 });
-				app.RegisterParameter(5, { "Some name", &v5 });
+				app.RegisterParameter(5, { "Some name", &v5, /*printFunc=*/nullptr, /*canBeUndefined=*/false });
+				app.RegisterParameter(5, { "Some name", &v5, /*printFunc=*/nullptr, /*canBeUndefined=*/false });
 				expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(static_cast<UnderlyingType>(v3))
 					+ "\n\tSome name(2) : " + _S(static_cast<UnderlyingType>(tmp2))
 					+ "\n\tSome name(3) : " + _S(static_cast<UnderlyingType>(tmp3))
@@ -546,16 +550,16 @@ FORCE_INLINE [[nodiscard]] bool Application()
 					+ "\n\tSome name(5) : " + _S(static_cast<UnderlyingType>(v5)) + ASE(state);
 			}
 			else {
-				app.RegisterParameter(5, { "Some name", &v5, f });
-				app.RegisterParameter(5, { "Some name", &v5, f });
+				app.RegisterParameter(5, { "Some name", &v5, f, /*canBeUndefined=*/false });
+				app.RegisterParameter(5, { "Some name", &v5, f, /*canBeUndefined=*/false });
 				expectedParameters = "Parameters:\n{\n\tSome name(1) : " + std::string((*f)(v3)) + "\n\tSome name(2) : "
 					+ std::string((*f)(tmp2)) + "\n\tSome name(3) : " + std::string((*f)(tmp3)) + "\n\tSome name(4) : "
 					+ std::string((*f)(save4)) + "\n\tSome name(5) : " + std::string((*f)(v5)) + ASE(state);
 			}
 		}
 		else {
-			app.RegisterParameter(5, { "Some name", &v5, min, max });
-			app.RegisterParameter(5, { "Some name", &v5, min, max });
+			app.RegisterParameter(5, { "Some name", &v5, min, max, /*canBeEmpty=*/false });
+			app.RegisterParameter(5, { "Some name", &v5, min, max, /*canBeEmpty=*/false });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(v3) + "\n\tSome name(2) : " + _S(tmp2)
 				+ "\n\tSome name(3) : " + _S(tmp3) + "\n\tSome name(4) : " + _S(save4) + "\n\tSome name(5) : " + _S(v5)
 				+ ASE(state);
@@ -752,8 +756,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		}
 		else if constexpr (std::is_enum_v<T>) {
 			if (f == nullptr) {
-				app.RegisterConstParameter(6, { "Some name", &save6 });
-				app.RegisterConstParameter(6, { "Some name", &save6 });
+				app.RegisterConstParameter(6, { "Some name", &save6, /*printFunc=*/nullptr });
+				app.RegisterConstParameter(6, { "Some name", &save6, /*printFunc=*/nullptr });
 			}
 			else {
 				app.RegisterConstParameter(6, { "Some name", &save6, f });
@@ -810,8 +814,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		}
 		else if constexpr (std::is_enum_v<T>) {
 			if (f == nullptr) {
-				app.RegisterConstParameter(7, { "Some name", &save7 });
-				app.RegisterConstParameter(7, { "Some name", &save7 });
+				app.RegisterConstParameter(7, { "Some name", &save7, /*printFunc=*/nullptr });
+				app.RegisterConstParameter(7, { "Some name", &save7, /*printFunc=*/nullptr });
 			}
 			else {
 				app.RegisterConstParameter(7, { "Some name", &save7, f });
@@ -1077,64 +1081,64 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		int8_t param1{ -3 };
 		int8_t param4{ -23 };
 		int8_t param5{ 23 };
-		RETURN_IF_FALSE(
-			checkNotEmpty(param1, int8_t{ 11 }, int8_t{ 0 }, param4, param5, MSAPI::Application::State::Undefined));
+		RETURN_IF_FALSE(checkNotEmpty(
+			param1, int8_t{ 11 }, int8_t{ 0 }, param4, param5, MSAPI::Application::State::Undefined, nullptr));
 	}
 
 	{
 		int16_t param1{ -3331 };
 		int16_t param4{ -21981 };
 		int16_t param5{ 31938 };
-		RETURN_IF_FALSE(
-			checkNotEmpty(param1, int16_t{ 5983 }, int16_t{ 0 }, param4, param5, MSAPI::Application::State::Paused));
+		RETURN_IF_FALSE(checkNotEmpty(
+			param1, int16_t{ 5983 }, int16_t{ 0 }, param4, param5, MSAPI::Application::State::Paused, nullptr));
 	}
 
 	{
 		int32_t param1{ -3331 };
 		int32_t param4{ -93981 };
 		int32_t param5{ 105938 };
-		RETURN_IF_FALSE(
-			checkNotEmpty(param1, int32_t{ 5983 }, int32_t{ 0 }, param4, param5, MSAPI::Application::State::Running));
+		RETURN_IF_FALSE(checkNotEmpty(
+			param1, int32_t{ 5983 }, int32_t{ 0 }, param4, param5, MSAPI::Application::State::Running, nullptr));
 	}
 
 	{
 		int64_t param1{ -3331 };
 		int64_t param4{ -93981 };
 		int64_t param5{ 105938 };
-		RETURN_IF_FALSE(
-			checkNotEmpty(param1, int64_t{ 5983 }, int64_t{ 0 }, param4, param5, MSAPI::Application::State::Running));
+		RETURN_IF_FALSE(checkNotEmpty(
+			param1, int64_t{ 5983 }, int64_t{ 0 }, param4, param5, MSAPI::Application::State::Running, nullptr));
 	}
 
 	{
 		uint8_t param1{ 10 };
 		uint8_t param4{ 20 };
 		uint8_t param5{ 30 };
-		RETURN_IF_FALSE(
-			checkNotEmpty(param1, uint8_t{ 5 }, uint8_t{ 8 }, param4, param5, MSAPI::Application::State::Paused));
+		RETURN_IF_FALSE(checkNotEmpty(
+			param1, uint8_t{ 5 }, uint8_t{ 8 }, param4, param5, MSAPI::Application::State::Paused, nullptr));
 	}
 
 	{
 		uint16_t param1{ 10 };
 		uint16_t param4{ 3981 };
 		uint16_t param5{ 22938 };
-		RETURN_IF_FALSE(
-			checkNotEmpty(param1, uint16_t{ 5 }, uint16_t{ 8 }, param4, param5, MSAPI::Application::State::Undefined));
+		RETURN_IF_FALSE(checkNotEmpty(
+			param1, uint16_t{ 5 }, uint16_t{ 8 }, param4, param5, MSAPI::Application::State::Undefined, nullptr));
 	}
 
 	{
 		uint32_t param1{ 10 };
 		uint32_t param4{ 3981 };
 		uint32_t param5{ 55938 };
-		RETURN_IF_FALSE(
-			checkNotEmpty(param1, uint32_t{ 5 }, uint32_t{ 8 }, param4, param5, MSAPI::Application::State::Paused));
+		RETURN_IF_FALSE(checkNotEmpty(
+			param1, uint32_t{ 5 }, uint32_t{ 8 }, param4, param5, MSAPI::Application::State::Paused, nullptr));
 	}
 
 	{
 		uint64_t param1{ 10 };
 		uint64_t param4{ 3981 };
 		uint64_t param5{ 55938 };
-		RETURN_IF_FALSE(
-			checkNotEmpty(param1, uint64_t{ 5 }, uint64_t{ 8 }, param4, param5, MSAPI::Application::State::Running));
+		RETURN_IF_FALSE(checkNotEmpty(
+			param1, uint64_t{ 5 }, uint64_t{ 8 }, param4, param5, MSAPI::Application::State::Running, nullptr));
 	}
 
 	{
@@ -1142,7 +1146,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		double param4{ -93981.42804648 };
 		double param5{ 105938.84936204 };
 		RETURN_IF_FALSE(checkNotEmpty(param1, double{ 5983.647394875 }, double{ -0.7400006701 }, param4, param5,
-			MSAPI::Application::State::Running));
+			MSAPI::Application::State::Running, nullptr));
 	}
 
 	{
@@ -1150,7 +1154,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		float param4{ -93981.42804648f };
 		float param5{ 105938.84936204f };
 		RETURN_IF_FALSE(checkNotEmpty(param1, float{ 5983.647394875f }, float{ -0.7400006701f }, param4, param5,
-			MSAPI::Application::State::Paused));
+			MSAPI::Application::State::Paused, nullptr));
 	}
 
 	{
@@ -1212,7 +1216,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 	 */
 	const auto checkNumericOptionalParameter{ [&check, &checkNotEmpty]<typename T> [[nodiscard]] (T & v1, const T& v2,
 												  const T& v3, T& v4, T& v5, const MSAPI::Application::State state,
-												  std::string_view (*const f)(remove_optional_t<T>) = nullptr) {
+												  std::string_view (*const f)(remove_optional_t<T>)) {
 		RETURN_IF_FALSE(checkNotEmpty(v1, v2, v3, v4, v5, state, f));
 
 		MSAPI::Application app;
@@ -1224,12 +1228,13 @@ FORCE_INLINE [[nodiscard]] bool Application()
 
 		std::string expectedParameters;
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
-			app.RegisterParameter(1, { "Some name", &v1, Timer::Duration::Type::Days });
+			app.RegisterParameter(
+				1, { "Some name", &v1, Timer::Duration::Type::Days, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 			expectedParameters
 				= "Parameters:\n{\n\tSome name(1) : " + v1.ToString(Timer::Duration::Type::Days) + ASE(state);
 		}
 		else {
-			app.RegisterParameter(1, { "Some name", &v1 });
+			app.RegisterParameter(1, { "Some name", &v1, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(v1) + ASE(state);
 		}
 		RETURN_IF_FALSE(check(0, app, expectedParameters, 1, {}));
@@ -1261,12 +1266,12 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		RETURN_IF_FALSE(check(3, app, expectedParameters, 1, {}));
 
 		if constexpr (std::is_same_v<T, Timer::Duration>) {
-			app.RegisterParameter(2, { "Some name", &tmp, Timer::Duration::Type::Days, min, max, true });
+			app.RegisterParameter(2, { "Some name", &tmp, Timer::Duration::Type::Days, min, max, /*canBeEmpty=*/true });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + v4.ToString(Timer::Duration::Type::Days)
 				+ "\n\tSome name(2) : " + tmp.ToString(Timer::Duration::Type::Days) + ASE(state);
 		}
 		else {
-			app.RegisterParameter(2, { "Some name", &tmp, min, max, true });
+			app.RegisterParameter(2, { "Some name", &tmp, min, max, /*canBeEmpty=*/true });
 			expectedParameters = "Parameters:\n{\n\tSome name(1) : " + _S(v4) + "\n\tSome name(2) : " + ASE(state);
 		}
 		RETURN_IF_FALSE(check(4, app, expectedParameters, 2, {}));
@@ -1388,7 +1393,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 				MSAPI::Application::State::Undefined, Test::EnumToString));
 
 			RETURN_IF_FALSE(checkNotEmpty(param1, Test::TestEnum::Eight, Test::TestEnum::Two, param4, param5,
-				MSAPI::Application::State::Running));
+				MSAPI::Application::State::Running, nullptr));
 		}
 	}
 
@@ -1397,7 +1402,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<int8_t> param4{ -23 };
 		std::optional<int8_t> param5{ 23 };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<int8_t>{ 11 }, std::optional<int8_t>{ 0 },
-			param4, param5, MSAPI::Application::State::Undefined));
+			param4, param5, MSAPI::Application::State::Undefined, nullptr));
 	}
 
 	{
@@ -1405,7 +1410,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<int16_t> param4{ -21981 };
 		std::optional<int16_t> param5{ 31938 };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<int16_t>{ 5983 },
-			std::optional<int16_t>{ 0 }, param4, param5, MSAPI::Application::State::Paused));
+			std::optional<int16_t>{ 0 }, param4, param5, MSAPI::Application::State::Paused, nullptr));
 	}
 
 	{
@@ -1413,7 +1418,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<int32_t> param4{ -93981 };
 		std::optional<int32_t> param5{ 105938 };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<int32_t>{ 5983 },
-			std::optional<int32_t>{ 0 }, param4, param5, MSAPI::Application::State::Running));
+			std::optional<int32_t>{ 0 }, param4, param5, MSAPI::Application::State::Running, nullptr));
 	}
 
 	{
@@ -1421,7 +1426,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<int64_t> param4{ -93981 };
 		std::optional<int64_t> param5{ 105938 };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<int64_t>{ 5983 },
-			std::optional<int64_t>{ 0 }, param4, param5, MSAPI::Application::State::Running));
+			std::optional<int64_t>{ 0 }, param4, param5, MSAPI::Application::State::Running, nullptr));
 	}
 
 	{
@@ -1429,7 +1434,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<uint8_t> param4{ 20 };
 		std::optional<uint8_t> param5{ 30 };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<uint8_t>{ 5 }, std::optional<uint8_t>{ 8 },
-			param4, param5, MSAPI::Application::State::Paused));
+			param4, param5, MSAPI::Application::State::Paused, nullptr));
 	}
 
 	{
@@ -1437,7 +1442,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<uint16_t> param4{ 3981 };
 		std::optional<uint16_t> param5{ 22938 };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<uint16_t>{ 5 },
-			std::optional<uint16_t>{ 8 }, param4, param5, MSAPI::Application::State::Undefined));
+			std::optional<uint16_t>{ 8 }, param4, param5, MSAPI::Application::State::Undefined, nullptr));
 	}
 
 	{
@@ -1445,7 +1450,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<uint32_t> param4{ 3981 };
 		std::optional<uint32_t> param5{ 55938 };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<uint32_t>{ 5 },
-			std::optional<uint32_t>{ 8 }, param4, param5, MSAPI::Application::State::Paused));
+			std::optional<uint32_t>{ 8 }, param4, param5, MSAPI::Application::State::Paused, nullptr));
 	}
 
 	{
@@ -1453,7 +1458,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<uint64_t> param4{ 3981 };
 		std::optional<uint64_t> param5{ 55938 };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<uint64_t>{ 5 },
-			std::optional<uint64_t>{ 8 }, param4, param5, MSAPI::Application::State::Running));
+			std::optional<uint64_t>{ 8 }, param4, param5, MSAPI::Application::State::Running, nullptr));
 	}
 
 	{
@@ -1461,7 +1466,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<double> param4{ -93981.42804648 };
 		std::optional<double> param5{ 105938.84936204 };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<double>{ 5983.647394875 },
-			std::optional<double>{ -0.7400006701 }, param4, param5, MSAPI::Application::State::Running));
+			std::optional<double>{ -0.7400006701 }, param4, param5, MSAPI::Application::State::Running, nullptr));
 	}
 
 	{
@@ -1469,7 +1474,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		std::optional<float> param4{ -93981.42804648f };
 		std::optional<float> param5{ 105938.84936204f };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, std::optional<float>{ 5983.647394875f },
-			std::optional<float>{ -0.7400006701f }, param4, param5, MSAPI::Application::State::Paused));
+			std::optional<float>{ -0.7400006701f }, param4, param5, MSAPI::Application::State::Paused, nullptr));
 	}
 
 	{
@@ -1477,7 +1482,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		Timer::Duration param4{ Timer::Duration::Create(10, 5, 30, 30, 8946) };
 		Timer::Duration param5{ Timer::Duration::Create(12, 5, 30, 30, 8946) };
 		RETURN_IF_FALSE(checkNumericOptionalParameter(param1, Timer::Duration::Create(11, 6, 45, 0, 8946),
-			Timer::Duration::Create(12, 5, 30, 30, 8947), param4, param5, MSAPI::Application::State::Paused));
+			Timer::Duration::Create(12, 5, 30, 30, 8947), param4, param5, MSAPI::Application::State::Paused, nullptr));
 	}
 
 	{
@@ -1486,8 +1491,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		app.SetState(MSAPI::Application::State::Running);
 
 		std::string param1{ "Some string parameter" };
-		app.RegisterParameter(1, { "Some name", &param1 });
-		app.RegisterParameter(1, { "Some name", &param1 });
+		app.RegisterParameter(1, { "Some name", &param1, /*canBeEmpty=*/false });
+		app.RegisterParameter(1, { "Some name", &param1, /*canBeEmpty=*/false });
 		RETURN_IF_FALSE(
 			check(0, app, "Parameters:\n{\n\tSome name(1) : Some string parameter" + ASE(app.GetState()), 1, {}));
 
@@ -1506,13 +1511,13 @@ FORCE_INLINE [[nodiscard]] bool Application()
 			{ { 1, "Parameter Some name(1) is empty" } }));
 
 		std::string param3;
-		app.RegisterParameter(2, { "Some name", &param3 });
+		app.RegisterParameter(2, { "Some name", &param3, /*canBeEmpty=*/false });
 		RETURN_IF_FALSE(check(4, app, "Parameters:\n{\n\tSome name(1) : \n\tSome name(2) : " + ASE(app.GetState()), 2,
 			{ { 1, "Parameter Some name(1) is empty" }, { 2, "Parameter Some name(2) is empty" } }));
 
 		std::string param4;
-		app.RegisterParameter(3, { "Some name", &param4, true });
-		app.RegisterParameter(3, { "Some name", &param4, true });
+		app.RegisterParameter(3, { "Some name", &param4, /*canBeEmpty=*/true });
+		app.RegisterParameter(3, { "Some name", &param4, /*canBeEmpty=*/true });
 		RETURN_IF_FALSE(check(5, app,
 			"Parameters:\n{\n\tSome name(1) : \n\tSome name(2) : \n\tSome name(3) : " + ASE(app.GetState()), 3,
 			{ { 1, "Parameter Some name(1) is empty" }, { 2, "Parameter Some name(2) is empty" } }));
@@ -1578,8 +1583,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		app.SetState(MSAPI::Application::State::Running);
 
 		Timer param1{ Timer::Create(2023, 11, 5, 23, 30, 1, 8946) };
-		app.RegisterParameter(1, { "Some name", &param1 });
-		app.RegisterParameter(1, { "Some name", &param1 });
+		app.RegisterParameter(1, { "Some name", &param1, /*canBeEmpty=*/false });
+		app.RegisterParameter(1, { "Some name", &param1, /*canBeEmpty=*/false });
 		RETURN_IF_FALSE(
 			check(0, app, "Parameters:\n{\n\tSome name(1) : " + param1.ToString() + ASE(app.GetState()), 1, {}));
 
@@ -1592,14 +1597,14 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		RETURN_IF_FALSE(
 			check(2, app, "Parameters:\n{\n\tSome name(1) : " + param1.ToString() + ASE(app.GetState()), 1, {}));
 
-		param2 = Timer{ 0 };
+		param2 = Timer{ 0, 0 };
 		app.MergeParameters({ { 1, param2 } });
 		RETURN_IF_FALSE(check(3, app, "Parameters:\n{\n\tSome name(1) : " + param1.ToString() + ASE(app.GetState()), 1,
 			{ { 1, "Parameter Some name(1) is empty" } }));
 
-		Timer param3{ 0 };
-		app.RegisterParameter(2, { "Some name", &param3 });
-		app.RegisterParameter(2, { "Some name", &param3 });
+		Timer param3{ 0, 0 };
+		app.RegisterParameter(2, { "Some name", &param3, /*canBeEmpty=*/false });
+		app.RegisterParameter(2, { "Some name", &param3, /*canBeEmpty=*/false });
 		std::map<uint64_t, std::string> expectedErrors{ { 1, "Parameter Some name(1) is empty" },
 			{ 2, "Parameter Some name(2) is empty" } };
 		RETURN_IF_FALSE(check(4, app,
@@ -1607,8 +1612,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 				+ ASE(app.GetState()),
 			2, expectedErrors));
 
-		Timer param4{ 0 };
-		app.RegisterParameter(3, { "Some name", &param4, true });
+		Timer param4{ 0, 0 };
+		app.RegisterParameter(3, { "Some name", &param4, /*canBeEmpty=*/true });
 		RETURN_IF_FALSE(check(5, app,
 			"Parameters:\n{\n\tSome name(1) : " + param1.ToString() + "\n\tSome name(2) : " + param3.ToString()
 				+ "\n\tSome name(3) : " + param4.ToString() + ASE(app.GetState()),
@@ -1621,7 +1626,7 @@ FORCE_INLINE [[nodiscard]] bool Application()
 				+ "\n\tSome name(3) : " + param2.ToString() + ASE(app.GetState()),
 			3, { { 1, "Parameter Some name(1) is empty" }, { 2, "Parameter Some name(2) is empty" } }));
 
-		param2 = Timer{ 0 };
+		param2 = Timer{ 0, 0 };
 		app.MergeParameters({ { 3, param2 } });
 		RETURN_IF_FALSE(check(7, app,
 			"Parameters:\n{\n\tSome name(1) : " + param1.ToString() + "\n\tSome name(2) : " + param3.ToString()
@@ -1669,8 +1674,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		Table<std::optional<uint64_t>, Timer, std::string, Timer::Duration, double> table1{ 111111, 222222, 333333,
 			444444, 555555 };
 
-		app.RegisterParameter(1, { "Some name", &table1 });
-		app.RegisterParameter(1, { "Some name", &table1 });
+		app.RegisterParameter(1, { "Some name", &table1, /*canBeEmpty=*/false });
+		app.RegisterParameter(1, { "Some name", &table1, /*canBeEmpty=*/false });
 		RETURN_IF_FALSE(check(0, app, "Parameters:\n{\n\tSome name(1) : " + table1.ToString() + ASE(app.GetState()), 1,
 			{ { 1, "Parameter Some name(1) is empty" } }));
 
@@ -1683,14 +1688,14 @@ FORCE_INLINE [[nodiscard]] bool Application()
 			std::string{ "Some string 3 3 3" }, Timer::Duration::CreateSeconds(90), -0.00067112);
 		table2.AddRow(std::optional<uint64_t>{ 3 }, Timer::Create(2085, 4, 5, 23, 30, 1, 8946456), std::string{},
 			Timer::Duration::Create(11, 5, 30, 30, 8946), 0.00067112);
-		table2.AddRow(std::optional<uint64_t>{}, Timer{ 0 }, std::string{ "p" },
+		table2.AddRow(std::optional<uint64_t>{}, Timer{ 0, 0 }, std::string{ "p" },
 			Timer::Duration::CreateMilliseconds(100), -30.00067112004);
 
 		app.MergeParameters({ { 1, table2 } });
 		RETURN_IF_FALSE(
 			check(1, app, "Parameters:\n{\n\tSome name(1) : " + table2.ToString() + ASE(app.GetState()), 1, {}));
 
-		table1.AddRow(std::optional<uint64_t>{}, Timer{ 0 }, std::string{ "p" },
+		table1.AddRow(std::optional<uint64_t>{}, Timer{ 0, 0 }, std::string{ "p" },
 			Timer::Duration::CreateMilliseconds(100), -30.00067112004);
 		RETURN_IF_FALSE(
 			check(2, app, "Parameters:\n{\n\tSome name(1) : " + table1.ToString() + ASE(app.GetState()), 1, {}));
@@ -1705,15 +1710,15 @@ FORCE_INLINE [[nodiscard]] bool Application()
 			131415, 161718, 192021 };
 		table3.AddRow(true, false, std::string{ "Some string 1" }, true, std::string{ "Some string 2" },
 			std::string{ "Some string 3" }, std::string{ "Some string 4" });
-		app.RegisterParameter(2, { "Some name", &table3 });
+		app.RegisterParameter(2, { "Some name", &table3, /*canBeEmpty=*/false });
 		RETURN_IF_FALSE(check(4, app,
 			"Parameters:\n{\n\tSome name(1) : " + table1.ToString() + "\n\tSome name(2) : " + table3.ToString()
 				+ ASE(app.GetState()),
 			2, expectedErrors));
 
 		Table<std::optional<float>, std::optional<float>, bool, bool> table4{ 11, 22, 33, 44 };
-		app.RegisterParameter(3, { "Some name", &table4, true });
-		app.RegisterParameter(3, { "Some name", &table4, true });
+		app.RegisterParameter(3, { "Some name", &table4, /*canBeEmpty=*/true });
+		app.RegisterParameter(3, { "Some name", &table4, /*canBeEmpty=*/true });
 		RETURN_IF_FALSE(check(5, app,
 			"Parameters:\n{\n\tSome name(1) : " + table1.ToString() + "\n\tSome name(2) : " + table3.ToString()
 				+ "\n\tSome name(3) : " + table4.ToString() + ASE(app.GetState()),
@@ -1783,7 +1788,8 @@ FORCE_INLINE [[nodiscard]] bool Application()
 		MSAPI::Application highIdApp;
 		const uint64_t highParameterId{ uint64_t{ 1 } << 40 };
 		int32_t highParameterValue{ 1 };
-		highIdApp.RegisterParameter(highParameterId, { "High ID parameter", &highParameterValue });
+		highIdApp.RegisterParameter(highParameterId,
+			{ "High ID parameter", &highParameterValue, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 		RETURN_IF_FALSE(t.Assert(
 			highIdApp.GetParameters().contains(highParameterId), true, "Application registers high parameter ID"));
 		highIdApp.MergeParameters({ { highParameterId, int32_t{ 2 } } });
