@@ -367,8 +367,7 @@ FORCE_INLINE int CompareFloats(const T first, const T second)
  *
  * @todo The name of such methods should be like question.
  */
-template <std::floating_point T, T Eps = Epsilon<T>::value>
-FORCE_INLINE bool FloatLess(const T first, const T second)
+template <std::floating_point T, T Eps = Epsilon<T>::value> FORCE_INLINE bool FloatLess(const T first, const T second)
 {
 	return second - first > Eps;
 }
@@ -409,8 +408,7 @@ FORCE_INLINE bool FloatGreater(const T first, const T second)
  *
  * @test Yes.
  */
-template <std::floating_point T, T Eps = Epsilon<T>::value>
-FORCE_INLINE bool FloatEqual(const T first, const T second)
+template <std::floating_point T, T Eps = Epsilon<T>::value> FORCE_INLINE bool FloatEqual(const T first, const T second)
 {
 	return std::abs(first - second) < Eps;
 }
