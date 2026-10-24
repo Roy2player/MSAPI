@@ -84,8 +84,8 @@ void HTTPServer::HandleHttp(
 	const std::string& url{ data.GetUrl() };
 	LOG_DEBUG("Request url: " + url + ", version: " + data.GetVersion());
 	if (const auto& type{ data.GetTypeMessage() }; type != "GET") {
-		(void)data.Send404(
-			connectionData->GetConnection(), "{\"Error\":\"Method \"" + type + "\" not allowed\"}", "application/json");
+		(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Method \"" + type + "\" not allowed\"}",
+			"application/json", MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 		return;
 	}
 
@@ -112,46 +112,47 @@ void HTTPServer::HandleHttp(
 				return;
 			}
 
-			(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Internal error\"}", "application/json");
+			(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Internal error\"}", "application/json",
+				MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 			return;
 		}
 
 		if (url == "/api") {
 			const std::string* identifier{ data.GetValue("Identifier") };
 			if (identifier == nullptr) {
-				(void)data.Send404(
-					connectionData->GetConnection(), "{\"Error\":\"Identifier not found\"}", "application/json");
+				(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Identifier not found\"}",
+					"application/json", MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 				return;
 			}
 			const std::string* value{ data.GetValue("Action") };
 			if (value == nullptr) {
-				(void)data.Send404(
-					connectionData->GetConnection(), "{\"Error\":\"Action not found\"}", "application/json");
+				(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Action not found\"}",
+					"application/json", MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 				return;
 			}
 			if (*identifier != "369") {
-				(void)data.Send404(
-					connectionData->GetConnection(), "{\"Error\":\"Identifier is not valid\"}", "application/json");
+				(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Identifier is not valid\"}",
+					"application/json", MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 				return;
 			}
 			if (*value != "Send me some JSON, please") {
-				(void)data.Send404(
-					connectionData->GetConnection(), "{\"Error\":\"Action is not valid\"}", "application/json");
+				(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Action is not valid\"}",
+					"application/json", MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 				return;
 			}
 
-			(void)data.SendResponse(
-				connectionData->GetConnection(), "{\"Message\":\"Here is your JSON\"}", "application/json");
+			(void)data.SendResponse(connectionData->GetConnection(), "{\"Message\":\"Here is your JSON\"}",
+				"application/json", MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 			return;
 		}
 
 		if (url == "/unknown.html") {
-			(void)data.Send404(connectionData->GetConnection());
+			(void)data.Send404(connectionData->GetConnection(), {}, {}, MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 			return;
 		}
 
-		(void)data.Send404(
-			connectionData->GetConnection(), "{\"Error\":\"Page \"" + url + "\" not found\"}", "application/json");
+		(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Page \"" + url + "\" not found\"}",
+			"application/json", MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 		return;
 	}
 
@@ -168,8 +169,8 @@ void HTTPServer::HandleHttp(
 		return;
 	}
 
-	(void)data.Send404(
-		connectionData->GetConnection(), "{\"Error\":\"Source \"" + url + "\" not found\"}", "application/json");
+	(void)data.Send404(connectionData->GetConnection(), "{\"Error\":\"Source \"" + url + "\" not found\"}",
+		"application/json", MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 }
 
 const std::optional<MSAPI::Protocol::HTTP::Data>& HTTPServer::GetHTTPData() const noexcept { return m_HTTPData; }

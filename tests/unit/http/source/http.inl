@@ -252,17 +252,20 @@ FORCE_INLINE Files::Files()
 		return;
 	}
 
-	m_created = MSAPI::IO::CreateDir(std::string_view{ m_path });
+	m_created = MSAPI::IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(std::string_view{ m_path });
 	if (!m_created) {
 		LOG_ERROR_NEW("Cannot create test directory, path: \"{}\"", m_path);
 		return;
 	}
 
-	m_isValid = MSAPI::IO::CreateDir(std::string_view{ m_path + "/first" })
-		&& MSAPI::IO::CreateDir(std::string_view{ m_path + "/second" })
-		&& MSAPI::IO::SaveStr("first", std::string_view{ m_path + "/first/shared.txt" })
-		&& MSAPI::IO::SaveStr("second", std::string_view{ m_path + "/second/shared.txt" })
-		&& MSAPI::IO::SaveStr("fallback", std::string_view{ m_path + "/second/fallback.txt" });
+	m_isValid = MSAPI::IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(std::string_view{ m_path + "/first" })
+		&& MSAPI::IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>(std::string_view{ m_path + "/second" })
+		&& MSAPI::IO::SaveStr<MSAPI::IO::OVERWRITE, /*Mode=*/0644>(
+			"first", std::string_view{ m_path + "/first/shared.txt" })
+		&& MSAPI::IO::SaveStr<MSAPI::IO::OVERWRITE, /*Mode=*/0644>(
+			"second", std::string_view{ m_path + "/second/shared.txt" })
+		&& MSAPI::IO::SaveStr<MSAPI::IO::OVERWRITE, /*Mode=*/0644>(
+			"fallback", std::string_view{ m_path + "/second/fallback.txt" });
 	if (!m_isValid) {
 		LOG_ERROR_NEW("Cannot create HTTP test fixtures, path: \"{}\"", m_path);
 	}
@@ -270,7 +273,7 @@ FORCE_INLINE Files::Files()
 
 FORCE_INLINE Files::~Files() noexcept
 {
-	if (m_created && !MSAPI::IO::Remove(m_path)) {
+	if (m_created && !MSAPI::IO::Remove</*Buffer=*/512>(m_path)) {
 		LOG_ERROR_NEW("Cannot remove test directory, path: \"{}\", clean it before next test execution", m_path);
 	}
 }
@@ -489,8 +492,9 @@ FORCE_INLINE [[nodiscard]] bool Responses(MSAPI::Test::Test& t)
 				captured.append(static_cast<const char*>(buffer), size);
 				return static_cast<int64_t>(size);
 			});
-		RETURN_IF_FALSE(t.Assert(boundary.Get().SendResponse(boundary.GetConnection(), "body"), true,
-			"Response sends with boundary or oversized inferred content type"));
+		RETURN_IF_FALSE(t.Assert(boundary.Get().SendResponse(boundary.GetConnection(), "body", {},
+									 MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE),
+			true, "Response sends with boundary or oversized inferred content type"));
 		if (extensionSize == 59) {
 			RETURN_IF_FALSE(
 				t.Assert(captured.find("Content-Type: text/" + extension + "; charset=utf-8\r\n") != std::string::npos,
@@ -502,8 +506,9 @@ FORCE_INLINE [[nodiscard]] bool Responses(MSAPI::Test::Test& t)
 				"Oversized inferred content type uses binary default"));
 			RETURN_IF_FALSE(t.Assert(captured.ends_with("\r\n\r\nbody"), true, "Default response preserves body"));
 			captured.clear();
-			RETURN_IF_FALSE(t.Assert(boundary.Get().SendResponse(boundary.GetConnection(), "body", "text/plain"), true,
-				"Explicit content type bypasses inference limit"));
+			RETURN_IF_FALSE(t.Assert(boundary.Get().SendResponse(boundary.GetConnection(), "body", "text/plain",
+										 MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE),
+				true, "Explicit content type bypasses inference limit"));
 			RETURN_IF_FALSE(t.Assert(captured.find("Content-Type: text/plain; charset=utf-8\r\n") != std::string::npos,
 				true, "Explicit content type is preserved"));
 		}
@@ -520,14 +525,17 @@ FORCE_INLINE [[nodiscard]] bool Responses(MSAPI::Test::Test& t)
 		return static_cast<int64_t>(count);
 	});
 	RETURN_IF_FALSE(t.Assert(
-		input.Get().SendResponse(input.GetConnection(), "hello"), true, "Response sends through short writes"));
+		input.Get().SendResponse(input.GetConnection(), "hello", {}, MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE),
+		true, "Response sends through short writes"));
 	RETURN_IF_FALSE(t.Assert(output,
 		std::string{ "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nConnection: "
 					 "keep-alive\r\nKeep-Alive: timeout=0,max=0\r\nContent-Length: 5\r\n\r\nhello" },
 		"Default response bytes correct"));
 
 	output.clear();
-	RETURN_IF_FALSE(t.Assert(input.Get().Send404(input.GetConnection()), true, "Empty 404 sends"));
+	RETURN_IF_FALSE(
+		t.Assert(input.Get().Send404(input.GetConnection(), {}, {}, MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE), true,
+			"Empty 404 sends"));
 	RETURN_IF_FALSE(t.Assert(output,
 		std::string{ "HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=utf-8\r\nConnection: "
 					 "keep-alive\r\nKeep-Alive: timeout=0,max=0\r\nContent-Length: 0\r\n\r\n" },
@@ -539,8 +547,9 @@ FORCE_INLINE [[nodiscard]] bool Responses(MSAPI::Test::Test& t)
 	const std::string path{ files.GetPath() + "/first/shared.txt" };
 	const std::string pathWithSuffix{ path + "extra" };
 	RETURN_IF_FALSE(t.Assert(
-		input.Get().SendSource(input.GetConnection(), std::string_view{ pathWithSuffix }.substr(0, path.size())), true,
-		"Source view need not be null terminated"));
+		input.Get().SendSource(input.GetConnection(), std::string_view{ pathWithSuffix }.substr(0, path.size()), {},
+			MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE),
+		true, "Source view need not be null terminated"));
 	RETURN_IF_FALSE(t.Assert(output.ends_with("Content-Length: 5\r\n\r\nfirst"), true, "Source bytes correct"));
 
 	MSAPI::SString<256> location;
@@ -559,7 +568,7 @@ FORCE_INLINE [[nodiscard]] bool Responses(MSAPI::Test::Test& t)
 		MSAPI::SString<512> response;
 		RETURN_IF_FALSE(
 			t.Assert(MSAPI::Protocol::HTTP::BuildRedirectResponse({ response.GetBuffer(), response.GetCapacity() },
-						 location.Get(), code, MSAPI::Protocol::HTTP::CLOSE_CONNECTION)
+						 location.Get(), code, MSAPI::Protocol::HTTP::CLOSE_CONNECTION, /*version=*/"1.1")
 					!= 0,
 				true, "Redirect formatter accepts supported status"));
 		const std::string expected{ "HTTP/1.1 " + std::to_string(static_cast<uint32_t>(code)) + " "
@@ -568,8 +577,9 @@ FORCE_INLINE [[nodiscard]] bool Responses(MSAPI::Test::Test& t)
 		RETURN_IF_FALSE(t.Assert(std::string_view{ response.GetBuffer() } == expected, true, "Redirect bytes correct"));
 
 		output.clear();
-		RETURN_IF_FALSE(t.Assert(
-			input.Get().SendRedirect(input.GetConnection(), location.Get(), code), true, "Data redirect sends"));
+		RETURN_IF_FALSE(t.Assert(input.Get().SendRedirect(input.GetConnection(), location.Get(), code,
+									 MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE),
+			true, "Data redirect sends"));
 		RETURN_IF_FALSE(t.Assert(output.find("Location: https://site.com/a?b\r\n") != std::string::npos, true,
 			"Data redirect location correct"));
 		RETURN_IF_FALSE(t.Assert(output.find("Keep-Alive:") != std::string::npos, true, "Data default keeps alive"));
@@ -582,27 +592,34 @@ FORCE_INLINE [[nodiscard]] bool Responses(MSAPI::Test::Test& t)
 	RETURN_IF_FALSE(t.Assert(small.Empty(), true, "Oversized location cleared"));
 	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::HTTP::BuildRedirectLocation(small, "https", "site.com\r\nX: y", "/"),
 		false, "Host injection fails"));
-	RETURN_IF_FALSE(
-		t.Assert(MSAPI::Protocol::HTTP::BuildRedirectResponse({ small.GetBuffer(), small.GetCapacity() }, "/a") != 0,
-			false, "Oversized response fails"));
+	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::HTTP::BuildRedirectResponse({ small.GetBuffer(), small.GetCapacity() },
+								 "/a", MSAPI::Protocol::HTTP::StatusCode::MovedPermanently,
+								 MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE, /*version=*/"1.1")
+			!= 0,
+		false, "Oversized response fails"));
 
 	MSAPI::SString<512> response;
 	RETURN_IF_FALSE(
 		t.Assert(MSAPI::Protocol::HTTP::BuildRedirectResponse({ response.GetBuffer(), response.GetCapacity() }, "/a",
-					 static_cast<MSAPI::Protocol::HTTP::StatusCode>(300))
+					 static_cast<MSAPI::Protocol::HTTP::StatusCode>(300), MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE,
+					 /*version=*/"1.1")
 				!= 0,
 			false, "Unsupported status fails"));
-	RETURN_IF_FALSE(t.Assert(
-		MSAPI::Protocol::HTTP::BuildRedirectResponse({ response.GetBuffer(), response.GetCapacity() }, "/a\r\nX: y")
-			!= 0,
-		false, "Location injection fails"));
-	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::HTTP::BuildRedirectResponse(
-								 { response.GetBuffer(), response.GetCapacity() }, std::string_view{ "/a\0x", 4 })
-			!= 0,
-		false, "Location NUL fails"));
 	RETURN_IF_FALSE(
-		t.Assert(input.Get().SendRedirect(input.GetConnection(), "/a", MSAPI::Protocol::HTTP::StatusCode::Ok), false,
-			"Data rejects unsupported redirect"));
+		t.Assert(MSAPI::Protocol::HTTP::BuildRedirectResponse({ response.GetBuffer(), response.GetCapacity() },
+					 "/a\r\nX: y", MSAPI::Protocol::HTTP::StatusCode::MovedPermanently,
+					 MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE, /*version=*/"1.1")
+				!= 0,
+			false, "Location injection fails"));
+	RETURN_IF_FALSE(
+		t.Assert(MSAPI::Protocol::HTTP::BuildRedirectResponse({ response.GetBuffer(), response.GetCapacity() },
+					 std::string_view{ "/a\0x", 4 }, MSAPI::Protocol::HTTP::StatusCode::MovedPermanently,
+					 MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE, /*version=*/"1.1")
+				!= 0,
+			false, "Location NUL fails"));
+	RETURN_IF_FALSE(t.Assert(input.Get().SendRedirect(input.GetConnection(), "/a",
+								 MSAPI::Protocol::HTTP::StatusCode::Ok, MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE),
+		false, "Data rejects unsupported redirect"));
 
 	output.clear();
 	RETURN_IF_FALSE(t.Assert(

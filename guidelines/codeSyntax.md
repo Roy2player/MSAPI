@@ -7,15 +7,22 @@ description: "Syntax and declaration rules"
 
 ## Comments
 
-- Each non trivial code block, statement, call or expression must be commented with a brief description of its purpose and behavior.
-- Comments use `// Comment` style: `//`, one space, then the text. Multi-line comment is a sequence of `//` lines, empty line inside it is `//`. Markers right after `//` like `//*` are not used.
-- `/* */` is used only in particular situations:
-  - short note inside code, e.g. argument tag `/*tag=*/value` or parameter note ` /* by value as moved */ `, also short note inside an expression or initializer list;
-  - comment inside a multi-line macro definition, where `//` would comment out the line continuation `\`.
-- Doxygen documentation blocks and `/*---...---*/` section separators follow [Doxygen Inline Documentation](doxygenInlineDocumentation.md).
-- Other types of comments are prohibited, including markers (`//*`, `//!`, `//?`) and task comments (`// FIXME`, etc.).
-- Exception: for further simplicity `// TODO: comment` can duplicate an existing `@todo` in code to explicitly mark the place for further work. It is never used without the corresponding `@todo`, which remains the source of truth.
-- Problems, technical debt and open questions are described by the `@todo` tag in the documentation block of the related function or abstraction, see [Doxygen Inline Documentation](doxygenInlineDocumentation.md).
+- Comments must explain information that cannot be readily inferred from the code itself. When the code does not make the following information sufficiently explicit, comments must explain it:
+  - Non-obvious function or template arguments, including ambiguous boolean values and unexplained magic values.
+  - Implementation intent, important assumptions and invariants, and non-obvious algorithmic decisions.
+  - Concurrency guarantees, synchronization requirements, and object lifetime and ownership constraints.
+  - Intentional performance trade-offs, non-obvious error-handling behavior, and intentional deviations that could make code appear incorrect or unnecessary.
+- Comments that merely restate self-explanatory code should be avoided. Complexity alone does not require an explanatory comment.
+- Even a simple operation must have a comment when an important assumption is not evident. Explicitness must take priority over minimizing comments.
+- Comments must use `// Comment` style: `//`, one space, then the text. A multiline comment must be a sequence of `//` lines, with `//` for an empty line inside it.
+- Markers immediately after `//`, such as `//*`, must not be used.
+- Apart from the documentation blocks and separators below, `/* */` may be used for the following purposes and must not be used elsewhere:
+  - A short note within code, such as an argument tag `/*tag=*/value`, a parameter note ` /* by value as moved */ `, or a note inside an expression or initializer list.
+  - A comment inside a multiline macro definition, where `//` would comment out the line continuation `\`.
+- Doxygen documentation blocks must follow [Doxygen Documentation](doxygenDocumentation.md). Section separators must follow [File Organization](fileOrganization.md#structure-of-inl-file).
+- Other comment types must not be used, including markers (`//*`, `//!`, `//?`) and task comments (`// FIXME`, etc.).
+- `// TODO: comment` may duplicate an existing `@todo` to mark the place for further work. It must not appear without the corresponding `@todo`, which remains the source of truth.
+- Problems, technical debt and open questions must be described by `@todo` in the documentation block of the related function or abstraction, see [Doxygen Documentation](doxygenDocumentation.md).
 
 ```cpp
 // Retry is required, as connection can be closed by peer during handshake
@@ -23,15 +30,26 @@ description: "Syntax and declaration rules"
 const auto connection{ OpenConnection(ip, port, /*doReconnection=*/false) };
 ```
 
+For example, a comment such as `// Check whether the connection is already closed.` would merely describe the condition. The existing comment explains the descriptor-reuse hazard that makes the guard necessary:
+
+```cpp
+// Only the first caller closes the descriptor, otherwise its number can be reused and closed by mistake
+if (m_isClosed.exchange(true, std::memory_order_acq_rel)) {
+    return;
+}
+```
+
 ## Function
 
 ### Declaration, definition, and call
 
-- Use FORCE_INLINE for all declarations and definitions.
-- Use `[[nodiscard]]` for all declarations and definitions of functions that return a value.
-- Use `noexcept` for all declarations and definitions of functions that do not throw exceptions. Make sure that internal calls do not throw exceptions as well or make sure that exceptions are caught and handled inside the function.
-- On function call use `/*tag=*/value` for constants whose meaning is not obvious from the call, e.g. `OpenConnection(ip, port, /*doReconnection=*/false)`. The purpose of the tag is to make non-obvious things explicit, so it is omitted when the function name already tells what the argument is, e.g. `SetSaved(true)`, `SetPort(8080)`.
-- Arguments passed by value are declared without `const` qualifier, as it is not a part of the function signature. Definition adds `const` to the argument if it is not modified in the function body.
+- All declarations and definitions must use FORCE_INLINE except deleted functions.
+- All declarations and definitions of functions that return a value must use `[[nodiscard]]`.
+- All declarations and definitions of functions that do not throw exceptions must use `noexcept`. Internal calls must either not throw or have their exceptions caught and handled inside the function.
+- Default values should be avoided for function and template parameters, and callers should supply arguments explicitly so behavior remains visible at each call site.
+- An intrinsic, unambiguous default that does not hide a behavioral choice may be used, such as the standard comparison epsilon selected from a floating-point type.
+- Function and template arguments must make the intended behavior understandable and follow [Function arguments and literal values](#function-arguments-and-literal-values).
+- Arguments passed by value must be declared without `const`, as it is not part of the function signature. The definition must add `const` if the argument is not modified in the function body.
 
 ```cpp
 FORCE_INLINE void SetPort(uint16_t port) noexcept;
@@ -39,28 +57,43 @@ FORCE_INLINE void SetPort(uint16_t port) noexcept;
 FORCE_INLINE void Server::SetPort(const uint16_t port) noexcept { m_port = port; }
 ```
 
+### Function arguments and literal values
+
+- Ambiguous arguments must be made understandable through meaningful identifiers, strongly typed enumerations, named constants, intermediate variables, or explanatory comments.
+- If the code does not otherwise make argument semantics sufficiently explicit, a comment must be added. A concise comment is sufficient for an existing API; reviewers must not require redesign solely to clarify a call.
+- Constants whose meaning is not evident from the API or argument identifiers at a function or template call must use inline argument tags in the form `/*tag=*/value`, e.g. `OpenConnection(ip, port, /*doReconnection=*/false)` or `SaveStr<OVERWRITE, /*Mode=*/0644>()`. A preceding or nearby explanatory comment does not replace required inline tags.
+- Boolean literals must have inline argument tags when their meaning is ambiguous. Redundant comments must not be added when the API or surrounding code already makes their meaning evident, e.g. `SetSaved(true)`.
+- The meaning of unexplained numeric literals representing timeouts, protocol constants, limits, thresholds, units, or implementation assumptions must be clarified.
+- Named constants or inline argument tags are preferred. Not every numeric literal is a magic value: common, self-explanatory values and clear calls such as `SetPort(8080)` do not require extra documentation.
+
+```cpp
+Connect(server, /*enableTLS=*/true, /*autoReconnect=*/false, /*timeoutSec=*/30);
+```
+
 ### Body
 
-- Use `[[likely]]` and `[[unlikely]]` for all branches that are likely or unlikely to be taken, respectively.
-- Use `[[maybe_unused]]` for all variables that are not used in the function body.
-- Use `[[indeterminate]]` for all local variables that can be uninitialized at the point of declaration.
-- `goto` operator is prohibited. Control flow is expressed by structured statements: loops, `break`/`continue` and early `return`.
+- Branches that are likely or unlikely to be taken should use `[[likely]]` or `[[unlikely]]`, respectively.
+- Variables that are not used in the function body must use `[[maybe_unused]]`.
+- Local variables that can be uninitialized at the point of declaration must use `[[indeterminate]]`.
+- The `goto` operator must not be used. Control flow must use structured statements: loops, `break`/`continue` and early `return`.
 
 ### Lambda
 
-- Capture defaults `[&]` and `[=]` are prohibited. Each captured variable is listed explicitly, by reference or by value, so it is visible what the lambda depends on and how, e.g. dangling reference or unintended copy is noticeable at the place of capture.
+- Capture defaults `[&]` and `[=]` must not be used.
+- Each captured variable must be listed explicitly, by reference or by value, so the lambda's dependencies are visible and dangling references or unintended copies can be noticed at the point of capture.
 
 ## Type
 
 ### Basic data type
 
-- Use `int8_t`, `int16_t`, `int32_t`, `int64_t`, `uint8_t`, `uint16_t`, `uint32_t`, `uint64_t` instead of build int integer types.
-- Use basic data types instead of aliases, like ptrdiff_t, size_t, ssize_t, etc.
+- Code must use `int8_t`, `int16_t`, `int32_t`, `int64_t`, `uint8_t`, `uint16_t`, `uint32_t`, or `uint64_t` instead of built-in integer types.
+- Basic data types must be used instead of aliases such as ptrdiff_t, size_t, and ssize_t if it does not break portability between different architectures.
 
 ### User defined type
 
-- Do not loose scope of user defined types, like class, struct, enum, etc. Use `std::` or `MSAPI::` prefix when using them outside of their namespace. If class is derived from another class, use `BaseClass::` prefix when accessing its data or functions.
-- If the base class name is long or templated, define a type alias for it and access inherited data and functions via the alias, e.g. `BaseT::m_path`. For a template base class the prefix is also required, as names of a dependent base are not found without it.
+- User-defined types such as classes, structs, and enums must retain their scope through the `std::` or `MSAPI::` prefix when used outside their namespace.
+- Access to inherited data or functions in a derived class must use the `BaseClass::` prefix.
+- A long or templated base class name must have a type alias, and inherited data and functions must be accessed through that alias, e.g. `BaseT::m_path`. The prefix also supports name lookup in a dependent base class.
 
 ```cpp
 template <template <typename> typename Container, typename Type>
@@ -77,13 +110,16 @@ class Single : public Base<Single<Container, Type>> {
 
 #### Declaration
 
-- Use `class` for all class declarations, public fields are prohibited. Protected fields are allowed only in a base class designed to share its state with derived classes, e.g. CRTP base, and derived classes access them via the base type alias, e.g. `BaseT::m_path`.
-- `struct` is kept where the standard library convention requires it: specializations of standard templates declared as `struct` (`std::hash`, `std::formatter`), allocator `rebind` and metaprogramming type traits, e.g. `template <typename T> struct is_optional : std::false_type {};`.
-- Use `explicit` for all constructors that can be called with a single argument.
-- Copy constructor, move constructor, copy assignment and move assignment operators are always explicitly declared as `= default` or `= delete`, all four together. Implicit generation of them depends on other members silently: user declared destructor suppresses implicit move and makes the type copied instead, lock or `std::unique_ptr` field makes copying deleted. Explicit declaration documents the intent and lets the compiler check it.
-- Destructor and default constructor are not required to be declared explicitly, as their implicit behavior is not surprising:
-  - destructor is declared only if it has a behavior (e.g. releases a resource) or the class is a polymorphic base, which requires `virtual ~Base() = default;`;
-  - default constructor is declared as `= default` if default construction is required together with other constructors, as declaring any other constructor suppresses the implicit one; in other cases its declaration is optional.
+- Class declarations must use `class`, except for the standard-library-convention `struct` cases below.
+- Public fields must not be declared.
+- Protected fields may be used only in a base class designed to share state with derived classes, e.g. a CRTP base. Derived classes must access those fields through the base type alias, e.g. `BaseT::m_path`.
+- `struct` must be retained where the standard library convention requires it: specializations of standard templates declared as `struct` (`std::hash`, `std::formatter`), allocator `rebind`, and metaprogramming type traits, e.g. `template <typename T> struct is_optional : std::false_type {};`.
+- All parameterized constructors must be declared `explicit`, except copy, move, deleted and default constructors.
+- The copy constructor, move constructor, copy assignment, and move assignment operators must all be explicitly declared as `= default` or `= delete`. Their implicit generation depends on other members: a user-declared destructor suppresses implicit move operations, while a lock or `std::unique_ptr` field makes copying deleted. Explicit declarations document the intent and let the compiler check it.
+- The destructor and default constructor may be left implicit under the following conditions:
+  - A destructor must be declared only if it has behavior (e.g. releases a resource) or the class is a polymorphic base.
+  - A polymorphic base must declare a virtual destructor, e.g. `virtual ~Base() = default;`.
+  - The default constructor must be declared as `= default` if default construction is required together with other constructors, since declaring another constructor suppresses the implicit one. Its declaration may be omitted in other cases.
 
 ```cpp
 class Connection {
@@ -98,44 +134,48 @@ public:
 };
 ```
 
-- Use `mutable` only for lock fields, see [Concurrency](concurrency.md#lock-fields-and-constness).
+- `mutable` must be restricted to lock fields, see [Concurrency](concurrency.md#lock-fields-and-constness).
 
 #### Enum
 
-- Use `enum class` with an explicit, appropriately sized integer underlying type.
-- Preserve documented sentinel values such as `Undefined` and `Max`.
-- Keep `EnumToString` switches, their `static_assert` coverage checks, and unknown-value logging synchronized whenever an enum changes.
+- Enums must use `enum class` with an explicit, appropriately sized integer underlying type.
+- Documented sentinel values such as `Undefined` and `Max` must be preserved.
+- `EnumToString` switches, their `static_assert` coverage checks, and unknown-value logging must stay synchronized whenever an enum changes.
 
 #### Overriding
 
-- Overridden methods are grouped by the parent and each group is marked by `// Parent` comment with full qualified name of the parent whose methods are overridden, e.g. `// MSAPI::Server`.
-- Override which is not expected to be overridden further is marked by `final`.
-- Override which is expected to be overridden further is marked by `override`. `virtual` is not repeated on overrides.
+- Overridden methods must be grouped by parent. Each group must have a `// Parent` comment containing the fully qualified name of the parent whose methods are overridden, e.g. `// MSAPI::Server`.
+- An override that is not expected to be overridden further must be marked `final`.
+- An override that is expected to be overridden further must be marked `override`.
+- `virtual` must not be repeated on overrides.
 
 ```cpp
 class Manager : public MSAPI::Server, public MSAPI::Protocol::HTTP::IHandler {
 public:
     // MSAPI::Server
-    void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
+    FORCE_INLINE void HandleBuffer(MSAPI::RecvBuffer& recvBuffer) final;
     // MSAPI::Application
-    void HandleRunRequest() override;
-    void HandlePauseRequest() final;
+    FORCE_INLINE void HandleRunRequest() override;
+    FORCE_INLINE void HandlePauseRequest() final;
     // MSAPI::Protocol::HTTP::IHandler
-    void HandleHttp(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
+    FORCE_INLINE void HandleHttp(const std::shared_ptr<MSAPI::Connection::Data>& connectionData,
         const MSAPI::Protocol::HTTP::Data& data) final;
 };
 ```
 
 ## Variable
 
-- Use brace initialization for all variables and fields.
-- Types without a user-defined constructor (basic data types, aggregates) initialized by default value use empty braces `{}`, including static fields, not explicit default value: `uint64_t m_size{};` instead of `uint64_t m_size{ 0 };`, `bool m_isSaved{};` instead of `bool m_isSaved{ false };`, `int8_t* m_buffer{};` instead of `int8_t* m_buffer{ nullptr };`.
-- Use `{ value }` for all initializations of types where no specific std::initializer_list construction exists.
+- Variables and fields must use brace initialization.
+- Types without a user-defined constructor (basic data types, aggregates) initialized to their default value must use empty braces `{}`, including static fields, rather than an explicit default value: `uint64_t m_size{};` instead of `uint64_t m_size{ 0 };`, `bool m_isSaved{};` instead of `bool m_isSaved{ false };`, `int8_t* m_buffer{};` instead of `int8_t* m_buffer{ nullptr };`.
+- Initializations of types with no specific `std::initializer_list` construction must use `{ value }`.
 
 ## Macros
 
-- `#define` macros are avoided. Functions, lambdas and templates are used instead to keep code readable. Macros take place only in very specific cases.
-- Lambda does not lose in performance to macro. Its call operator is implicitly inline and its closure type is unique, so with enabled optimization (`-O2`, `-O3`) a directly called lambda is inlined and the generated code is the same as for an equivalent macro. Without optimization a lambda is called as a function, and in case inlining is required in any build configuration, it is forced by `[[gnu::always_inline]]` attribute, the lambda analog of `FORCE_INLINE`.
+- `#define` macros should be avoided.
+- Functions, lambdas and templates are preferred for readability.
+- Macros may be used in specific cases where those alternatives are unsuitable.
+
+A lambda's call operator is implicitly inline, and its closure type is unique. With optimization (`-O2`, `-O3`), a directly called lambda can be inlined to produce the same code as an equivalent macro. Without optimization, a lambda is called as a function; `[[gnu::always_inline]]` is the lambda equivalent of `FORCE_INLINE` for forcing inlining in any build configuration.
 
 ```cpp
 // Instead of #define SQUARE(x) ((x) * (x))
@@ -145,7 +185,7 @@ const auto result{ square(size + 1) };
 
 ## Friendships
 
-- Place friendship declarations at the end of the abstraction, as specified in [Class layout](codeStyle.md#class-layout).
-- Use `// Comment` to define the purpose of friendship.
-- Use `// Comment` to mark place where direct access via friendship is happening.
-- Consider usage of private methods of the class over direct access to its private members, e.g. `object.SetSaved(true)` instead of `object.m_isSaved = true`, so the class keeps control of its state.
+- Friendship declarations must appear at the end of the abstraction, as specified in [Class layout](codeStyle.md#class-layout).
+- A `// Comment` must explain the purpose of a friendship.
+- A `// Comment` must mark each place where direct access through friendship occurs.
+- Private methods are preferred over direct access to private members, e.g. `object.SetSaved(true)` instead of `object.m_isSaved = true`, so the class retains control of its state.

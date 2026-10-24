@@ -81,10 +81,15 @@ private:
 	void* m_buffer;
 
 public:
-	explicit ContinuousAllocator(const int_fast64_t m_blockSize = pageSize / sizeof(T))
+	ContinuousAllocator()
+		: ContinuousAllocator{ pageSize / sizeof(T) }
+	{
+	}
+
+	explicit ContinuousAllocator(const int_fast64_t m_blockSize)
 		: m_blockSize{ m_blockSize }
 	{
-		(void)AllocatePage<true>();
+		(void)AllocatePage</*Initialization=*/true>();
 	}
 
 	template <typename U> friend class ContinuousAllocator;
@@ -136,7 +141,7 @@ public:
 			return AllocatePages(pageSize / toAllocate / sizeof(T) + 1);
 		}
 
-		return AllocatePage<false>();
+		return AllocatePage</*Initialization=*/false>();
 	}
 
 	FORCE_INLINE void deallocate(T* begin, int_fast64_t toDeallocate)

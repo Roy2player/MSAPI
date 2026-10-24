@@ -190,7 +190,7 @@ public:
 	 *
 	 * @todo Way if tags size == 0.
 	 */
-	const Tag& GetTag(size_t index = 0) const noexcept;
+	const Tag& GetTag(size_t index) const noexcept;
 
 	/**************************
 	 * @return Maximal depth of tags.

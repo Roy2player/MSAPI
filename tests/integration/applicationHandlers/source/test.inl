@@ -424,7 +424,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		50000, [&manager]() { return manager.GetActionsNumber(); }, 3, "Correct number of actions on manager side"));
 	RETURN_IF_FALSE(checkParametersResponse(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, {}, 14, {}, 16, {}, 18, {}, 20, {},
-		22, {}, 24, {}, 26, {}, 28, {}, 30, {}, 32, {}, "34", "", MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30), 0,
+		22, {}, 24, {}, 26, {}, 28, {}, 30, {}, 32, {}, "34", "",
+		MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30, /*nanosecond=*/0), MSAPI::Timer{ 0, 0 },
 		MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653), {}, false, table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
 		"Client state is not changed after parameters request"));
@@ -540,8 +541,9 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 	RETURN_IF_FALSE(checkAllParameters(1, 2, -78234, 4, 5, 6, 7, 8, 9, 10, 11, 12, {}, 14, {}, 16, {}, 18, {}, 20, {},
 		22, {}, 24, {}, 26, 6790004, 28, -400.00002, 30, {}, 32, {}, "34",
 		"Hello, this is parameter update, I'm string. How are you, my dear?!",
-		MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30), 0, MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653),
-		MSAPI::Timer::Duration::CreateSeconds(60), false, table1, table2, table3, table4));
+		MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30, /*nanosecond=*/0), MSAPI::Timer{ 0, 0 },
+		MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653), MSAPI::Timer::Duration::CreateSeconds(60), false,
+		table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
 		"Client with invalid parameters in paused state after parameters update"));
 
@@ -622,8 +624,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 	parametersData.SetData(33, std::optional<double>{ 3333 });
 	parametersData.SetData(34, std::string{ "3434" });
 	parametersData.SetData(35, std::string{ "3535" });
-	parametersData.SetData(36, MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10));
-	parametersData.SetData(37, MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11));
+	parametersData.SetData(36, MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0));
+	parametersData.SetData(37, MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11, /*nanosecond=*/0));
 	parametersData.SetData(38, MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654));
 	parametersData.SetData(39, MSAPI::Timer::Duration::CreateSeconds(59));
 	parametersData.SetData(40, bool{ true });
@@ -637,7 +639,7 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		table2.AddRow(index, index + 19971997);
 	}
 	parametersData.SetData(42, MSAPI::TableData{ table2 });
-	table3.AddRow("", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10),
+	table3.AddRow("", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
 		MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59),
 		MSAPI::Timer::Duration::CreateMilliseconds(60000), int8_t(-50), int16_t(-10), int32_t(-37483948473),
 		int64_t(473939476343), uint8_t(378), uint16_t(0), uint32_t(43234), uint64_t(23482349234234), 0.937363,
@@ -646,7 +648,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		std::optional<uint16_t>(0), std::optional<uint32_t>(43234), std::optional<uint64_t>(23482349234234),
 		std::optional<double>{}, std::optional<float>(-374823.334004f),
 		"Hello, this is parameter update, I'm string. How are you, my dear?",
-		MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30), MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653), true,
+		MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30, /*nanosecond=*/0),
+		MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653), true,
 		"Hello, this is parameter update, I'm string. How are you, my dear?", std::optional<double>{},
 		std::optional<double>{});
 	parametersData.SetData(43, MSAPI::TableData{ table3 });
@@ -659,7 +662,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		t.Wait<uint64_t>(50000, [&client]() { return client.GetActionsNumber(); }, 6, "Correct number of actions"));
 	RETURN_IF_FALSE(checkAllParameters(11, 22, 33, 44, 55, 66, 77, 88, 99, 1010, 1111, 1212, 1313, 1414, 1515, 1616,
 		1717, 1818, 1919, 2020, 2121, 2222, 2323, 2424, 2525, 2626, 2727, 2828, 300.94, 3030, 3131, 3232, 3333, "3434",
-		"3535", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10), MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11),
+		"3535", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
+		MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11, /*nanosecond=*/0),
 		MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59), true,
 		table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
@@ -687,7 +691,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		50000, [&manager]() { return manager.GetActionsNumber(); }, 4, "Correct number of actions on manager side"));
 	RETURN_IF_FALSE(checkParametersResponse(11, 22, 33, 44, 55, 66, 77, 88, 99, 1010, 1111, 1212, 1313, 1414, 1515,
 		1616, 1717, 1818, 1919, 2020, 2121, 2222, 2323, 2424, 2525, 2626, 2727, 2828, 300.94, 3030, 3131, 3232, 3333,
-		"3434", "3535", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10), MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11),
+		"3434", "3535", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
+		MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11, /*nanosecond=*/0),
 		MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59), true,
 		table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Running,
@@ -714,7 +719,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		t.Wait<uint64_t>(50000, [&client]() { return client.GetActionsNumber(); }, 9, "Correct number of actions"));
 	RETURN_IF_FALSE(checkAllParameters(11, 22, 33, 44, 55, 66, 77, 88, 99, 1010, 1111, {}, 1313, 1414, 1515, 1616, 1717,
 		1818, 1919, 2020, 2121, 2222, 2323, 2424, 2525, 2626, 2727, 2828, -5000, {}, 3131, 3232, 3333, "3434", "3535",
-		MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10), MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11),
+		MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
+		MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11, /*nanosecond=*/0),
 		MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59), true,
 		table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
@@ -740,7 +746,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		t.Wait<uint64_t>(50000, [&client]() { return client.GetActionsNumber(); }, 11, "Correct number of actions"));
 	RETURN_IF_FALSE(checkAllParameters(11, 22, 33, 44, 55, 66, 77, 88, 99, 1010, 1111, 0, 1313, 1414, 1515, 1616, 1717,
 		1818, 1919, 2020, 2121, 2222, 2323, 2424, 2525, 2626, 2727, 2828, 0, 0, 3131, 3232, 3333, "3434", "3535",
-		MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10), MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11),
+		MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
+		MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11, /*nanosecond=*/0),
 		MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59), true,
 		table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
@@ -772,7 +779,7 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 	parametersData.SetData(29, std::optional<float>{ 10 });
 	parametersData.SetData(30, std::optional<double>{ 10 });
 	for (size_t index{ 0 }; index < 1000; ++index) {
-		table3.AddRow("", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10),
+		table3.AddRow("", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
 			MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59),
 			MSAPI::Timer::Duration::CreateMilliseconds(60000), int8_t(-50), int16_t(-10), int32_t(-37483948473),
 			int64_t(473939476343), uint8_t(378), uint16_t(0), uint32_t(43234), uint64_t(23482349234234), 0.937363,
@@ -781,8 +788,9 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 			std::optional<uint16_t>(0), std::optional<uint32_t>(43234), std::optional<uint64_t>(23482349234234),
 			std::optional<double>{}, std::optional<float>(-374823.334004f),
 			"Hello, this is parameter update, I'm string. How are you, my dear?",
-			MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30), MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653),
-			true, "Hello, this is parameter update, I'm string. How are you, my dear?", std::optional<double>{},
+			MSAPI::Timer::Create(2024, 4, 10, 23, 8, 30, /*nanosecond=*/0),
+			MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653), true,
+			"Hello, this is parameter update, I'm string. How are you, my dear?", std::optional<double>{},
 			std::optional<double>{});
 	}
 	parametersData.SetData(43, MSAPI::TableData{ table3 });
@@ -794,7 +802,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		t.Wait<uint64_t>(100000, [&client]() { return client.GetActionsNumber(); }, 14, "Correct number of actions"));
 	RETURN_IF_FALSE(checkAllParameters(11, 22, 33, 44, 55, 66, 77, 88, 99, 1010, 1111, 10, 1313, 1414, 1515, 1616, 1717,
 		1818, 1919, 2020, 2121, 2222, 2323, 2424, 2525, 2626, 2727, 2828, 10, 10, 3131, 3232, 3333, "3434", "3535",
-		MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10), MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11),
+		MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
+		MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11, /*nanosecond=*/0),
 		MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59), true,
 		table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
@@ -821,7 +830,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		50000, [&manager]() { return manager.GetActionsNumber(); }, 7, "Correct number of actions on manager side"));
 	RETURN_IF_FALSE(checkParametersResponse(11, 22, 33, 44, 55, 66, 77, 88, 99, 1010, 1111, 10, 1313, 1414, 1515, 1616,
 		1717, 1818, 1919, 2020, 2121, 2222, 2323, 2424, 2525, 2626, 2727, 2828, 10, 10, 3131, 3232, 3333, "3434",
-		"3535", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10), MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11),
+		"3535", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
+		MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11, /*nanosecond=*/0),
 		MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59), true,
 		table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Paused,
@@ -844,7 +854,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 	// 38) Check parameters on client side
 	RETURN_IF_FALSE(checkAllParameters(11, 22, 33, 44, 55, 66, 77, 88, 99, 1010, 1111, 10, 1313, 1414, 1515, 1616, 1717,
 		1818, 1919, 2020, 2121, 2222, 2323, 2424, 2525, 2626, 2727, 2828, 10, 10, 3131, 3232, 3333, "3434", "3535",
-		MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10), MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11),
+		MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
+		MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11, /*nanosecond=*/0),
 		MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59), true,
 		table1, table2, table3, table4));
 
@@ -854,7 +865,8 @@ FORCE_INLINE [[nodiscard]] bool ApplicationHandlers()
 		50000, [&manager]() { return manager.GetActionsNumber(); }, 8, "Correct number of actions on manager side"));
 	RETURN_IF_FALSE(checkParametersResponse(11, 22, 33, 44, 55, 66, 77, 88, 99, 1010, 1111, 10, 1313, 1414, 1515, 1616,
 		1717, 1818, 1919, 2020, 2121, 2222, 2323, 2424, 2525, 2626, 2727, 2828, 10, 10, 3131, 3232, 3333, "3434",
-		"3535", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10), MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11),
+		"3535", MSAPI::Timer::Create(2024, 6, 7, 8, 9, 10, /*nanosecond=*/0),
+		MSAPI::Timer::Create(2024, 7, 8, 9, 10, 11, /*nanosecond=*/0),
 		MSAPI::Timer::Duration::Create(12, 13, 14, 15, 99987654), MSAPI::Timer::Duration::CreateSeconds(59), true,
 		table1, table2, table3, table4));
 	RETURN_IF_FALSE(t.Assert(client.MSAPI::Application::GetState(), MSAPI::Application::State::Running,

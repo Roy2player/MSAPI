@@ -333,9 +333,10 @@ std::string Data::ToString() const
 					}
 					result += value;
 				}
-				else if constexpr (std::is_same_v<T, Timer> || std::is_same_v<T, Timer::Duration>
-					|| std::is_same_v<T, TableData>) {
-
+				else if constexpr (std::is_same_v<T, Timer::Duration>) {
+					result += value.ToString(Timer::Duration::Type::Nanoseconds);
+				}
+				else if constexpr (std::is_same_v<T, Timer> || std::is_same_v<T, TableData>) {
 					result += value.ToString();
 				}
 				else {

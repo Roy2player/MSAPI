@@ -25,7 +25,7 @@ std::mutex coutMutex;
 
 namespace MSAPI {
 
-Log logger;
+Log logger{ /*toConsole=*/false, /*toFile=*/false, Log::Level::PROTOCOL };
 
 Log::Log(const bool toConsole, const bool toFile, const Level levelSave) noexcept
 	: m_toConsole{ toConsole }
@@ -201,7 +201,9 @@ void Log::Start() noexcept
 
 	if (m_toFile) {
 		if (!m_path.empty() && !m_name.empty()
-			&& (IO::HasPath((m_path + "logs/").c_str()) || IO::CreateDir((m_path + "logs/").c_str()))) {
+			&& (IO::HasPath((m_path + "logs/").c_str())
+				|| IO::CreateDir</*Mode=*/0755, /*Buffer=*/512>((m_path + "logs/").c_str()))) {
+
 			std::string name{ "logs/" + m_name };
 			auto pos{ name.find(" ") };
 			while (true) {

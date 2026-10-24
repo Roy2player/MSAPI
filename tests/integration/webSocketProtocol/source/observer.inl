@@ -71,7 +71,7 @@ public:
 			return it->second.timestamp;
 		}
 
-		return { 0 };
+		return { 0, 0 };
 	}
 
 	FORCE_INLINE static uint8_t& GetFirstByte(MSAPI::Protocol::WebSocket::Data& data) noexcept
@@ -79,7 +79,7 @@ public:
 		return data.m_buffer[0];
 	}
 
-	FORCE_INLINE static void ApplyMaskToData(MSAPI::Protocol::WebSocket::Data& data, uint32_t mask = 0) noexcept
+	FORCE_INLINE static void ApplyMaskToData(MSAPI::Protocol::WebSocket::Data& data, uint32_t mask) noexcept
 	{
 		const auto payloadSize{ data.GetPayloadSize() };
 		if (payloadSize == 0) [[unlikely]] {

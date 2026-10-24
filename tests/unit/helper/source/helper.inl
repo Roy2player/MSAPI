@@ -90,15 +90,15 @@ FORCE_INLINE [[nodiscard]] bool Helper()
 	{
 #define TMP_MSAPI_HELPER_COMPARE_FLOATS_WITH_CUSTOM_EPSILON(a, b, expected, epsilon)                                   \
 	{                                                                                                                  \
-		constexpr auto e = epsilon;                                                                                    \
-		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::CompareFloats<decltype(a), e>(a, b), expected,                         \
+		constexpr auto Epsilon = epsilon;                                                                              \
+		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::CompareFloats<decltype(a), Epsilon>(a, b), expected,                   \
 			std::format("Compare floats, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon))));                        \
                                                                                                                        \
-		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatEqual<decltype(a), e>(a, b), expected == 0,                       \
+		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatEqual<decltype(a), Epsilon>(a, b), expected == 0,                 \
 			std::format("Float equal, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon))));                           \
-		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatGreater<decltype(a), e>(a, b), expected == 1,                     \
+		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatGreater<decltype(a), Epsilon>(a, b), expected == 1,               \
 			std::format("Float greater, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon))));                         \
-		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatLess<decltype(a), e>(a, b), expected == -1,                       \
+		RETURN_IF_FALSE(t.Assert(MSAPI::Helper::FloatLess<decltype(a), Epsilon>(a, b), expected == -1,                 \
 			std::format("Float less, {} and {}. Epsilon: {}", _S(a), _S(b), _S(epsilon))));                            \
 	}
 

@@ -58,7 +58,7 @@ FORCE_INLINE [[nodiscard]] bool HTML()
 	RETURN_IF_FALSE(t.Assert(html.MaxDepth(), 4, "HTML Depth"));
 	RETURN_IF_FALSE(t.Assert(html.BodySize(), justHtml.size(), "HTML Size"));
 	RETURN_IF_FALSE(t.Assert(html.TagsSize(), 14, "HTML tags size"));
-	RETURN_IF_FALSE(t.Assert(html.GetTag(), html.GetTag(html.TagsSize() + 1), "HTML get default tag"));
+	RETURN_IF_FALSE(t.Assert(html.GetTag(0), html.GetTag(html.TagsSize() + 1), "HTML get default tag"));
 
 	const auto checkTag{ [&t, &html] [[nodiscard]] (const size_t index, const size_t begin, const size_t end,
 							 const uint depth, const MSAPI::HTML::Valid isOpenTag, const MSAPI::HTML::Type type,
@@ -126,7 +126,7 @@ FORCE_INLINE [[nodiscard]] bool HTML()
 	RETURN_IF_FALSE(t.Assert(page.MaxDepth(), 8, "HTML Depth (complex)"));
 	RETURN_IF_FALSE(t.Assert(page.BodySize(), reallyHtml.size(), "HTML Size (complex)"));
 	RETURN_IF_FALSE(t.Assert(page.TagsSize(), 58, "HTML tags size (complex)"));
-	RETURN_IF_FALSE(t.Assert(page.GetTag(), page.GetTag(page.TagsSize() + 1), "HTML get default tag (complex)"));
+	RETURN_IF_FALSE(t.Assert(page.GetTag(0), page.GetTag(page.TagsSize() + 1), "HTML get default tag (complex)"));
 
 	return t.Passed<bool>();
 }

@@ -20,55 +20,77 @@
 
 Client::Client()
 {
-	MSAPI::Application::RegisterParameter(1, { "Parameter 1 - int8_t", &m_parameter1 });
-	MSAPI::Application::RegisterParameter(2, { "Parameter 2 - int16_t", &m_parameter2 });
-	MSAPI::Application::RegisterParameter(3, { "Parameter 3 - int32_t", &m_parameter3 });
-	MSAPI::Application::RegisterParameter(4, { "Parameter 4 - int64_t", &m_parameter4 });
-	MSAPI::Application::RegisterParameter(5, { "Parameter 5 - uint8_t", &m_parameter5 });
-	MSAPI::Application::RegisterParameter(6, { "Parameter 6 - uint16_t", &m_parameter6 });
-	MSAPI::Application::RegisterParameter(7, { "Parameter 7 - uint32_t", &m_parameter7 });
-	MSAPI::Application::RegisterParameter(8, { "Parameter 8 - uint64_t", &m_parameter8 });
-	MSAPI::Application::RegisterParameter(9, { "Parameter 9 - float", &m_parameter9 });
-	MSAPI::Application::RegisterParameter(10, { "Parameter 10 - double", &m_parameter10 });
-	MSAPI::Application::RegisterParameter(11, { "Parameter 11 - double", &m_parameter11 });
-	MSAPI::Application::RegisterParameter(12, { "Parameter 12 - optional<int8_t>", &m_parameter12 });
+	MSAPI::Application::RegisterParameter(
+		1, { "Parameter 1 - int8_t", &m_parameter1, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		2, { "Parameter 2 - int16_t", &m_parameter2, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		3, { "Parameter 3 - int32_t", &m_parameter3, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		4, { "Parameter 4 - int64_t", &m_parameter4, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		5, { "Parameter 5 - uint8_t", &m_parameter5, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		6, { "Parameter 6 - uint16_t", &m_parameter6, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		7, { "Parameter 7 - uint32_t", &m_parameter7, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		8, { "Parameter 8 - uint64_t", &m_parameter8, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		9, { "Parameter 9 - float", &m_parameter9, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		10, { "Parameter 10 - double", &m_parameter10, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		11, { "Parameter 11 - double", &m_parameter11, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		12, { "Parameter 12 - optional<int8_t>", &m_parameter12, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(13, { "Parameter 13 - optional<int8_t>", &m_parameter13, {}, {}, true });
-	MSAPI::Application::RegisterParameter(14, { "Parameter 14 - optional<int16_t>", &m_parameter14 });
+	MSAPI::Application::RegisterParameter(
+		14, { "Parameter 14 - optional<int16_t>", &m_parameter14, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(15, { "Parameter 15 - optional<int16_t>", &m_parameter15, {}, {}, true });
-	MSAPI::Application::RegisterParameter(16, { "Parameter 16 - optional<int32_t>", &m_parameter16 });
+	MSAPI::Application::RegisterParameter(
+		16, { "Parameter 16 - optional<int32_t>", &m_parameter16, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(17, { "Parameter 17 - optional<int32_t>", &m_parameter17, {}, {}, true });
-	MSAPI::Application::RegisterParameter(18, { "Parameter 18 - optional<int64_t>", &m_parameter18 });
+	MSAPI::Application::RegisterParameter(
+		18, { "Parameter 18 - optional<int64_t>", &m_parameter18, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(19, { "Parameter 19 - optional<int64_t>", &m_parameter19, {}, {}, true });
-	MSAPI::Application::RegisterParameter(20, { "Parameter 20 - optional<uint8_t>", &m_parameter20 });
+	MSAPI::Application::RegisterParameter(
+		20, { "Parameter 20 - optional<uint8_t>", &m_parameter20, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(21, { "Parameter 21 - optional<uint8_t>", &m_parameter21, {}, {}, true });
-	MSAPI::Application::RegisterParameter(22, { "Parameter 22 - optional<uint16_t>", &m_parameter22 });
+	MSAPI::Application::RegisterParameter(
+		22, { "Parameter 22 - optional<uint16_t>", &m_parameter22, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(23, { "Parameter 23 - optional<uint16_t>", &m_parameter23, {}, {}, true });
-	MSAPI::Application::RegisterParameter(24, { "Parameter 24 - optional<uint32_t>", &m_parameter24 });
+	MSAPI::Application::RegisterParameter(
+		24, { "Parameter 24 - optional<uint32_t>", &m_parameter24, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(25, { "Parameter 25 - optional<uint32_t>", &m_parameter25, {}, {}, true });
-	MSAPI::Application::RegisterParameter(26, { "Parameter 26 - optional<uint64_t>", &m_parameter26 });
 	MSAPI::Application::RegisterParameter(
-		27, { "Parameter 27 - optional<uint64_t>", &m_parameter27, { 300 }, { 6000 } });
-	MSAPI::Application::RegisterParameter(28, { "Parameter 28 - optional<float>", &m_parameter28 });
+		26, { "Parameter 26 - optional<uint64_t>", &m_parameter26, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(
-		29, { "Parameter 29 - optional<float>", &m_parameter29, { -400.001 }, { 400.001 } });
-	MSAPI::Application::RegisterParameter(30, { "Parameter 30 - optional<double>", &m_parameter30 });
+		27, { "Parameter 27 - optional<uint64_t>", &m_parameter27, { 300 }, { 6000 }, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		28, { "Parameter 28 - optional<float>", &m_parameter28, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		29, { "Parameter 29 - optional<float>", &m_parameter29, { -400.001 }, { 400.001 }, /*canBeEmpty=*/false });
+	MSAPI::Application::RegisterParameter(
+		30, { "Parameter 30 - optional<double>", &m_parameter30, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(31, { "Parameter 31 - optional<double>", &m_parameter31, {}, {}, true });
-	MSAPI::Application::RegisterParameter(32, { "Parameter 32 - optional<double>", &m_parameter32 });
+	MSAPI::Application::RegisterParameter(
+		32, { "Parameter 32 - optional<double>", &m_parameter32, /*min=*/{}, /*max=*/{}, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(33, { "Parameter 33 - optional<double>", &m_parameter33, {}, {}, true });
 	MSAPI::Application::RegisterParameter(34, { "Parameter 34 - string", &m_parameter34, true });
-	MSAPI::Application::RegisterParameter(35, { "Parameter 35 - string", &m_parameter35 });
+	MSAPI::Application::RegisterParameter(35, { "Parameter 35 - string", &m_parameter35, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(36, { "Parameter 36 - Timer", &m_parameter36, true });
-	MSAPI::Application::RegisterParameter(37, { "Parameter 37 - Timer", &m_parameter37 });
+	MSAPI::Application::RegisterParameter(37, { "Parameter 37 - Timer", &m_parameter37, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(
 		38, { "Parameter 38 - Timer::Duration", &m_parameter38, MSAPI::Timer::Duration::Type::Seconds, {}, {}, true });
 	MSAPI::Application::RegisterParameter(39,
 		{ "Parameter 39 - Timer::Duration", &m_parameter39, MSAPI::Timer::Duration::Type::Seconds, {},
-			{ MSAPI::Timer::Duration::CreateSeconds(60) } });
+			{ MSAPI::Timer::Duration::CreateSeconds(60) }, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(40, { "Parameter 40 - bool", &m_parameter40 });
 	MSAPI::Application::RegisterParameter(41, { "Parameter 41 - Table", &m_parameter41, true });
-	MSAPI::Application::RegisterParameter(42, { "Parameter 42 - Table", &m_parameter42 });
+	MSAPI::Application::RegisterParameter(42, { "Parameter 42 - Table", &m_parameter42, /*canBeEmpty=*/false });
 	MSAPI::Application::RegisterParameter(43, { "Parameter 43 - Table", &m_parameter43, true });
-	MSAPI::Application::RegisterParameter(44, { "Parameter 44 - Table", &m_parameter44 });
+	MSAPI::Application::RegisterParameter(44, { "Parameter 44 - Table", &m_parameter44, /*canBeEmpty=*/false });
 }
 
 void Client::HandleBuffer(MSAPI::RecvBuffer& recvBuffer)

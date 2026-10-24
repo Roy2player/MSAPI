@@ -806,8 +806,11 @@ public:
 						else if constexpr (std::is_same_v<T, std::string>) {
 							result += it->second;
 						}
-						else if constexpr (std::is_same_v<T, Timer> || std::is_same_v<T, Timer::Duration>) {
+						else if constexpr (std::is_same_v<T, Timer>) {
 							result += it->second.ToString();
+						}
+						else if constexpr (std::is_same_v<T, Timer::Duration>) {
+							result += it->second.ToString(Timer::Duration::Type::Nanoseconds);
 						}
 						else {
 							static_assert(sizeof(T) + 1 == 0, "Unsupported type for table cell");
@@ -897,8 +900,11 @@ public:
 						else if constexpr (std::is_same_v<T, std::string>) {
 							data += "\"" + it->second + "\"";
 						}
-						else if constexpr (std::is_same_v<T, Timer> || std::is_same_v<T, Timer::Duration>) {
+						else if constexpr (std::is_same_v<T, Timer>) {
 							data += "\"" + it->second.ToString() + "\"";
+						}
+						else if constexpr (std::is_same_v<T, Timer::Duration>) {
+							data += "\"" + it->second.ToString(Timer::Duration::Type::Nanoseconds) + "\"";
 						}
 						else {
 							static_assert(sizeof(T) + 1 == 0, "Unsupported type for table cell");

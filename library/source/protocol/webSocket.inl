@@ -109,11 +109,11 @@ public:
 		 * @param data Web socket data destination.
 		 * @param buffer Source of payload.
 		 * @param step Payload step.
-		 * @param masking Define if messages should be masked. Default is false.
+		 * @param masking Define if messages should be masked.
 		 *
 		 * @test Yes.
 		 */
-		FORCE_INLINE SplitGenerator(Data& data, std::span<T> buffer, size_t step, bool masking = false);
+		FORCE_INLINE SplitGenerator(Data& data, std::span<T> buffer, size_t step, bool masking);
 
 		SplitGenerator(const SplitGenerator&) = delete;
 		SplitGenerator(SplitGenerator&&) = delete;
@@ -166,16 +166,16 @@ public:
 	 *
 	 * @param payload Payload data to be sent in message.
 	 * @param opcode Message opcode.
-	 * @param mask Masking key for payload masking. Default is 0 - no masking.
-	 * @param isFinal Indicates if message is final fragment of message. Default is true.
-	 * @param rsv1 Reserved bit 1. Default is false.
-	 * @param rsv2 Reserved bit 2. Default is false.
-	 * @param rsv3 Reserved bit 3. Default is false.
+	 * @param mask Masking key for payload masking. Zero disables masking.
+	 * @param isFinal Indicates if message is final fragment of message.
+	 * @param rsv1 Reserved bit 1.
+	 * @param rsv2 Reserved bit 2.
+	 * @param rsv3 Reserved bit 3.
 	 *
 	 * @test Yes.
 	 */
-	FORCE_INLINE Data(std::span<const uint8_t> payload, Opcode opcode, uint32_t mask = 0, bool isFinal = true,
-		bool rsv1 = false, bool rsv2 = false, bool rsv3 = false) noexcept;
+	FORCE_INLINE Data(std::span<const uint8_t> payload, Opcode opcode, uint32_t mask, bool isFinal, bool rsv1,
+		bool rsv2, bool rsv3) noexcept;
 
 	Data(const Data&) = delete;
 	FORCE_INLINE Data(Data&&) noexcept = default;
@@ -370,16 +370,15 @@ public:
 	 * @tparam T int16_t or CloseStatusCode enum.
 	 * @tparam S Span of 1 byte data.
 	 *
-	 * @param statusCode Ending status. Default is -1 - no status code should be written.
-	 * @param reason Ending reason. Default is empty. Cannot be greater than 123 bytes.
-	 * @param mask Masking key. Default is 0 - no masking.
+	 * @param statusCode Ending status. Minus one omits the status code.
+	 * @param reason Ending reason. Cannot be greater than 123 bytes.
+	 * @param mask Masking key. Zero disables masking.
 	 *
 	 * @test Yes.
 	 */
-	template <typename T = int16_t, typename S = uint8_t>
+	template <typename T, typename S>
 		requires((std::is_same_v<T, int16_t> || std::is_same_v<T, CloseStatusCode>) && sizeof(S) == 1)
-	FORCE_INLINE [[nodiscard]] static Data CreateClose(
-		T statusCode = static_cast<T>(-1), std::span<S> reason = {}, uint32_t mask = 0);
+	FORCE_INLINE [[nodiscard]] static Data CreateClose(T statusCode, std::span<S> reason, uint32_t mask);
 
 	/**************************
 	 * @param payloadSize Payload size.

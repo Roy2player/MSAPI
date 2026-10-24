@@ -5,30 +5,32 @@ description: "Logging levels, message style, and runtime logging guidance"
 
 # Logging
 
-- PROTOCOL level is used for all protocol-related messages.
-- DEBUG level is used for all kind of debugging information. Proper debug level logging as important, as warning or error level - it helps to understand the flow and state of the application during development and troubleshooting.
-- INFO level is used for messages that highlight the progress of the application, like successful start, stop, or other important events.
-- WARNING level is used for messages that indicate a potential problem or unexpected situation, but the application can continue running.
-- ERROR level is used for messages that indicate a serious problem that may prevent the application from continuing to run or may cause data loss.
+- Protocol implementations must use PROTOCOL level for messages that would otherwise use DEBUG or INFO. This keeps transport-level details out of application level.
+- Debugging information outside protocol implementations must use DEBUG level. Debug logging helps explain application flow and state during development and troubleshooting.
+- Messages highlighting application progress outside protocol implementations, such as successful start, stop, or other important events, must use INFO level.
+- Messages indicating a potential problem or unexpected situation while the application can continue must use WARNING level.
+- Messages indicating a serious problem that may prevent continued execution or cause data loss must use ERROR level.
 
-- Each execution path can have at most one log message, regardless of logging level.
-- Use logging as the commentary for the code, providing context and explanations for the events being logged.
-- Message should be clear and concise, describing the event or state being logged.
-- Float point variables should be logged with next precision parameters: `{:.9f}` for float, `{:.17f}` for double, and `{:.17Lf}` for long double.
-- Use LOG_*LEVEL*_NEW for all logging, where *LEVEL* is one of the following: PROTOCOL, DEBUG, INFO, WARNING, ERROR.
-- For values listing use `key: value` format, add `,` to separate multiple `key: value` pairs. Example:
+The WARNING and ERROR rules also apply to failures within protocol implementations.
+
+- Each execution path must contain at most one log message, regardless of logging level. An execution path is one logical branch or operation that an execution unit can follow.
+- Logging should provide context and explanations for the events being logged, serving as commentary for the code.
+- Messages should be clear and concise, describing the event or state being logged.
+- Floating-point variables should use these precision parameters: `{:.9f}` for float, `{:.17f}` for double, and `{:.17Lf}` for long double.
+- All logging must use LOG_*LEVEL*_NEW, where *LEVEL* is one of PROTOCOL, DEBUG, INFO, WARNING, or ERROR.
+- Value lists must use `key: value` format, with commas separating multiple pairs. Example:
 
 ```cpp
-LOG_DEBUG_NEW("Connection established, id: {}, ip: {}, port: {}", connectionId, ipStr, port);
+LOG_DEBUG_NEW("Connection established, id: {}, ip: \"{}\", port: {}", connectionId, ipStr, port);
 ```
 
-- For values in message in native style use `key description value` format. Example:
+- Values embedded in prose must use `key description value` format. Example:
 
 ```cpp
 LOG_DEBUG_NEW("Max connections per IP is already set to {}, no change needed", value);
 ```
 
-- Wrap values in `""` if they are strings.
+- String values must be wrapped in `""`.
 
 Example:
 
@@ -36,5 +38,5 @@ Example:
 LOG_DEBUG_NEW("Access is not granted for connection: {}, error: \"{}\"", connectionId, errorMessage);
 ```
 
-- Log a relevant `errno` value and description after a failed POSIX operation. //! Sample
-- Avoid logging or expensive message construction in hot loops or under locking unless an existing runtime guard makes the cost acceptable.
+- A failed POSIX operation must be logged with the relevant `errno` value and description.
+- Logging or expensive message construction should be avoided in hot loops or while holding locks unless an existing runtime guard makes the cost acceptable.

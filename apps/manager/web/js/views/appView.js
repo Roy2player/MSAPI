@@ -41,14 +41,14 @@ class AppView extends View {
 		iframe.style.border = "none";
 
 		this.m_view.appendChild(iframe);
-		this.m_view.classList.add("loading");
+		this.SetLoading(true);
 
 		iframe.addEventListener("load", () => {
 			try {
 				const urlObj = new URL(iframe.src, window.location.origin);
 				iframe.contentWindow.postMessage(
 					{ type : "init", uid : this.m_uid, origin : window.location.origin }, urlObj.origin);
-				this.m_view.classList.remove("loading");
+				this.SetLoading(false);
 			}
 			catch (e) {
 				console.error("Failed to postMessage to iframe:", e);
@@ -80,7 +80,7 @@ class AppView extends View {
 					}
 
 					if (state != appState) {
-						this.m_view.classList.add("loading");
+						this.SetLoading(true);
 						iframe.src = url + (url.includes("?") ? "&" : "?") + "reloaded=" + Date.now();
 					}
 					appState = state;

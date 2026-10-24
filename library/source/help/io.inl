@@ -209,9 +209,11 @@ FORCE_INLINE [[nodiscard]] consteval int32_t SuggestFlags(bool append);
  *
  * @attention Directories in path must exist. If file descriptor is passed, it must be valid.
  *
- * @tparam Append If true, data will be appended to the file and overwritten otherwise, default is false.
- * @tparam Mode File access mode in octal format, default is 0644.
- * @tparam Multiple Call is part of multiple save operations, default is false.
+ * @tparam Append If true, data will be appended to the file and overwritten otherwise.
+ * @tparam Mode File creation permissions in octal format. Recommended default: 0644, which grants the owner read/write
+ * access and the group and others read-only access, without execute permissions. The process umask may restrict these
+ * permissions. Existing file permissions remain unchanged; ignored when a file descriptor is passed.
+ * @tparam Multiple Whether the call is part of multiple save operations.
  * @tparam T Type of object.
  * @tparam PathType Type of path or file descriptor.
  *
@@ -222,7 +224,7 @@ FORCE_INLINE [[nodiscard]] consteval int32_t SuggestFlags(bool append);
  *
  * @test Yes.
  */
-template <bool Append = false, int32_t Mode = 0644, bool Multiple = false, typename T, typename PathType>
+template <bool Append, int32_t Mode, bool Multiple, typename T, typename PathType>
 	requires((std::is_pointer_v<std::remove_cvref_t<T>> || std::is_reference_v<T>)
 		&& (std::is_same_v<PathType, int32_t> || StringableView<PathType>))
 FORCE_INLINE [[nodiscard]] bool SaveBinary(T&& object, PathType pathOrFd);
@@ -238,8 +240,10 @@ constexpr bool SINGLE{};
  *
  * @attention Directories in path must exist. If file descriptor is passed, it must be valid.
  *
- * @tparam Append If true, data will be appended to the file and overwritten otherwise, default is false.
- * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam Append If true, data will be appended to the file and overwritten otherwise.
+ * @tparam Mode File creation permissions in octal format. Recommended default: 0644, which grants the owner read/write
+ * access and the group and others read-only access, without execute permissions. The process umask may restrict these
+ * permissions. Existing file permissions remain unchanged; ignored when a file descriptor is passed.
  * @tparam T Type of forward container.
  * @tparam PathType Type of path or file descriptor.
  *
@@ -250,7 +254,7 @@ constexpr bool SINGLE{};
  *
  * @test Yes.
  */
-template <bool Append = false, int32_t Mode = 0644, typename T, typename PathType>
+template <bool Append, int32_t Mode, typename T, typename PathType>
 	requires(
 		std::forward_iterator<typename T::iterator> && (std::is_same_v<PathType, int32_t> || StringableView<PathType>))
 FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, PathType pathOrFd);
@@ -261,8 +265,10 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, PathType pathOrFd
  * @attention Empty ranges create or truncate files in overwrite mode and preserve existing bytes in append mode.
  * A failed save may leave partial output, as with the container interface.
  *
- * @tparam Append Appends records if true and overwrites otherwise, default is false.
- * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam Append Appends records if true and overwrites otherwise.
+ * @tparam Mode File creation permissions in octal format. Recommended default: 0644, which grants the owner read/write
+ * access and the group and others read-only access, without execute permissions. The process umask may restrict these
+ * permissions. Existing file permissions remain unchanged; ignored when a file descriptor is passed.
  * @tparam Iterator Forward iterator yielding records or pointers to records.
  * @tparam Sentinel End sentinel compatible with Iterator.
  * @tparam PathType Type of path or file descriptor.
@@ -277,8 +283,8 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(const T& objects, PathType pathOrFd
  *
  * @test Yes.
  */
-template <bool Append = false, int32_t Mode = 0644, std::forward_iterator Iterator,
-	std::sentinel_for<Iterator> Sentinel, typename PathType>
+template <bool Append, int32_t Mode, std::forward_iterator Iterator, std::sentinel_for<Iterator> Sentinel,
+	typename PathType>
 	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
 FORCE_INLINE [[nodiscard]] bool SaveBinaries(Iterator begin, Sentinel end, PathType pathOrFd);
 
@@ -287,7 +293,9 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(Iterator begin, Sentinel end, PathT
  *
  * @attention Directories in path must exist. If file descriptor is passed, it must be valid. Offset must be valid.
  *
- * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam Mode File creation permissions in octal format. Recommended default: 0644, which grants the owner read/write
+ * access and the group and others read-only access, without execute permissions. The process umask may restrict these
+ * permissions. Existing file permissions remain unchanged; ignored when a file descriptor is passed.
  * @tparam T Type of object.
  * @tparam PathType Type of path or file descriptor.
  *
@@ -299,7 +307,7 @@ FORCE_INLINE [[nodiscard]] bool SaveBinaries(Iterator begin, Sentinel end, PathT
  *
  * @test Yes.
  */
-template <int32_t Mode = 0644, typename T, typename PathType>
+template <int32_t Mode, typename T, typename PathType>
 	requires(std::is_same_v<PathType, int32_t> || StringableView<PathType>)
 FORCE_INLINE [[nodiscard]] bool SaveBinaryOnOffset(T&& object, PathType pathOrFd, int64_t offset);
 
@@ -323,11 +331,12 @@ FORCE_INLINE [[nodiscard]] consteval uint64_t SuggestPsm();
  *
  * @attention Directories in path must exist. If file descriptor is passed, it must be valid.
  *
- * @tparam Append If true, data will be appended to the file with new line separator, and overwritten otherwise. Default
- * is false.
- * @tparam Mode File access mode in octal format, default is 0644.
- * @tparam Buffer Size of internal buffer, default is 512.
- * @tparam PSM Maximum size of primitive string representation, default and minimum is 32. Used for FP > 4 bytes and
+ * @tparam Append If true, data will be appended to the file with new line separator, and overwritten otherwise.
+ * @tparam Mode File creation permissions in octal format. Recommended default: 0644, which grants the owner read/write
+ * access and the group and others read-only access, without execute permissions. The process umask may restrict these
+ * permissions. Existing file permissions remain unchanged; ignored when a file descriptor is passed.
+ * @tparam Buffer Size of internal buffer.
+ * @tparam PSM Maximum size of primitive string representation; minimum is 32. Used for FP > 4 bytes and
  * integer types > 8 bytes, for another types this value is calculated automatically.
  * @tparam T Type of forward container.
  * @tparam TT Type of primitive object.
@@ -341,8 +350,8 @@ FORCE_INLINE [[nodiscard]] consteval uint64_t SuggestPsm();
  *
  * @test Yes.
  */
-template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint64_t PSM = 32,
-	template <typename> typename T, typename TT, typename PathType>
+template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, template <typename> typename T, typename TT,
+	typename PathType>
 	requires(std::forward_iterator<typename T<TT>::iterator>
 		&& (std::is_same_v<PathType, int32_t> || StringableView<PathType>)
 		&& (std::is_integral_v<TT> || std::is_floating_point_v<TT>))
@@ -354,10 +363,12 @@ FORCE_INLINE [[nodiscard]] bool SavePrimitives(const T<TT>& objects, PathType pa
  * @attention Empty ranges are a successful no-op: no file is opened, truncated, or appended to.
  * Formatting, separators, and append newlines match the container interface.
  *
- * @tparam Append Appends text if true and overwrites otherwise, default is false.
- * @tparam Mode File access mode in octal format, default is 0644.
- * @tparam Buffer Internal formatting buffer size, default is 512.
- * @tparam PSM Maximum size of primitive string representation, default and minimum is 32. Used for FP > 4 bytes and
+ * @tparam Append Appends text if true and overwrites otherwise.
+ * @tparam Mode File creation permissions in octal format. Recommended default: 0644, which grants the owner read/write
+ * access and the group and others read-only access, without execute permissions. The process umask may restrict these
+ * permissions. Existing file permissions remain unchanged; ignored when a file descriptor is passed.
+ * @tparam Buffer Internal formatting buffer size.
+ * @tparam PSM Maximum size of primitive string representation; minimum is 32. Used for FP > 4 bytes and
  * integer types > 8 bytes, for another types this value is calculated automatically.
  * @tparam Iterator Forward iterator whose value type is integral or floating-point.
  * @tparam Sentinel End sentinel compatible with Iterator.
@@ -374,8 +385,8 @@ FORCE_INLINE [[nodiscard]] bool SavePrimitives(const T<TT>& objects, PathType pa
  *
  * @test Yes.
  */
-template <bool Append = false, int32_t Mode = 0644, uint64_t Buffer = 512, uint64_t PSM = 32,
-	std::forward_iterator Iterator, std::sentinel_for<Iterator> Sentinel, typename PathType>
+template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, std::forward_iterator Iterator,
+	std::sentinel_for<Iterator> Sentinel, typename PathType>
 	requires((std::is_same_v<PathType, int32_t> || StringableView<PathType>)
 		&& (std::is_integral_v<std::iter_value_t<Iterator>> || std::is_floating_point_v<std::iter_value_t<Iterator>>))
 FORCE_INLINE [[nodiscard]] bool SavePrimitives(Iterator begin, Sentinel end, PathType pathOrFd, char separator);
@@ -385,9 +396,10 @@ FORCE_INLINE [[nodiscard]] bool SavePrimitives(Iterator begin, Sentinel end, Pat
  *
  * @attention Directories in path must exist.
  *
- * @tparam Append If true, data will be appended to the file with new line separator, and overwritten otherwise. Default
- * is false.
- * @tparam Mode File access mode in octal format, default is 0644.
+ * @tparam Append If true, data will be appended to the file with new line separator, and overwritten otherwise.
+ * @tparam Mode File creation permissions in octal format. Recommended default: 0644, which grants the owner read/write
+ * access and the group and others read-only access, without execute permissions. The process umask may restrict these
+ * permissions. Existing file permissions remain unchanged.
  * @tparam PathType Type of path.
  *
  * @param str String for saving.
@@ -397,7 +409,7 @@ FORCE_INLINE [[nodiscard]] bool SavePrimitives(Iterator begin, Sentinel end, Pat
  *
  * @test Yes.
  */
-template <bool Append = false, int32_t Mode = 0644, typename PathType>
+template <bool Append, int32_t Mode, typename PathType>
 	requires StringableView<PathType>
 FORCE_INLINE [[nodiscard]] bool SaveStr(std::string_view str, PathType path);
 
@@ -465,13 +477,13 @@ FORCE_INLINE [[nodiscard]] bool ReadStr(std::string& str, PathType path);
  *
  * @param path Full path.
  *
- * @tparam Buffer Size of internal buffer, default is 512.
+ * @tparam Buffer Size of internal buffer.
  *
  * @return True if removing was successful, false otherwise.
  *
  * @test Yes.
  */
-template <uint64_t Buffer = 512> FORCE_INLINE [[nodiscard]] bool Remove(std::string_view path);
+template <uint64_t Buffer> FORCE_INLINE [[nodiscard]] bool Remove(std::string_view path);
 
 /**************************
  * @brief Copy file.
@@ -497,15 +509,17 @@ FORCE_INLINE [[nodiscard]] bool CopyFile(SourcePathType from, DestinationPathTyp
  *
  * @param path Full path to directory.
  *
- * @tparam Mode Directory access mode in octal format, default is 0755.
+ * @tparam Mode Directory creation permissions in octal format. Recommended default: 0755, which grants the owner full
+ * access and the group and others read and search access, allowing directory listing and traversal without
+ * modification. The process umask may restrict these permissions. Existing directory permissions remain unchanged.
+ * @tparam Buffer Size of internal buffer.
  * @tparam PathType Type of path.
- * @tparam Buffer Size of internal buffer, default is 512.
  *
  * @return True if directory was created, false otherwise.
  *
  * @test Yes.
  */
-template <int32_t Mode = 0755, typename PathType, uint64_t Buffer = 512>
+template <int32_t Mode, uint64_t Buffer, typename PathType>
 	requires StringableView<PathType>
 FORCE_INLINE [[nodiscard]] bool CreateDir(PathType path);
 
@@ -849,49 +863,49 @@ FORCE_INLINE [[nodiscard]] consteval uint64_t SuggestPsm()
 {
 	constexpr auto size = sizeof(T);
 
-	if (std::is_integral_v<T>) {
-		if (std::is_same_v<T, bool>) {
+	if constexpr (std::is_integral_v<T>) {
+		if constexpr (std::is_same_v<T, bool>) {
 			return 4;
 		}
 
-		if (std::is_same_v<T, char>) {
+		if constexpr (std::is_same_v<T, char>) {
 			return 1;
 		}
 
-		if (std::is_signed_v<T>) {
-			if (size == 1) {
+		if constexpr (std::is_signed_v<T>) {
+			if constexpr (size == 1) {
 				return 4;
 			}
-			if (size == 2) {
+			if constexpr (size == 2) {
 				return 6;
 			}
-			if (size == 4) {
+			if constexpr (size == 4) {
 				return 11;
 			}
-			if (size == 8) {
+			if constexpr (size == 8) {
 				return 20;
 			}
 		}
 
-		if (size == 1) {
+		if constexpr (size == 1) {
 			return 3;
 		}
-		if (size == 2) {
+		if constexpr (size == 2) {
 			return 5;
 		}
-		if (size == 4) {
+		if constexpr (size == 4) {
 			return 10;
 		}
-		if (size == 8) {
+		if constexpr (size == 8) {
 			return 20;
 		}
 	}
 
-	if (std::is_same_v<T, float>) {
+	if constexpr (std::is_same_v<T, float>) {
 		return 14;
 	}
 
-	return std::max(PSM, 32ul);
+	return std::max(PSM, uint64_t{ 32 });
 }
 
 template <bool Append, int32_t Mode, uint64_t Buffer, uint64_t PSM, std::forward_iterator Iterator,
@@ -1394,7 +1408,7 @@ FORCE_INLINE [[nodiscard]] bool CopyFile(const SourcePathType from, const Destin
 	return true;
 }
 
-template <int32_t Mode, typename PathType, uint64_t Buffer>
+template <int32_t Mode, uint64_t Buffer, typename PathType>
 	requires StringableView<PathType>
 FORCE_INLINE [[nodiscard]] bool CreateDir(const PathType path)
 {

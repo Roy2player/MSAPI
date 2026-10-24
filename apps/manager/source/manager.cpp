@@ -143,7 +143,8 @@ void Manager::HandleHttp(
 	const std::string& url{ data.GetUrl() };
 	LOG_DEBUG("Request url: " + url + ", version: " + data.GetVersion());
 	if (data.GetTypeMessage() != "GET") {
-		(void)data.Send404(connectionData->GetConnection());
+		(void)data.Send404(connectionData->GetConnection(), /*body=*/"", /*contentType=*/"",
+			MSAPI::Protocol::HTTP::KEEP_CONNECTION_ALIVE);
 		return;
 	}
 

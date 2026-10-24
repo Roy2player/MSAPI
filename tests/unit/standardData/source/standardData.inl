@@ -133,7 +133,7 @@ FORCE_INLINE [[nodiscard]] bool StandardData()
 	data.SetData(35, dataItem35);
 	const MSAPI::Timer dataItem36{ 1756075436, 163998971 };
 	data.SetData(36, dataItem36);
-	const MSAPI::Timer dataItem37{ 0 };
+	const MSAPI::Timer dataItem37{ 0, 0 };
 	data.SetData(37, dataItem37);
 	const MSAPI::Timer::Duration dataItem38{ MSAPI::Timer::Duration::Create(10, 20, 40, 45, 99987653) };
 	data.SetData(38, dataItem38);
@@ -154,12 +154,12 @@ FORCE_INLINE [[nodiscard]] bool StandardData()
 			99938498234, 0, {}, 238472934729834, 27346277, 287918237, {}, 9098345, {}, 209348023, 99938498234, 0, {},
 			238472934729834, 27346277 };
 		std::array<MSAPI::Timer, 20> bufferTimer{ MSAPI::Timer::Create(1999, 3, 4, 12, 44, 23, 746384),
-			MSAPI::Timer::Create(2023, 11, 27, 0, 0, 0, 0), MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), { 0 },
-			MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), { 0 }, MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0),
+			MSAPI::Timer::Create(2023, 11, 27, 0, 0, 0, 0), MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), { 0, 0 },
+			MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), { 0, 0 }, MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0),
 			MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0),
 			MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), MSAPI::Timer::Create(1999, 3, 4, 12, 44, 23, 746384),
-			MSAPI::Timer::Create(2023, 11, 27, 0, 0, 0, 0), MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), { 0 },
-			MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), { 0 }, MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0),
+			MSAPI::Timer::Create(2023, 11, 27, 0, 0, 0, 0), MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), { 0, 0 },
+			MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), { 0, 0 }, MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0),
 			MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0), MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0),
 			MSAPI::Timer::Create(2024, 5, 12, 0, 0, 0, 0) };
 		std::array<std::string, 20> bufferString{ "0 Some random string here", "Some -1 random string here",

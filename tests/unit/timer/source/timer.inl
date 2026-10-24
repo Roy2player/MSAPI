@@ -76,32 +76,32 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 	}
 
 	{
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2022).ToString(), "2022-01-01 00:00:00.000000000", "Timer::Create(2022) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2022).ToDate().ToString(), "2022-01-01", "Timer::Create(2022) to date"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 2).ToString(), "2022-02-01 00:00:00.000000000",
-			"Timer::Create(2022,2) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2022, 2).ToDate().ToString(), "2022-02-01", "Timer::Create(2022,2) to date"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 2).ToString(), "2022-01-02 00:00:00.000000000",
-			"Timer::Create(2022,1,2) to string"));
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2022, 1, 2).ToDate().ToString(), "2022-01-02", "Timer::Create(2022,1,2) to date"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 1).ToString(), "2022-01-01 01:00:00.000000000",
-			"Timer::Create(2022,1,1,1) to string"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 0, 1).ToString(), "2022-01-01 00:01:00.000000000",
-			"Timer::Create(2022,1,1,0,1) to string"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 0, 0, 1).ToString(), "2022-01-01 00:00:01.000000000",
-			"Timer::Create(2022,1,1,0,0,1) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 0, 0, 0, 0).ToString(),
+			"2022-01-01 00:00:00.000000000", "Timer::Create(2022) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2022-01-01",
+			"Timer::Create(2022) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 2, 1, 0, 0, 0, 0).ToString(),
+			"2022-02-01 00:00:00.000000000", "Timer::Create(2022,2) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 2, 1, 0, 0, 0, 0).ToDate().ToString(), "2022-02-01",
+			"Timer::Create(2022,2) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 2, 0, 0, 0, 0).ToString(),
+			"2022-01-02 00:00:00.000000000", "Timer::Create(2022,1,2) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 2, 0, 0, 0, 0).ToDate().ToString(), "2022-01-02",
+			"Timer::Create(2022,1,2) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 1, 0, 0, 0).ToString(),
+			"2022-01-01 01:00:00.000000000", "Timer::Create(2022,1,1,1) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 0, 1, 0, 0).ToString(),
+			"2022-01-01 00:01:00.000000000", "Timer::Create(2022,1,1,0,1) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 0, 0, 1, 0).ToString(),
+			"2022-01-01 00:00:01.000000000", "Timer::Create(2022,1,1,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 0, 0, 0, 123456789).ToString(),
 			"2022-01-01 00:00:00.123456789", "Timer::Create(2022,1,1,0,0,0,123456789) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2022, 1, 1, 0, 0, 0, 1).ToString(),
 			"2022-01-01 00:00:00.000000001", "Timer::Create(2022,1,1,0,0,0,1) to string"));
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(1970).ToString(), "1970-01-01 00:00:00.000000000", "Timer::Create(1970) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(1970).ToDate().ToString(), "1970-01-01", "Timer::Create(1970) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1970, 1, 1, 0, 0, 0, 0).ToString(),
+			"1970-01-01 00:00:00.000000000", "Timer::Create(1970) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1970, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "1970-01-01",
+			"Timer::Create(1970) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1971, 9, 21, 17, 39, 10, 1234).ToString(),
 			"1971-09-21 17:39:10.000001234", "Timer::Create(1971,9,21,17,39,10,1234) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1971, 9, 21, 17, 39, 10, 1234).ToDate().ToString(), "1971-09-21",
@@ -130,27 +130,27 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 			"1977-09-21 17:39:10.000001234", "Timer::Create(1977,9,21,17,39,10,1234) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1977, 9, 21, 17, 39, 10, 1234).ToDate().ToString(), "1977-09-21",
 			"Timer::Create(1977,9,21,17,39,10,1234) to date"));
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(1978).ToString(), "1978-01-01 00:00:00.000000000", "Timer::Create(1978) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(1978).ToDate().ToString(), "1978-01-01", "Timer::Create(1978) to date"));
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(1979).ToString(), "1979-01-01 00:00:00.000000000", "Timer::Create(1979) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(1979).ToDate().ToString(), "1979-01-01", "Timer::Create(1979) to date"));
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(1980).ToString(), "1980-01-01 00:00:00.000000000", "Timer::Create(1980) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(1980).ToDate().ToString(), "1980-01-01", "Timer::Create(1980) to date"));
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(1990).ToString(), "1990-01-01 00:00:00.000000000", "Timer::Create(1990) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(1990).ToDate().ToString(), "1990-01-01", "Timer::Create(1990) to date"));
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2000).ToString(), "2000-01-01 00:00:00.000000000", "Timer::Create(2000) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2000).ToDate().ToString(), "2000-01-01", "Timer::Create(2000) to date"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2024, 12, 20, 0, 1).ToDate().ToString(), "2024-12-20",
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1978, 1, 1, 0, 0, 0, 0).ToString(),
+			"1978-01-01 00:00:00.000000000", "Timer::Create(1978) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1978, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "1978-01-01",
+			"Timer::Create(1978) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1979, 1, 1, 0, 0, 0, 0).ToString(),
+			"1979-01-01 00:00:00.000000000", "Timer::Create(1979) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1979, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "1979-01-01",
+			"Timer::Create(1979) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1980, 1, 1, 0, 0, 0, 0).ToString(),
+			"1980-01-01 00:00:00.000000000", "Timer::Create(1980) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1980, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "1980-01-01",
+			"Timer::Create(1980) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1990, 1, 1, 0, 0, 0, 0).ToString(),
+			"1990-01-01 00:00:00.000000000", "Timer::Create(1990) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(1990, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "1990-01-01",
+			"Timer::Create(1990) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2000, 1, 1, 0, 0, 0, 0).ToString(),
+			"2000-01-01 00:00:00.000000000", "Timer::Create(2000) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2000, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2000-01-01",
+			"Timer::Create(2000) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2024, 12, 20, 0, 1, 0, 0).ToDate().ToString(), "2024-12-20",
 			"Timer::Create(2024,12,20,0,1) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2024, 9, 21, 17, 39, 10, 1234).ToString(),
 			"2024-09-21 17:39:10.000001234", "MSAPI::Timer::Create(2024,9,21,17,39,10,1234) to string"));
@@ -159,10 +159,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2224, 9, 21, 17, 39, 10, 1234).ToString(),
 			"2224-09-21 17:39:10.000001234", "MSAPI::Timer::Create(2224,9,21,17,39,10,1234) to string"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2052).ToString(), "2052-01-01 00:00:00.000000000", "Timer::Create(2052) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2052).ToDate().ToString(), "2052-01-01", "Timer::Create(2052) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2052, 1, 1, 0, 0, 0, 0).ToString(),
+			"2052-01-01 00:00:00.000000000", "Timer::Create(2052) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2052, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2052-01-01",
+			"Timer::Create(2052) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2052, 2, 29, 0, 0, 0, 1).ToString(),
 			"2052-02-29 00:00:00.000000001", "Timer::Create(2052,2,29,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2052, 2, 29, 0, 0, 0, 1).ToDate().ToString(), "2052-02-29",
@@ -180,10 +180,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2052, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2052-12-31",
 			"Timer::Create(2052,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2053).ToString(), "2053-01-01 00:00:00.000000000", "Timer::Create(2053) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2053).ToDate().ToString(), "2053-01-01", "Timer::Create(2053) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2053, 1, 1, 0, 0, 0, 0).ToString(),
+			"2053-01-01 00:00:00.000000000", "Timer::Create(2053) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2053, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2053-01-01",
+			"Timer::Create(2053) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2053, 2, 28, 0, 0, 0, 1).ToString(),
 			"2053-02-28 00:00:00.000000001", "Timer::Create(2053,2,28,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2053, 2, 28, 0, 0, 0, 1).ToDate().ToString(), "2053-02-28",
@@ -201,10 +201,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2053, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2053-12-31",
 			"Timer::Create(2053,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2054).ToString(), "2054-01-01 00:00:00.000000000", "Timer::Create(2054) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2054).ToDate().ToString(), "2054-01-01", "Timer::Create(2054) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2054, 1, 1, 0, 0, 0, 0).ToString(),
+			"2054-01-01 00:00:00.000000000", "Timer::Create(2054) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2054, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2054-01-01",
+			"Timer::Create(2054) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2054, 2, 28, 0, 0, 0, 1).ToString(),
 			"2054-02-28 00:00:00.000000001", "Timer::Create(2054,2,28,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2054, 2, 28, 0, 0, 0, 1).ToDate().ToString(), "2054-02-28",
@@ -222,10 +222,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2054, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2054-12-31",
 			"Timer::Create(2054,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2055).ToString(), "2055-01-01 00:00:00.000000000", "Timer::Create(2055) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2055).ToDate().ToString(), "2055-01-01", "Timer::Create(2055) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2055, 1, 1, 0, 0, 0, 0).ToString(),
+			"2055-01-01 00:00:00.000000000", "Timer::Create(2055) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2055, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2055-01-01",
+			"Timer::Create(2055) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2055, 2, 28, 0, 0, 0, 1).ToString(),
 			"2055-02-28 00:00:00.000000001", "Timer::Create(2055,2,28,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2055, 2, 28, 0, 0, 0, 1).ToDate().ToString(), "2055-02-28",
@@ -243,10 +243,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2055, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2055-12-31",
 			"Timer::Create(2055,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2156).ToString(), "2156-01-01 00:00:00.000000000", "Timer::Create(2156) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2156).ToDate().ToString(), "2156-01-01", "Timer::Create(2156) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2156, 1, 1, 0, 0, 0, 0).ToString(),
+			"2156-01-01 00:00:00.000000000", "Timer::Create(2156) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2156, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2156-01-01",
+			"Timer::Create(2156) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2156, 2, 29, 0, 0, 0, 1).ToString(),
 			"2156-02-29 00:00:00.000000001", "Timer::Create(2156,2,29,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2156, 2, 29, 0, 0, 0, 1).ToDate().ToString(), "2156-02-29",
@@ -264,10 +264,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2156, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2156-12-31",
 			"Timer::Create(2156,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2157).ToString(), "2157-01-01 00:00:00.000000000", "Timer::Create(2157) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2157).ToDate().ToString(), "2157-01-01", "Timer::Create(2157) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2157, 1, 1, 0, 0, 0, 0).ToString(),
+			"2157-01-01 00:00:00.000000000", "Timer::Create(2157) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2157, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2157-01-01",
+			"Timer::Create(2157) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2157, 2, 28, 0, 0, 0, 1).ToString(),
 			"2157-02-28 00:00:00.000000001", "Timer::Create(2157,2,28,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2157, 2, 28, 0, 0, 0, 1).ToDate().ToString(), "2157-02-28",
@@ -285,10 +285,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2157, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2157-12-31",
 			"Timer::Create(2157,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2158).ToString(), "2158-01-01 00:00:00.000000000", "Timer::Create(2158) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2158).ToDate().ToString(), "2158-01-01", "Timer::Create(2158) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2158, 1, 1, 0, 0, 0, 0).ToString(),
+			"2158-01-01 00:00:00.000000000", "Timer::Create(2158) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2158, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2158-01-01",
+			"Timer::Create(2158) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2158, 2, 28, 0, 0, 0, 1).ToString(),
 			"2158-02-28 00:00:00.000000001", "Timer::Create(2158,2,28,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2158, 2, 28, 0, 0, 0, 1).ToDate().ToString(), "2158-02-28",
@@ -306,10 +306,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2158, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2158-12-31",
 			"Timer::Create(2158,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2159).ToString(), "2159-01-01 00:00:00.000000000", "Timer::Create(2159) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2159).ToDate().ToString(), "2159-01-01", "Timer::Create(2159) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2159, 1, 1, 0, 0, 0, 0).ToString(),
+			"2159-01-01 00:00:00.000000000", "Timer::Create(2159) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2159, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2159-01-01",
+			"Timer::Create(2159) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2159, 2, 28, 0, 0, 0, 1).ToString(),
 			"2159-02-28 00:00:00.000000001", "Timer::Create(2159,2,28,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2159, 2, 28, 0, 0, 0, 1).ToDate().ToString(), "2159-02-28",
@@ -327,10 +327,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2159, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2159-12-31",
 			"Timer::Create(2159,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2252).ToString(), "2252-01-01 00:00:00.000000000", "Timer::Create(2252) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2252).ToDate().ToString(), "2252-01-01", "Timer::Create(2252) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2252, 1, 1, 0, 0, 0, 0).ToString(),
+			"2252-01-01 00:00:00.000000000", "Timer::Create(2252) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2252, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2252-01-01",
+			"Timer::Create(2252) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2252, 2, 29, 0, 0, 0, 1).ToString(),
 			"2252-02-29 00:00:00.000000001", "Timer::Create(2252,2,29,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2252, 2, 29, 0, 0, 0, 1).ToDate().ToString(), "2252-02-29",
@@ -348,10 +348,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2252, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2252-12-31",
 			"Timer::Create(2252,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2253).ToString(), "2253-01-01 00:00:00.000000000", "Timer::Create(2253) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2253).ToDate().ToString(), "2253-01-01", "Timer::Create(2253) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2253, 1, 1, 0, 0, 0, 0).ToString(),
+			"2253-01-01 00:00:00.000000000", "Timer::Create(2253) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2253, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2253-01-01",
+			"Timer::Create(2253) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2253, 2, 28, 0, 0, 0, 1).ToString(),
 			"2253-02-28 00:00:00.000000001", "Timer::Create(2253,2,28,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2253, 2, 28, 0, 0, 0, 1).ToDate().ToString(), "2253-02-28",
@@ -369,10 +369,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2253, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2253-12-31",
 			"Timer::Create(2253,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2254).ToString(), "2254-01-01 00:00:00.000000000", "Timer::Create(2254) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2254).ToDate().ToString(), "2254-01-01", "Timer::Create(2254) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2254, 1, 1, 0, 0, 0, 0).ToString(),
+			"2254-01-01 00:00:00.000000000", "Timer::Create(2254) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2254, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2254-01-01",
+			"Timer::Create(2254) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2254, 2, 28, 0, 0, 0, 1).ToString(),
 			"2254-02-28 00:00:00.000000001", "Timer::Create(2254,2,28,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2254, 2, 28, 0, 0, 0, 1).ToDate().ToString(), "2254-02-28",
@@ -390,10 +390,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2254, 12, 31, 20, 20, 20, 1).ToDate().ToString(), "2254-12-31",
 			"Timer::Create(2254,12,31,20,20,20,1) to date"));
 
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create(2255).ToString(), "2255-01-01 00:00:00.000000000", "Timer::Create(2255) to string"));
-		RETURN_IF_FALSE(
-			t.Assert(MSAPI::Timer::Create(2255).ToDate().ToString(), "2255-01-01", "Timer::Create(2255) to date"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2255, 1, 1, 0, 0, 0, 0).ToString(),
+			"2255-01-01 00:00:00.000000000", "Timer::Create(2255) to string"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2255, 1, 1, 0, 0, 0, 0).ToDate().ToString(), "2255-01-01",
+			"Timer::Create(2255) to date"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2255, 2, 28, 0, 0, 0, 1).ToString(),
 			"2255-02-28 00:00:00.000000001", "Timer::Create(2255,2,28,0,0,0,1) to string"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2255, 2, 28, 0, 0, 0, 1).ToDate().ToString(), "2255-02-28",
@@ -468,14 +468,14 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 	}
 
 	{
-		auto timer{ MSAPI::Timer::Create(2000) };
+		auto timer{ MSAPI::Timer::Create(2000, 1, 1, 0, 0, 0, 0) };
 		const auto timerMoreNanosecond{ MSAPI::Timer::Create(2000, 1, 1, 0, 0, 0, 1) };
 		const auto timerMoreMicrosecond{ MSAPI::Timer::Create(2000, 1, 1, 0, 0, 0, 1000) };
 		const auto timerMoreMillisecond{ MSAPI::Timer::Create(2000, 1, 1, 0, 0, 0, 1000000) };
-		const auto timerMoreSecond{ MSAPI::Timer::Create(2000, 1, 1, 0, 0, 1) };
-		const auto timerMoreMinute{ MSAPI::Timer::Create(2000, 1, 1, 0, 1) };
-		const auto timerMoreHour{ MSAPI::Timer::Create(2000, 1, 1, 1) };
-		const auto timerMoreDay{ MSAPI::Timer::Create(2000, 1, 2) };
+		const auto timerMoreSecond{ MSAPI::Timer::Create(2000, 1, 1, 0, 0, 1, 0) };
+		const auto timerMoreMinute{ MSAPI::Timer::Create(2000, 1, 1, 0, 1, 0, 0) };
+		const auto timerMoreHour{ MSAPI::Timer::Create(2000, 1, 1, 1, 0, 0, 0) };
+		const auto timerMoreDay{ MSAPI::Timer::Create(2000, 1, 2, 0, 0, 0, 0) };
 
 		RETURN_IF_FALSE(t.Assert(
 			timerMoreNanosecond - timer, MSAPI::Timer::Duration::CreateNanoseconds(1), "timerMoreNanosecond - timer"));
@@ -492,13 +492,13 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert(timerMoreDay - timer, MSAPI::Timer::Duration::CreateDays(1), "timerMoreDay - timer"));
 
 		RETURN_IF_FALSE(t.Assert((timer = timer + MSAPI::Timer::Duration::CreateDays(1)),
-			MSAPI::Timer::Create(2000, 1, 2), "timer + 1 day"));
+			MSAPI::Timer::Create(2000, 1, 2, 0, 0, 0, 0), "timer + 1 day"));
 		RETURN_IF_FALSE(t.Assert((timer = timer + MSAPI::Timer::Duration::CreateHours(1)),
-			MSAPI::Timer::Create(2000, 1, 2, 1), "timer + 1 hour"));
+			MSAPI::Timer::Create(2000, 1, 2, 1, 0, 0, 0), "timer + 1 hour"));
 		RETURN_IF_FALSE(t.Assert((timer = timer + MSAPI::Timer::Duration::CreateMinutes(1)),
-			MSAPI::Timer::Create(2000, 1, 2, 1, 1), "timer + 1 minute"));
+			MSAPI::Timer::Create(2000, 1, 2, 1, 1, 0, 0), "timer + 1 minute"));
 		RETURN_IF_FALSE(t.Assert((timer = timer + MSAPI::Timer::Duration::CreateSeconds(1)),
-			MSAPI::Timer::Create(2000, 1, 2, 1, 1, 1), "timer + 1 second"));
+			MSAPI::Timer::Create(2000, 1, 2, 1, 1, 1, 0), "timer + 1 second"));
 		RETURN_IF_FALSE(t.Assert((timer = timer + MSAPI::Timer::Duration::CreateMilliseconds(1)),
 			MSAPI::Timer::Create(2000, 1, 2, 1, 1, 1, 1000000), "timer + 1 ms"));
 		RETURN_IF_FALSE(t.Assert((timer = timer + MSAPI::Timer::Duration::CreateMicroseconds(1)),
@@ -519,7 +519,7 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		RETURN_IF_FALSE(t.Assert((timer = timer - MSAPI::Timer::Duration::CreateMicroseconds(1)),
 			MSAPI::Timer::Create(2000, 1, 1, 0, 0, 0, 1), "timer - 1 us"));
 		RETURN_IF_FALSE(t.Assert((timer = timer - MSAPI::Timer::Duration::CreateNanoseconds(1)),
-			MSAPI::Timer::Create(2000), "timer - 1 ns"));
+			MSAPI::Timer::Create(2000, 1, 1, 0, 0, 0, 0), "timer - 1 ns"));
 
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Duration::Create(1, 1, 1, 1, 1001001),
 			MSAPI::Timer::Duration::CreateDays(1) + MSAPI::Timer::Duration::CreateHours(1)
@@ -534,8 +534,9 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 				- MSAPI::Timer::Duration::CreateNanoseconds(1),
 			"Duration create diff"));
 
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create(2000) + MSAPI::Timer::Duration::Create(1, 1, 1, 1, 1001001),
-			MSAPI::Timer::Create(2000, 1, 2, 1, 1, 1, 1001001), "Timer + Duration create sum"));
+		RETURN_IF_FALSE(
+			t.Assert(MSAPI::Timer::Create(2000, 1, 1, 0, 0, 0, 0) + MSAPI::Timer::Duration::Create(1, 1, 1, 1, 1001001),
+				MSAPI::Timer::Create(2000, 1, 2, 1, 1, 1, 1001001), "Timer + Duration create sum"));
 
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Duration{}.Empty(), true, "Duration empty"));
 	}
@@ -593,35 +594,37 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 	}
 
 	{
-		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create("1978/1/1"), MSAPI::Timer::Create(1978), "Create timer from string 1978/1/1"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978 1/1//.klsdfjh"), MSAPI::Timer::Create(1978),
-			"Create timer from string 1978 1/1//.klsdfjh"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222 9 21 17"), MSAPI::Timer::Create(2222, 9, 21, 17),
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/1/1"), MSAPI::Timer::Create(1978, 1, 1, 0, 0, 0, 0),
+			"Create timer from string 1978/1/1"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978 1/1//.klsdfjh"),
+			MSAPI::Timer::Create(1978, 1, 1, 0, 0, 0, 0), "Create timer from string 1978 1/1//.klsdfjh"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222 9 21 17"), MSAPI::Timer::Create(2222, 9, 21, 17, 0, 0, 0),
 			"Create timer from string 2222 9 21 17"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222-9-21r17"), MSAPI::Timer::Create(2222, 9, 21, 17),
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222-9-21r17"), MSAPI::Timer::Create(2222, 9, 21, 17, 0, 0, 0),
 			"Create timer from string 2222-9-21r17"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222-9-21 17:39:::"), MSAPI::Timer::Create(2222, 9, 21, 17, 39),
-			"Create timer from string 2222-9-21 17:39:::"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222-9-21 17:39:::"),
+			MSAPI::Timer::Create(2222, 9, 21, 17, 39, 0, 0), "Create timer from string 2222-9-21 17:39:::"));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222r9g21o17w39o10dm  "),
-			MSAPI::Timer::Create(2222, 9, 21, 17, 39, 10), "Create timer from string 2222r9g21o17w39o10dm  "));
+			MSAPI::Timer::Create(2222, 9, 21, 17, 39, 10, 0), "Create timer from string 2222r9g21o17w39o10dm  "));
 		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2224f9,21v17p39c10n123498765"),
 			MSAPI::Timer::Create(2224, 9, 21, 17, 39, 10, 123498765),
 			"Create timer from string 2224f9,21v17p39c10n123498765"));
 
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/1/0") == MSAPI::Timer{ 0 },
-			MSAPI::Timer::Create(1978, 1, 0) == MSAPI::Timer{ 0 }, "Create timer from string with invalid day"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/0/1") == MSAPI::Timer{ 0 },
-			MSAPI::Timer::Create(1978, 0, 1) == MSAPI::Timer{ 0 }, "Create timer from string with invalid month"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/0/"), MSAPI::Timer{ 0 },
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/1/0") == MSAPI::Timer{ 0, 0 },
+			MSAPI::Timer::Create(1978, 1, 0, 0, 0, 0, 0) == MSAPI::Timer{ 0, 0 },
+			"Create timer from string with invalid day"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/0/1") == MSAPI::Timer{ 0, 0 },
+			MSAPI::Timer::Create(1978, 0, 1, 0, 0, 0, 0) == MSAPI::Timer{ 0, 0 },
+			"Create timer from string with invalid month"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("1978/0/"), MSAPI::Timer{ 0, 0 },
 			"Create timer from string without month and invalid day"));
 		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create("1978/"), MSAPI::Timer{ 0 }, "Create timer from string without month and day"));
+			MSAPI::Timer::Create("1978/"), MSAPI::Timer{ 0, 0 }, "Create timer from string without month and day"));
 		RETURN_IF_FALSE(t.Assert(
-			MSAPI::Timer::Create("1969/"), MSAPI::Timer{ 0 }, "Create timer from string with year before 1970"));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222  9-21r17"), MSAPI::Timer{ 0 },
+			MSAPI::Timer::Create("1969/"), MSAPI::Timer{ 0, 0 }, "Create timer from string with year before 1970"));
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("2222  9-21r17"), MSAPI::Timer{ 0, 0 },
 			"Create timer from string with invalid format \"2222  9-21r17\""));
-		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("22229-21r17"), MSAPI::Timer{ 0 },
+		RETURN_IF_FALSE(t.Assert(MSAPI::Timer::Create("22229-21r17"), MSAPI::Timer{ 0, 0 },
 			"Create timer from string with invalid format \"22229-21r17\""));
 	}
 
@@ -636,10 +639,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		MSAPI::Timer::Event eventThree([](int* parameter) { ++*parameter; }, reinterpret_cast<int*>(&three));
 		MSAPI::Timer::Event eventFour([](int* parameter) { ++*parameter; }, reinterpret_cast<int*>(&four));
 
-		eventOne.Start(1);
-		eventTwo.Start(1, 0, true);
-		eventThree.Start(1, 1, false);
-		eventFour.Start(1, 6, false);
+		eventOne.Start(/*timeToCall=*/1, /*timeToRepeatCall=*/0, /*instantCall=*/false);
+		eventTwo.Start(/*timeToCall=*/1, /*timeToRepeatCall=*/0, /*instantCall=*/true);
+		eventThree.Start(/*timeToCall=*/1, /*timeToRepeatCall=*/1, /*instantCall=*/false);
+		eventFour.Start(/*timeToCall=*/1, /*timeToRepeatCall=*/6, /*instantCall=*/false);
 
 		std::this_thread::sleep_for(std::chrono::seconds(4));
 
@@ -681,10 +684,10 @@ FORCE_INLINE [[nodiscard]] bool Timer()
 		MSAPI::Timer::Event eventThree(&three);
 		MSAPI::Timer::Event eventFour(&four);
 
-		eventOne.Start(1);
-		eventTwo.Start(1, 0, true);
-		eventThree.Start(1, 1, false);
-		eventFour.Start(1, 6, false);
+		eventOne.Start(/*timeToCall=*/1, /*timeToRepeatCall=*/0, /*instantCall=*/false);
+		eventTwo.Start(/*timeToCall=*/1, /*timeToRepeatCall=*/0, /*instantCall=*/true);
+		eventThree.Start(/*timeToCall=*/1, /*timeToRepeatCall=*/1, /*instantCall=*/false);
+		eventFour.Start(/*timeToCall=*/1, /*timeToRepeatCall=*/6, /*instantCall=*/false);
 
 		std::this_thread::sleep_for(std::chrono::seconds(4));
 

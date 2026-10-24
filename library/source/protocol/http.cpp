@@ -149,8 +149,9 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 	}
 	const void* buffer{ recvBuffer.GetData() };
 
-	const auto fillHeaderIdentifier = [buffer](size_t& index, bool& currentType, std::string& currentValue,
-										  bool& nextType, const char separator = '/', const bool includeSpace = false) {
+	const auto fillHeaderIdentifier = [buffer] [[nodiscard]] (size_t & index, bool& currentType,
+										  std::string& currentValue, bool& nextType, const char separator,
+										  const bool includeSpace) {
 		if (separator == '/') {
 			if (static_cast<const char*>(buffer)[index] != ' ') {
 				if (static_cast<const char*>(buffer)[index] != '/' && static_cast<const char*>(buffer)[index] != '\r') {
@@ -214,7 +215,8 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 			if (!isHeaders) {
 				if (static_cast<const char*>(buffer)[index] != '\n') {
 					if (isMessageType) {
-						fillHeaderIdentifier(index, isMessageType, m_messageType, isUrl);
+						fillHeaderIdentifier(
+							index, isMessageType, m_messageType, isUrl, /*separator=*/'/', /*includeSpace=*/false);
 					}
 					else if (isUrl) {
 						if (m_url.size() == 0) {
@@ -258,10 +260,12 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 						}
 					}
 					else if (isHTTPtype) {
-						fillHeaderIdentifier(index, isHTTPtype, m_HTTPtype, isVersion);
+						fillHeaderIdentifier(
+							index, isHTTPtype, m_HTTPtype, isVersion, /*separator=*/'/', /*includeSpace=*/false);
 					}
 					else if (isVersion) {
-						fillHeaderIdentifier(index, isVersion, m_version, isHeaders);
+						fillHeaderIdentifier(
+							index, isVersion, m_version, isHeaders, /*separator=*/'/', /*includeSpace=*/false);
 					}
 					continue;
 				}
@@ -381,13 +385,15 @@ Data::Data(MSAPI::RecvBuffer& recvBuffer)
 
 			if (static_cast<const char*>(buffer)[index] != '\n') {
 				if (isHTTPtype) {
-					fillHeaderIdentifier(index, isHTTPtype, m_HTTPtype, isVersion);
+					fillHeaderIdentifier(
+						index, isHTTPtype, m_HTTPtype, isVersion, /*separator=*/'/', /*includeSpace=*/false);
 				}
 				else if (isVersion) {
-					fillHeaderIdentifier(index, isVersion, m_version, isCode, ' ');
+					fillHeaderIdentifier(
+						index, isVersion, m_version, isCode, /*separator=*/' ', /*includeSpace=*/false);
 				}
 				else if (isCode) {
-					fillHeaderIdentifier(index, isCode, m_code, isCodeText, ' ');
+					fillHeaderIdentifier(index, isCode, m_code, isCodeText, /*separator=*/' ', /*includeSpace=*/false);
 				}
 				else if (isCodeText) {
 					fillHeaderIdentifier(index, isCodeText, m_codeText, isHeaders, '/', true);
@@ -654,7 +660,7 @@ const std::string& Data::GetCodeText() const noexcept { return m_codeText; }
 	const auto inferredContentType{ contentType.empty() ? GetContentType() : SString<64>{} };
 	SString<4096> header{};
 	const auto length{ BuildResponseHeader({ header.GetBuffer(), header.GetCapacity() }, m_version, StatusCode::Ok,
-		contentType.empty() ? inferredContentType.Get() : contentType, body.size(), closeConnection) };
+		contentType.empty() ? inferredContentType.Get() : contentType, body.size(), closeConnection, /*location=*/{}) };
 	if (length == 0) {
 		return false;
 	}
@@ -733,7 +739,8 @@ std::string Data::ToString() const
 {
 	SString<4096> header{};
 	const auto length{ BuildResponseHeader({ header.GetBuffer(), header.GetCapacity() }, m_version,
-		StatusCode::NotFound, contentType.empty() ? "text/html" : contentType, body.size(), closeConnection) };
+		StatusCode::NotFound, contentType.empty() ? "text/html" : contentType, body.size(), closeConnection,
+		/*location=*/{}) };
 	if (length == 0) {
 		return false;
 	}
@@ -789,7 +796,7 @@ std::string Data::ToString() const
 	if (webSocketKey == nullptr) [[unlikely]] {
 		LOG_WARNING_NEW(
 			"Sec-WebSocket-Key header is missing in WebSocket upgrade request, connection id: {}", connection.GetId());
-		(void)Send404(connection);
+		(void)Send404(connection, /*body=*/{}, /*contentType=*/{}, KEEP_CONNECTION_ALIVE);
 		return false;
 	}
 
@@ -797,7 +804,7 @@ std::string Data::ToString() const
 		webSocketVersion == nullptr || *webSocketVersion != "13") {
 		LOG_WARNING_NEW("Unsupported Sec-WebSocket-Version header in WebSocket upgrade request, connection id: {}",
 			connection.GetId());
-		(void)Send404(connection);
+		(void)Send404(connection, /*body=*/{}, /*contentType=*/{}, KEEP_CONNECTION_ALIVE);
 		return false;
 	}
 
@@ -805,7 +812,7 @@ std::string Data::ToString() const
 	const auto acceptKeySize{ webSocketKeySize + WEB_SOCKET_GUID.size() };
 	if (acceptKeySize > 128) [[unlikely]] {
 		LOG_WARNING_NEW("Sec-WebSocket-Key header value is too long, connection id: {}", connection.GetId());
-		(void)Send404(connection);
+		(void)Send404(connection, /*body=*/{}, /*contentType=*/{}, KEEP_CONNECTION_ALIVE);
 		return false;
 	}
 
@@ -1347,8 +1354,8 @@ void Redirector::HandleConnection(Worker& worker) noexcept
 					&& (request.GetVersion() == "1.0" || request.GetVersion() == "1.1")
 					&& location.Copy(worker.GetEndpoint().GetDestination()) && location.Concatenate(request.GetUrl())
 					&& location.Concatenate(request.GetQuery()) && m_isRunning.load(std::memory_order_acquire)
-					&& (length = BuildRedirectResponse(
-							{ response.GetBuffer(), response.GetCapacity() }, location.Get(), m_code, CLOSE_CONNECTION))
+					&& (length = BuildRedirectResponse({ response.GetBuffer(), response.GetCapacity() }, location.Get(),
+							m_code, CLOSE_CONNECTION, request.GetVersion()))
 						!= 0) {
 
 					// Connection handles partial sends; every outcome proceeds to socket closure below.

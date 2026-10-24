@@ -250,11 +250,17 @@ std::string Timer::Duration::ToString(const Timer::Duration::Type type) const
 	}
 }
 
-Timer::Duration::operator std::string() { return ToString(); }
+Timer::Duration::operator std::string() { return ToString(Type::Nanoseconds); }
 
-std::ostream& operator<<(std::ostream& out, const Timer::Duration duration) { return out << duration.ToString(); }
+std::ostream& operator<<(std::ostream& out, const Timer::Duration duration)
+{
+	return out << duration.ToString(Timer::Duration::Type::Nanoseconds);
+}
 
-std::string operator+(const std::string& str, const Timer::Duration duration) { return str + duration.ToString(); }
+std::string operator+(const std::string& str, const Timer::Duration duration)
+{
+	return str + duration.ToString(Timer::Duration::Type::Nanoseconds);
+}
 
 Timer::Duration Timer::Duration::CreateDays(const int64_t days)
 {
@@ -574,7 +580,7 @@ Timer Timer::Create(uint16_t year, const uint8_t month, const uint8_t day, const
 
 		LOG_WARNING("Unexpected date will be empty: " + _S(year) + "-" + _S(month) + "-" + _S(day) + " " + _S(hour)
 			+ ":" + _S(minute) + ":" + _S(second) + "." + _S(nanosecond));
-		return Timer{ 0 };
+		return Timer{ 0, 0 };
 	}
 
 	year -= 1970;
@@ -629,7 +635,8 @@ std::chrono::microseconds Timer::TimevalToDuration(timeval tv)
 Timer Timer::GetToday()
 {
 	const auto todayDate{ Timer{}.ToDate() };
-	return Timer::Create(todayDate.year, todayDate.month, todayDate.day);
+	return Timer::Create(
+		todayDate.year, todayDate.month, todayDate.day, /*hour=*/0, /*minute=*/0, /*second=*/0, /*nanosecond=*/0);
 }
 
 uint32_t Timer::GetSecondsToTomorrow()
