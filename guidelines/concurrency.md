@@ -9,6 +9,7 @@ description: "Locking patterns and thread-safety requirements"
 
 - Concurrently available data must be protected by the MSAPI::Lock.
 - Lock must be locked as shortly and as precisely as possible.
+- Minimize lock scope within the required synchronization guarantees. Performance considerations do not permit leaving shared data unprotected or splitting a critical section that must remain atomic.
 - Locking by the RAII guard is preferred over manual locking and unlocking.
 - One lock must cover all fields that expected to be accessed together should be protected by the common lock.
 - Abstraction should not be internally protected (e.g. each method is protected by its own lock) in case, when it expected to be accessed together with other methods of the same abstraction - the synchronization should be done outside of the abstraction by the usage of internal abstraction lock.
@@ -18,6 +19,7 @@ description: "Locking patterns and thread-safety requirements"
 
 - Locking must not force a method to be non-const. A method which does not change the logical state of the abstraction is `const`, even if it locks.
 - Each lock field held by value, like `MSAPI::Lock::Atomic` or `MSAPI::Lock::AtomicRW`, is declared `mutable`. Getters returning a reference to such lock are `const`.
+- For pointer-held synchronization objects, locking the pointed-to object does not itself require making the pointer `mutable`. Preserve the existing pointer ownership and constness conventions; `mutable` must not be used to bypass const-correctness of logical object state. See [Code Syntax](codeSyntax.md#declaration) for the restriction to lock fields.
 
 ```cpp
 class Data {

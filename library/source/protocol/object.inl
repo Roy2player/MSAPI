@@ -2269,7 +2269,7 @@ FORCE_INLINE void Stream<Object, FObject>::Close() noexcept
 
 	LOG_PROTOCOL_NEW("Client closes stream id: {}, new stream id is: {}", oldId, newId);
 
-	StreamStateResponse state{ State::Closed, Issue::Undefined };
+	StreamStateResponse state{ State::Closed, Issue::Empty };
 	(void)Send(m_connectionData->GetConnection(),
 		{ oldId, typeid(StreamStateResponse).hash_code(), sizeof(StreamStateResponse) }, &state);
 
@@ -2630,7 +2630,7 @@ FORCE_INLINE void Distributor<FObjects...>::StreamExternalAction(
 	case State::Closed: {
 		LOG_PROTOCOL_NEW("Client closed stream id: {}, connection id: {}", streamId, connectionId);
 
-		const StreamStateResponse state{ State::Closed, Issue::Undefined };
+		const StreamStateResponse state{ State::Closed, Issue::Empty };
 		std::shared_ptr<StreamData> streamData;
 		{
 			const Lock::AtomicRW::Guard<Lock::WRITE> _{ m_streamConnectionIdToStreamDataLock };

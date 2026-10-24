@@ -336,7 +336,7 @@ FORCE_INLINE std::string Replace(T&& str, const char from, const char to)
  * long double.
  *
  * @tparam T Floating point type.
- * @tparam Epsilon Comparison tolerance selected from T by default.
+ * @tparam Eps Comparison tolerance selected from T by default.
  *
  * @param first Left argument.
  * @param second Right argument.
@@ -345,10 +345,10 @@ FORCE_INLINE std::string Replace(T&& str, const char from, const char to)
  *
  * @test Yes.
  */
-template <std::floating_point T, T Epsilon = Epsilon<T>::value>
+template <std::floating_point T, T Eps = Epsilon<T>::value>
 FORCE_INLINE int CompareFloats(const T first, const T second)
 {
-	return (std::abs(first - second) >= Epsilon) * ((first > second) - (first < second));
+	return (std::abs(first - second) >= Eps) * ((first > second) - (first < second));
 }
 
 /**************************
@@ -356,7 +356,7 @@ FORCE_INLINE int CompareFloats(const T first, const T second)
  * long double.
  *
  * @tparam T Floating point type.
- * @tparam Epsilon Comparison tolerance selected from T by default.
+ * @tparam Eps Comparison tolerance selected from T by default.
  *
  * @param first Left argument.
  * @param second Right argument.
@@ -367,10 +367,10 @@ FORCE_INLINE int CompareFloats(const T first, const T second)
  *
  * @todo The name of such methods should be like question.
  */
-template <std::floating_point T, T Epsilon = Epsilon<T>::value>
+template <std::floating_point T, T Eps = Epsilon<T>::value>
 FORCE_INLINE bool FloatLess(const T first, const T second)
 {
-	return second - first > Epsilon;
+	return second - first > Eps;
 }
 
 /**************************
@@ -378,7 +378,7 @@ FORCE_INLINE bool FloatLess(const T first, const T second)
  * long double.
  *
  * @tparam T Floating point type.
- * @tparam Epsilon Comparison tolerance selected from T by default.
+ * @tparam Eps Comparison tolerance selected from T by default.
  *
  * @param first Left argument.
  * @param second Right argument.
@@ -389,10 +389,10 @@ FORCE_INLINE bool FloatLess(const T first, const T second)
  *
  * @todo The name of such methods should be like question.
  */
-template <std::floating_point T, T Epsilon = Epsilon<T>::value>
+template <std::floating_point T, T Eps = Epsilon<T>::value>
 FORCE_INLINE bool FloatGreater(const T first, const T second)
 {
-	return first - second > Epsilon;
+	return first - second > Eps;
 }
 
 /**************************
@@ -400,7 +400,7 @@ FORCE_INLINE bool FloatGreater(const T first, const T second)
  * long double.
  *
  * @tparam T Floating point type.
- * @tparam Epsilon Comparison tolerance selected from T by default.
+ * @tparam Eps Comparison tolerance selected from T by default.
  *
  * @param first Left argument.
  * @param second Right argument.
@@ -409,10 +409,10 @@ FORCE_INLINE bool FloatGreater(const T first, const T second)
  *
  * @test Yes.
  */
-template <std::floating_point T, T Epsilon = Epsilon<T>::value>
+template <std::floating_point T, T Eps = Epsilon<T>::value>
 FORCE_INLINE bool FloatEqual(const T first, const T second)
 {
-	return std::abs(first - second) < Epsilon;
+	return std::abs(first - second) < Eps;
 }
 
 /**************************

@@ -7,7 +7,12 @@ description: "Syntax and declaration rules"
 
 ## Comments
 
-- Each non trivial code block, statement, call or expression must be commented with a brief description of its purpose and behavior.
+- Comments must explain information that cannot be readily inferred from the code itself. When not otherwise sufficiently explicit, the following information must be explained in comments:
+  - non-obvious function or template arguments, including ambiguous boolean values and unexplained magic values;
+  - implementation intent, important assumptions and invariants, and non-obvious algorithmic decisions;
+  - concurrency guarantees, synchronization requirements, and object lifetime and ownership constraints;
+  - intentional performance trade-offs, non-obvious error-handling behavior, and intentional deviations that could make code appear incorrect or unnecessary.
+- Comments that merely restate self-explanatory code should be avoided. Complexity alone does not require an explanatory comment; even a simple operation requires one when an important assumption is not evident. Explicitness takes priority over minimizing comments.
 - Comments use `// Comment` style: `//`, one space, then the text. Multi-line comment is a sequence of `//` lines, empty line inside it is `//`. Markers right after `//` like `//*` are not used.
 - `/* */` is used only in particular situations:
   - short note inside code, e.g. argument tag `/*tag=*/value` or parameter note ` /* by value as moved */ `, also short note inside an expression or initializer list;
@@ -23,6 +28,13 @@ description: "Syntax and declaration rules"
 const auto connection{ OpenConnection(ip, port, /*doReconnection=*/false) };
 ```
 
+For example, `// Calculate the connection timeout.` merely repeats `CalculateConnectionTimeout(retryCount)`. If the call does not make an important backoff constraint evident, explain it instead:
+
+```cpp
+// Exponential backoff is capped to avoid excessive reconnection delays.
+const auto timeout{ CalculateConnectionTimeout(retryCount) };
+```
+
 ## Function
 
 ### Declaration, definition, and call
@@ -31,13 +43,24 @@ const auto connection{ OpenConnection(ip, port, /*doReconnection=*/false) };
 - Use `[[nodiscard]]` for all declarations and definitions of functions that return a value.
 - Use `noexcept` for all declarations and definitions of functions that do not throw exceptions. Make sure that internal calls do not throw exceptions as well or make sure that exceptions are caught and handled inside the function.
 - Avoid default values for function parameters and template parameters. Require callers to provide them explicitly so behavior remains visible at each call site. An intrinsic, unambiguous default that does not hide a behavioral choice is allowed, such as the standard comparison epsilon selected from a floating-point type.
-- On function and template calls use `/*tag=*/value` for constants whose meaning is not obvious from the call, e.g. `OpenConnection(ip, port, /*doReconnection=*/false)` and `SaveStr<OVERWRITE, /*Mode=*/0644>()`. The purpose of the tag is to make non-obvious things explicit, so it is omitted when the function or template argument name already tells what the value means, e.g. `SetSaved(true)`, `SetPort(8080)`.
+- Function and template arguments must make the intended behavior understandable; follow [Function arguments and literal values](#function-arguments-and-literal-values).
 - Arguments passed by value are declared without `const` qualifier, as it is not a part of the function signature. Definition adds `const` to the argument if it is not modified in the function body.
 
 ```cpp
 FORCE_INLINE void SetPort(uint16_t port) noexcept;
 
 FORCE_INLINE void Server::SetPort(const uint16_t port) noexcept { m_port = port; }
+```
+
+### Function arguments and literal values
+
+- Ambiguous arguments must be made understandable through meaningful identifiers, strongly typed enumerations, named constants, intermediate variables, or explanatory comments. If the code does not otherwise make their semantics sufficiently explicit, a comment is required. A concise comment is sufficient for an existing API; do not require redesign solely to clarify a call.
+- Constants whose meaning is not evident from the API or argument identifiers at a function or template call must use inline argument tags in the form `/*tag=*/value`, e.g. `OpenConnection(ip, port, /*doReconnection=*/false)` or `SaveStr<OVERWRITE, /*Mode=*/0644>()`. A preceding or nearby explanatory comment does not replace required inline argument tags.
+- Boolean literals require inline argument tags when their meaning is ambiguous. Do not add redundant comments when the API or surrounding code already makes their meaning evident, e.g. `SetSaved(true)`.
+- Avoid unexplained numeric literals representing timeouts, protocol constants, limits, thresholds, units, or implementation assumptions. Prefer named constants or inline argument tags; unexplained meaning must still be clarified. Not every numeric literal is a magic value: common, self-explanatory values and clear calls such as `SetPort(8080)` do not require extra documentation.
+
+```cpp
+Connect(server, /*enableTLS=*/true, /*autoReconnect=*/false, /*timeoutSec=*/30);
 ```
 
 ### Body
