@@ -30,7 +30,7 @@ If an insertion operation returns a composite result containing an element and a
 
 ## Error Contracts
 
-- MSAPI library code must not throw exceptions itself and must handle all exceptions within its scope, must log report such failures and may return an error indication to the caller.
+- MSAPI library code must not throw exceptions. It must handle exceptions within its scope and log the corresponding failures. An error indication may be returned to the caller.
 - Failures must be reported through the established boolean, optional, status, default-value, and logging patterns.
 - Code must check and preserve `errno` immediately after a failed POSIX operation when it is relevant to the failure report.
 - Error handling must distinguish malformed peer input, recoverable operation failure, invariant violation, and connection or process shutdown.

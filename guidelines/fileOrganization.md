@@ -17,7 +17,7 @@ description: "Inlinable library layout and structure of .inl files"
 
 Parts must follow the order below, separated by an empty line:
 
-1. Doxygen file header, see [Doxygen Inline Documentation](doxygenInlineDocumentation.md#file).
+1. Doxygen file header, see [Doxygen Documentation](doxygenDocumentation.md#file).
 2. Include guard opening, see [Code Style](codeStyle.md#include-guard).
 3. Includes, with MSAPI files by relative path first, then standard and system headers.
 4. Namespace openings, see [Code Style](codeStyle.md#namespace).

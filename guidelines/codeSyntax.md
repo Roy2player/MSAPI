@@ -19,10 +19,10 @@ description: "Syntax and declaration rules"
 - Apart from the documentation blocks and separators below, `/* */` may be used for the following purposes and must not be used elsewhere:
   - A short note within code, such as an argument tag `/*tag=*/value`, a parameter note ` /* by value as moved */ `, or a note inside an expression or initializer list.
   - A comment inside a multiline macro definition, where `//` would comment out the line continuation `\`.
-- Doxygen documentation blocks must follow [Doxygen Inline Documentation](doxygenInlineDocumentation.md). Section separators must follow [File Organization](fileOrganization.md#structure-of-inl-file).
+- Doxygen documentation blocks must follow [Doxygen Documentation](doxygenDocumentation.md). Section separators must follow [File Organization](fileOrganization.md#structure-of-inl-file).
 - Other comment types must not be used, including markers (`//*`, `//!`, `//?`) and task comments (`// FIXME`, etc.).
 - `// TODO: comment` may duplicate an existing `@todo` to mark the place for further work. It must not appear without the corresponding `@todo`, which remains the source of truth.
-- Problems, technical debt and open questions must be described by `@todo` in the documentation block of the related function or abstraction, see [Doxygen Inline Documentation](doxygenInlineDocumentation.md).
+- Problems, technical debt and open questions must be described by `@todo` in the documentation block of the related function or abstraction, see [Doxygen Documentation](doxygenDocumentation.md).
 
 ```cpp
 // Retry is required, as connection can be closed by peer during handshake
