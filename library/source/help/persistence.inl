@@ -186,8 +186,8 @@ public:
 	 * snapshot before its replacement is complete. Copy the bound data and timestamp files to local name.backup files
 	 * without loading snapshots into RAM, and make the backups durable before truncation. Restore through the same
 	 * descriptors on failure and recover interrupted overwrites after restart. Preserve descriptor binding after rename
-	 * or unlink; define backup discovery and durable commit/cleanup ordering. Cover short writes, disk-full failures and
-	 * interrupted backup, overwrite and recovery operations in tests.
+	 * or unlink; define backup discovery and durable commit/cleanup ordering. Cover short writes, disk-full failures
+	 * and interrupted backup, overwrite and recovery operations in tests.
 	 * @todo Make IO::SaveBinaries return std::expected with true on success and the number of written records on
 	 * failure, to mark written objects as saved and to truncate a partially written record.
 	 */
