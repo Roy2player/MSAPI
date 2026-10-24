@@ -21,7 +21,7 @@ It routes agents to the detailed MSAPI guidelines.
 - [Code Style](guidelines/codeStyle.md): Naming, source layout, and formatting. Applies to every code change.
 - [Code Syntax](guidelines/codeSyntax.md): Declarations, attributes, types, initialization, calls, and friendship. Applies to C++ code changes.
 - [Concurrency](guidelines/concurrency.md): Lock ownership and scope, shared data, lifetime across threads, and atomic state. Applies when execution can overlap across threads or callbacks.
-- [Doxygen Documentation](guidelines/doxygenDocumentation.md): Documentation block structure and Doxygen tags. Applies when adding or modifying public APIs, abstractions, or inline documentation.
+- [Doxygen Documentation](guidelines/doxygenDocumentation.md): Documentation structure, content, tag applicability, and conventions for source files, abstractions, functions, enums, friends, and concepts, including concurrency, locking, test coverage, and technical debt. Applies when adding or modifying these elements, their behavior, or their documentation, regardless of API visibility.
 - [File Organization](guidelines/fileOrganization.md): Inlinable library layout and structure of .inl files.
 - [Logging](guidelines/logging.md): Logging macro selection, level semantics, message grammar, and value formatting. Applies when adding or modifying logs.
 
