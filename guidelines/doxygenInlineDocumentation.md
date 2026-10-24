@@ -9,61 +9,76 @@ New source files must use the project copyright and license header.
 
 ## Common rules
 
-- Order as presented below.
-- Section tag is used once per documentation block, except for `@param`, `@tparam`, and `@todo`.
-- `@todo` is the only place to explicitly define problems, technical debt and open questions. Each of them is described by a separate `@todo` in the documentation block of the related file, abstraction or function. For further simplicity `// TODO: comment` can duplicate the `@todo` in code to explicitly mark the place for further work, but inline `// TODO` without the corresponding `@todo` is prohibited.
-- Empty line between sections.
-- Dots at the end of sentences.
-- Use active voice.
-- Use present tense.
-- Use third person.
+- Documentation sections must follow the order presented below.
+- A section tag must appear at most once per documentation block, except for `@param`, `@tparam`, and `@todo`.
+- Problems, technical debt and open questions must be recorded in separate `@todo` entries in the documentation block of the related file, abstraction or function.
+- An inline `// TODO: comment` may duplicate an existing `@todo` to mark the place for further work. It must not appear without the corresponding `@todo`, which remains the source of truth.
+- Sections must be separated by an empty line.
+- Sentences must end with a period.
+- Documentation must use active voice, present tense, and third person.
 
 ## File
 
-- `@file` Filename.
-- `@date` Date of the file creation.
-- `@author` Author of the file.
-- `@copyright` Copyright information.
+File documentation must include applicable legal information and follow the structure outlined below.
+
+- `@file`: Filename.
+- `@date`: Date of file creation.
+- `@author`: Author of the file.
+- `@copyright`: Copyright information.
 - Legal information, if any.
-- `@brief` Short description of the functionality provided by the file.
-- `@note` Outstanding information, as design choose thoughts, performance measurements and etc.
-- `@todo` Description of future work, if any.
+- `@brief`: Short description of the functionality provided by the file.
+- `@note`: Outstanding information, such as design choices or performance measurements.
+- `@todo`: Description of future work, if any.
 
 ## Abstraction
 
-Use for class, struct, and union.
+Documentation for classes, structs, and unions must follow the abstraction format below.
 
-- `@brief` Full description of function behavior, data mutation, and calling flow.
-- `@attention` Critical information to be highlighted, as behavior on internal exception handling: `On bad allocation pointer will be nullptr.`.
-- `@note` Outstanding information, as design choose thoughts, performance measurements and etc.
-- `@see` To point that some details can be found in other brief.
-- `@tparam` Description of a template parameter.
-- `@concurrency` `Yes` only if the abstraction provides its own synchronization mechanisms (e.g. internal locks or atomics) to manage concurrent access to itself, with description of the guarantees. `No` in all other cases, including abstractions without setters or other modifying methods.
-- `@purging` In case the abstraction accumulates resources in internal storage and has a mechanism to release them, describe the purging behavior.
-- `@todo` Description of future work, if any.
+- `@brief`: Full description of function behavior, data mutation, and calling flow.
+- `@attention`: Critical information, such as behavior on internal exception handling: `On bad allocation pointer will be nullptr.`.
+- `@note`: Outstanding information, such as design choices or performance measurements.
+- `@see`: Reference to details in another brief.
+- `@tparam`: Description of a template parameter.
+- `@concurrency`: Synchronization support and guarantees of the abstraction.
+- `@purging`: Purging behavior for an abstraction that accumulates resources in internal storage and has a mechanism to release them.
+- `@todo`: Description of future work, if any.
+
+When `@concurrency` is present, it must use `Yes` only if the abstraction provides its own synchronization mechanisms (e.g. internal locks or atomics) to manage concurrent access to itself. An entry using `Yes` must describe the guarantees. In all other cases, the entry must use `No`, including for abstractions without setters or other modifying methods.
 
 ## Function
 
-- `@brief` Full description of function behavior, data mutation, and calling flow. For simple getters, only `@return` is required.
-- `@attention` Critical information to be highlighted, as behavior on internal exception handling: `On bad allocation pointer will be nullptr.`.
-- `@note` Outstanding information, as design choose thoughts, performance measurements and etc.
-- `@see` To point that some details can be found in other brief.
-- `@tparam` Description of a template parameter.
-- `@param` Description of a parameter.
-- `@pre` Precondition expectations.
-- `@locking` Locking behavior within the module and expectations about external locks, see [Locking documentation scope](#locking-documentation-scope).
-- `@return` Description of return value, especially in case of multiple return values.
-- `@test Yes.` if the function has tests coverage.
-- `@todo` Description of future work, if any. If tests coverage, add `@todo Add tests coverage.`.
+Documentation for functions must follow the function format below. Simple getters must include `@return` without `@brief`.
+
+- `@brief`: Full description of function behavior, data mutation, and calling flow.
+- `@attention`: Critical information, such as behavior on internal exception handling: `On bad allocation pointer will be nullptr.`.
+- `@note`: Outstanding information, such as design choices or performance measurements.
+- `@see`: Reference to details in another brief.
+- `@tparam`: Description of a template parameter.
+- `@param`: Description of a parameter.
+- `@pre`: Precondition expectations.
+- `@locking`: Locking behavior within the module and expectations about external locks, see [Locking documentation scope](#locking-documentation-scope).
+- `@return`: Description of the return value, including the possible outcomes when there is more than one.
+- `@test`: Test-coverage indication, written as `@test Yes.` for a covered function.
+- `@todo`: Description of future work, if any. If function does not yet have test coverage, it should indicate that: `@todo Add tests coverage.`
+
+The `@locking` tag must not be declared for non static members of a class with `@concurrency No`.
 
 ## Locking documentation scope
 
-- Describe locking performed with locks owned by the documented abstraction or by other abstractions in the same module, including locking performed through calls within that module.
-- Identify the locks, read/write modes where applicable, acquisition order and caller requirements for external locking. For example: `@locking Write lock m_lock inside.` or `@locking Performs read locking of Entry::m_lock in Entry::Read call.`.
-- Do not enumerate nested locking chains inside other modules. Those modules document their own internal locking; callers still document any external-lock requirements imposed on them.
-- Use `@locking Is not required.` when no locking within this scope occurs and the caller has no external-lock requirements, even if called modules perform their own internal locking.
-- This scope keeps the module's actual locking behavior explicit without duplicating implementation details from its dependencies.
+- Locking documentation must describe locking performed with locks owned by the documented abstraction or by other abstractions in the same module, including locking performed through calls within that module.
+- It must identify the locks, read/write modes where applicable, acquisition order, and caller requirements for external locking. Examples include `@locking Write lock m_lock inside.` and `@locking Performs read locking of Entry::m_lock in Entry::Read call.`.
+- It must not enumerate nested locking chains inside other modules. Those modules document their own internal locking.
+- Callers must still document any external-lock requirements imposed on them.
+- When no locking within this scope occurs and the caller has no external-lock requirements, the entry must use `@locking Is not required.`, even if called modules perform their own internal locking.
 
-## Friend, enum, concept
+This scope makes the module's actual locking behavior explicit without duplicating implementation details from its dependencies.
 
-- `@brief` Description of purpose of friendship.
+## Enum
+
+Documentation for enums must follow the format below.
+
+- `@brief`: Description of the purpose of the enum.
+
+## Friend and concept
+
+Documentation for friends and concepts must use `// comment` style instead of Doxygen tags and describe their purpose clearly.

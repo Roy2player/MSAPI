@@ -7,29 +7,30 @@ description: "Inlinable library layout and structure of .inl files"
 
 ## Principles
 
-- The library is expected to be fully inlinable. Each module is declared and defined in one `.inl` file.
-- All functions are declared and defined with `FORCE_INLINE`, see [Code Syntax](codeSyntax.md).
-- Static data members and namespace scope variables are `inline` (e.g. `static inline constexpr`), so they are defined once across all translation units.
-- Do not leave empty lines at the end of a file unless its format requires them.
+- The library must remain fully inlinable.
+- Each module must be declared and defined in one `.inl` file.
+- All functions must be declared and defined with `FORCE_INLINE`, see [Code Syntax](codeSyntax.md).
+- Static data members and namespace-scope variables must be `inline` (e.g. `static inline constexpr`), so they have one definition across translation units.
+- Files must not end with empty lines unless their format requires them.
 
 ## Structure of `.inl` file
 
-Parts follow in the order below, separated by an empty line.
+Parts must follow the order below, separated by an empty line:
 
 1. Doxygen file header, see [Doxygen Inline Documentation](doxygenInlineDocumentation.md#file).
 2. Include guard opening, see [Code Style](codeStyle.md#include-guard).
-3. Includes: MSAPI files by relative path first, then standard and system headers.
-4. Namespaces opening, see [Code Style](codeStyle.md#namespace).
-5. Declaration part, marked by `Declarations` separator. Contains concepts, constants, forward declarations and abstractions with their documentation. Functions are only declared here, except defaulted and deleted special members.
-6. Definition part, marked by `Definitions` separator. Contains definitions of all functions declared in the declaration part.
-   - Each abstraction or nested abstraction is explicitly marked by its own separator with its qualified name, e.g. `Server::IpLimits`.
-   - Namespace-scope free function definitions are grouped under a `Free` separator, not separate separators named after individual functions.
-   - Submodules follow the order of their declarations.
-7. Namespaces closing.
-8. Specializations of standard templates (e.g. `std::formatter`, `std::hash`) for the module types, which must be defined outside of MSAPI namespace.
-9. End of the file: include guard closing, `#endif // GUARD_NAME`, is the last line.
+3. Includes, with MSAPI files by relative path first, then standard and system headers.
+4. Namespace openings, see [Code Style](codeStyle.md#namespace).
+5. Declaration part, marked by the `Declarations` separator, containing concepts, constants, forward declarations and abstractions with their documentation. Functions must only be declared here, except defaulted and deleted special members.
+6. Definition part, marked by the `Definitions` separator, containing definitions of all functions declared in the declaration part.
+   - Each abstraction or nested abstraction must have its own separator using its qualified name, e.g. `Server::IpLimits`.
+   - Namespace-scope free function definitions must be grouped under a `Free` separator rather than separate separators named after individual functions.
+   - Submodules must follow the order of their declarations.
+7. Namespace closings.
+8. Specializations of standard templates (e.g. `std::formatter`, `std::hash`) for the module types, outside of the MSAPI namespace.
+9. Include guard closing, `#endif // GUARD_NAME`, which must be the last line of the file.
 
-Separator is a block comment with a line of 81 dashes before and after the title.
+Each separator must be a block comment with a line of 81 dashes before and after the title.
 
 ```cpp
 /**************************
