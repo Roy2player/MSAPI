@@ -137,7 +137,7 @@ static inline constexpr bool CLOSE_CONNECTION{ true };
  * @todo Add tests coverage.
  */
 [[nodiscard]] uint64_t BuildResponseHeader(std::span<char> out, std::string_view version, StatusCode code,
-	std::string_view contentType, uint64_t length, bool closeConnection, std::string_view location = {}) noexcept;
+	std::string_view contentType, uint64_t length, bool closeConnection, std::string_view location) noexcept;
 
 /**************************
  * @brief Builds a null terminated redirect response with Content-Length: 0 without allocating. Validates the redirect
@@ -156,9 +156,8 @@ static inline constexpr bool CLOSE_CONNECTION{ true };
  *
  * @test Yes.
  */
-[[nodiscard]] uint64_t BuildRedirectResponse(std::span<char> out, std::string_view location,
-	StatusCode code = StatusCode::MovedPermanently, bool closeConnection = KEEP_CONNECTION_ALIVE,
-	std::string_view version = "1.1") noexcept;
+[[nodiscard]] uint64_t BuildRedirectResponse(std::span<char> out, std::string_view location, StatusCode code,
+	bool closeConnection, std::string_view version) noexcept;
 
 /**************************
  * @brief Checks redirect location components without allocating or constructing a URL. Accepts http and https,
@@ -391,14 +390,14 @@ public:
 	 * @param connection Connection to which send HTTP message.
 	 * @param body Body of HTTP message.
 	 * @param contentType Content type of HTTP message, if empty, will be used format of data.
-	 * @param closeConnection Closes the connection after sending if true; defaults to keeping it open.
+	 * @param closeConnection Closes the connection after sending if true.
 	 *
 	 * @return True if HTTP message was sent successfully, false otherwise.
 	 *
 	 * @test Yes.
 	 */
-	[[nodiscard]] bool SendResponse(Connection& connection, std::string_view body, std::string_view contentType = {},
-		bool closeConnection = KEEP_CONNECTION_ALIVE) const;
+	[[nodiscard]] bool SendResponse(
+		Connection& connection, std::string_view body, std::string_view contentType, bool closeConnection) const;
 
 	/**************************
 	 * @brief Sends a source file using a non-owning path view.
@@ -408,29 +407,29 @@ public:
 	 * @param connection Connection receiving the response.
 	 * @param path Full file path.
 	 * @param contentType Explicit content type, or empty to use the request format.
-	 * @param closeConnection Closes the connection after sending if true; defaults to keeping it open.
+	 * @param closeConnection Closes the connection after sending if true.
 	 *
 	 * @return True if the complete response is sent.
 	 *
 	 * @test Yes.
 	 */
-	[[nodiscard]] bool SendSource(Connection& connection, std::string_view path, std::string_view contentType = {},
-		bool closeConnection = KEEP_CONNECTION_ALIVE) const;
+	[[nodiscard]] bool SendSource(
+		Connection& connection, std::string_view path, std::string_view contentType, bool closeConnection) const;
 
 	/**************************
 	 * @brief Distributor function for sending HTTP 404 response message.
 	 *
 	 * @param connection Connection to which send HTTP message.
-	 * @param body Body bytes. Empty by default.
+	 * @param body Body bytes.
 	 * @param contentType Content type of HTTP message; uses text/html if empty.
-	 * @param closeConnection Closes the connection after sending if true; defaults to keeping it open.
+	 * @param closeConnection Closes the connection after sending if true.
 	 *
 	 * @return True if HTTP message was sent successfully, false otherwise.
 	 *
 	 * @test Yes.
 	 */
-	[[nodiscard]] bool Send404(Connection& connection, std::string_view body = {}, std::string_view contentType = {},
-		bool closeConnection = KEEP_CONNECTION_ALIVE) const;
+	[[nodiscard]] bool Send404(
+		Connection& connection, std::string_view body, std::string_view contentType, bool closeConnection) const;
 
 	/**************************
 	 * @brief Sends an empty redirect response using the shared redirect formatter.
@@ -444,8 +443,8 @@ public:
 	 *
 	 * @test Yes.
 	 */
-	[[nodiscard]] bool SendRedirect(Connection& connection, std::string_view location,
-		StatusCode code = StatusCode::MovedPermanently, bool closeConnection = KEEP_CONNECTION_ALIVE) const;
+	[[nodiscard]] bool SendRedirect(
+		Connection& connection, std::string_view location, StatusCode code, bool closeConnection) const;
 
 	/**************************
 	 * @return True if HTTP message is WebSocket upgrade request, false otherwise.
@@ -1051,8 +1050,7 @@ public:
 	 * @todo Stop rollback on failure is called after first lock is realized; consider revising to ensure proper
 	 * cleanup.
 	 */
-	[[nodiscard]] bool Start(StatusCode code = StatusCode::MovedPermanently, uint32_t receiveTimeoutMs = 2000,
-		uint64_t maxConnections = 32) noexcept;
+	[[nodiscard]] bool Start(StatusCode code, uint32_t receiveTimeoutMs, uint64_t maxConnections) noexcept;
 
 	/**************************
 	 * @brief Interrupts socket I/O, joins pthreads and releases sockets. Safe to call repeatedly.

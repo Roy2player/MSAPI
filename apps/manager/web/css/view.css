@@ -164,12 +164,12 @@
     opacity: 0.5;
 }
 
-.view>.viewContent>.loading::after {
+.view>.viewContent>.loading:not(.customView)::after {
     visibility: visible;
     opacity: 0.5;
 }
 
-.view>.viewContent>.loading::before {
+.view>.viewContent>.loading:not(.customView)::before {
     content: "";
     position: absolute;
     left: 50%;
@@ -400,13 +400,13 @@
     visibility: hidden;
 }
 
-.view.loading .customView::before {
+.view .customView.loading::before {
     opacity: 0.6;
     visibility: visible;
     z-index: 1;
 }
 
-.view.loading .customView::after {
+.view .customView.loading::after {
     content: "";
     position: absolute;
     left: 50%;
@@ -423,7 +423,7 @@
     visibility: hidden;
 }
 
-.view.loading .customView::after {
+.view .customView.loading::after {
     animation: spin 1s linear infinite;
     opacity: 1;
     visibility: visible;

@@ -545,7 +545,8 @@ bool Application::Parameter::Merge(const uint64_t id, const std::variant<standar
 			}
 			else if constexpr (std::is_same_v<T, Timer::Duration>) {
 				if (*std::get<T*>(m_value) == arg) {
-					LOG_DEBUG(std::format("Skip parameter {}({}) with the same value: {}", m_name, id, arg.ToString()));
+					LOG_DEBUG(std::format(
+						"Skip parameter {}({}) with the same value: {}", m_name, id, arg.ToString(m_durationType)));
 					valid = m_error.empty();
 					return;
 				}
