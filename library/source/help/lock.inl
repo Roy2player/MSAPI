@@ -304,6 +304,51 @@ public:
 		FORCE_INLINE ~Guard() noexcept;
 	};
 
+	/**************************
+	 * @brief RAII guard that attempts to acquire the atomic lock once and releases it on destruction if acquired.
+	 *
+	 * @concurrency No.
+	 */
+	class TryGuard {
+	private:
+		Atomic& m_atomicLock;
+		const bool m_hasLock;
+
+	public:
+		/**************************
+		 * @brief Attempts to acquire the atomic lock without waiting and records whether acquisition succeeds.
+		 * Failure leaves existing ownership unchanged.
+		 *
+		 * @attention Protected data may be accessed only if OwnsLock returns true.
+		 *
+		 * @param atomicLock Atomic lock.
+		 *
+		 * @pre The atomic lock outlives the guard.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE explicit TryGuard(Atomic& atomicLock) noexcept;
+
+		TryGuard(const TryGuard&) = delete;
+		TryGuard(TryGuard&&) = delete;
+		TryGuard& operator=(const TryGuard&) = delete;
+		TryGuard& operator=(TryGuard&&) = delete;
+
+		/**************************
+		 * @brief Releases the atomic lock only if this guard acquired it.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE ~TryGuard() noexcept;
+
+		/**************************
+		 * @return True if this guard acquired the atomic lock, false if its acquisition attempt failed.
+		 *
+		 * @test Yes.
+		 */
+		FORCE_INLINE [[nodiscard]] bool OwnsLock() const noexcept;
+	};
+
 private:
 	std::atomic_flag m_lock{};
 
@@ -714,6 +759,25 @@ FORCE_INLINE Atomic::Guard::Guard(Atomic& atomicLock) noexcept
 }
 
 FORCE_INLINE Atomic::Guard::~Guard() noexcept { m_atomicLock.Unlock(); }
+
+/*---------------------------------------------------------------------------------
+Atomic::TryGuard
+---------------------------------------------------------------------------------*/
+
+FORCE_INLINE Atomic::TryGuard::TryGuard(Atomic& atomicLock) noexcept
+	: m_atomicLock{ atomicLock }
+	, m_hasLock{ m_atomicLock.TryLock() }
+{
+}
+
+FORCE_INLINE Atomic::TryGuard::~TryGuard() noexcept
+{
+	if (m_hasLock) {
+		m_atomicLock.Unlock();
+	}
+}
+
+FORCE_INLINE [[nodiscard]] bool Atomic::TryGuard::OwnsLock() const noexcept { return m_hasLock; }
 
 /*---------------------------------------------------------------------------------
 Atomic

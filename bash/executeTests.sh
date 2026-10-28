@@ -24,7 +24,7 @@ ExitIfError $?
 
 # Unit tests under tests/unit/
 declare -a unit_tests=("dataHeader" "application" "objectData" "standardData" "html" "json" "table" "helper" "timer" "io" "sha256"
-	"authorization" "sha1" "basicSString" "persistence" "test" "lock" "server" "connection" "http")
+	"authorization" "sha1" "basicSString" "persistence" "test" "lock" "server" "connection" "http" "webSocketEvents")
 
 for i in "${unit_tests[@]}"; do
     RunCommand "cmake -DCMAKE_BUILD_TYPE=${MSAPI_BUILD_PROFILE} ${options} -B ${MSAPI_PATH}/tests/unit/${i}/build ${MSAPI_PATH}/tests/unit/${i}/build \
@@ -40,7 +40,7 @@ for i in "${unit_tests[@]}"; do
 done
 
 # Integration tests under tests/integration/
-declare -a tests=("applicationHandlers" "objectProtocol" "http" "webSocketProtocol")
+declare -a tests=("applicationHandlers" "objectProtocol" "http" "webSocketProtocol" "webSocketEventsTransport")
 
 for i in "${tests[@]}"; do
     RunCommand "cmake -DCMAKE_BUILD_TYPE=${MSAPI_BUILD_PROFILE} ${options} -B ${MSAPI_PATH}/tests/integration/${i}/build ${MSAPI_PATH}/tests/integration/${i}/build \

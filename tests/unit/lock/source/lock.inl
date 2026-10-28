@@ -25,7 +25,10 @@
 #include <atomic>
 #include <barrier>
 #include <latch>
+#include <optional>
+#include <stdexcept>
 #include <thread>
+#include <type_traits>
 
 namespace MSAPI {
 
@@ -56,6 +59,13 @@ FORCE_INLINE [[nodiscard]] bool Lock()
 	static_assert(MSAPI::Lock::TRY_LOCK, "Lock \"TRY_LOCK\" must be true");
 	static_assert(!MSAPI::Lock::DO_LOCK, "Lock \"DO_LOCK\" must be false");
 
+	static_assert(!std::is_copy_constructible_v<MSAPI::Lock::Atomic::TryGuard>);
+	static_assert(!std::is_copy_assignable_v<MSAPI::Lock::Atomic::TryGuard>);
+	static_assert(!std::is_move_constructible_v<MSAPI::Lock::Atomic::TryGuard>);
+	static_assert(!std::is_move_assignable_v<MSAPI::Lock::Atomic::TryGuard>);
+	static_assert(std::is_nothrow_constructible_v<MSAPI::Lock::Atomic::TryGuard, MSAPI::Lock::Atomic&>);
+	static_assert(std::is_nothrow_destructible_v<MSAPI::Lock::Atomic::TryGuard>);
+
 	LOG_INFO("MSAPI UNIT TEST Lock");
 
 	MSAPI::Test::Test t;
@@ -79,6 +89,97 @@ FORCE_INLINE [[nodiscard]] bool Lock()
 		RETURN_IF_FALSE(t.Assert(earlyReturn(), true, "Atomic guarded early return"));
 		RETURN_IF_FALSE(t.Assert(lock.TryLock(), true, "Atomic early return unlocks lock"));
 		lock.Unlock();
+	}
+
+	{
+		MSAPI::Lock::Atomic lock;
+		{
+			const MSAPI::Lock::Atomic::TryGuard owner{ lock };
+			RETURN_IF_FALSE(t.Assert(owner.OwnsLock(), true, "Atomic try-guard acquires an available lock"));
+			{
+				const MSAPI::Lock::Atomic::TryGuard recursive{ lock };
+				RETURN_IF_FALSE(
+					t.Assert(recursive.OwnsLock(), false, "Atomic try-guard rejects recursive acquisition"));
+			}
+
+			RETURN_IF_FALSE(t.Assert(lock.TryLock(), false, "Failed try-guard preserves the original owner's lock"));
+			RETURN_IF_FALSE(t.Assert(owner.OwnsLock(), true, "Original try-guard retains ownership"));
+		}
+		RETURN_IF_FALSE(t.Assert(lock.TryLock(), true, "Successful try-guard releases the lock on scope exit"));
+		lock.Unlock();
+
+		const auto earlyReturn{ [&lock] {
+			const MSAPI::Lock::Atomic::TryGuard owner{ lock };
+			return owner.OwnsLock();
+		} };
+
+		RETURN_IF_FALSE(t.Assert(earlyReturn(), true, "Atomic try-guard acquires before an early return"));
+		RETURN_IF_FALSE(t.Assert(lock.TryLock(), true, "Atomic try-guard releases the lock on early return"));
+		lock.Unlock();
+	}
+
+	{
+		// A failed attempt may outlive the original owner and must not release a later owner's lock.
+		MSAPI::Lock::Atomic lock;
+		std::optional<MSAPI::Lock::Atomic::TryGuard> failed;
+		{
+			const MSAPI::Lock::Atomic::Guard owner{ lock };
+			failed.emplace(lock);
+			RETURN_IF_FALSE(
+				t.Assert(failed->OwnsLock(), false, "Try-guard fails while a blocking guard owns the lock"));
+		}
+
+		RETURN_IF_FALSE(t.Assert(failed->OwnsLock(), false, "Failed try-guard does not acquire after the owner exits"));
+		{
+			const MSAPI::Lock::Atomic::TryGuard successor{ lock };
+			RETURN_IF_FALSE(t.Assert(successor.OwnsLock(), true, "Another try-guard acquires after the owner exits"));
+			failed.reset();
+			RETURN_IF_FALSE(t.Assert(lock.TryLock(), false, "Destroying a failed try-guard preserves the later owner"));
+		}
+
+		RETURN_IF_FALSE(t.Assert(lock.TryLock(), true, "Later owner releases after the failed try-guard is destroyed"));
+		lock.Unlock();
+	}
+
+	{
+		MSAPI::Lock::Atomic lock;
+		bool hasUnwound{};
+		try {
+			const MSAPI::Lock::Atomic::TryGuard owner{ lock };
+			RETURN_IF_FALSE(t.Assert(owner.OwnsLock(), true, "Atomic try-guard acquires before an exception"));
+			throw std::runtime_error{ "Try-guard stack unwinding" };
+		}
+		catch (const std::runtime_error&) {
+			hasUnwound = true;
+		}
+
+		RETURN_IF_FALSE(t.Assert(hasUnwound, true, "Exception unwinds the try-guard scope"));
+		RETURN_IF_FALSE(t.Assert(lock.TryLock(), true, "Atomic try-guard releases the lock during stack unwinding"));
+		lock.Unlock();
+	}
+
+	{
+		// Joining before releasing the owner verifies that a contended attempt finishes without waiting.
+		MSAPI::Lock::Atomic lock;
+		bool hasContenderLock{};
+		{
+			const MSAPI::Lock::Atomic::TryGuard owner{ lock };
+			RETURN_IF_FALSE(
+				t.Assert(owner.OwnsLock(), true, "Try-guard owns the lock before another thread attempts it"));
+
+			std::jthread contender{ [&lock, &hasContenderLock] {
+				const MSAPI::Lock::Atomic::TryGuard attempt{ lock };
+				hasContenderLock = attempt.OwnsLock();
+			} };
+
+			contender.join();
+			RETURN_IF_FALSE(
+				t.Assert(hasContenderLock, false, "Contended try-guard returns without acquiring the lock"));
+			RETURN_IF_FALSE(t.Assert(lock.TryLock(), false, "Failed attempt on another thread preserves ownership"));
+		}
+
+		const MSAPI::Lock::Atomic::TryGuard successor{ lock };
+		RETURN_IF_FALSE(t.Assert(successor.OwnsLock(), true, "Try-guard acquires after cross-thread contention ends"));
 	}
 
 	{

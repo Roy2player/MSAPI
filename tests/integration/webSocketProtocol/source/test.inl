@@ -91,9 +91,6 @@ Declarations
  * @brief Integration test for web socket protocol.
  *
  * @return True if all tests passed and false if something went wrong.
- *
- * @todo Close messages are not checked in terms of reserving and following actions. When Application will be able to
- * call Server methods to close connection, deeper testing of close messages should be done.
  */
 FORCE_INLINE [[nodiscard]] bool WebSocketProtocol();
 
@@ -134,15 +131,14 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 	// Server
 	auto serverPtr{ MSAPI::Daemon<Node>::Create("Server") };
-	if (serverPtr == nullptr) {
-		return 1;
-	}
+	RETURN_IF_FALSE((serverPtr != nullptr));
 	auto& server{ serverPtr->GetApp() };
 	server.HandleRunRequest();
 
 	MSAPI::Test::Protocol::WebSocket::Observer serverObserver{ server };
 
-	std::vector<char> payload(static_cast<size_t>(MSAPI::Protocol::WebSocket::Data::MB) * 5);
+	// Include the extra byte used by the fragmented-data limit overflow cases.
+	std::vector<char> payload(static_cast<size_t>(MSAPI::Protocol::WebSocket::Data::MB) * 5 + 1);
 	for (size_t i{}; i < payload.size(); i++) {
 		payload[i] = static_cast<char>(i % (128 - 32) + 32); // Printable ASCII characters
 	}
@@ -664,177 +660,196 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 	const auto doTest{ [&serverPtr, &server, &t, payloadSpan, &checkMessage, &serverObserver, &clientDaemons,
 						   closeCodeInBuffer](const bool isMasked) -> bool {
 		auto& clientDaemon{ clientDaemons.emplace_back(ClientDaemon{ MSAPI::Daemon<Node>::Create("Client") }) };
-		if (clientDaemon.ptr == nullptr) {
-			return false;
-		}
+		RETURN_IF_FALSE((clientDaemon.ptr != nullptr));
 		auto& client{ clientDaemon.ptr->GetApp() };
-		clientDaemon.clientToServerConnectionData
-			= client.OpenConnection(INADDR_LOOPBACK, serverPtr->GetPort(), /*doReconnection=*/false);
-		RETURN_IF_FALSE((clientDaemon.clientToServerConnectionData != nullptr));
-		const auto& CTSCD{ clientDaemon.clientToServerConnectionData };
-		client.HandleRunRequest();
-		const std::string& clientPortStr{ clientDaemon.portStr };
-
 		MSAPI::Test::Protocol::WebSocket::Observer clientObserver{ client };
-		RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
-			std::format("Initial size of fragmented data connections on client {}", clientPortStr)));
 
-		// Key port is used to detect connection
-		const std::string& wsHandshakeRequestPureInvalid{ std::format("GET / HTTP/1.1\r\n"
-																	  "Host: everybody-dance-now.ru:1997\n"
-																	  "Upgrade: websocket\n"
-																	  "Connection: Upgrade\n"
-																	  "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\n"
-																	  "Sec-WebSocket-Version: 12\n{}: port",
-			clientPortStr) };
-		const std::string& wsHandshakeRequestInvalid{ std::format(
-			"HTTP message:\n{{\n\tis valid              : true\n\ttype                  : Request\n\tmessage type  "
-			"    "
-			" "
-			"   "
-			": GET\n\turl                   : /\n\tHTTP type             : HTTP\n\tversion               : "
-			"1.1\n\tformat   "
-			"             : html\n\tcode                  : \n\tcode text             : \n\tmessage size          "
-			": "
-			"{}\n\tHeaders               :\n{{\n\t{:21} : port\n\tConnection            : Upgrade\n\tHost          "
-			"    "
-			"    : "
-			"everybody-dance-now.ru:1997\n\tSec-WebSocket-Key     : "
-			"dGhlIHNhbXBsZSBub25jZQ==\n\tSec-WebSocket-Version "
-			": "
-			"12\n\tUpgrade               : websocket\n}}\n}}",
-			169 + clientPortStr.size(), clientPortStr) };
+		const auto doClientConnect{ [&serverPtr, &server, &t, &serverObserver, &clientDaemon, &client,
+										&clientObserver] [[nodiscard]] () -> bool {
+			clientDaemon.clientToServerConnectionData
+				= client.OpenConnection(INADDR_LOOPBACK, serverPtr->GetPort(), /*doReconnection=*/false);
+			RETURN_IF_FALSE((clientDaemon.clientToServerConnectionData != nullptr));
+			auto& CTSCD{ clientDaemon.clientToServerConnectionData };
+			client.HandleRunRequest();
+			const std::string& clientPortStr{ clientDaemon.portStr };
 
-		const std::string& wsHandshakeResponseInvalid{
-			"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl        "
-			"    "
-			": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 404\n\tcode "
-			"text "
-			"     : Not Found\n\tmessage size   : 138\n\tHeaders        :\n{\n\tConnection     : "
-			"keep-alive\n\tContent-Length : "
-			"0\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"
-		};
+			RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
+				std::format("Initial size of fragmented data connections on client {}", clientPortStr)));
 
-		// 2.1. Try to establish WebSocket handshake with unsupported protocol version
-		LOG_INFO_NEW(
-			"Try to establish WebSocket handshake with unsupported protocol version for client {}", clientPortStr);
-		RETURN_IF_FALSE(MSAPI::Protocol::HTTP::SendRequest(CTSCD->GetConnection(), wsHandshakeRequestPureInvalid));
-		RETURN_IF_FALSE(t.Wait(
-			50000,
-			[&server, &clientPortStr, &clientDaemon]() {
-				clientDaemon.serverToClientConnectionData = server.DetectConnection(clientPortStr);
-				return clientDaemon.serverToClientConnectionData != nullptr;
-			},
-			true,
-			std::format("Server detected connection for WebSocket handshake request from client {}", clientPortStr)));
+			// Key port is used to detect connection
+			const std::string& wsHandshakeRequestPureInvalid{ std::format(
+				"GET / HTTP/1.1\r\n"
+				"Host: everybody-dance-now.ru:1997\n"
+				"Upgrade: websocket\n"
+				"Connection: Upgrade\n"
+				"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\n"
+				"Sec-WebSocket-Version: 12\n{}: port",
+				clientPortStr) };
+			const std::string& wsHandshakeRequestInvalid{ std::format(
+				"HTTP message:\n{{\n\tis valid              : true\n\ttype                  : Request\n\tmessage type  "
+				"    "
+				" "
+				"   "
+				": GET\n\turl                   : /\n\tHTTP type             : HTTP\n\tversion               : "
+				"1.1\n\tformat   "
+				"             : html\n\tcode                  : \n\tcode text             : \n\tmessage size          "
+				": "
+				"{}\n\tHeaders               :\n{{\n\t{:21} : port\n\tConnection            : Upgrade\n\tHost          "
+				"    "
+				"    : "
+				"everybody-dance-now.ru:1997\n\tSec-WebSocket-Key     : "
+				"dGhlIHNhbXBsZSBub25jZQ==\n\tSec-WebSocket-Version "
+				": "
+				"12\n\tUpgrade               : websocket\n}}\n}}",
+				169 + clientPortStr.size(), clientPortStr) };
 
-		const auto& STCCD{ clientDaemon.serverToClientConnectionData };
-		const auto* serverHttpData{ server.GetHttpData(STCCD) };
-		uint64_t expectedServerHttpDataSize{};
-		RETURN_IF_FALSE(t.Assert(
-			serverHttpData != nullptr, true, std::format("Server has HTTP data for client {}", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(serverHttpData->size(), ++expectedServerHttpDataSize,
-			std::format("Server has {} HTTP data messages for client {}", serverHttpData->size(), clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(serverHttpData->back().ToString(), wsHandshakeRequestInvalid,
-			std::format("Server got correct WebSocket handshake request from client {}", clientPortStr)));
-		std::vector<MSAPI::Protocol::WebSocket::Data>* serverWebSocketData{};
+			const std::string& wsHandshakeResponseInvalid{
+				"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl    "
+				"    "
+				"    "
+				": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : "
+				"404\n\tcode "
+				"text "
+				"     : Not Found\n\tmessage size   : 138\n\tHeaders        :\n{\n\tConnection     : "
+				"keep-alive\n\tContent-Length : "
+				"0\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"
+			};
 
-		const std::vector<MSAPI::Protocol::HTTP::Data>* clientHttpData{};
-		uint64_t expectedClientHttpDataSize{};
+			// 2.1. Try to establish WebSocket handshake with unsupported protocol version
+			LOG_INFO_NEW(
+				"Try to establish WebSocket handshake with unsupported protocol version for client {}", clientPortStr);
+			RETURN_IF_FALSE(MSAPI::Protocol::HTTP::SendRequest(CTSCD->GetConnection(), wsHandshakeRequestPureInvalid));
+			RETURN_IF_FALSE(t.Wait(
+				50000,
+				[&server, &clientPortStr, &clientDaemon]() {
+					clientDaemon.serverToClientConnectionData = server.DetectConnection(clientPortStr);
+					return clientDaemon.serverToClientConnectionData != nullptr;
+				},
+				true,
+				std::format(
+					"Server detected connection for WebSocket handshake request from client {}", clientPortStr)));
 
-		RETURN_IF_FALSE(t.Wait(
-			50000,
-			[&clientHttpData, &client, &CTSCD]() {
-				clientHttpData = client.GetHttpData(CTSCD);
-				return clientHttpData != nullptr;
-			},
-			true, std::format("Client {} has HTTP data", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(clientHttpData->size(), ++expectedClientHttpDataSize,
-			std::format("Client {} has {} HTTP data messages", clientHttpData->size(), clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(clientHttpData->back().ToString(), wsHandshakeResponseInvalid,
-			std::format("Client {} got correct WebSocket handshake response", clientPortStr)));
+			const auto& STCCD{ clientDaemon.serverToClientConnectionData };
+			const auto* serverHttpData{ server.GetHttpData(STCCD) };
+			uint64_t expectedServerHttpDataSize{};
+			RETURN_IF_FALSE(t.Assert(
+				serverHttpData != nullptr, true, std::format("Server has HTTP data for client {}", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(serverHttpData->size(), ++expectedServerHttpDataSize,
+				std::format("Server has {} HTTP data messages for client {}", serverHttpData->size(), clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(serverHttpData->back().ToString(), wsHandshakeRequestInvalid,
+				std::format("Server got correct WebSocket handshake request from client {}", clientPortStr)));
+
+			const std::vector<MSAPI::Protocol::HTTP::Data>* clientHttpData{};
+			uint64_t expectedClientHttpDataSize{};
+
+			RETURN_IF_FALSE(t.Wait(
+				50000,
+				[&clientHttpData, &client, &CTSCD]() {
+					clientHttpData = client.GetHttpData(CTSCD);
+					return clientHttpData != nullptr;
+				},
+				true, std::format("Client {} has HTTP data", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(clientHttpData->size(), ++expectedClientHttpDataSize,
+				std::format("Client {} has {} HTTP data messages", clientHttpData->size(), clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(clientHttpData->back().ToString(), wsHandshakeResponseInvalid,
+				std::format("Client {} got correct WebSocket handshake response", clientPortStr)));
+
+			const std::string& wsHandshakeRequestPure{ std::format("GET / HTTP/1.1\r\n"
+																   "Host: everybody-dance-now.ru:1997\n"
+																   "Upgrade: websocket\n"
+																   "Connection: Upgrade\n"
+																   "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\n"
+																   "Sec-WebSocket-Version: 13\n{}: port",
+				clientPortStr) };
+			const std::string& wsHandshakeRequest{ std::format(
+				"HTTP message:\n{{\n\tis valid              : true\n\ttype                  : Request\n\tmessage type  "
+				"    "
+				" "
+				"   "
+				": GET\n\turl                   : /\n\tHTTP type             : HTTP\n\tversion               : "
+				"1.1\n\tformat   "
+				"             : html\n\tcode                  : \n\tcode text             : \n\tmessage size          "
+				": "
+				"{}\n\tHeaders               :\n{{\n\t{:21} : port\n\tConnection            : Upgrade\n\tHost          "
+				"    "
+				"    : "
+				"everybody-dance-now.ru:1997\n\tSec-WebSocket-Key     : "
+				"dGhlIHNhbXBsZSBub25jZQ==\n\tSec-WebSocket-Version "
+				": "
+				"13\n\tUpgrade               : websocket\n}}\n}}",
+				169 + clientPortStr.size(), clientPortStr) };
+			const std::string& wsHandshakeResponse{
+				"HTTP message:\n{\n\tis valid              : true\n\ttype                  : Response\n\tmessage type  "
+				"    "
+				"    "
+				": \n\turl                   : \n\tHTTP type             : HTTP\n\tversion               : "
+				"1.1\n\tformat   "
+				"    "
+				"         : \n\tcode                  : 101\n\tcode text             : Switching Protocols\n\tmessage "
+				"size "
+				"    "
+				"     : 156\n\tHeaders               :\n{\n\tConnection            : Upgrade\n\tSec-WebSocket-Accept  "
+				": "
+				"s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\n\tSec-WebSocket-Version : 13\n\tUpgrade               : websocket\n}\n}"
+			};
+
+			// 2.2. Establish WebSocket handshake
+			LOG_INFO_NEW("Establish WebSocket handshake for client {}", clientPortStr);
+			RETURN_IF_FALSE(MSAPI::Protocol::HTTP::SendRequest(CTSCD->GetConnection(), wsHandshakeRequestPure));
+			++expectedServerHttpDataSize;
+			RETURN_IF_FALSE(t.Wait(
+				50000, [&serverHttpData, &clientPortStr]() { return serverHttpData->size(); },
+				expectedServerHttpDataSize,
+				std::format("Server has expected number HTTP data messages for client", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(serverHttpData->back().ToString(), wsHandshakeRequest,
+				std::format("Server got correct WebSocket handshake request from client {}", clientPortStr)));
+
+			++expectedClientHttpDataSize;
+			RETURN_IF_FALSE(t.Wait(
+				50000, [&clientHttpData, &clientPortStr]() { return clientHttpData->size(); },
+				expectedClientHttpDataSize,
+				std::format("Client {} has expected number HTTP data messages", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(clientHttpData->back().ToString(), wsHandshakeResponse,
+				std::format("Client {} got correct WebSocket handshake response", clientPortStr)));
+
+			RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
+				std::format("Size of fragmented data connections on client {} after handshake", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
+				std::format("Server does not have fragmented data with client {} after handshake", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
+				MSAPI::Timer{ 0, 0 },
+				std::format("Server does not have timestamp of last fragmented data with client {} after handshake",
+					clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(clientObserver.HasFragmentedDataForConnection(CTSCD->GetConnectionId()), false,
+				std::format("Client {} does not have fragmented data with server after handshake", clientPortStr)));
+
+			RETURN_IF_FALSE(t.Assert(client.GetWebSocketData(CTSCD), nullptr,
+				std::format("Client {} does not have WebSocket yet", clientPortStr)));
+			RETURN_IF_FALSE(t.Assert(server.GetWebSocketData(STCCD), nullptr,
+				std::format("Server does not have WebSocket yet for client {}", clientPortStr)));
+
+			return true;
+		} };
+
+		RETURN_IF_FALSE(doClientConnect());
+		auto& CTSCD{ clientDaemon.clientToServerConnectionData };
+		auto& STCCD{ clientDaemon.serverToClientConnectionData };
+		auto& clientPortStr{ clientDaemon.portStr };
+
 		std::vector<MSAPI::Protocol::WebSocket::Data>* clientWebSocketData{};
-
-		const std::string& wsHandshakeRequestPure{ std::format("GET / HTTP/1.1\r\n"
-															   "Host: everybody-dance-now.ru:1997\n"
-															   "Upgrade: websocket\n"
-															   "Connection: Upgrade\n"
-															   "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\n"
-															   "Sec-WebSocket-Version: 13\n{}: port",
-			clientPortStr) };
-		const std::string& wsHandshakeRequest{ std::format(
-			"HTTP message:\n{{\n\tis valid              : true\n\ttype                  : Request\n\tmessage type  "
-			"    "
-			" "
-			"   "
-			": GET\n\turl                   : /\n\tHTTP type             : HTTP\n\tversion               : "
-			"1.1\n\tformat   "
-			"             : html\n\tcode                  : \n\tcode text             : \n\tmessage size          "
-			": "
-			"{}\n\tHeaders               :\n{{\n\t{:21} : port\n\tConnection            : Upgrade\n\tHost          "
-			"    "
-			"    : "
-			"everybody-dance-now.ru:1997\n\tSec-WebSocket-Key     : "
-			"dGhlIHNhbXBsZSBub25jZQ==\n\tSec-WebSocket-Version "
-			": "
-			"13\n\tUpgrade               : websocket\n}}\n}}",
-			169 + clientPortStr.size(), clientPortStr) };
-		const std::string& wsHandshakeResponse{
-			"HTTP message:\n{\n\tis valid              : true\n\ttype                  : Response\n\tmessage type  "
-			"    "
-			"    "
-			": \n\turl                   : \n\tHTTP type             : HTTP\n\tversion               : "
-			"1.1\n\tformat   "
-			"    "
-			"         : \n\tcode                  : 101\n\tcode text             : Switching Protocols\n\tmessage "
-			"size "
-			"    "
-			"     : 156\n\tHeaders               :\n{\n\tConnection            : Upgrade\n\tSec-WebSocket-Accept  "
-			": "
-			"s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\n\tSec-WebSocket-Version : 13\n\tUpgrade               : websocket\n}\n}"
-		};
-
-		// 2.2. Establish WebSocket handshake
-		LOG_INFO_NEW("Establish WebSocket handshake for client {}", clientPortStr);
-		RETURN_IF_FALSE(MSAPI::Protocol::HTTP::SendRequest(CTSCD->GetConnection(), wsHandshakeRequestPure));
-		++expectedServerHttpDataSize;
-		RETURN_IF_FALSE(t.Wait(
-			50000, [&serverHttpData, &clientPortStr]() { return serverHttpData->size(); }, expectedServerHttpDataSize,
-			std::format("Server has expected number HTTP data messages for client", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(serverHttpData->back().ToString(), wsHandshakeRequest,
-			std::format("Server got correct WebSocket handshake request from client {}", clientPortStr)));
-
-		++expectedClientHttpDataSize;
-		RETURN_IF_FALSE(t.Wait(
-			50000, [&clientHttpData, &clientPortStr]() { return clientHttpData->size(); }, expectedClientHttpDataSize,
-			std::format("Client {} has expected number HTTP data messages", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(clientHttpData->back().ToString(), wsHandshakeResponse,
-			std::format("Client {} got correct WebSocket handshake response", clientPortStr)));
-
-		RETURN_IF_FALSE(t.Assert(clientObserver.GetSizeOfConnectionIdToFragmentedData(), 0,
-			std::format("Size of fragmented data connections on client {} after handshake", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(serverObserver.HasFragmentedDataForConnection(STCCD->GetConnectionId()), false,
-			std::format("Server does not have fragmented data with client {} after handshake", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(serverObserver.GetLastFragmentedDataTimerForConnection(STCCD->GetConnectionId()),
-			MSAPI::Timer{ 0, 0 },
-			std::format("Server does not have timestamp of last fragmented data with client {} after handshake",
-				clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(clientObserver.HasFragmentedDataForConnection(CTSCD->GetConnectionId()), false,
-			std::format("Client {} does not have fragmented data with server after handshake", clientPortStr)));
-
-		RETURN_IF_FALSE(t.Assert(client.GetWebSocketData(CTSCD), nullptr,
-			std::format("Client {} does not have WebSocket yet", clientPortStr)));
-		RETURN_IF_FALSE(t.Assert(server.GetWebSocketData(STCCD), nullptr,
-			std::format("Server does not have WebSocket yet for client {}", clientPortStr)));
+		std::vector<MSAPI::Protocol::WebSocket::Data>* serverWebSocketData{};
 
 		size_t expectedServerWebSocketDataSize{};
 		size_t expectedClientWebSocketDataSize{};
 		const auto sendAndCheck{ [&t, &serverWebSocketData, &expectedServerWebSocketDataSize, &server, &STCCD,
 									 &clientWebSocketData, &expectedClientWebSocketDataSize, &client, &CTSCD,
-									 &clientPortStr, &checkMessage](MSAPI::Protocol::WebSocket::Data& message) -> bool {
+									 &clientPortStr, &checkMessage, &clientDaemon,
+									 &doClientConnect](MSAPI::Protocol::WebSocket::Data& message) -> bool {
 			const auto opcode{ message.GetOpcode() };
 
+			// Close message is not provided via callback
 			if (opcode != MSAPI::Protocol::WebSocket::Data::Opcode::Close) {
+				// Ping message sends pong back which is provided via callback
 				if (opcode == MSAPI::Protocol::WebSocket::Data::Opcode::Ping) {
 					++expectedClientWebSocketDataSize;
 				}
@@ -843,7 +858,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				}
 			}
 
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), message);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), message));
 
 			if (expectedClientWebSocketDataSize > 0) {
 				RETURN_IF_FALSE(t.Wait(
@@ -875,37 +890,65 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				std::format("Server has WebSocket data with {} messages for client {}", expectedServerWebSocketDataSize,
 					clientPortStr)));
 
-			// TODO: Close message reserving cannot be checked, look at another TODOs in this file
-			if (opcode != MSAPI::Protocol::WebSocket::Data::Opcode::Close) {
-				if (opcode == MSAPI::Protocol::WebSocket::Data::Opcode::Ping) {
-					auto& clientLastMessage{ clientWebSocketData->back() };
-					RETURN_IF_FALSE(t.Assert(clientLastMessage.GetMaskingKey() == 0, message.GetMaskingKey() != 0,
-						std::format("Masking is reversed for answer on ping {}", clientPortStr)));
-					if (message.IsMasked()) {
+			if (opcode == MSAPI::Protocol::WebSocket::Data::Opcode::Ping) {
+				auto& clientLastMessage{ clientWebSocketData->back() };
+				RETURN_IF_FALSE(t.Assert(clientLastMessage.GetMaskingKey() == 0, message.GetMaskingKey() != 0,
+					std::format("Masking is reversed for answer on ping {}", clientPortStr)));
+				if (message.IsMasked()) {
+					// Collected message always unmasked, checkMessage expect masked payload for masked message
+					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
+				}
+				else {
+					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(
+						message, clientLastMessage.GetMaskingKey());
+				}
+				RETURN_IF_FALSE(checkMessage(clientLastMessage, message.IsFinal(), message.IsRsv1(), message.IsRsv2(),
+					message.IsRsv3(), MSAPI::Protocol::WebSocket::Data::Opcode::Pong, !message.IsMasked(),
+					message.GetPayload(), clientPortStr));
+			}
+			else if (opcode == MSAPI::Protocol::WebSocket::Data::Opcode::Close) {
+				auto& clientLastMessage{ clientWebSocketData->back() };
+				RETURN_IF_FALSE(t.Assert(clientLastMessage.GetMaskingKey() == 0, message.GetMaskingKey() != 0,
+					std::format("Masking is reversed for answer on close {}", clientPortStr)));
+				if (message.IsMasked()) {
+					// Collected message always unmasked, checkMessage expect masked payload for masked message
+					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
+				}
+				else {
+					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(
+						message, clientLastMessage.GetMaskingKey());
+				}
+
+				RETURN_IF_FALSE(t.Wait(
+					50000, [&CTSCD]() { return CTSCD->GetConnection().IsActive(); }, false,
+					std::format("Client {} connection should be closed after close message", clientPortStr)));
+				RETURN_IF_FALSE(t.Wait(
+					50000, [&STCCD]() { return STCCD->GetConnection().IsActive(); }, false,
+					std::format(
+						"Server connection should be closed after close message for client {}", clientPortStr)));
+
+				// Open connections back
+				server.ClearData(CTSCD);
+				server.ClearData(STCCD);
+				RETURN_IF_FALSE(doClientConnect());
+				CTSCD = clientDaemon.clientToServerConnectionData;
+				STCCD = clientDaemon.serverToClientConnectionData;
+				clientPortStr = clientDaemon.portStr;
+				expectedClientWebSocketDataSize = 0;
+				expectedServerWebSocketDataSize = 0;
+			}
+			else {
+				const auto& lastServerMessage{ serverWebSocketData->back() };
+				if (message.IsMasked()) {
+					if (!message.GetPayload().empty()) {
+						RETURN_IF_FALSE(t.Assert(message.GetPayload() != lastServerMessage.GetPayload(), true,
+							std::format("Masked message payload content {}", clientPortStr)));
 						// Collected message always unmasked, checkMessage expect masked payload for masked message
 						MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
 					}
-					else {
-						MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(
-							message, clientLastMessage.GetMaskingKey());
-					}
-					RETURN_IF_FALSE(checkMessage(clientLastMessage, message.IsFinal(), message.IsRsv1(),
-						message.IsRsv2(), message.IsRsv3(), MSAPI::Protocol::WebSocket::Data::Opcode::Pong,
-						!message.IsMasked(), message.GetPayload(), clientPortStr));
 				}
-				else {
-					const auto& lastServerMessage{ serverWebSocketData->back() };
-					if (message.IsMasked()) {
-						if (!message.GetPayload().empty()) {
-							RETURN_IF_FALSE(t.Assert(message.GetPayload() != lastServerMessage.GetPayload(), true,
-								std::format("Masked message payload content {}", clientPortStr)));
-							// Collected message always unmasked, checkMessage expect masked payload for masked message
-							MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
-						}
-					}
-					RETURN_IF_FALSE(t.Assert(lastServerMessage, message,
-						std::format("Server got correct WebSocket message for client {}", clientPortStr)));
-				}
+				RETURN_IF_FALSE(t.Assert(lastServerMessage, message,
+					std::format("Server got correct WebSocket message for client {}", clientPortStr)));
 			}
 
 			return true;
@@ -1078,9 +1121,6 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				MSAPI::Protocol::WebSocket::Data::Opcode::Pong, isMasked, std::span<const uint8_t>{}, clientPortStr));
 		}
 
-		// TODO: For now checking of close messages does not happen in terms of reserving and followed that actions.
-		// TODO: When Application will be able to call Server methods to close connection, then deeper testing of close
-		// TODO: messages should be done
 		// 2.17. Send empty close message
 		LOG_INFO_NEW("Testing empty close message from client {}", clientPortStr);
 		RETURN_IF_FALSE(
@@ -1214,7 +1254,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 							previousMaskingKey = newMaskingKey;
 						}
 
-						MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+						RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 						RETURN_IF_FALSE(waitForFragmentedData(lastFragmentTime));
 
 						if (sendedFragments == 1) {
@@ -1246,7 +1286,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 							sendedPayload - expectedLastFragmentPayloadSize, expectedLastFragmentPayloadSize),
 						clientPortStr));
 
-					MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+					RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 				}
 				sendPingsBetweenFragments = !sendPingsBetweenFragments;
 
@@ -1256,7 +1296,15 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 
 				++expectedServerWebSocketDataSize;
 				RETURN_IF_FALSE(t.Wait(
-					50000, [&serverWebSocketData, &STCCD]() { return serverWebSocketData->size(); },
+					50000,
+					[&serverWebSocketData, &server, &STCCD]() {
+						serverWebSocketData = server.GetWebSocketData(STCCD);
+						if (serverWebSocketData == nullptr) [[unlikely]] {
+							return uint64_t(0);
+						}
+
+						return serverWebSocketData->size();
+					},
 					expectedServerWebSocketDataSize,
 					std::format("Server has WebSocket data with {} messages for client {}",
 						expectedServerWebSocketDataSize, clientPortStr)));
@@ -1317,23 +1365,23 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			MSAPI::Protocol::WebSocket::Data initialMessage{ payloadSpan.subspan(0, 100),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Text, getMaskingKeyIfNeeded(), false, /*rsv1=*/false,
 				/*rsv2=*/false, /*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialMessage);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialMessage));
 			MSAPI::Timer lastFragmentTime{ 0, 0 };
 			RETURN_IF_FALSE(waitForFragmentedData(lastFragmentTime));
 
 			MSAPI::Protocol::WebSocket::Data continuationMessage{ payloadSpan.subspan(100, 100),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, getMaskingKeyIfNeeded(), false, /*rsv1=*/false,
 				/*rsv2=*/false, /*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationMessage);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationMessage));
 			RETURN_IF_FALSE(waitForFragmentedData(lastFragmentTime));
 
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialMessage);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialMessage));
 			RETURN_IF_FALSE(waitForFragmentedData(lastFragmentTime));
 
 			MSAPI::Protocol::WebSocket::Data finalMessage{ payloadSpan.subspan(0, 100),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, getMaskingKeyIfNeeded(), /*isFinal=*/true,
 				/*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), finalMessage);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), finalMessage));
 			++expectedServerWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
 				50000, [&serverWebSocketData]() { return serverWebSocketData->size(); },
@@ -1364,7 +1412,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			MSAPI::Protocol::WebSocket::Data finalFragmentMessage{ payloadSpan.subspan(100, 100),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, getMaskingKeyIfNeeded(), true, /*rsv1=*/false,
 				/*rsv2=*/false, /*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), finalFragmentMessage);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), finalFragmentMessage));
 			++expectedServerWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
 				50000, [&serverWebSocketData]() { return serverWebSocketData->size(); },
@@ -1454,7 +1502,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					MSAPI::Protocol::WebSocket::Data::Opcode::Text, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 					/*rsv3=*/false
 				};
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			}
 			{
 				const MSAPI::Protocol::WebSocket::Data data{
@@ -1464,7 +1512,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 					/*rsv3=*/false
 				};
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			}
 			{
 				const MSAPI::Protocol::WebSocket::Data data{
@@ -1474,7 +1522,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, true, /*rsv1=*/false, /*rsv2=*/false,
 					/*rsv3=*/false
 				};
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			}
 			{
 				const MSAPI::Protocol::WebSocket::Data data{
@@ -1484,20 +1532,20 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					MSAPI::Protocol::WebSocket::Data::Opcode::Text, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 					/*rsv3=*/false
 				};
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			}
 			{
 				const MSAPI::Protocol::WebSocket::Data emptyFragment{ {},
 					MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 					/*rsv3=*/false };
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
-				MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment);
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment));
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment));
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment));
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment));
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment));
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment));
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment));
+				RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), emptyFragment));
 			}
 			RETURN_IF_FALSE(t.Wait(
 				50000,
@@ -1524,7 +1572,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false,
 				/*rsv2=*/false, /*rsv3=*/false
 			};
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
@@ -1574,7 +1622,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 				/*rsv3=*/false
 			};
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
@@ -1599,7 +1647,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, /*mask=*/0, /*isFinal=*/true, /*rsv1=*/false,
 				/*rsv2=*/false, /*rsv3=*/false
 			};
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), newData);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), newData));
 			RETURN_IF_FALSE(t.Wait(
 				50000,
 				[&serverObserver, &STCCD, &clientPortStr]() {
@@ -1648,20 +1696,20 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			const MSAPI::Protocol::WebSocket::Data initialFragment{ payloadSpan.subspan(0, 1),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 				/*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment));
 
 			const MSAPI::Protocol::WebSocket::Data continuationFragment{ payloadSpan.subspan(0, 1),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 				/*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment));
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment));
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment));
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment));
 
 			const MSAPI::Protocol::WebSocket::Data data{ payloadSpan.subspan(0, 1),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, true, /*rsv1=*/false, /*rsv2=*/false,
 				/*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			++serverWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
 				50000, [&server, &STCCD]() { return server.GetWebSocketData(STCCD)->size(); }, serverWebSocketDataSize,
@@ -1694,19 +1742,19 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			const MSAPI::Protocol::WebSocket::Data initialFragment{ {},
 				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 				/*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment));
 
 			const MSAPI::Protocol::WebSocket::Data continuationFragment{ {},
 				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 				/*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment));
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment));
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment));
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment));
 
 			const MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, true,
 				/*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			++serverWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
 				50000, [&server, &STCCD]() { return server.GetWebSocketData(STCCD)->size(); }, serverWebSocketDataSize,
@@ -1746,7 +1794,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 																		0, MSAPI::Protocol::WebSocket::Data::MB / 2),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 				/*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment));
 
 			RETURN_IF_FALSE(t.Wait(
 				50000,
@@ -1779,11 +1827,11 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 																			 MSAPI::Protocol::WebSocket::Data::MB / 2),
 				MSAPI::Protocol::WebSocket::Data::Opcode::Continuation, 0, false, /*rsv1=*/false, /*rsv2=*/false,
 				/*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), continuationFragment));
 
 			const MSAPI::Protocol::WebSocket::Data data{ {}, MSAPI::Protocol::WebSocket::Data::Opcode::Binary, 0, true,
 				/*rsv1=*/false, /*rsv2=*/false, /*rsv3=*/false };
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			++serverWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
 				50000, [&server, &STCCD]() { return server.GetWebSocketData(STCCD)->size(); }, serverWebSocketDataSize,
@@ -1811,7 +1859,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Assert(server.GetFragmentedDataLimit(), 1.00001,
 				"Fragmented data limit should be 1.00001 after successful set"));
 
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			++serverWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
 				50000, [&server, &STCCD]() { return server.GetWebSocketData(STCCD)->size(); }, serverWebSocketDataSize,
@@ -1839,7 +1887,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Assert(
 				server.GetFragmentedDataLimit(), 1., "Fragmented data limit should be 1 after successful set"));
 
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), data));
 			++serverWebSocketDataSize;
 			RETURN_IF_FALSE(t.Wait(
 				50000, [&server, &STCCD]() { return server.GetWebSocketData(STCCD)->size(); }, serverWebSocketDataSize,
@@ -1861,7 +1909,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(), 0.,
 				std::format("Stored fragmented data size on for client {}", clientPortStr)));
 
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment));
 
 			RETURN_IF_FALSE(t.Wait(
 				50000,
@@ -1901,7 +1949,7 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 			RETURN_IF_FALSE(t.Assert(serverObserver.GetStoredFragmentedDataSize(), 0.,
 				std::format("Stored fragmented data size on for client {}", clientPortStr)));
 
-			MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment);
+			RETURN_IF_FALSE(MSAPI::Protocol::WebSocket::Send(CTSCD->GetConnection(), initialFragment));
 
 			RETURN_IF_FALSE(t.Wait(
 				50000,

@@ -16,7 +16,7 @@ cmake -DCMAKE_BUILD_TYPE=Release .
 cmake --build . -j $(nproc)
 ```
 
-- ***Build system:*** CMake 3.2+
+- ***Build system:*** CMake 3.10+
 - ***Compiler:*** GCC 16.2.1+
 - ***Runtime:*** Linux (POSIX threads, Linux sockets)
 - Pure C++ standard library
@@ -140,6 +140,8 @@ By contributing to this repository, you agree to the [Contributor License Agreem
 ### [Guidelines](guidelines/)
 
 Project has a set of guidelines to ensure following best practices, maintain code quality and consistency.
+
+New code must follow the current guidelines. Changes to the guidelines do not require immediate refactoring of the entire codebase. Existing code should be brought into compliance as part of ongoing maintenance.
 
 - [**Code general:**](guidelines/codeGeneral.md) General engineering rules.
 - [**Code style:**](guidelines/codeStyle.md) Naming conventions and code formatting expectations.

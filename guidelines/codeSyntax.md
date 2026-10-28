@@ -14,26 +14,25 @@ description: "Syntax and declaration rules"
   - Intentional performance trade-offs, non-obvious error-handling behavior, and intentional deviations that could make code appear incorrect or unnecessary.
 - Comments that merely restate self-explanatory code should be avoided. Complexity alone does not require an explanatory comment.
 - Even a simple operation must have a comment when an important assumption is not evident. Explicitness must take priority over minimizing comments.
-- Comments must use `// Comment` style: `//`, one space, then the text. A multiline comment must be a sequence of `//` lines, with `//` for an empty line inside it.
+- Comments must use `// Comment.` style: `//`, one space, then the text. A multiline comment must be a sequence of `//` lines, with `//` for an empty line inside it.
 - Markers immediately after `//`, such as `//*`, must not be used.
 - Apart from the documentation blocks and separators below, `/* */` may be used for the following purposes and must not be used elsewhere:
   - A short note within code, such as an argument tag `/*tag=*/value`, a parameter note ` /* by value as moved */ `, or a note inside an expression or initializer list.
   - A comment inside a multiline macro definition, where `//` would comment out the line continuation `\`.
 - Doxygen documentation blocks must follow [Doxygen Documentation](doxygenDocumentation.md). Section separators must follow [File Organization](fileOrganization.md#structure-of-inl-file).
 - Other comment types must not be used, including markers (`//*`, `//!`, `//?`) and task comments (`// FIXME`, etc.).
-- `// TODO: comment` may duplicate an existing `@todo` to mark the place for further work. It must not appear without the corresponding `@todo`, which remains the source of truth.
+- `// TODO: Comment.` may duplicate an existing `@todo` to mark the place for further work. It must not appear without the corresponding `@todo`, which remains the source of truth.
 - Problems, technical debt and open questions must be described by `@todo` in the documentation block of the related function or abstraction, see [Doxygen Documentation](doxygenDocumentation.md).
 
 ```cpp
-// Retry is required, as connection can be closed by peer during handshake
-// and new attempt is made with the same id
+// Retry is required, as connection can be closed by peer during handshake and new attempt is made with the same id.
 const auto connection{ OpenConnection(ip, port, /*doReconnection=*/false) };
 ```
 
 For example, a comment such as `// Check whether the connection is already closed.` would merely describe the condition. The existing comment explains the descriptor-reuse hazard that makes the guard necessary:
 
 ```cpp
-// Only the first caller closes the descriptor, otherwise its number can be reused and closed by mistake
+// Only the first caller closes the descriptor, otherwise its number can be reused and closed by mistake.
 if (m_isClosed.exchange(true, std::memory_order_acq_rel)) {
     return;
 }
@@ -139,8 +138,37 @@ public:
 #### Enum
 
 - Enums must use `enum class` with an explicit, appropriately sized integer underlying type.
+- Enums should declare `Undefined` as the first enumerator to explicitly represent an empty or uninitialized state, and `Max` as the last enumerator to represent the exclusive upper bound of valid values.
 - Documented sentinel values such as `Undefined` and `Max` must be preserved.
+- Each enum should provide an `EnumToString` overload in its namespace, or a static member overload in its owning class for a nested enum.
+- When provided, the overload must use the signature `FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(EnumType value) noexcept`. A member overload must also be declared `static`. The declaration must pass the enum by value without `const`; the definition must add `const`, following [Declaration, definition, and call](#declaration-definition-and-call).
+- The implementation must use a `switch` with an explicit case for every enumerator, including any sentinels, and return string literals through `std::string_view`. Cases for `Undefined` and `Max` must return `"Undefined"` and `"Max"`, respectively.
+- When the enum has a `Max` sentinel, the function must contain a `static_assert` comparing `U(EnumType::Max)` with its expected numeric value to flag changes requiring a coverage review. Explicitly numbered or sparse enums still require checking every enumerator because additions may leave `Max` unchanged.
+- The `default` case must log the unrecognized numeric value using `LOG_ERROR_NEW` and `U(value)`, following [Logging](logging.md), then return `"Unknown"`.
 - `EnumToString` switches, their `static_assert` coverage checks, and unknown-value logging must stay synchronized whenever an enum changes.
+
+```cpp
+enum class State : int8_t { Undefined, Ready, Max };
+
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(State value) noexcept;
+
+FORCE_INLINE [[nodiscard]] constexpr std::string_view EnumToString(const State value) noexcept
+{
+    static_assert(U(State::Max) == 2, "State::Max has changed, update EnumToString");
+
+    switch (value) {
+    case State::Undefined:
+        return "Undefined";
+    case State::Ready:
+        return "Ready";
+    case State::Max:
+        return "Max";
+    default:
+        LOG_ERROR_NEW("Unknown state: {}", U(value));
+        return "Unknown";
+    }
+}
+```
 
 #### Overriding
 
@@ -162,6 +190,12 @@ public:
         const MSAPI::Protocol::HTTP::Data& data) final;
 };
 ```
+
+## Type aliases
+
+- Type aliases must use `using` instead of `typedef`.
+- Type aliases may be declared at namespace, class, or function scope, but not in the global namespace.
+- Type alias names must follow the `CamelCaseT` naming convention to distinguish them from other types.
 
 ## Variable
 
@@ -185,6 +219,9 @@ const auto result{ square(size + 1) };
 
 ## Friendships
 
+- Access decisions must distinguish a type's declaration visibility from access to the owning abstraction's stored instances. Check whether the public API exposes those instances through references, pointers, containers, or callbacks.
+- When a helper's stored instances remain internal, its ordinary operations should be public methods. Friendship should not be introduced or retained solely to make those methods private.
+- When public API callers can access an instance, operations whose external invocation could violate lifecycle constraints or invariants must not be public. Use private methods with friendship for designated collaborators, or protected methods for an intentional inheritance interface. Restricting access between internal collaborators may also justify private methods and friendship when it protects a concrete invariant.
 - Friendship declarations must appear at the end of the abstraction, as specified in [Class layout](codeStyle.md#class-layout).
 - A `// Comment` must explain the purpose of a friendship.
 - A `// Comment` must mark each place where direct access through friendship occurs.

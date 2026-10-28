@@ -676,7 +676,7 @@ testRunner.Test('Add row via button and directly', () => {
 	testRunner.Assert(addedInputs.length, 26, "New row should have the correct number of inputs");
 	RowChecking.CheckValues(addedInputs, [
 		1, -2, 3, 4, 5, 6, 7, 8, 9, 10, -11, 12, 13, 14, 15, 16, 17, 18, 19, 20.003, -21.002, 22.001, true, "text",
-		`2021-01-01 ${TestRunner.GetHourWithUtcShift(2021, 0, 0)}:00:00.000000000 UTC${TestRunner.UTC}`, "2m 10s"
+		`2021-01-01 ${TestRunner.GetHourWithUtcShift(2021, 1, 1, 0)}:00:00.000000000 UTC${TestRunner.UTC}`, "2m 10s"
 	]);
 	RowChecking.CheckAttributes(newInputs, expectedValues);
 	// Add row with invalid values directly

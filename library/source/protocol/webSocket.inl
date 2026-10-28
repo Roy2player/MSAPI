@@ -423,9 +423,13 @@ private:
  * @param connection Connection to send.
  * @param data Data to send.
  *
+ * @locking Is not required.
+ *
+ * @return True if the complete frame is sent, false on transport failure.
+ *
  * @test Yes.
  */
-FORCE_INLINE void Send(Connection& connection, const Data& data);
+FORCE_INLINE [[nodiscard]] bool Send(Connection& connection, const Data& data);
 
 /**************************
  * @brief Functional data abstraction for pthread safe reserving WebSocket messages. Has dynamic limit for storing
@@ -531,7 +535,7 @@ public:
 
 	/**************************
 	 * @brief Collect WebSocket message from socket connection and call Handler function if message is final or
-	 * completed and Application is running.
+	 * completed and Application is running. Closes connection on close frame.
 	 *
 	 * @attention Continuation messages are stored till their completion or purging due to reaching the storage limit.
 	 * - Storage fragmentation limit is a dynamic limit which guarantee that storage container will not contain more
@@ -547,11 +551,6 @@ public:
 	 * @test Yes.
 	 *
 	 * @todo Add per-connection limit to do not allow one connection to occupy all the available shared limit.
-	 * @todo When Application will be a child of Sever, call Server::CloseConnection(connection) at close opcode
-	 * handling.
-	 *
-	 * @todo Close connection by Server::CloseConnection after response to close message, when Application will be a
-	 * child of Server.
 	 */
 	FORCE_INLINE void Collect(const std::shared_ptr<Connection::Data>& connectionData, Data&& data);
 
@@ -1425,11 +1424,11 @@ FORCE_INLINE [[nodiscard]] bool Data::SplitGenerator<T>::Get()
 Free
 ---------------------------------------------------------------------------------*/
 
-FORCE_INLINE void Send(Connection& connection, const Data& data)
+FORCE_INLINE [[nodiscard]] bool Send(Connection& connection, const Data& data)
 {
 	LOG_PROTOCOL_NEW("Send {} to connection id: {}", data.ToString(), connection.GetId());
 	const std::span<const uint8_t> buffer{ data.GetBuffer() };
-	(void)connection.Send(buffer.data(), buffer.size(), MSG_NOSIGNAL);
+	return connection.Send(buffer.data(), buffer.size(), MSG_NOSIGNAL);
 }
 
 /*---------------------------------------------------------------------------------
@@ -1574,15 +1573,16 @@ FORCE_INLINE void IHandler::Collect(const std::shared_ptr<Connection::Data>& con
 
 		data.m_buffer[0] |= 0b00010000; // Set RSV3 to signal that it is a response to close message
 		data.ReverseMaskingInDataWithSmallPayload();
-		Send(connectionData->GetConnection(), data);
-		// TODO: When Application will be a child of Sever, call Server::CloseConnection(connection) here
+		auto& connection{ connectionData->GetConnection() };
+		(void)Send(connection, data);
+		connection.Close();
 		return;
 	}
 	case Data::Opcode::Ping: {
 		data.m_buffer[0] ^= static_cast<uint8_t>(Data::Opcode::Ping);
 		data.m_buffer[0] |= static_cast<uint8_t>(Data::Opcode::Pong);
 		data.ReverseMaskingInDataWithSmallPayload();
-		Send(connectionData->GetConnection(), data);
+		(void)Send(connectionData->GetConnection(), data);
 		return;
 	}
 	case Data::Opcode::Pong:
