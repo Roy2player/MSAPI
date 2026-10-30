@@ -32,47 +32,47 @@ testRunner.Test('Cast input to timer and check', () => {
 
 	TestRunner.Step('Set value by method');
 	Timer.SetValue(input, 1n);
-	testRunner.Assert(
-		input.value, `1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 0)}:00:00.000000001 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input.value,
+		`1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 1, 0)}:00:00.000000001 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input.getAttribute('timestamp'), '1');
 	testRunner.Assert(input.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input.classList.contains('invalid'), false);
 
 	Timer.SetValue(input, 0n);
-	testRunner.Assert(
-		input.value, `1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 0)}:00:00.000000000 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input.value,
+		`1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 1, 0)}:00:00.000000000 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input.getAttribute('timestamp'), '0');
 	testRunner.Assert(input.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(/* cannot be empty by default */ input.classList.contains('invalid'), true);
 
 	Timer.SetValue(input, -13n);
-	testRunner.Assert(
-		input.value, `1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 0)}:00:00.000000000 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input.value,
+		`1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 1, 0)}:00:00.000000000 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input.getAttribute('timestamp'), '0');
 	testRunner.Assert(input.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input.classList.contains('invalid'), true);
 
 	Timer.SetValue(input, 1741120856012345678n);
-	testRunner.Assert(
-		input.value, `2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input.value,
+		`2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 4, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input.getAttribute('timestamp'), '1741120856012345678');
 	testRunner.Assert(input.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input.classList.contains('invalid'), false);
 
 	input.setAttribute('canBeEmpty', 'true');
 	Timer.SetValue(input, -12353n);
-	testRunner.Assert(
-		input.value, `1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 0)}:00:00.000000000 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input.value,
+		`1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 1, 0)}:00:00.000000000 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input.getAttribute('timestamp'), '0');
 	testRunner.Assert(input.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input.classList.contains('invalid'), false);
 
 	TestRunner.Step('Set value by input');
-	input.value = `1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 0)}:00:00.000000001 DFJG;KDLJGDLKGJ`;
+	input.value = `1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 1, 0)}:00:00.000000001 DFJG;KDLJGDLKGJ`;
 	input.dispatchEvent(new Event("input", { bubbles : true }));
 	body.dispatchEvent(new Event("click", { bubbles : true }));
-	testRunner.Assert(
-		input.value, `1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 0)}:00:00.000000001 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input.value,
+		`1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 1, 0)}:00:00.000000001 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input.getAttribute('timestamp'), '1');
 	testRunner.Assert(input.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input.classList.contains('invalid'), false);
@@ -91,11 +91,11 @@ testRunner.Test('Cast input to timer and check', () => {
 	testRunner.Assert(input2.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input2.classList.contains('invalid'), false);
 
-	input2.value = `2025_03_04 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)} 40 56-012345678 UTC+3`;
+	input2.value = `2025_03_04 ${TestRunner.GetHourWithUtcShift(2025, 3, 4, 20)} 40 56-012345678 UTC+3`;
 	input2.dispatchEvent(new Event("input", { bubbles : true }));
 	body.dispatchEvent(new Event("click", { bubbles : true }));
-	testRunner.Assert(
-		input2.value, `2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input2.value,
+		`2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 4, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input2.getAttribute('timestamp'), '1741120856012345678');
 	testRunner.Assert(input2.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input2.classList.contains('invalid'), false);
@@ -103,8 +103,8 @@ testRunner.Test('Cast input to timer and check', () => {
 	input2.value = ``;
 	input2.dispatchEvent(new Event("input", { bubbles : true }));
 	body.dispatchEvent(new Event("click", { bubbles : true }));
-	testRunner.Assert(
-		input2.value, `2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input2.value,
+		`2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 4, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input2.getAttribute('timestamp'), '1741120856012345678');
 	testRunner.Assert(input2.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input2.classList.contains('invalid'), false);
@@ -112,8 +112,8 @@ testRunner.Test('Cast input to timer and check', () => {
 	input2.value = `1969-01-01 00:00:00.000000000 UTC-1`;
 	input2.dispatchEvent(new Event("input", { bubbles : true }));
 	body.dispatchEvent(new Event("click", { bubbles : true }));
-	testRunner.Assert(
-		input2.value, `2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input2.value,
+		`2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 4, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input2.getAttribute('timestamp'), '1741120856012345678');
 	testRunner.Assert(input2.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input2.classList.contains('invalid'), false);
@@ -121,8 +121,8 @@ testRunner.Test('Cast input to timer and check', () => {
 	input2.value = `d`;
 	input2.dispatchEvent(new Event("input", { bubbles : true }));
 	body.dispatchEvent(new Event("click", { bubbles : true }));
-	testRunner.Assert(
-		input2.value, `2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input2.value,
+		`2025-03-04 ${TestRunner.GetHourWithUtcShift(2025, 3, 4, 20)}:40:56.012345678 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input2.getAttribute('timestamp'), '1741120856012345678');
 	testRunner.Assert(input2.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input2.classList.contains('invalid'), false);
@@ -130,8 +130,8 @@ testRunner.Test('Cast input to timer and check', () => {
 	input2.value = `1970-01-01 00:00:00.000000000 UTC-1`;
 	input2.dispatchEvent(new Event("input", { bubbles : true }));
 	body.dispatchEvent(new Event("click", { bubbles : true }));
-	testRunner.Assert(
-		input2.value, `1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 0)}:00:00.000000000 UTC${TestRunner.UTC}`);
+	testRunner.Assert(input2.value,
+		`1970-01-01 ${TestRunner.GetHourWithUtcShift(1970, 1, 1, 0)}:00:00.000000000 UTC${TestRunner.UTC}`);
 	testRunner.Assert(input2.getAttribute('timestamp'), '0');
 	testRunner.Assert(input2.getAttribute('utc'), TestRunner.UTC);
 	testRunner.Assert(input2.classList.contains('invalid'), true);
@@ -209,6 +209,36 @@ testRunner.Test('Show the timer mask when an empty editable input receives focus
 	testRunner.Assert(editable.getAttribute('timestamp'), timestamp.toString());
 	input.remove();
 	editable.remove();
+});
+
+testRunner.Test('Use the timestamp date for daylight-saving expectations', () => {
+	const timezone = process.env.TZ;
+	const currentUTC = TestRunner.currentUTC;
+	try {
+		process.env.TZ = 'Europe/Stockholm';
+		const cases = [
+			{ month : 1, day : 21, hour : 0, expected : '01' }, { month : 4, day : 21, hour : 0, expected : '02' },
+			{ month : 3, day : 30, hour : 0, expected : '01' }, { month : 3, day : 30, hour : 1, expected : '03' },
+			{ month : 10, day : 26, hour : 0, expected : '02' }, { month : 10, day : 26, hour : 1, expected : '02' }
+		];
+		// Expectations must be identical whether the tests run during standard time or daylight-saving time.
+		for (const offset of [1, 2]) {
+			TestRunner.currentUTC = offset;
+			for (const { month, day, hour, expected } of cases) {
+				testRunner.Assert(TestRunner.GetHourWithUtcShift(2025, month, day, hour), expected,
+					`UTC date 2025-${month}-${day} at ${hour}:00 with current offset ${offset}`);
+			}
+		}
+	}
+	finally {
+		TestRunner.currentUTC = currentUTC;
+		if (timezone === undefined) {
+			delete process.env.TZ;
+		}
+		else {
+			process.env.TZ = timezone;
+		}
+	}
 });
 
 testRunner.Run();

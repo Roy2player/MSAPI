@@ -38,66 +38,74 @@ Manager::Manager()
 	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("installedApp"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->FillInstalledApps(out, single);
-		});
+		},
+		/*terminationHandler=*/{});
 	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("getMetadata"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->FillMetadata(out, single);
-		});
+		},
+		/*terminationHandler=*/{});
 	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("register"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->Register(out, single);
-		});
+		},
+		/*terminationHandler=*/{});
 	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("login"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->Login(out, single);
-		});
+		},
+		/*terminationHandler=*/{});
 	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("logout"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->Logout(out, single);
-		});
+		},
+		/*terminationHandler=*/{});
 	m_singlesDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("modifyAccount"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->ModifyAccount(out, single);
-		});
+		},
+		/*terminationHandler=*/{});
 	m_singlesDistributor.SetHandlerWithPermissions(
 		MSAPI::Helper::StringHash32Uint("createApp"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->CreateApp(out, single);
 		},
-		MSAPI::Authorization::Base::Grade::User);
+		/*terminationHandler=*/{}, MSAPI::Authorization::Base::Grade::User);
 	m_singlesDistributor.SetHandlerWithPermissions(
 		MSAPI::Helper::StringHash32Uint("pause"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->PauseApp(out, single);
 		},
-		MSAPI::Authorization::Base::Grade::User);
+		/*terminationHandler=*/{}, MSAPI::Authorization::Base::Grade::User);
 	m_singlesDistributor.SetHandlerWithPermissions(
 		MSAPI::Helper::StringHash32Uint("run"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->RunApp(out, single);
 		},
-		MSAPI::Authorization::Base::Grade::User);
+		/*terminationHandler=*/{}, MSAPI::Authorization::Base::Grade::User);
 	m_singlesDistributor.SetHandlerWithPermissions(
 		MSAPI::Helper::StringHash32Uint("delete"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->DeleteApp(out, single);
 		},
-		MSAPI::Authorization::Base::Grade::User);
+		/*terminationHandler=*/{}, MSAPI::Authorization::Base::Grade::User);
 	m_singlesDistributor.SetHandlerWithPermissions(
 		MSAPI::Helper::StringHash32Uint("modify"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Single& single) {
 			return this->ModifyApp(out, single);
 		},
-		MSAPI::Authorization::Base::Grade::User);
+		/*terminationHandler=*/{}, MSAPI::Authorization::Base::Grade::User);
 
 	m_streamsDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("createdApps"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Stream& stream) {
 			return this->FillCreatedApps(out, stream);
-		});
+		},
+		/*terminationHandler=*/{});
 	m_streamsDistributor.SetHandlerWithoutPermissions(MSAPI::Helper::StringHash32Uint("parameters"),
 		[this](std::string& out, const MSAPI::Protocol::WebSocket::Events::Stream& stream) {
 			return this->FillAppParameters(out, stream);
-		});
+		},
+		/*terminationHandler=*/{});
 
 	std::string path;
 	path.resize(512);
@@ -207,10 +215,10 @@ void Manager::HandleWebSocket(
 
 	switch (static_cast<MSAPI::Protocol::WebSocket::Events::Type>(*type)) {
 	case MSAPI::Protocol::WebSocket::Events::Type::Single:
-		m_singlesDistributor.Collect(*uid, *event, connectionData, std::move(json));
+		(void)m_singlesDistributor.Collect(*uid, *event, connectionData, std::move(json));
 		return;
 	case MSAPI::Protocol::WebSocket::Events::Type::Stream:
-		m_streamsDistributor.Collect(*uid, *event, connectionData, std::move(json));
+		(void)m_streamsDistributor.Collect(*uid, *event, connectionData, std::move(json));
 		return;
 	default:
 		LOG_WARNING_NEW("Unexpected type event is reserved {}",
@@ -342,10 +350,10 @@ void Manager::HandleRunRequest()
 
 void Manager::HandlePauseRequest()
 {
-	MSAPI_HANDLE_PAUSE_REQUEST_PRESET
+	MSAPI_HANDLE_PAUSE_REQUEST_PRESET;
 
-	m_singlesDistributor.FailActiveEvents("Manager is paused");
-	m_streamsDistributor.FailActiveEvents("Manager is paused");
+	(void)m_singlesDistributor.FailActiveEvents("Manager is paused");
+	(void)m_streamsDistributor.FailActiveEvents("Manager is paused");
 
 	{
 		const MSAPI::Lock::AtomicRW::Guard<MSAPI::Lock::WRITE> _{ m_portToCreatedAppLock };
@@ -708,8 +716,9 @@ void Manager::HandleMetadata(
 		parseTables(constParameters);
 	}
 
-	m_singlesDistributor.CheckDelayed({ MSAPI::Helper::StringHash32Uint("getMetadata"),
-										  MSAPI::Protocol::WebSocket::Events::IdentityFilter{ createdAppData->hash } },
+	(void)m_singlesDistributor.CheckDelayed(
+		{ MSAPI::Helper::StringHash32Uint("getMetadata"),
+			MSAPI::Protocol::WebSocket::Events::IdentityFilter{ createdAppData->hash } },
 		metadata);
 }
 

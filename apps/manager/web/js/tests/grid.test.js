@@ -812,7 +812,7 @@ testRunner.Test('Create and modify grid', async () => {
 		[select_parameter_2] : "Paused",
 		[string_parameter] : "Here is the string parameter, absolutely random thing to display",
 		[timer_parameter] :
-			`2025-03-19 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)}:04:06.123456789 UTC${TestRunner.UTC}`,
+			`2025-03-19 ${TestRunner.GetHourWithUtcShift(2025, 3, 19, 20)}:04:06.123456789 UTC${TestRunner.UTC}`,
 		[duration_seconds_parameter_2] : "106751d"
 	} ]);
 
@@ -909,7 +909,7 @@ testRunner.Test('Create and modify grid', async () => {
 			[select_parameter_2] : "Paused",
 			[string_parameter] : "Here is the string parameter, absolutely random thing to display",
 			[timer_parameter] :
-				`2025-03-19 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)}:04:06.123456789 UTC${TestRunner.UTC}`,
+				`2025-03-19 ${TestRunner.GetHourWithUtcShift(2025, 3, 19, 20)}:04:06.123456789 UTC${TestRunner.UTC}`,
 			[duration_seconds_parameter_2] : "106751d"
 		},
 		{
@@ -944,7 +944,7 @@ testRunner.Test('Create and modify grid', async () => {
 			[select_parameter_2] : "Running",
 			[string_parameter] : "Here is the string parameter, absolutely random thing to display",
 			[timer_parameter] :
-				`2261-03-21 ${TestRunner.GetHourWithUtcShift(2261, 3, 19)}:22:43.000000001 UTC${TestRunner.UTC}`,
+				`2261-03-21 ${TestRunner.GetHourWithUtcShift(2261, 3, 21, 19)}:22:43.000000001 UTC${TestRunner.UTC}`,
 			[duration_seconds_parameter_2] : "106750d 23h 59m 59s 999l 999u 999n"
 		}
 	]);
@@ -1013,7 +1013,7 @@ testRunner.Test('Create and modify grid', async () => {
 			[select_parameter_2] : "Paused",
 			[string_parameter] : "Here is the string parameter, absolutely random thing to display",
 			[timer_parameter] :
-				`2025-03-19 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)}:04:06.123456789 UTC${TestRunner.UTC}`,
+				`2025-03-19 ${TestRunner.GetHourWithUtcShift(2025, 3, 19, 20)}:04:06.123456789 UTC${TestRunner.UTC}`,
 			[duration_seconds_parameter_2] : "106751d"
 		},
 		{
@@ -1049,7 +1049,7 @@ testRunner.Test('Create and modify grid', async () => {
 			[select_parameter_2] : "3 - not found",
 			[string_parameter] : "",
 			[timer_parameter] :
-				`2261-03-21 ${TestRunner.GetHourWithUtcShift(2261, 3, 19)}:22:43.000000002 UTC${TestRunner.UTC}`,
+				`2261-03-21 ${TestRunner.GetHourWithUtcShift(2261, 3, 21, 19)}:22:43.000000002 UTC${TestRunner.UTC}`,
 			[duration_seconds_parameter_2] : "106750d 23h 59m 59s 10l 999n"
 		}
 	]);
@@ -1086,7 +1086,7 @@ testRunner.Test('Create and modify grid', async () => {
 		[select_parameter_2] : "Paused",
 		[string_parameter] : "Here is the string parameter, absolutely random thing to display",
 		[timer_parameter] :
-			`2025-03-19 ${TestRunner.GetHourWithUtcShift(2025, 3, 20)}:04:06.123456789 UTC${TestRunner.UTC}`,
+			`2025-03-19 ${TestRunner.GetHourWithUtcShift(2025, 3, 19, 20)}:04:06.123456789 UTC${TestRunner.UTC}`,
 		[duration_seconds_parameter_2] : "106751d"
 	} ]);
 	testRunner.Assert(grid.HasRow({ [scalar_parameter] : -9223372036854775807n }), false);
@@ -1177,11 +1177,11 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 			[bool_parameter] : i % 2 == 1 ? "true" : "false",
 			[scalar_parameter] : `${- 1n + BigInt(i)}`,
 			[string_parameter] : i % 2 == 1 ? "True" : "False",
-			[timer_parameter] : `2025-04-21 ${TestRunner.GetHourWithUtcShift(2025, 4, 0)}:00:00.${
+			[timer_parameter] : `2025-04-21 ${TestRunner.GetHourWithUtcShift(2025, 4, 21, 0)}:00:00.${
 				String(i).padStart(9, '0')} UTC${TestRunner.UTC}`
 		});
 	}
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Click on the button and check that scalar parameter is incremented');
 	testRunner.Assert(getEventListeners(incrementButton).click.length, data.length,
@@ -1222,7 +1222,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	for (let i = 0; i < data.length; i++) {
 		data[i][optional_scalar_parameter] = "";
 	}
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Add column in the beginning of the grid');
 	grid.AddColumn({ id : float_point_parameter, order : 0 });
@@ -1234,7 +1234,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	for (let i = 0; i < data.length; i++) {
 		data[i][float_point_parameter] = "";
 	}
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Update rows with new columns');
 	for (let i = 0; i < data.length; i++) {
@@ -1266,7 +1266,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	for (let i = 0; i < data.length; i++) {
 		delete data[i][float_point_parameter];
 	}
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Remove column from the end of the grid');
 	grid.RemoveColumn({ order : 4 });
@@ -1277,7 +1277,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	for (let i = 0; i < data.length; i++) {
 		delete data[i][optional_scalar_parameter];
 	}
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Update rows');
 	for (let i = 0; i < data.length; i++) {
@@ -1305,7 +1305,7 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 	for (let i = 0; i < data.length; i++) {
 		data[i][optional_scalar_parameter] = `${- 10 + i}`;
 	}
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Move columns');
 	grid.MoveColumn({ order : 0, newOrder : 1 });
@@ -1313,25 +1313,25 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 		{ name : 'Active minimum trend strike mode', order : 0 }, { name : 'Timer', order : 1 },
 		{ name : 'Gateway id', order : 2 }, { name : 'Object identifier', order : 3 }, { name : 'Name', order : 4 }
 	]);
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 	grid.MoveColumn({ order : 0, newOrder : 4 });
 	GridChecking.CheckColumnsInOrder(grid, [
 		{ name : 'Timer', order : 0 }, { name : 'Gateway id', order : 1 }, { name : 'Object identifier', order : 2 },
 		{ name : 'Name', order : 3 }, { name : 'Active minimum trend strike mode', order : 4 }
 	]);
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 	grid.MoveColumn({ order : 4, newOrder : 0 });
 	GridChecking.CheckColumnsInOrder(grid, [
 		{ name : 'Active minimum trend strike mode', order : 0 }, { name : 'Timer', order : 1 },
 		{ name : 'Gateway id', order : 2 }, { name : 'Object identifier', order : 3 }, { name : 'Name', order : 4 }
 	]);
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 	grid.MoveColumn({ order : 2, newOrder : 1 });
 	GridChecking.CheckColumnsInOrder(grid, [
 		{ name : 'Active minimum trend strike mode', order : 0 }, { name : 'Gateway id', order : 1 },
 		{ name : 'Timer', order : 2 }, { name : 'Object identifier', order : 3 }, { name : 'Name', order : 4 }
 	]);
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 
 	TestRunner.Step('Update rows with moved columns');
 	for (let i = 0; i < data.length; i++) {
@@ -1373,13 +1373,13 @@ testRunner.Test('Test post add row and column functions, manage rows and columns
 			[bool_parameter] : i % 2 == 1 ? "true" : "false",
 			[scalar_parameter] : `${- 1n + BigInt(i)}`,
 			[string_parameter] : i % 2 == 1 ? "True" : "False",
-			[timer_parameter] : `2025-04-21 ${TestRunner.GetHourWithUtcShift(2025, 4, 0)}:00:00.${
+			[timer_parameter] : `2025-04-21 ${TestRunner.GetHourWithUtcShift(2025, 4, 21, 0)}:00:00.${
 				String(i).padStart(9, '0')} UTC${TestRunner.UTC}`,
 			[optional_scalar_parameter] : `${- 10 * i}`
 		});
 	}
 	GridChecking.CheckVisibleRowIdentity(grid, data.length);
-	GridChecking.CheckRows(grid, data);
+	await GridChecking.CheckRows(grid, data);
 
 	{
 		TestRunner.Step('Clear rows from the grid');
@@ -1489,7 +1489,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 			[bool_parameter] : i % 2 == 1 ? "true" : "false",
 			[scalar_parameter] : `${- 5n + BigInt(i)}`,
 			[string_parameter] : dictionary.get(i),
-			[timer_parameter] : `2025-04-21 ${TestRunner.GetHourWithUtcShift(2025, 4, 0)}:00:00.${
+			[timer_parameter] : `2025-04-21 ${TestRunner.GetHourWithUtcShift(2025, 4, 21, 0)}:00:00.${
 				String(i).padStart(9, '0')} UTC${TestRunner.UTC}`,
 			[float_point_parameter] : `${- 10.001 + i}`,
 			[optional_scalar_parameter] : i % 3 == 0 ? "" : `${- 10 + i}`
@@ -1790,7 +1790,7 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 				[bool_parameter] : i % 2 == 1 ? "true" : "false",
 				[scalar_parameter] : `${- 5n + BigInt(i)}`,
 				[string_parameter] : dictionary.get(i),
-				[timer_parameter] : `2025-04-21 ${TestRunner.GetHourWithUtcShift(2025, 4, 0)}:00:00.${
+				[timer_parameter] : `2025-04-21 ${TestRunner.GetHourWithUtcShift(2025, 4, 21, 0)}:00:00.${
 					String(i + 20).padStart(9, '0')} UTC${TestRunner.UTC}`,
 				[float_point_parameter] : `${- 10.001 + i}`,
 				[optional_scalar_parameter] : i % 3 == 0 ? "" : `${- 10 + i}`

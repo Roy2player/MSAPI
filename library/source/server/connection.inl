@@ -344,6 +344,15 @@ public:
 	FORCE_INLINE [[nodiscard]] uint64_t GetId() const noexcept;
 
 	/**************************
+	 * @locking Is not required.
+	 *
+	 * @return True if the connection is usable and closure has not started, false otherwise.
+	 *
+	 * @test Yes.
+	 */
+	FORCE_INLINE [[nodiscard]] bool IsActive() const noexcept;
+
+	/**************************
 	 * @brief Shutdown and close connection. Only the first call closes the connection, next calls do nothing.
 	 *
 	 * @locking Lock m_recvLock and m_sendLock inside.
@@ -570,6 +579,11 @@ FORCE_INLINE void Connection::SetSend(T&& f) noexcept
 }
 
 FORCE_INLINE [[nodiscard]] uint64_t Connection::GetId() const noexcept { return m_id; }
+
+FORCE_INLINE [[nodiscard]] bool Connection::IsActive() const noexcept
+{
+	return !m_isClosed.load(std::memory_order_relaxed) && m_isUsable.load(std::memory_order_relaxed);
+}
 
 FORCE_INLINE void Connection::Close() noexcept
 {

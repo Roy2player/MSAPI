@@ -9,12 +9,13 @@ description: "Locking patterns and thread-safety requirements"
 
 - Concurrently available data must be protected by the MSAPI::Lock.
 - Locks should be held as briefly and as precisely as possible, with their scope minimized within the required synchronization guarantees.
+- Prefer transferring ownership of shared objects to local processing containers under a lock, then processing them outside the critical section, when exclusive ownership can eliminate concurrent access and reduce lock contention.
 - Performance considerations must not leave shared data unprotected or split a critical section that requires atomicity. The atomicity of such a section must be preserved.
 - RAII guards are preferred over manual locking and unlocking.
 - Fields whose accesses are expected to be protected together must share one common lock.
 - An abstraction should not protect each method internally when its methods are expected to be accessed together. In that case, synchronization should be performed outside the abstraction using its lock.
-- When internal locking is chosen, the reasons should be described in the abstraction's `@concurrency` tag.
-- Each call to an internally locking abstraction must have the comment `// Read/Write lock inside`.
+- Concurrency documentation must follow [Doxygen Documentation](doxygenDocumentation.md).
+- Each call to an internally locking abstraction must have the comment `// Read/Write lock inside.`.
 
 ## Lock fields and constness
 

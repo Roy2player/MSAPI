@@ -18,6 +18,7 @@ tests/integration/applicationHandlers/build/TestApplicationHandlers
 tests/integration/objectProtocol/build/TestObjectProtocol
 tests/integration/http/build/TestHttp
 tests/integration/webSocketProtocol/build/TestWebSocketProtocol
+tests/integration/webSocketEventsTransport/build/TestWebSocketEventsTransport
 tests/unit/application/build/UnitTestApplication
 tests/unit/dataHeader/build/UnitTestDataHeader
 tests/unit/helper/build/UnitTestHelper
@@ -38,3 +39,4 @@ tests/unit/lock/build/UnitTestLock
 tests/unit/server/build/UnitTestServer
 tests/unit/connection/build/UnitTestConnection
 tests/unit/http/build/UnitTestHttp
+tests/unit/webSocketEvents/build/UnitTestWebSocketEvents

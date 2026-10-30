@@ -130,6 +130,18 @@ public:
 
 		return {};
 	}
+
+	FORCE_INLINE void ClearData(const std::shared_ptr<MSAPI::Connection::Data>& connectionData)
+	{
+		{
+			MSAPI::Lock::Atomic::Guard _{ m_webSocketDataLock };
+			m_connectionDataToWebSocketData.erase(connectionData);
+		}
+		{
+			MSAPI::Lock::Atomic::Guard _{ m_httpDataLock };
+			m_connectionDataToHttpData.erase(connectionData);
+		}
+	}
 };
 
 #endif // MSAPI_INTEGRATION_TEST_WEBSOCKET_NODE_INL

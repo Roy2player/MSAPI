@@ -22,6 +22,7 @@
  * 3. Send completes short writes and retries EINTR without losing progress;
  * 4. Send reports failure after partial progress and rejects further sends;
  * 5. Send rejects zero and oversized counts.
+ * 6. IsActive reports inactivity after explicit closure or transport failure.
  */
 
 #ifndef MSAPI_UNIT_TEST_CONNECTION_INL
@@ -65,6 +66,7 @@ FORCE_INLINE [[nodiscard]] bool Connection()
 		RETURN_IF_FALSE(t.Assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0, "Socket pair is created"));
 		{
 			const MSAPI::Connection connection{ sockets[0] };
+			RETURN_IF_FALSE(t.Assert(connection.IsActive(), true, "New connection is active"));
 		}
 		RETURN_IF_FALSE(
 			t.Assert(fcntl(sockets[0], F_GETFD) == -1 && errno == EBADF, true, "Destructor closes descriptor"));
@@ -79,9 +81,12 @@ FORCE_INLINE [[nodiscard]] bool Connection()
 		int32_t sockets[2]{};
 		RETURN_IF_FALSE(t.Assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0, "Socket pair is created"));
 		auto connection{ std::make_unique<MSAPI::Connection>(sockets[0]) };
+		RETURN_IF_FALSE(t.Assert(connection->IsActive(), true, "Connection is active before Close"));
 		connection->Close();
+		RETURN_IF_FALSE(t.Assert(connection->IsActive(), false, "Close marks connection as inactive"));
 		RETURN_IF_FALSE(t.Assert(fcntl(sockets[0], F_GETFD) == -1 && errno == EBADF, true, "Close closes descriptor"));
 		connection->Close();
+		RETURN_IF_FALSE(t.Assert(connection->IsActive(), false, "Repeated Close preserves inactive state"));
 
 		// The lowest free number is taken, which is the number of the closed descriptor
 		const auto reused{ dup(sockets[1]) };
@@ -122,6 +127,7 @@ FORCE_INLINE [[nodiscard]] bool Connection()
 		RETURN_IF_FALSE(t.Assert(output, std::string{ payload }, "Short writes preserve complete payload"));
 		RETURN_IF_FALSE(t.Assert(attempts, uint64_t{ 4 }, "EINTR retries remaining bytes"));
 		RETURN_IF_FALSE(t.Assert(argumentsCorrect, true, "Every attempt receives correct buffer, size and flags"));
+		RETURN_IF_FALSE(t.Assert(connection.IsActive(), true, "Successful sends preserve active state"));
 	}
 
 	// 4. A failure after partial progress must not look like a successful send.
@@ -140,8 +146,12 @@ FORCE_INLINE [[nodiscard]] bool Connection()
 			return -1;
 		});
 		RETURN_IF_FALSE(t.Assert(connection.Send("abcd", 4, MSG_NOSIGNAL), false, "Partial failure returns false"));
+		RETURN_IF_FALSE(t.Assert(connection.IsActive(), false, "Transport failure marks connection as inactive"));
 		RETURN_IF_FALSE(t.Assert(connection.Send("abcd", 4, MSG_NOSIGNAL), false, "Failed sender is inactive"));
 		RETURN_IF_FALSE(t.Assert(attempts, uint64_t{ 2 }, "Inactive sender is not called again"));
+		RETURN_IF_FALSE(t.Assert(fcntl(sockets[0], F_GETFD) != -1, true, "Failed connection retains its descriptor"));
+		connection.Close();
+		RETURN_IF_FALSE(t.Assert(connection.IsActive(), false, "Close preserves failed connection's inactive state"));
 	}
 
 	// 5. Zero and counts exceeding the remaining buffer invalidate the sender.
@@ -156,6 +166,7 @@ FORCE_INLINE [[nodiscard]] bool Connection()
 			return result;
 		});
 		RETURN_IF_FALSE(t.Assert(connection.Send("abcd", 4, MSG_NOSIGNAL), false, "Invalid count returns false"));
+		RETURN_IF_FALSE(t.Assert(connection.IsActive(), false, "Invalid count marks connection as inactive"));
 		RETURN_IF_FALSE(t.Assert(connection.Send("abcd", 4, MSG_NOSIGNAL), false, "Invalid sender is inactive"));
 		RETURN_IF_FALSE(t.Assert(attempts, uint64_t{ 1 }, "Invalid sender is not called again"));
 	}
