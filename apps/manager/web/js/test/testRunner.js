@@ -161,14 +161,19 @@ class TestRunner {
 
 	static currentUTC = (new Date).getTimezoneOffset() / 60 * -1;
 	static UTC = TestRunner.currentUTC >= 0 ? `+${TestRunner.currentUTC}` : `${TestRunner.currentUTC}`;
-	static GetHourWithUtcShift = (year, month, utcHour) => {
-		let shift = utcHour + TestRunner.currentUTC;
-
-		if ((new Date(year, month - 1, 4)).getTimezoneOffset() / 60 * -1 < TestRunner.currentUTC) {
-			shift -= 1;
-		}
-
-		return String(shift).padStart(2, '0');
+	/**************************
+	 * @param year UTC year.
+	 * @param month UTC month, from 1 to 12.
+	 * @param day UTC day of the month.
+	 * @param utcHour UTC hour.
+	 *
+	 * @return Two-digit local hour for the supplied instant.
+	 *
+	 * @test Yes.
+	 */
+	static GetHourWithUtcShift = (year, month, day, utcHour) => {
+		const date = new Date(Date.UTC(year, month - 1, day, utcHour));
+		return String(date.getHours()).padStart(2, '0');
 	};
 };
 

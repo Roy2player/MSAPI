@@ -45,9 +45,9 @@ return SendResponse(connection, response, length);
 - Each static field must have a comment explaining its purpose and usage.
 
 ```cpp
-// Save policy: keep objects in the container after saving
+// Save policy: keep objects in the container after saving.
 static inline constexpr bool REMAIN{ true };
-// Save policy: clear the container after saving
+// Save policy: clear the container after saving.
 static inline constexpr bool CLEAR{};
 ```
 
@@ -74,7 +74,7 @@ public:
     };
 
 public:
-    // Save policy: keep objects in the container after saving
+    // Save policy: keep objects in the container after saving.
     static inline constexpr bool REMAIN{ true };
 
 private:
@@ -85,7 +85,7 @@ public:
     FORCE_INLINE explicit Single(std::string_view dir, std::string_view name) noexcept;
 
 protected:
-    // Comment explaining why it is protected, because that is not obvious
+    // Comment explaining why it is protected, because that is not obvious.
     FORCE_INLINE virtual ~Single() noexcept;
 
 public:
