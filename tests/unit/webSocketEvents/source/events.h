@@ -218,6 +218,8 @@ FORCE_INLINE [[nodiscard]] std::shared_ptr<MSAPI::Connection::Data> MakeEventsCo
 		return {};
 	}
 
+	// All sends are intercepted, so the peer descriptor is unused.
+	(void)close(sockets[1]);
 	auto connection{ std::make_unique<MSAPI::Connection>(sockets[0]) };
 	connection->SetSend([&messages](int32_t, const void* buffer, const uint64_t size, int32_t) -> int64_t {
 		const auto* bytes{ static_cast<const uint8_t*>(buffer) };
