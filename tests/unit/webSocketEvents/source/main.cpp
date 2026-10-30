@@ -17,7 +17,7 @@
  */
 
 #include "../../../../library/source/help/io.inl"
-#include "events.inl"
+#include "events.h"
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {

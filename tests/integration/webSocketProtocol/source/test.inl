@@ -49,8 +49,8 @@
  * 2.14. Send pong message with small payload
  * 2.15. Try to create ping message with payload greater than 125 bytes
  * 2.16. Try to create pong message with payload greater than 125 bytes
- * 2.17. Send empty close message
- * 2.18. Send close message with small payload
+ * 2.17. Send empty close message and verify its reply on the transport
+ * 2.18. Send close message with small payload and verify its reply on the transport
  * 2.19. Send small fragmented message with different steps size
  * 2.20. Send medium fragmented message with different steps size
  * 2.21. Send large fragmented message with different steps size
@@ -847,8 +847,36 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 									 &doClientConnect](MSAPI::Protocol::WebSocket::Data& message) -> bool {
 			const auto opcode{ message.GetOpcode() };
 
+			std::shared_ptr<std::vector<uint8_t>> closeResponse;
+			std::shared_ptr<MSAPI::Lock::Atomic> closeResponseLock;
+			int8_t responseHeaderSize [[indeterminate]];
+			uint64_t responseSize [[indeterminate]];
 			// Close message is not provided via callback
-			if (opcode != MSAPI::Protocol::WebSocket::Data::Opcode::Close) {
+			if (opcode == MSAPI::Protocol::WebSocket::Data::Opcode::Close) {
+				responseHeaderSize = MSAPI::Protocol::WebSocket::Data::GetExpectedHeaderSize(
+					message.GetPayloadSize(), !message.IsMasked());
+				responseSize = static_cast<uint64_t>(responseHeaderSize) + message.GetPayloadSize();
+				// Retain capture storage in the sender even if this check returns before the receive thread finishes.
+				closeResponse = std::make_shared<std::vector<uint8_t>>();
+				closeResponse->reserve(responseSize);
+				closeResponseLock = std::make_shared<MSAPI::Lock::Atomic>();
+				// Read/Write lock inside.
+				STCCD->GetConnection().SetSend(
+					[closeResponse, closeResponseLock, responseSize, hasCapturedResponse = false](const int32_t fd,
+						const void* const buffer, const uint64_t size, const int32_t flags) mutable -> int64_t {
+						const auto result{ static_cast<int64_t>(send(fd, buffer, size, flags)) };
+						if (result > 0 && !hasCapturedResponse) {
+							const auto* bytes{ static_cast<const uint8_t*>(buffer) };
+							const MSAPI::Lock::Atomic::Guard _{ *closeResponseLock };
+							closeResponse->insert(closeResponse->end(), bytes, bytes + result);
+							// Freeze capture before the test can observe the complete size under this lock.
+							hasCapturedResponse = closeResponse->size() >= responseSize;
+						}
+
+						return result;
+					});
+			}
+			else {
 				// Ping message sends pong back which is provided via callback
 				if (opcode == MSAPI::Protocol::WebSocket::Data::Opcode::Ping) {
 					++expectedClientWebSocketDataSize;
@@ -907,17 +935,40 @@ FORCE_INLINE [[nodiscard]] bool WebSocketProtocol()
 					message.GetPayload(), clientPortStr));
 			}
 			else if (opcode == MSAPI::Protocol::WebSocket::Data::Opcode::Close) {
-				auto& clientLastMessage{ clientWebSocketData->back() };
-				RETURN_IF_FALSE(t.Assert(clientLastMessage.GetMaskingKey() == 0, message.GetMaskingKey() != 0,
-					std::format("Masking is reversed for answer on close {}", clientPortStr)));
-				if (message.IsMasked()) {
-					// Collected message always unmasked, checkMessage expect masked payload for masked message
-					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(message, /*mask=*/0);
+				RETURN_IF_FALSE(t.Wait(
+					50000,
+					[&closeResponse, &closeResponseLock]() -> uint64_t {
+						const MSAPI::Lock::Atomic::Guard _{ *closeResponseLock };
+						return closeResponse->size();
+					},
+					responseSize, std::format("Server sends the complete Close reply for client {}", clientPortStr)));
+				auto& response{ *closeResponse };
+				// RSV3 marks a Close reply in this protocol; the other flags and opcode are preserved.
+				RETURN_IF_FALSE(t.Assert(response[0], static_cast<uint8_t>(message.GetBuffer()[0] | 0x10),
+					std::format("Close reply flags and opcode for client {}", clientPortStr)));
+				RETURN_IF_FALSE(t.Assert(response[1],
+					static_cast<uint8_t>(message.GetPayloadSize() | (message.IsMasked() ? 0 : 0x80)),
+					std::format(
+						"Close reply reverses masking and preserves payload size for client {}", clientPortStr)));
+
+				const auto responsePayload{ std::span<uint8_t>{ response }.subspan(
+					static_cast<uint64_t>(responseHeaderSize)) };
+				if (!message.IsMasked()) {
+					uint32_t mask{};
+					std::memcpy(
+						&mask, response.data() + MSAPI::Protocol::WebSocket::Data::REQUIRED_HEADER_SIZE, sizeof(mask));
+					RETURN_IF_FALSE(t.Assert(mask != 0, true,
+						std::format("Close reply has a nonzero masking key for client {}", clientPortStr)));
+					MSAPI::Protocol::WebSocket::Data::ApplyMask(responsePayload.data(), responsePayload.size(), mask);
 				}
-				else {
-					MSAPI::Test::Protocol::WebSocket::Observer::ApplyMaskToData(
-						message, clientLastMessage.GetMaskingKey());
+				std::vector<uint8_t> expectedPayload{ message.GetPayload().begin(), message.GetPayload().end() };
+				if (message.IsMasked() && !expectedPayload.empty()) {
+					MSAPI::Protocol::WebSocket::Data::ApplyMask(
+						expectedPayload.data(), expectedPayload.size(), message.GetMaskingKey());
 				}
+				RETURN_IF_FALSE(
+					t.Assert(std::span<const uint8_t>{ responsePayload }, std::span<const uint8_t>{ expectedPayload },
+						std::format("Close reply preserves status code and reason for client {}", clientPortStr)));
 
 				RETURN_IF_FALSE(t.Wait(
 					50000, [&CTSCD]() { return CTSCD->GetConnection().IsActive(); }, false,

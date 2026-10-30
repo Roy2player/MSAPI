@@ -16,7 +16,7 @@ cmake -DCMAKE_BUILD_TYPE=Release .
 cmake --build . -j $(nproc)
 ```
 
-- ***Build system:*** CMake 3.10+
+- ***Build system:*** CMake 3.13+
 - ***Compiler:*** GCC 16.2.1+
 - ***Runtime:*** Linux (POSIX threads, Linux sockets)
 - Pure C++ standard library
@@ -148,5 +148,5 @@ New code must follow the current guidelines. Changes to the guidelines do not re
 - [**Code syntax:**](guidelines/codeSyntax.md) Syntax and declaration rules.
 - [**Concurrency:**](guidelines/concurrency.md) Locking patterns and thread-safety requirements.
 - [**Doxygen documentation:**](guidelines/doxygenDocumentation.md) Required documentation structure, content, and conventions.
-- [**File Organization:**](guidelines/fileOrganization.md) Inlinable library layout and structure of .inl files.
+- [**File Organization:**](guidelines/fileOrganization.md) Inlinable library layout, structure of .inl files, and test compilation units.
 - [**Logging:**](guidelines/logging.md) Logging levels, message style, and runtime logging guidance.

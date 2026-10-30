@@ -1,9 +1,19 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 project(UnitTestWebSocketEvents VERSION 1.0 LANGUAGES CXX)
 
 set(SOURCE
         ../source/main.cpp
+        ../source/events.cpp
+        ../source/initialization.cpp
+        ../source/removalAndLimits.cpp
+        ../source/deferredPurging.cpp
+        ../source/termination.cpp
+        ../source/transport.cpp
+        ../source/delayedTransport.cpp
+        ../source/buffersAndRegistration.cpp
+        ../source/delayedDelivery.cpp
+        ../source/delayedOwnership.cpp
 )
 
 include(../../../../library/build/CMakeListsCommonOptions.txt)

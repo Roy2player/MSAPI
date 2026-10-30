@@ -42,7 +42,7 @@ if (m_isClosed.exchange(true, std::memory_order_acq_rel)) {
 
 ### Declaration, definition, and call
 
-- All declarations and definitions must use FORCE_INLINE except deleted functions.
+- All declarations and definitions must use `FORCE_INLINE` except deleted functions and the out-of-line test entry points described in [Test compilation units](fileOrganization.md#test-compilation-units).
 - All declarations and definitions of functions that return a value must use `[[nodiscard]]`.
 - All declarations and definitions of functions that do not throw exceptions must use `noexcept`. Internal calls must either not throw or have their exceptions caught and handled inside the function.
 - Default values should be avoided for function and template parameters, and callers should supply arguments explicitly so behavior remains visible at each call site.
