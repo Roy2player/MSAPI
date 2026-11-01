@@ -25,10 +25,25 @@
  * additional document event listener.
  * Empty editable inputs show a timestamp mask on focus with the year selected. An untouched mask is removed on blur
  * without committing a timestamp.
+ * Inputs with display accuracy show the complete timestamp while editing. Change events commit normalization before
+ * subsequent listeners read the timestamp. Short fractional parts use decimal seconds when accuracy is supplied.
  *
  * @test Yes.
  */
 class Timer {
+	// Length of the displayed date/time prefix for each granularity, before its timezone suffix.
+	static ACCURACY = Object.freeze({
+		Years : 4,
+		Months: 7,
+		Days: 10,
+		Hours: 13,
+		Minutes: 16,
+		Seconds: 19,
+		Milliseconds: 23,
+		Microseconds: 26,
+		Nanoseconds: 29
+	});
+
 	static #privateFields = (() => {
 		let m_hasGlobalEventListener = false;
 		let m_timers = new Map();
@@ -48,6 +63,16 @@ class Timer {
 		Timer.SetEvent(input);
 	}
 
+	/**************************
+	 * @brief Registers timestamp editing handlers and commits changes before subsequent change listeners run.
+	 * Expanding a nonempty input to full precision on focus preserves its caret and selection direction.
+	 *
+	 * @param input - Input initialized by Apply or cloned with its timestamp and utc attributes.
+	 *
+	 * @locking Is not required.
+	 *
+	 * @test Yes.
+	 */
 	static SetEvent(input)
 	{
 		let isActive = { "isActive" : false };
@@ -56,11 +81,19 @@ class Timer {
 
 		let hasFocusMask = false;
 		input.addEventListener("focus", () => {
-			if (input.value != "" || input.readOnly || input.disabled) {
+			if (input.readOnly || input.disabled) {
 				return;
 			}
 
-			// Display the existing format without committing the guide as a timestamp.
+			if (input.value != "") {
+				if (input.hasAttribute("accuracy")) {
+					const { selectionStart, selectionEnd, selectionDirection } = input;
+					input.value = Timer.ToString(BigInt(input.getAttribute("timestamp")), input.getAttribute("utc"));
+					input.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
+				}
+				return;
+			}
+
 			input.value = Timer.ToString(BigInt(input.getAttribute("timestamp")), input.getAttribute("utc"));
 			input.setSelectionRange(0, 4);
 			hasFocusMask = true;
@@ -70,12 +103,22 @@ class Timer {
 			if (hasFocusMask && input.getAttribute("timestamp") == "") {
 				input.value = "";
 			}
+			else if (!isActive.isActive && input.hasAttribute("accuracy") && input.getAttribute("timestamp") != "") {
+				Timer.SetValue(input, BigInt(input.getAttribute("timestamp")));
+			}
 			hasFocusMask = false;
 		});
 
 		input.addEventListener("input", () => {
 			hasFocusMask = false;
 			isActive.isActive = true;
+		});
+
+		input.addEventListener("change", () => {
+			// Commit before table listeners compare the timestamp with its saved value.
+			Timer.Normalize(input);
+			Timer.Validate(input);
+			isActive.isActive = false;
 		});
 
 		if (!Timer.#privateFields.m_hasGlobalEventListener) {
@@ -97,7 +140,20 @@ class Timer {
 		}
 	}
 
-	static ToString(timestamp, utc)
+	/**************************
+	 * @brief Formats a timestamp at the requested display granularity without rounding the stored timestamp.
+	 *
+	 * @param timestamp - Complete timestamp in nanoseconds.
+	 * @param utc - Existing timezone label.
+	 * @param accuracy - Optional Timer.ACCURACY value; omission displays nanoseconds.
+	 *
+	 * @locking Is not required.
+	 *
+	 * @return Formatted local date/time with the timezone suffix.
+	 *
+	 * @test Yes.
+	 */
+	static ToString(timestamp, utc, accuracy)
 	{
 		if (typeof timestamp !== "bigint") {
 			console.error("Nanoseconds timestamp is not a BigInt", timestamp);
@@ -111,21 +167,41 @@ class Timer {
 
 		const date = new Date(Number(timestamp / 1000000n));
 		utc = parseInt(utc);
-		if (isNaN(utc)) {
-			return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${
-				String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${
-				String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}.${
-				String(Number(timestamp % 1000000000n)).padStart(9, '0')} +Unknown`;
-		}
-
-		return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${
+		const text = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${
 			String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${
 			String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}.${
-			String(Number(timestamp % 1000000000n)).padStart(9, '0')} UTC${utc >= 0 ? `+${utc}` : utc}`;
+			String(Number(timestamp % 1000000000n)).padStart(9, '0')}`;
+
+		const length = accuracy ?? Timer.ACCURACY.Nanoseconds;
+		if (length === undefined) {
+			console.error("Unknown Timer accuracy", accuracy);
+		}
+
+		const suffix = isNaN(utc) ? " +Unknown" : ` UTC${utc >= 0 ? `+${utc}` : utc}`;
+
+		return text.slice(0, length ?? text.length) + suffix;
 	}
 
+	/**************************
+	 * @brief Parses edited timestamp text while preserving the raw timestamp of an unchanged display.
+	 * Inputs with accuracy interpret short fractional parts as decimal seconds; other inputs retain nanosecond parsing.
+	 *
+	 * @param input - Timestamp input whose text is committed and formatted at its display accuracy.
+	 *
+	 * @locking Is not required.
+	 *
+	 * @test Yes.
+	 */
 	static Normalize(input)
 	{
+		const timestamp = input.getAttribute("timestamp");
+		if (timestamp != ""
+			&& input.value
+				== Timer.ToString(BigInt(timestamp), input.getAttribute("utc"), input.getAttribute("accuracy"))) {
+
+			return;
+		}
+
 		let valueArray = Array.from(input.value);
 		if (valueArray.length < 4) {
 			Timer.SetValue(input, BigInt(input.getAttribute("timestamp")));
@@ -222,7 +298,14 @@ class Timer {
 			valueArray.splice(0, 1);
 		}
 
-		const nanosecond = parseInt(valueArray.join(""));
+		let nanosecond = parseInt(valueArray.join(""));
+		if (input.hasAttribute("accuracy")) {
+			const fraction = valueArray.join("").match(/^\d+/)?.[0];
+			if (fraction && fraction.length < 9) {
+				nanosecond *= 10 ** (9 - fraction.length);
+			}
+		}
+
 		if (isNaN(nanosecond) || nanosecond < 0) {
 			Timer.SetValue(input, BigInt(new Date(year, month - 1, day, hour, minute, second, 0).getTime()) * 1000000n);
 			return;
@@ -263,12 +346,13 @@ class Timer {
 
 		// Empty string is considered as BigInt(0)
 		const currentTimestamp = input.getAttribute("timestamp");
-		if (currentTimestamp != "" && BigInt(+currentTimestamp) == timestamp) {
+		const formatted = Timer.ToString(timestamp, input.getAttribute("utc"), input.getAttribute("accuracy"));
+		if (currentTimestamp != "" && BigInt(currentTimestamp) == timestamp && input.value == formatted) {
 			return;
 		}
 
 		input.setAttribute("timestamp", timestamp);
-		input.value = Timer.ToString(timestamp, input.getAttribute("utc"));
+		input.value = formatted;
 		Timer.Validate(input);
 	}
 };

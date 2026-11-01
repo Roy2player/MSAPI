@@ -241,4 +241,118 @@ testRunner.Test('Use the timestamp date for daylight-saving expectations', () =>
 	}
 });
 
+testRunner.Test('Display each timer accuracy without changing the stored timestamp', () => {
+	const input = document.createElement('input');
+	body.appendChild(input);
+	Timer.Apply(input);
+	const timestamp = BigInt(new Date(2026, 10, 1, 12, 34, 56).getTime()) * 1000000n + 123456789n;
+	const suffix = ` UTC${TestRunner.UTC}`;
+	const cases = [
+		[ Timer.ACCURACY.Years, '2026' ], [ Timer.ACCURACY.Months, '2026-11' ], [ Timer.ACCURACY.Days, '2026-11-01' ],
+		[ Timer.ACCURACY.Hours, '2026-11-01 12' ], [ Timer.ACCURACY.Minutes, '2026-11-01 12:34' ],
+		[ Timer.ACCURACY.Seconds, '2026-11-01 12:34:56' ], [ Timer.ACCURACY.Milliseconds, '2026-11-01 12:34:56.123' ],
+		[ Timer.ACCURACY.Microseconds, '2026-11-01 12:34:56.123456' ],
+		[ Timer.ACCURACY.Nanoseconds, '2026-11-01 12:34:56.123456789' ]
+	];
+	for (const [accuracy, text] of cases) {
+		input.setAttribute('accuracy', accuracy);
+		Timer.SetValue(input, timestamp);
+		testRunner.Assert(input.value, text + suffix);
+		testRunner.Assert(input.getAttribute('timestamp'), timestamp.toString());
+		Timer.Normalize(input);
+		testRunner.Assert(input.getAttribute('timestamp'), timestamp.toString(),
+			'Normalizing the unchanged display must retain hidden precision');
+		input.focus();
+		testRunner.Assert(input.value, '2026-11-01 12:34:56.123456789' + suffix);
+		input.blur();
+		testRunner.Assert(input.value, text + suffix);
+		testRunner.Assert(input.getAttribute('timestamp'), timestamp.toString());
+		input.readOnly = true;
+		input.focus();
+		testRunner.Assert(input.value, text + suffix, 'Read-only fields must retain their display accuracy on focus');
+		input.blur();
+		input.readOnly = false;
+	}
+	input.remove();
+});
+
+testRunner.Test('Commit decimal fractions before notifying timer change listeners', () => {
+	const base = BigInt(new Date(2026, 10, 1, 12, 35, 56).getTime()) * 1000000n;
+	const cases = [
+		[ Timer.ACCURACY.Milliseconds, '123', 123000000n ], [ Timer.ACCURACY.Microseconds, '123456', 123456000n ],
+		[ Timer.ACCURACY.Nanoseconds, '123456789', 123456789n ],
+		[ Timer.ACCURACY.Milliseconds, '123456789', 123456789n ]
+	];
+	for (const [accuracy, fraction, nanoseconds] of cases) {
+		const input = document.createElement('input');
+		body.appendChild(input);
+		Timer.Apply(input);
+		input.setAttribute('accuracy', accuracy);
+		let observedTimestamp;
+		input.addEventListener('change', () => { observedTimestamp = input.getAttribute('timestamp'); });
+		input.value = `2026-11-01 12:35:56.${fraction} UTC${TestRunner.UTC}`;
+		input.dispatchEvent(new Event('input', { bubbles : true }));
+		input.dispatchEvent(new Event('change', { bubbles : true }));
+		testRunner.Assert(observedTimestamp, (base + nanoseconds).toString());
+		body.click();
+		testRunner.Assert(input.getAttribute('timestamp'), observedTimestamp,
+			'The outside click must not parse the rounded display again');
+		input.remove();
+	}
+});
+
+testRunner.Test('Retain hidden timestamp precision when editing a coarse display', () => {
+	const original = BigInt(new Date(2026, 10, 1, 12, 34, 56).getTime()) * 1000000n + 123456789n;
+	const expected = original + 60000000000n;
+	for (const accuracy of Object.values(Timer.ACCURACY)) {
+		const input = document.createElement('input');
+		body.appendChild(input);
+		Timer.Apply(input);
+		input.setAttribute('accuracy', accuracy);
+		Timer.SetValue(input, original);
+		input.focus();
+		input.value = input.value.replace(':34:', ':35:');
+		input.dispatchEvent(new Event('input', { bubbles : true }));
+		input.dispatchEvent(new Event('change', { bubbles : true }));
+		input.blur();
+		body.click();
+		testRunner.Assert(input.getAttribute('timestamp'), expected.toString());
+		testRunner.Assert(input.value, Timer.ToString(expected, input.getAttribute('utc'), accuracy));
+		input.remove();
+	}
+});
+
+testRunner.Test('Preserve the caret and selection when focusing a timestamp with display accuracy', () => {
+	const input = document.createElement('input');
+	body.appendChild(input);
+	Timer.Apply(input);
+	const timestamp = BigInt(new Date(2026, 10, 1, 12, 34, 56).getTime()) * 1000000n + 123456789n;
+	try {
+		for (const accuracy of Object.values(Timer.ACCURACY)) {
+			input.setAttribute('accuracy', accuracy);
+			Timer.SetValue(input, timestamp);
+			const display = input.value;
+			const selections = [
+				[ 0, 0, 'none' ], [ 2, 2, 'none' ], [ 0, 4, 'forward' ], [ 1, 4, 'backward' ],
+				[ display.length, display.length, 'none' ]
+			];
+			for (const [start, end, direction] of selections) {
+				input.setSelectionRange(start, end, direction);
+				input.focus();
+				testRunner.Assert(input.value, Timer.ToString(timestamp, input.getAttribute('utc')));
+				testRunner.Assert(
+					input.selectionStart, start, `Caret start must survive focus at accuracy ${accuracy}`);
+				testRunner.Assert(input.selectionEnd, end, `Selection end must survive focus at accuracy ${accuracy}`);
+				testRunner.Assert(input.selectionDirection, direction);
+				testRunner.Assert(input.getAttribute('timestamp'), timestamp.toString());
+				input.blur();
+				testRunner.Assert(input.value, display);
+			}
+		}
+	}
+	finally {
+		input.remove();
+	}
+});
+
 testRunner.Run();

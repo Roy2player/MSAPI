@@ -17,11 +17,14 @@
  * OptionalUint8, OptionalUint16, OptionalUint32, OptionalUint64, OptionalDouble, OptionalFloat, String, Timer,
  * Duration, TableData. And one additional type: system, which is used for show system properties
  * on grids and tables views. Only one instance can be created.
+ * Optional description text extends metadata tooltips. Float/Double accuracy is a positive rounding increment;
+ * Timer accuracy is a Timer.ACCURACY value. These properties also apply to table-column metadata.
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	View = require("../core/view");
 	Dispatcher = require("./dispatcher").Dispatcher;
+	Timer = require("../core/timer");
 }
 
 class MetadataCollector extends View {
@@ -119,6 +122,10 @@ class MetadataCollector extends View {
 			return false;
 		}
 
+		if (!MetadataCollector.#ValidateDisplayProperties(metadata)) {
+			return false;
+		}
+
 		if (metadata.type.includes("Int") || metadata.type.includes("Uint") || metadata.type.includes("Duration")) {
 			if (metadata.hasOwnProperty("min") && typeof metadata.min !== "bigint") {
 				console.error("'min' field must be a bigint", metadata);
@@ -166,6 +173,47 @@ class MetadataCollector extends View {
 		return true;
 	}
 
+	/**************************
+	 * @brief Validates optional description and type-specific display accuracy for parameters and table columns.
+	 *
+	 * @param metadata - Metadata item with a validated type field.
+	 *
+	 * @return True if supplied presentation properties have supported types and values.
+	 *
+	 * @test Yes.
+	 */
+	static #ValidateDisplayProperties(metadata)
+	{
+		if (metadata.hasOwnProperty("description") && typeof metadata.description !== "string") {
+			console.error("Metadata description must be a string", metadata);
+			return false;
+		}
+
+		if (!metadata.hasOwnProperty("accuracy")) {
+			return true;
+		}
+
+		if (metadata.type.includes("Float") || metadata.type.includes("Double")) {
+			const accuracy = metadata.accuracy;
+			if ((typeof accuracy === "number" || typeof accuracy === "bigint") && Number.isFinite(Number(accuracy))
+				&& Number(accuracy) > 0) {
+
+				return true;
+			}
+
+			console.error("Floating-point accuracy must be a positive finite rounding increment", metadata);
+			return false;
+		}
+
+		if (metadata.type === "Timer" && Object.values(Timer.ACCURACY).includes(metadata.accuracy)) {
+			return true;
+		}
+
+		console.error(
+			"Accuracy must be a Timer.ACCURACY value for Timer, or a positive increment for Float/Double", metadata);
+		return false;
+	}
+
 	static #ValidateStringInterpretation(metadata)
 	{
 		const stringInterpretations = metadata.stringInterpretations;
@@ -210,6 +258,10 @@ class MetadataCollector extends View {
 
 			if (column.hasOwnProperty("name") && typeof column.name !== "string") {
 				console.error("Column 'name' field must be of type string", metadata);
+				return false;
+			}
+
+			if (!MetadataCollector.#ValidateDisplayProperties(column)) {
 				return false;
 			}
 
@@ -385,6 +437,22 @@ MetadataCollector.AddMetadata(9, {
 },
 	true);
 MetadataCollector.AddMetadata(10, { name : "Open view", type : "system" }, true);
+MetadataCollector.AddMetadata(11, {
+	name : "Time accuracy",
+	type : "Int8",
+	stringInterpretations : {
+		[Timer.ACCURACY.Years] : "Years",
+		[Timer.ACCURACY.Months] : "Months",
+		[Timer.ACCURACY.Days] : "Days",
+		[Timer.ACCURACY.Hours] : "Hours",
+		[Timer.ACCURACY.Minutes] : "Minutes",
+		[Timer.ACCURACY.Seconds] : "Seconds",
+		[Timer.ACCURACY.Milliseconds] : "Milliseconds",
+		[Timer.ACCURACY.Microseconds] : "Microseconds",
+		[Timer.ACCURACY.Nanoseconds] : "Nanoseconds"
+	}
+},
+	true);
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	module.exports = MetadataCollector;

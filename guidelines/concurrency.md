@@ -15,7 +15,8 @@ description: "Locking patterns and thread-safety requirements"
 - Fields whose accesses are expected to be protected together must share one common lock.
 - An abstraction should not protect each method internally when its methods are expected to be accessed together. In that case, synchronization should be performed outside the abstraction using its lock.
 - Concurrency documentation must follow [Doxygen Documentation](doxygenDocumentation.md).
-- Each call to an internally locking abstraction must have the comment `// Read/Write lock inside.`.
+- Calls to internally locking abstractions within the same module must have the comment `// Read/Write lock inside.`.
+- Calls into other modules must not have comments describing those modules' internal locking. Any synchronization requirements imposed on the caller must still be documented, following [Locking documentation scope](doxygenDocumentation.md#locking-documentation-scope).
 
 ## Lock fields and constness
 

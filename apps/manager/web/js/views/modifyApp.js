@@ -76,6 +76,10 @@ class ModifyApp extends View {
 
 			let divElement = document.createElement("div");
 			divElement.classList.add("item");
+			if (parameter.description) {
+				divElement.title = Helper.GetCombinedTitle(
+					parameter.name + " (" + parameterId + ") " + parameter.type, parameter.description);
+			}
 			let inputElement = document.createElement("input");
 			inputElement.setAttribute("parameter-id", parameterId);
 
@@ -98,6 +102,9 @@ class ModifyApp extends View {
 
 			if (parameter.type == "Timer") {
 				Timer.Apply(inputElement);
+				if (parameter.accuracy !== undefined) {
+					inputElement.setAttribute("accuracy", parameter.accuracy);
+				}
 			}
 			else if (parameter.type == "String") {
 				inputElement.setAttribute("type", "text");

@@ -57,6 +57,17 @@ class Table {
 
 	m_newRowsReferences = [];
 
+	/**************************
+	 * @brief Creates a table with metadata-driven inputs and optional editing controls.
+	 *
+	 * @param parent - DOM node receiving the table wrapper.
+	 * @param id - Table parameter identifier.
+	 * @param metadata - Table metadata, including column types and optional display accuracy.
+	 * @param isMutable - Whether rows can be edited through the table controls.
+	 * @param postSaveFunction - Optional callback invoked after a save attempt.
+	 *
+	 * @test Yes.
+	 */
 	constructor({ parent, id, metadata, isMutable, postSaveFunction })
 	{
 		this.m_parent = parent;
@@ -77,6 +88,8 @@ class Table {
 		tempContainer.appendChild(clone);
 		tempContainer.querySelector(".tableWrapper > div > .header").innerHTML
 			= this.m_metadata.name + " (" + this.m_id + ")";
+		tempContainer.querySelector(".tableWrapper > div > .header").title
+			= Helper.GetCombinedTitle(this.m_metadata.name + " (" + this.m_id + ")", this.m_metadata.description);
 
 		let rowHeader = tempContainer.querySelector(".row.header");
 		let newRow = tempContainer.querySelector(".table > .new");
@@ -94,6 +107,7 @@ class Table {
 			}
 
 			divElement.appendChild(spanElement);
+			divElement.title = Helper.GetCombinedTitle(spanElement.textContent, columnMetadata.description);
 			rowHeader.appendChild(divElement);
 
 			function setMin(inputElement, metadata, min)
@@ -137,6 +151,9 @@ class Table {
 				inputElement.setAttribute("canBeEmpty",
 					columnMetadata.canBeEmpty == undefined ? "true" : columnMetadata.canBeEmpty.toString());
 				Timer.Apply(inputElement);
+				if (columnMetadata.accuracy !== undefined) {
+					inputElement.setAttribute("accuracy", columnMetadata.accuracy);
+				}
 			}
 			else if (columnMetadata.type == "String") {
 				inputElement.setAttribute("canBeEmpty",
@@ -229,6 +246,15 @@ class Table {
 				}
 			}
 
+			if (columnMetadata.accuracy !== undefined
+				&& (columnMetadata.type.includes("Float") || columnMetadata.type.includes("Double"))) {
+
+				inputElement.setAttribute("accuracy", columnMetadata.accuracy);
+				if (this.m_isMutable) {
+					Table.SetFloatEvents(inputElement);
+				}
+			}
+
 			newRow.appendChild(document.createElement("div").appendChild(inputElement));
 		}
 
@@ -256,6 +282,13 @@ class Table {
 		this.m_parent.appendChild(this.m_wrapper);
 	}
 
+	/**************************
+	 * @brief Appends a row, applying display accuracy while preserving complete values in mutable and read-only tables.
+	 *
+	 * @param values - Optional row values; omission uses and validates the new-row inputs.
+	 *
+	 * @test Yes.
+	 */
 	AddRow(values)
 	{
 		let newRow = this.m_wrapper.querySelector(".table > .new");
@@ -287,6 +320,7 @@ class Table {
 					continue;
 				}
 
+				inputs[index].removeAttribute("raw-value");
 				if (Helper.IsFloat(values[index])) {
 					inputs[index].value = Helper.FloatToString(values[index]);
 					continue;
@@ -304,6 +338,7 @@ class Table {
 
 		let newRowCopy = newRow.cloneNode(true);
 		let inputsCopy = newRowCopy.querySelectorAll("input");
+		const columns = Object.values(this.m_metadata.columns);
 		for (let index = 0; index < inputs.length; index++) {
 			if (inputs[index].type == "checkbox") {
 				inputsCopy[index].checked = inputs[index].checked;
@@ -311,22 +346,35 @@ class Table {
 				continue;
 			}
 
-			if (this.m_isMutable) {
-				if (inputsCopy[index].hasAttribute("nanoseconds")) {
-					Duration.SetEvent(inputsCopy[index]);
-					inputs[index].setAttribute("nanoseconds", "");
-				}
-				else if (inputsCopy[index].hasAttribute("timestamp")) {
-					Timer.SetEvent(inputsCopy[index]);
-					inputs[index].setAttribute("timestamp", "");
-				}
-				else if (inputsCopy[index].hasAttribute("select")) {
-					Select.SetEvent(inputsCopy[index]);
-					inputs[index].setAttribute("select", "");
-				}
+			if (inputsCopy[index].hasAttribute("nanoseconds")) {
+				Duration.SetEvent(inputsCopy[index]);
+				inputs[index].setAttribute("nanoseconds", "");
+			}
+			else if (inputsCopy[index].hasAttribute("timestamp")) {
+				Timer.SetEvent(inputsCopy[index]);
+				inputs[index].setAttribute("timestamp", "");
+			}
+			else if (inputsCopy[index].hasAttribute("select")) {
+				Select.SetEvent(inputsCopy[index]);
+				inputs[index].setAttribute("select", "");
 			}
 
 			inputsCopy[index].value = inputs[index].value;
+			const columnMetadata = columns[index];
+			if (columnMetadata.accuracy !== undefined
+				&& (columnMetadata.type.includes("Float") || columnMetadata.type.includes("Double"))) {
+
+				// Display rounding does not change values returned by GetData or restored by Revert.
+				const rawValue = inputs[index].getAttribute("raw-value") ?? inputsCopy[index].value;
+				inputsCopy[index].setAttribute("raw-value", rawValue);
+				inputsCopy[index].value
+					= rawValue === "" ? "" : Helper.FloatToString(rawValue, columnMetadata.accuracy);
+				if (this.m_isMutable) {
+					Table.SetFloatEvents(inputsCopy[index]);
+				}
+			}
+
+			inputs[index].removeAttribute("raw-value");
 			inputs[index].classList.remove("invalid");
 			inputs[index].value = "";
 		}
@@ -398,8 +446,21 @@ class Table {
 			}
 			else {
 				input.addEventListener("change", () => {
+					let rawAttribute = null;
+					if (input.hasAttribute("raw-value")) {
+						rawAttribute = "raw-value";
+					}
+					else if (input.hasAttribute("accuracy") && input.hasAttribute("timestamp")) {
+						rawAttribute = "timestamp";
+					}
+					const value = rawAttribute ? input.getAttribute(rawAttribute) : input.value;
+					const backup = input.getAttribute(rawAttribute ? `backup-${rawAttribute}` : "backup");
+					if (input.hasAttribute("accuracy")) {
+						this.m_data = null;
+					}
+
 					if ((input.type == "checkbox" && input.checked == (input.getAttribute("backup") == "true"))
-						|| input.value == input.getAttribute("backup")) {
+						|| value == backup) {
 
 						input.classList.remove("changed");
 						if (this.m_wrapper.querySelectorAll(".table > .added").length == 0
@@ -443,6 +504,7 @@ class Table {
 			return;
 		}
 
+		this.m_data = null;
 		this.m_newRowsReferences.forEach(row => { row.remove(); });
 		this.m_newRowsReferences = [];
 
@@ -459,6 +521,14 @@ class Table {
 				}
 				else {
 					input.value = input.getAttribute("backup");
+				}
+				for (const attribute of ["raw-value", "timestamp"]) {
+					if (input.hasAttribute(`backup-${attribute}`)) {
+						input.setAttribute(attribute, input.getAttribute(`backup-${attribute}`));
+					}
+					else if (attribute === "raw-value") {
+						input.removeAttribute(attribute);
+					}
 				}
 				input.classList.remove("changed", "invalid");
 			});
@@ -497,6 +567,11 @@ class Table {
 				else {
 					input.setAttribute("backup", input.value);
 				}
+				for (const attribute of ["raw-value", "timestamp"]) {
+					if (input.hasAttribute(attribute)) {
+						input.setAttribute(`backup-${attribute}`, input.getAttribute(attribute));
+					}
+				}
 				input.classList.remove("changed");
 			});
 		}
@@ -512,6 +587,11 @@ class Table {
 					}
 					else {
 						input.setAttribute("backup", input.value);
+					}
+					for (const attribute of ["raw-value", "timestamp"]) {
+						if (input.hasAttribute(attribute)) {
+							input.setAttribute(`backup-${attribute}`, input.getAttribute(attribute));
+						}
 					}
 				});
 			});
@@ -537,6 +617,7 @@ class Table {
 		rows = this.m_wrapper.querySelectorAll(".table > .row.new");
 		rows.forEach(row => {
 			row.querySelectorAll("input").forEach(input => {
+				input.removeAttribute("raw-value");
 				if (input.type == "checkbox") {
 					input.checked = false;
 				}
@@ -580,7 +661,11 @@ class Table {
 		rows.forEach(row => {
 			let data = [];
 			row.querySelectorAll("input").forEach(input => {
-				if (input.type == "checkbox") {
+				if (input.hasAttribute("raw-value")) {
+					const rawValue = input.getAttribute("raw-value");
+					data.push(rawValue === "" ? null : Number(rawValue));
+				}
+				else if (input.type == "checkbox") {
 					data.push(input.checked);
 				}
 				else if (input.type == "number") {
@@ -618,6 +703,43 @@ class Table {
 		});
 
 		return this.m_data;
+	}
+
+	/**************************
+	 * @brief Applies floating-point display accuracy while retaining the full value for editing and serialization.
+	 *
+	 * @param input - Numeric table input with an accuracy attribute.
+	 */
+	static SetFloatEvents(input)
+	{
+		const accuracy = Number(input.getAttribute("accuracy"));
+
+		const render = () => {
+			const rawValue = input.getAttribute("raw-value");
+			if (rawValue !== null) {
+				input.value = rawValue === "" ? "" : Helper.FloatToString(rawValue, accuracy);
+			}
+		};
+
+		const remember = () => {
+			input.setAttribute("raw-value", input.value);
+			Helper.ValidateLimits(input);
+		};
+
+		input.addEventListener("focus", () => {
+			if (!input.readOnly && !input.disabled && input.hasAttribute("raw-value")) {
+				input.value = input.getAttribute("raw-value");
+			}
+		});
+
+		input.addEventListener("input", remember);
+
+		input.addEventListener("change", () => {
+			remember();
+			render();
+		});
+
+		input.addEventListener("blur", render);
 	}
 }
 

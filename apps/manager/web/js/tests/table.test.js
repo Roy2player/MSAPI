@@ -1433,6 +1433,78 @@ testRunner.Test('Add, modify and remove row in immutable table', () => {
 	testRunner.Assert(tableNode.classList.contains("changed"), false, "Table should not be marked as changed");
 });
 
+testRunner.Test('Add duration, timer and select rows to immutable table', async () => {
+	const parameter = {
+		name : 'Constant values',
+		type : 'TableData',
+		canBeEmpty : false,
+		columns : {
+			"0" : { name : 'Duration', type : 'Duration', durationType : 'Seconds' },
+			"1" : { name : 'Timestamp', type : 'Timer' },
+			"2" : { name : 'Type', type : 'Int16', stringInterpretations : { "1" : "Bond", "2" : "Share" } },
+		}
+	};
+	MetadataCollector.AddMetadata(889, parameter, true);
+
+	const table = new Table({ parent : body, id : 889, metadata : parameter, isMutable : false });
+	const tableNode = body.querySelector('.tableWrapper');
+	const newInputs = tableNode.querySelector('.row.new').querySelectorAll('input');
+	const values = [ 61000000000n, 1609459200000000000n, 1 ];
+	const attributes = [ 'nanoseconds', 'timestamp', 'select' ];
+
+	// Repeating values catches stale attributes causing SetValue to skip filling the cleared template inputs.
+	for (let count = 1; count <= 2; ++count) {
+		table.AddRow(values);
+		const rows = tableNode.querySelectorAll('.row:not(.header):not(.new)');
+		testRunner.Assert(rows.length, count, "Immutable table should append each supplied row");
+		const inputs = rows[count - 1].querySelectorAll('input');
+		testRunner.Assert(inputs.length, 3, "Immutable row should contain all three specialized inputs");
+		RowChecking.CheckValues(inputs, [ '1m 1s', Timer.ToString(values[1], inputs[1].getAttribute('utc')), 'Bond' ]);
+		RowChecking.CheckInvalidStates(inputs, [ false, false, false ]);
+
+		for (let index = 0; index < attributes.length; ++index) {
+			testRunner.Assert(inputs[index].readOnly, true, "Cloned immutable input should remain read-only");
+			testRunner.Assert(inputs[index].getAttribute(attributes[index]), values[index].toString(),
+				`Cloned input should retain its ${attributes[index]} value`);
+			testRunner.Assert(newInputs[index].getAttribute(attributes[index]), '',
+				`Template input should clear its ${attributes[index]} value after cloning`);
+			testRunner.Assert(newInputs[index].value, '', "Template input should clear its display value");
+		}
+	}
+
+	const rows = tableNode.querySelectorAll('.row:not(.header):not(.new)');
+	const inputs = rows[0].querySelectorAll('input');
+	inputs[0].value = '2s';
+	inputs[0].dispatchEvent(new Event('input'));
+	inputs[1].value = '2021-01-02 00:00:00.000000000';
+	inputs[1].dispatchEvent(new Event('input'));
+	document.dispatchEvent(new Event('click'));
+
+	const updatedTimestamp = BigInt(new Date(2021, 0, 2).getTime()) * 1000000n;
+	testRunner.Assert(inputs[0].getAttribute('nanoseconds'), '2000000000',
+		"Cloned duration handler should normalize the input on an outside click");
+	testRunner.Assert(inputs[1].getAttribute('timestamp'), updatedTimestamp.toString(),
+		"Cloned timer handler should normalize the input on an outside click");
+
+	const viewsBefore = View.GetCreatedViews().size;
+	inputs[2].dispatchEvent(new Event('click'));
+	await TestRunner.WaitFor(() => document.querySelector('.selectView .options > div') != null,
+		"Cloned select handler should open the options view");
+	const options = document.querySelectorAll('.selectView .options > div');
+	testRunner.Assert(options.length, 2, "Cloned select should expose its column's string interpretations");
+	testRunner.Assert(options[0].textContent, 'Bond1', "First select option should retain its label and key");
+	options[0].dispatchEvent(new Event('click'));
+	await TestRunner.WaitFor(
+		() => View.GetCreatedViews().size === viewsBefore, "Choosing an option should close the cloned select's view");
+	testRunner.Assert(Select.GetSelectViewsNumber(), 0, "Cloned select should release its options view");
+
+	testRunner.Assert(table.GetData(), [ [ 2000000000n, updatedTimestamp, 1n ], [ values[0], values[1], 1n ] ],
+		"Cloned handlers should update only their row and preserve the other row's raw values");
+	testRunner.Assert(tableNode.classList.contains('changed'), false, "Immutable table should remain unchanged");
+	testRunner.Assert(tableNode.querySelector('.added, .remove, .buttons'), null,
+		"Immutable table should not acquire mutable row controls or markers");
+});
+
 testRunner.Test('Add row via view and directly to table with two select columns', async () => {
 	const parameter = {
 		name : 'Commissions',
@@ -1592,6 +1664,205 @@ testRunner.Test('Add row via view and directly to table with two select columns'
 	rows = tableNode.querySelectorAll(".row");
 	testRunner.Assert(rows.length, 2, "Table should have the correct number of rows: " + 2);
 	testRunner.Assert(table.GetData(), [], "Table should have the correct data after save");
+});
+
+testRunner.Test('Save and revert timer edits using the complete timestamp', () => {
+	const original = BigInt(new Date(2026, 10, 1, 12, 34, 56).getTime()) * 1000000n + 123456789n;
+	for (const accuracy of [Timer.ACCURACY.Days, Timer.ACCURACY.Milliseconds, Timer.ACCURACY.Microseconds]) {
+		const metadata = {
+			name : 'Timestamp accuracy',
+			type : 'TableData',
+			columns : { '0' : { name : 'Timestamp', type : 'Timer', accuracy } }
+		};
+		const table = new Table({ parent : body, id : 890, metadata, isMutable : true });
+		table.AddRow([ original ]);
+		table.Save();
+		const input = table.m_wrapper.querySelector('.row:not(.header):not(.new) input');
+		testRunner.Assert(table.GetData(), [ [ original ] ]);
+		input.focus();
+		input.value = input.value.replace(':34:', ':35:');
+		input.dispatchEvent(new Event('input', { bubbles : true }));
+		input.dispatchEvent(new Event('change', { bubbles : true }));
+		input.blur();
+		testRunner.Assert(table.IsChanged(), true, 'A timestamp edit must be tracked before an outside click');
+		testRunner.Assert(input.classList.contains('changed'), true);
+		testRunner.Assert(table.GetData(), [ [ original + 60000000000n ] ], 'The cached data must reflect the edit');
+		// A day-only display is identical after a minute edit; comparison must still use the raw timestamp.
+		table.Revert();
+		testRunner.Assert(table.IsChanged(), false);
+		testRunner.Assert(table.GetData(), [ [ original ] ]);
+		testRunner.Assert(input.getAttribute('timestamp'), original.toString());
+		testRunner.Assert(input.value, Timer.ToString(original, input.getAttribute('utc'), accuracy));
+
+		input.focus();
+		input.value = input.value.replace(':34:', ':35:');
+		input.dispatchEvent(new Event('input', { bubbles : true }));
+		input.dispatchEvent(new Event('change', { bubbles : true }));
+		input.blur();
+		// Click handlers run before the document's click listener, as they do for the real Save button.
+		table.m_wrapper.querySelector('.save').click();
+		const saved = original + 60000000000n;
+		testRunner.Assert(table.IsChanged(), false);
+		testRunner.Assert(table.GetData(), [ [ saved ] ]);
+		testRunner.Assert(input.getAttribute('backup-timestamp'), saved.toString());
+
+		input.focus();
+		input.value = input.value.replace(':35:', ':36:');
+		input.dispatchEvent(new Event('input', { bubbles : true }));
+		input.dispatchEvent(new Event('change', { bubbles : true }));
+		input.blur();
+		table.m_wrapper.querySelector('.revert').click();
+		testRunner.Assert(table.GetData(), [ [ saved ] ], 'Revert must restore the most recently saved timestamp');
+		testRunner.Assert(input.getAttribute('timestamp'), saved.toString());
+		testRunner.Assert(table.IsChanged(), false);
+		table.Destructor();
+	}
+});
+
+testRunner.Test('Round floating-point table displays while retaining raw values', () => {
+	const metadata = {
+		name : 'Floating-point accuracy',
+		type : 'TableData',
+		columns : {
+			'0' : { name : 'Float', type : 'Float', accuracy : 0.1 },
+			'1' : { name : 'Double', type : 'Double', accuracy : 0.01 },
+			'2' : { name : 'Optional', type : 'OptionalDouble', accuracy : 0.1 }
+		}
+	};
+	for (const isMutable of [false, true]) {
+		const table = new Table({ parent : body, id : 891, metadata, isMutable });
+		const values = [ [ 1.234, -2.345, null ], [ 1.234, -2.345, 0 ] ];
+		values.forEach(row => table.AddRow(row));
+		table.Save();
+		const rows = table.m_wrapper.querySelectorAll('.row:not(.header):not(.new)');
+		RowChecking.CheckValues(rows[0].querySelectorAll('input'), [ '1.2', '-2.35', '' ]);
+		RowChecking.CheckValues(rows[1].querySelectorAll('input'), [ '1.2', '-2.35', '0' ]);
+		testRunner.Assert(table.GetData(), values, 'Display rounding must preserve full precision, null, and zero');
+		for (const row of rows) {
+			row.querySelectorAll('input').forEach(input => {
+				testRunner.Assert(input.readOnly, !isMutable);
+				testRunner.Assert(input.classList.contains('invalid'), false);
+			});
+		}
+		if (isMutable) {
+			const input = rows[0].querySelector('input');
+			input.focus();
+			testRunner.Assert(input.value, '1.234');
+			input.value = '1.246';
+			input.dispatchEvent(new Event('input', { bubbles : true }));
+			input.dispatchEvent(new Event('change', { bubbles : true }));
+			input.blur();
+			testRunner.Assert(input.value, '1.2');
+			testRunner.Assert(table.IsChanged(), true, 'Edits with the same rounded display must still be tracked');
+			testRunner.Assert(table.GetData()[0][0], 1.246);
+			table.Revert();
+			testRunner.Assert(table.GetData(), values);
+			testRunner.Assert(input.getAttribute('raw-value'), '1.234');
+		}
+		testRunner.Assert(table.IsChanged(), false);
+		table.Destructor();
+	}
+});
+
+testRunner.Test('Validate rounded table edits using raw limits and retain invalid edits until corrected', () => {
+	const metadata = {
+		name : 'Raw limits',
+		type : 'TableData',
+		columns : { '0' : { name : 'Price', type : 'Double', accuracy : 0.1, min : 1.24, max : 1.26 } }
+	};
+	const table = new Table({ parent : body, id : 892, metadata, isMutable : true });
+	table.AddRow([ 1.245 ]);
+	table.Save();
+	const input = table.m_wrapper.querySelector('.row:not(.header):not(.new) input');
+	testRunner.Assert(input.value, '1.2');
+	testRunner.Assert(input.classList.contains('invalid'), false);
+	for (const value of ['1.239', '1.261', '']) {
+		input.focus();
+		input.value = value;
+		input.dispatchEvent(new Event('input', { bubbles : true }));
+		input.dispatchEvent(new Event('change', { bubbles : true }));
+		input.blur();
+		testRunner.Assert(input.classList.contains('invalid'), true);
+		table.Save();
+		testRunner.Assert(table.IsChanged(), true, 'Save must retain invalid edits for correction');
+		testRunner.Assert(input.getAttribute('backup-raw-value'), '1.245');
+		table.Revert();
+		testRunner.Assert(input.getAttribute('raw-value'), '1.245');
+		testRunner.Assert(input.classList.contains('invalid'), false);
+	}
+	input.focus();
+	input.value = '1.26';
+	input.dispatchEvent(new Event('input', { bubbles : true }));
+	input.dispatchEvent(new Event('change', { bubbles : true }));
+	input.blur();
+	testRunner.Assert(input.value, '1.3');
+	testRunner.Assert(input.classList.contains('invalid'), false, 'A rounded display above max is still valid');
+	table.Save();
+	testRunner.Assert(table.GetData(), [ [ 1.26 ] ]);
+	table.Destructor();
+});
+
+testRunner.Test('Append descriptions to table and column titles without changing visible headers', () => {
+	const metadata = {
+		name : 'Prices',
+		type : 'TableData',
+		description : 'Quotes\nin EUR',
+		columns : {
+			'0' : { name : 'Price', type : 'Double', description : '<b>Unrounded</b> source' },
+			'1' : { name : 'Plain', type : 'String' },
+			'2' : { name : 'Empty', type : 'String', description : '' }
+		}
+	};
+	for (const isMutable of [true, false]) {
+		const table = new Table({ parent : body, id : 893, metadata, isMutable });
+		const header = table.m_wrapper.querySelector('div > .header');
+		testRunner.Assert(header.textContent, 'Prices (893)');
+		testRunner.Assert(header.title, 'Prices (893)\n\nQuotes\nin EUR');
+		const columns = table.m_wrapper.querySelectorAll('.row.header > div');
+		testRunner.Assert(columns[0].title, 'Price (0) Double\n\n<b>Unrounded</b> source');
+		testRunner.Assert(columns[0].textContent, 'Price (0) Double');
+		testRunner.Assert(columns[1].title, 'Plain (1) String');
+		testRunner.Assert(columns[2].title, 'Empty (2) String');
+		table.Destructor();
+	}
+});
+
+testRunner.Test('Add rounded new-row inputs and clear their raw values without losing saved rows', () => {
+	const metadata = {
+		name : 'Rounded entry',
+		type : 'TableData',
+		columns : {
+			'0' : { name : 'Price', type : 'Double', accuracy : 0.1, min : 1.24, max : 1.26 },
+			'1' : { name : 'Optional', type : 'OptionalFloat', accuracy : 0.01 }
+		}
+	};
+	const table = new Table({ parent : body, id : 894, metadata, isMutable : true });
+	const inputs = table.m_wrapper.querySelectorAll('.row.new input');
+	inputs[0].focus();
+	inputs[0].value = '1.245';
+	inputs[0].dispatchEvent(new Event('input', { bubbles : true }));
+	inputs[0].dispatchEvent(new Event('change', { bubbles : true }));
+	inputs[0].blur();
+	inputs[1].dispatchEvent(new Event('change', { bubbles : true }));
+	testRunner.Assert(inputs[0].value, '1.2');
+	testRunner.Assert(inputs[0].classList.contains('invalid'), false);
+	table.m_wrapper.querySelector('.row.new .add').click();
+	table.Save();
+	testRunner.Assert(table.GetData(), [ [ 1.245, null ] ]);
+	for (const input of inputs) {
+		testRunner.Assert(input.value, '');
+		testRunner.Assert(input.hasAttribute('raw-value'), false, 'Adding must clear the entry template raw values');
+	}
+	inputs[0].value = '1.255';
+	inputs[0].dispatchEvent(new Event('input', { bubbles : true }));
+	testRunner.Assert(inputs[0].getAttribute('raw-value'), '1.255');
+	table.Clear();
+	testRunner.Assert(inputs[0].value, '');
+	testRunner.Assert(inputs[0].hasAttribute('raw-value'), false);
+	table.Revert();
+	testRunner.Assert(table.GetData(), [ [ 1.245, null ] ]);
+	testRunner.Assert(table.IsChanged(), false);
+	table.Destructor();
 });
 
 testRunner.Run();

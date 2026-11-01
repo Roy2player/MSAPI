@@ -336,7 +336,7 @@ class Grid {
 		headerCell.classList.add("cell");
 		headerCell.style.order = order;
 		headerCell.setAttribute("parameter-id", id);
-		headerCell.title = metadata.metadata.name;
+		headerCell.title = Helper.GetCombinedTitle(metadata.metadata.name, metadata.metadata.description);
 		const widthVariable = `--grid-column-${id}-width`;
 		headerCell.style.width = `var(${widthVariable})`;
 
@@ -358,6 +358,7 @@ class Grid {
 		this.m_header.appendChild(headerCell);
 		let columnObject = {
 			metadata,
+			accuracy : metadata.metadata.accuracy, // Can be overridden afterwards
 			id,
 			index : order,
 			headerCell,
@@ -448,6 +449,7 @@ class Grid {
 				eventTarget : settings,
 				parameterId : id,
 				viewTitle : "Manage column settings",
+				columnObject,
 				positionUnder : headerCell,
 				canBeHidden : false,
 				canBeMaximized : false,
@@ -682,6 +684,40 @@ class Grid {
 			else if (columnObject.sorting == Grid.SORTING_TYPE.descending) {
 				columnObject.sorting = Grid.SORTING_TYPE.ascending;
 				this.ApplySorting({ columnObject });
+			}
+		});
+	}
+
+	/**************************
+	 * @brief Changes display accuracy and refreshes existing cells without altering row data.
+	 *
+	 * @param columnObject - Column whose display accuracy changes.
+	 * @param accuracy - Positive floating-point rounding increment or Timer.ACCURACY value.
+	 *
+	 * @test Yes.
+	 */
+	static SetColumnAccuracy({ columnObject, accuracy })
+	{
+		const metadata = columnObject.metadata.metadata;
+		if (!metadata) {
+			console.error("No metadata for column", columnObject);
+			return;
+		}
+
+		const isValid = metadata.type === "Timer"
+			? Object.values(Timer.ACCURACY).includes(accuracy)
+			: (metadata.type.includes("Float") || metadata.type.includes("Double")) && Number.isFinite(Number(accuracy))
+				&& Number(accuracy) > 0;
+		if (!isValid) {
+			console.error("Invalid grid column accuracy", accuracy);
+			return;
+		}
+
+		columnObject.accuracy = accuracy;
+		columnObject.cells.forEach((cell, rowObject) => {
+			const value = rowObject.values[columnObject.id];
+			if (value !== undefined && value !== null) {
+				Grid.SetValueToCell(cell, value, metadata, accuracy);
 			}
 		});
 	}
@@ -1484,6 +1520,9 @@ class Grid {
 			let input = document.createElement("input");
 			input.readOnly = true;
 			Timer.Apply(input);
+			if (columnObject.accuracy !== undefined) {
+				input.setAttribute("accuracy", columnObject.accuracy);
+			}
 			if (value != undefined) {
 				Timer.SetValue(input, BigInt(value));
 			}
@@ -1499,7 +1538,7 @@ class Grid {
 			cell.appendChild(input);
 		}
 		else if (value != undefined) {
-			Grid.SetValueToCell(cell, value, columnObject.metadata.metadata);
+			Grid.SetValueToCell(cell, value, columnObject.metadata.metadata, columnObject.accuracy);
 		}
 
 		rowObject.row.appendChild(cell);
@@ -1567,7 +1606,7 @@ class Grid {
 		return row;
 	}
 
-	static SetValueToCell(cell, value, metadata)
+	static SetValueToCell(cell, value, metadata, accuracy)
 	{
 		if (metadata.type == "bool") {
 			cell.innerHTML = value;
@@ -1581,7 +1620,11 @@ class Grid {
 		}
 
 		if (metadata.type == "Timer") {
-			Timer.SetValue(cell.querySelector("input"), BigInt(value));
+			const input = cell.querySelector("input");
+			if (accuracy !== undefined) {
+				input.setAttribute("accuracy", accuracy);
+			}
+			Timer.SetValue(input, BigInt(value));
 			return;
 		}
 
@@ -1595,8 +1638,8 @@ class Grid {
 			return;
 		}
 
-		if (Helper.IsFloat(value)) {
-			cell.innerHTML = Helper.FloatToString(value);
+		if (metadata.type.includes("Float") || metadata.type.includes("Double")) {
+			cell.textContent = value == null ? "" : Helper.FloatToString(value, accuracy);
 			return;
 		}
 
@@ -1636,6 +1679,12 @@ class Grid {
 				return;
 			}
 
+			let columnObject = this.m_columnById.get(columnId);
+			if (!columnObject) {
+				console.error("Column object is not found", columnId);
+				return;
+			}
+
 			if (metadata.metadata.type == "TableData") {
 				let tableView = Grid.#privateFields.m_tablesViewsForColumnsByRows.get(indexValue)?.get(columnId);
 				if (tableView) {
@@ -1652,12 +1701,7 @@ class Grid {
 				}
 			}
 			else {
-				Grid.SetValueToCell(cell, values[columnId], metadata.metadata);
-			}
-			let columnObject = this.m_columnById.get(columnId);
-			if (!columnObject) {
-				console.error("Column object is not found", columnId);
-				return;
+				Grid.SetValueToCell(cell, values[columnId], metadata.metadata, columnObject.accuracy);
 			}
 
 			if (columnObject === this.m_sortingColumnObject) {
