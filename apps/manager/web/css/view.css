@@ -598,11 +598,16 @@
     background: var(--background-element-general-hover);
 }
 
+.view > .viewContent > .gridSettingsView > .group.hidden
+{
+    display:none;
+}
+
 .view>.viewContent>.gridSettingsView>.group {
     display: flex;
     height: 25px;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 15px;
     padding-bottom: 5px;
     border-bottom: 1px solid var(--border-color-sub-general);
     user-select: none;
@@ -610,6 +615,10 @@
 
 .view>.viewContent>.gridSettingsView>.group>.text {
     min-width: 65px;
+}
+
+.view>.viewContent>.gridSettingsView>.group.accuracy>input {
+    margin-left: 10px;
 }
 
 .view>.viewContent>.gridSettingsView>.group>.action {

@@ -160,19 +160,57 @@ class Helper {
 		});
 	}
 
-	static FloatToString(num)
+	/**************************
+	 * @brief Formats a number, optionally rounding its display to a positive increment with Math.round.
+	 *
+	 * @param num - Value to display.
+	 * @param accuracy - Optional positive rounding increment; omission preserves the existing formatting.
+	 *
+	 * @return Formatted number without changing the original value.
+	 *
+	 * @test Yes.
+	 */
+	static FloatToString(num, accuracy)
 	{
 		if (num === null) {
 			return "";
 		}
 
 		num = Number(num);
+		if (accuracy !== undefined && Number.isFinite(num)) {
+			const increment = Number(accuracy);
+			if (!Number.isFinite(increment) || increment <= 0) {
+				console.error("Float accuracy must be a positive finite rounding increment", accuracy);
+			}
+			else if (Number.isFinite(num / increment) && Math.abs(num / increment) <= Number.MAX_SAFE_INTEGER) {
+				const rounded = Math.round(num / increment) * increment;
+				const [coefficient, exponent = '0'] = increment.toString().split('e');
+				const decimals = Math.max(0, (coefficient.split('.')[1]?.length || 0) - Number(exponent));
+				// Remove binary multiplication artifacts after rounding to the requested increment.
+				num = decimals <= 100 ? Number(rounded.toFixed(decimals)) : rounded;
+			}
+		}
 
 		if (Math.abs(num) < 1e-6 || Math.abs(num) >= 1e21) {
 			return num.toFixed(20).replace(/\.?0+$/, "");
 		}
 
 		return num.toString();
+	}
+
+	/**************************
+	 * @brief Appends an optional metadata description to a tooltip using a blank line.
+	 *
+	 * @param title - Existing tooltip text.
+	 * @param description - Optional description text to append to the title.
+	 *
+	 * @return Existing title, followed by two newlines and the description when supplied.
+	 *
+	 * @test Yes.
+	 */
+	static GetCombinedTitle(title, description)
+	{
+		return typeof description === "string" && description.length != 0 ? `${title}\n\n${description}` : title;
 	}
 
 	static IsInt(num)
@@ -234,16 +272,17 @@ class Helper {
 
 	static CheckMinimum(input)
 	{
+		const value = input.getAttribute("raw-value") ?? input.value;
 		let min = input.getAttribute("min");
 		if (min !== null) {
-			if (Helper.IsFloat(input.value) || Helper.IsFloat(min)) {
-				if (+input.value < +min) {
+			if (Helper.IsFloat(value) || Helper.IsFloat(min)) {
+				if (+value < +min) {
 					input.classList.add("invalid");
 					return false;
 				}
 			}
 			else {
-				if (BigInt(input.value) < BigInt(min)) {
+				if (BigInt(value) < BigInt(min)) {
 					input.classList.add("invalid");
 					return false;
 				}
@@ -255,16 +294,17 @@ class Helper {
 
 	static CheckMaximum(input)
 	{
+		const value = input.getAttribute("raw-value") ?? input.value;
 		let max = input.getAttribute("max");
 		if (max !== null) {
-			if (Helper.IsFloat(input.value) || Helper.IsFloat(max)) {
-				if (+input.value > +max) {
+			if (Helper.IsFloat(value) || Helper.IsFloat(max)) {
+				if (+value > +max) {
 					input.classList.add("invalid");
 					return false;
 				}
 			}
 			else {
-				if (BigInt(input.value) > BigInt(max)) {
+				if (BigInt(value) > BigInt(max)) {
 					input.classList.add("invalid");
 					return false;
 				}
@@ -276,8 +316,9 @@ class Helper {
 
 	static CheckEmpty(input)
 	{
+		const value = input.getAttribute("raw-value") ?? input.value;
 		let canBeEmpty = input.getAttribute("canBeEmpty");
-		if (canBeEmpty === "false" && input.value === "") {
+		if (canBeEmpty === "false" && value === "") {
 			input.classList.add("invalid");
 			return false;
 		}

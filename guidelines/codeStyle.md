@@ -18,6 +18,7 @@ description: "Naming conventions and code formatting expectations"
 ## Statement grouping
 
 - Groups of statements that are not directly related should be separated by one empty line. Each group represents one logical step, such as input validation, response construction, or sending data.
+- Consecutive independent `if` blocks that handle distinct outcomes should be separated by one empty line, even when they concern the same operation, such as handling a send failure and checking snapshot completion.
 - Directly related statements should stay together, such as a declaration and the check of its value, or an operation and handling of its result.
 - A comment must remain adjacent to the statements it describes, with the separating empty line before the comment.
 - After a multiline `if` condition, the empty line must appear between the condition's opening brace and the first statement in its body.
@@ -36,6 +37,18 @@ if (length == 0) {
 }
 
 return SendResponse(connection, response, length);
+```
+
+The send-failure check and the snapshot-completion check form separate logical steps:
+
+```cpp
+if (!stream.SendData(data)) [[unlikely]] {
+    return HandleResult::IOError;
+}
+
+if (!hasMore) {
+    return HandleResult::SuccessChunked;
+}
 ```
 
 ## Static fields

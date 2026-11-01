@@ -2619,4 +2619,135 @@ testRunner.Test('Test removing an unsaved filter row is an internal settings cli
 	}
 });
 
+testRunner.Test('Apply column accuracy to existing cells, live updates, and recycled rows', async () => {
+	const priceId = 65001;
+	const timerId = 65002;
+	const optionalId = 65003;
+	MetadataCollector.AddMetadata(
+		priceId, { name : 'Price', type : 'Double', accuracy : 0.01, description : 'Price in EUR' }, true);
+	MetadataCollector.AddMetadata(
+		timerId, { name : 'Timestamp', type : 'Timer', accuracy : Timer.ACCURACY.Milliseconds }, true);
+	MetadataCollector.AddMetadata(optionalId, { name : 'Optional', type : 'OptionalFloat', accuracy : 0.1 }, true);
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid = new Grid(
+		{ parent, indexColumnId : scalar_parameter, columns : [ scalar_parameter, priceId, timerId, optionalId ] });
+	try {
+		const timestamp = BigInt(new Date(2026, 10, 1, 12, 34, 56).getTime()) * 1000000n + 123456789n;
+		grid.AddOrUpdateRow({ [scalar_parameter] : 1n, [priceId] : 1.234, [timerId] : timestamp, [optionalId] : 0 });
+		grid.AddOrUpdateRow(
+			{ [scalar_parameter] : 2n, [priceId] : -2.346, [timerId] : timestamp, [optionalId] : null });
+		await GridChecking.FlushGridUpdates(grid);
+		GridChecking.RenderAllRows(grid);
+		const price = grid.m_columnById.get(priceId);
+		const timer = grid.m_columnById.get(timerId);
+		const optional = grid.m_columnById.get(optionalId);
+		const row = grid.m_rowByIndexValue.get(1n);
+		testRunner.Assert(price.headerCell.title, 'Price\n\nPrice in EUR');
+		testRunner.Assert(timer.headerCell.title, 'Timestamp');
+		testRunner.Assert(price.cells.get(row).textContent, '1.23');
+		testRunner.Assert(optional.cells.get(row).textContent, '0');
+		const timerInput = timer.cells.get(row).querySelector('input');
+		testRunner.Assert(timerInput.value, `2026-11-01 12:34:56.123 UTC${TestRunner.UTC}`);
+		testRunner.Assert(timerInput.getAttribute('timestamp'), timestamp.toString());
+		Grid.SetColumnAccuracy({ columnObject : price, accuracy : 0.1 });
+		Grid.SetColumnAccuracy({ columnObject : timer, accuracy : Timer.ACCURACY.Microseconds });
+		Grid.SetColumnAccuracy({ columnObject : optional, accuracy : 1 });
+		testRunner.Assert(price.cells.get(row).textContent, '1.2');
+		testRunner.Assert(timerInput.value, `2026-11-01 12:34:56.123456 UTC${TestRunner.UTC}`);
+		testRunner.Assert(row.values[priceId], 1.234);
+		testRunner.Assert(row.values[timerId], timestamp);
+		testRunner.Assert(optional.cells.get(grid.m_rowByIndexValue.get(2n)).textContent, '');
+		testRunner.Assert(price.metadata.metadata.accuracy, 0.01, 'Overrides must not mutate shared metadata');
+
+		grid.UpdateRow(1n, { [priceId] : 2.567, [timerId] : timestamp + 1000000000n, [optionalId] : 0.49 });
+		grid.AddOrUpdateRow({ [scalar_parameter] : 3n, [priceId] : 3.456, [timerId] : timestamp });
+		await GridChecking.FlushGridUpdates(grid);
+		GridChecking.RenderAllRows(grid);
+		testRunner.Assert(price.cells.get(row).textContent, '2.6');
+		testRunner.Assert(
+			timer.cells.get(row).querySelector('input').value, `2026-11-01 12:34:57.123456 UTC${TestRunner.UTC}`);
+		testRunner.Assert(optional.cells.get(row).textContent, '0');
+		const added = grid.m_rowByIndexValue.get(3n);
+		testRunner.Assert(price.cells.get(added).textContent, '3.5');
+		testRunner.Assert(optional.cells.get(added).textContent, '');
+		testRunner.Assert(added.values[priceId], 3.456);
+
+		grid.m_pool.m_capacity = 1;
+		grid.m_pool.Render(2);
+		Grid.SetColumnAccuracy({ columnObject : price, accuracy : 0.01 });
+		grid.m_pool.Render(0);
+		testRunner.Assert(price.cells.get(row).textContent, '2.57');
+		testRunner.Assert(row.values[priceId], 2.567);
+	}
+	finally {
+		grid.Destructor();
+	}
+});
+
+testRunner.Test('Keep sorting and filtering based on complete values after changing accuracy', async () => {
+	const priceId = 65004;
+	MetadataCollector.AddMetadata(priceId, { name : 'Price', type : 'Double', accuracy : 0.01 }, true);
+	const parent = document.createElement('div');
+	body.appendChild(parent);
+	const grid = new Grid({ parent, indexColumnId : scalar_parameter, columns : [ scalar_parameter, priceId ] });
+	try {
+		grid.AddOrUpdateRow({ [scalar_parameter] : 2n, [priceId] : 1.249 });
+		grid.AddOrUpdateRow({ [scalar_parameter] : 1n, [priceId] : 1.241 });
+		await GridChecking.FlushGridUpdates(grid);
+		GridChecking.RenderAllRows(grid);
+		const column = grid.m_columnById.get(priceId);
+		column.sorting = Grid.SORTING_TYPE.ascending;
+		grid.ApplySorting({ columnObject : column });
+		Grid.SetColumnAccuracy({ columnObject : column, accuracy : 0.1 });
+		testRunner.Assert(grid.m_visibleRows.map(row => row.values[scalar_parameter]), [ 1n, 2n ]);
+		column.cells.forEach(cell => { testRunner.Assert(cell.textContent, '1.2'); });
+		column.filters = [ [ Grid.NUMBER_FILTER.greater, 1.245 ] ];
+		column.isFilterActive = true;
+		grid.ApplyFilters({ columnObject : column });
+		testRunner.Assert(grid.m_visibleRows.map(row => row.values[scalar_parameter]), [ 2n ]);
+		grid.UpdateRow(1n, { [priceId] : 1.247 });
+		await GridChecking.FlushGridUpdates(grid);
+		testRunner.Assert(grid.m_visibleRows.map(row => row.values[scalar_parameter]), [ 1n, 2n ]);
+		Grid.SetColumnAccuracy({ columnObject : column, accuracy : 1 });
+		testRunner.Assert(grid.m_visibleRows.map(row => row.values[scalar_parameter]), [ 1n, 2n ]);
+	}
+	finally {
+		grid.Destructor();
+	}
+});
+
+testRunner.Test('Reject invalid column accuracy without changing cells or raw data', () => {
+	const originalError = console.error;
+	const errors = [];
+	console.error = (...args) => { errors.push(args); };
+	try {
+		for (const [type, initial, invalid] of [[ 'Double', 0.1, [ 0, -1, NaN, Infinity ] ],
+				 [ 'Timer', Timer.ACCURACY.Milliseconds, [ 0, 5, '23', 23n ] ], [ 'String', undefined, [ 0.1 ] ]]) {
+			const cell = document.createElement('div');
+			cell.textContent = 'Unchanged';
+			const row = { values : { '1' : 1.234 } };
+			const columnObject = {
+				id : 1,
+				metadata : { metadata : { type } },
+				accuracy : initial,
+				cells : new Map([ [ row, cell ] ])
+			};
+			for (const accuracy of invalid) {
+				const previousErrors = errors.length;
+				Grid.SetColumnAccuracy({ columnObject, accuracy });
+				testRunner.Assert(errors.length, previousErrors + 1);
+				testRunner.Assert(columnObject.accuracy, initial);
+				testRunner.Assert(cell.textContent, 'Unchanged');
+				testRunner.Assert(row.values[1], 1.234);
+			}
+		}
+		Grid.SetColumnAccuracy({ columnObject : { metadata : {} }, accuracy : 0.1 });
+		testRunner.Assert(errors.length, 10);
+	}
+	finally {
+		console.error = originalError;
+	}
+});
+
 testRunner.Run();

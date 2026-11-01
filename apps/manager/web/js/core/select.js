@@ -115,6 +115,8 @@ class Select {
 							selectViews.delete(selectView);
 						}
 					});
+
+					input.dispatchEvent(new Event("change", { bubbles : true }));
 				});
 
 				selectItems.appendChild(divElement);
