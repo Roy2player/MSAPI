@@ -145,7 +145,7 @@ class Grid {
 		this.m_indexValueToRowObject = new Map();
 		this.m_visibleRows = new Array();
 		this.m_pendingFilterColumns = new Set();
-		this.m_pendingCellUpdates = new Set();
+		this.m_rowObjectToPendingCellUpdates = new Map();
 		this.m_isSortingPending = false;
 		this.m_isUpdateScheduled = false;
 		this.m_resizingColumn = null;
@@ -937,12 +937,25 @@ class Grid {
 			}
 		}
 
-		for (const cell of this.m_pendingCellUpdates) {
-			if (cell.isConnected) {
-				Grid.AnimateCellUpdate(cell);
+		for (const [rowObject, cells] of this.m_rowObjectToPendingCellUpdates) {
+			for (const cell of cells) {
+				if (cell.isConnected) {
+					const classes = cell.classList;
+					if (classes.contains(Grid.CELL_UPDATE_ANIMATION_1)) {
+						classes.replace(Grid.CELL_UPDATE_ANIMATION_1, Grid.CELL_UPDATE_ANIMATION_2);
+					}
+					else if (classes.contains(Grid.CELL_UPDATE_ANIMATION_2)) {
+						classes.replace(Grid.CELL_UPDATE_ANIMATION_2, Grid.CELL_UPDATE_ANIMATION_1);
+					}
+					else {
+						classes.add(Grid.CELL_UPDATE_ANIMATION_1);
+					}
+
+					rowObject.columnParameterIdToUpdatedCells.set(cell.getAttribute("parameter-id"), cell);
+				}
 			}
 		}
-		this.m_pendingCellUpdates.clear();
+		this.m_rowObjectToPendingCellUpdates.clear();
 
 		// Reset last, so requests made during flush are handled in this flush
 		this.m_isUpdateScheduled = false;
@@ -1577,7 +1590,14 @@ class Grid {
 
 		let rowNode = document.createElement("div");
 		rowNode.classList.add("row");
-		const rowObject = { node : rowNode, index : -1, values, filteredBy : [], isFiltered : false };
+		const rowObject = {
+			node : rowNode,
+			index : -1,
+			values,
+			filteredBy : [],
+			isFiltered : false,
+			columnParameterIdToUpdatedCells : new Map()
+		};
 		this.m_indexValueToRowObject.set(values[this.m_indexColumnId], rowObject);
 
 		// Diagnostic
@@ -1619,40 +1639,6 @@ class Grid {
 		this.RequestSorting();
 
 		return rowNode;
-	}
-
-	/**************************
-	 * @brief Queues a changed display in the grid's shared frame flush, deduplicating repeated cell updates.
-	 *
-	 * @param cell Connected cell whose displayed value changed.
-	 *
-	 * @test Yes.
-	 */
-	RequestCellUpdate(cell)
-	{
-		this.m_pendingCellUpdates.add(cell);
-		this.ScheduleUpdate();
-	}
-
-	/**************************
-	 * @brief Swaps the cell's CSS animation class, retaining the class after the animation completes.
-	 *
-	 * @param cell Existing cell whose displayed value changed.
-	 *
-	 * @test Yes.
-	 */
-	static AnimateCellUpdate(cell)
-	{
-		const classes = cell.classList;
-		if (classes.contains(Grid.CELL_UPDATE_ANIMATION_1)) {
-			classes.replace(Grid.CELL_UPDATE_ANIMATION_1, Grid.CELL_UPDATE_ANIMATION_2);
-		}
-		else if (classes.contains(Grid.CELL_UPDATE_ANIMATION_2)) {
-			classes.replace(Grid.CELL_UPDATE_ANIMATION_2, Grid.CELL_UPDATE_ANIMATION_1);
-		}
-		else {
-			classes.add(Grid.CELL_UPDATE_ANIMATION_1);
-		}
 	}
 
 	/**************************
@@ -1780,7 +1766,14 @@ class Grid {
 			}
 			else {
 				if (Grid.SetValueToCell(cell, values[columnId], metadataObject.definition, columnObject.accuracy)) {
-					this.RequestCellUpdate(cell);
+					let pendingCellUpdates = this.m_rowObjectToPendingCellUpdates.get(rowObject);
+					if (!pendingCellUpdates) {
+						pendingCellUpdates = new Array();
+						this.m_rowObjectToPendingCellUpdates.set(rowObject, pendingCellUpdates);
+					}
+
+					pendingCellUpdates.push(cell);
+					this.ScheduleUpdate();
 				}
 			}
 
@@ -1901,7 +1894,7 @@ class Grid {
 	 */
 	ClearRows()
 	{
-		this.m_pendingCellUpdates.clear();
+		this.m_rowObjectToPendingCellUpdates.clear();
 		this.m_orderToColumnObject.forEach((column) => column.rowObjectToCellNode.clear());
 		this.m_indexValueToRowObject.clear();
 		this.m_visibleRows = [];
@@ -1921,7 +1914,7 @@ class Grid {
 			this.m_pool = null;
 		}
 		this.m_pendingFilterColumns?.clear();
-		this.m_pendingCellUpdates?.clear();
+		this.m_rowObjectToPendingCellUpdates?.clear();
 		this.m_isSortingPending = false;
 		if (this.m_view) {
 			this.m_view.remove();
@@ -2357,15 +2350,10 @@ class Pool {
 		}
 
 		if (!rowObject.node.isConnected) {
-			// A retained class would replay on attachment. Returning rows display current data silently.
-			for (const cell of rowObject.node.children) {
-				this.m_grid.m_pendingCellUpdates.delete(cell);
-				if (cell.classList.contains(Grid.CELL_UPDATE_ANIMATION_1)
-					|| cell.classList.contains(Grid.CELL_UPDATE_ANIMATION_2)) {
-
-					cell.classList.remove(Grid.CELL_UPDATE_ANIMATION_1, Grid.CELL_UPDATE_ANIMATION_2);
-				}
+			for (const cell of rowObject.columnParameterIdToUpdatedCells.values()) {
+				cell.classList.remove(Grid.CELL_UPDATE_ANIMATION_1, Grid.CELL_UPDATE_ANIMATION_2);
 			}
+			rowObject.columnParameterIdToUpdatedCells.clear();
 		}
 
 		return rowObject.node;
