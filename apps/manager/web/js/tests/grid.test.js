@@ -3158,12 +3158,20 @@ testRunner.Test('Define two non-filling CSS animations with configurable appeara
 			[ 1, 2 ].map(index => rules.find(rule => rule.selectorText === `.grid .cell.cell-update-animation-${index}`)
 									  .style.getPropertyValue('animation-name'));
 		testRunner.Assert(names[0] !== names[1], true);
+
+		// CSSOM implementations expose box-shadow either as a shorthand or as its paint-only longhands.
+		const allowedProperties = new Set([
+			'box-shadow', 'box-shadow-color', 'box-shadow-offset', 'box-shadow-blur', 'box-shadow-spread',
+			'box-shadow-position'
+		]);
 		for (const name of names) {
 			const keyframes = rules.find(rule => rule.name === name);
 			testRunner.Assert(keyframes.cssRules.length, 2);
 			for (const frame of keyframes.cssRules) {
+				testRunner.Assert(frame.style.getPropertyValue('box-shadow') !== '', true);
 				for (const property of Array.from(frame.style)) {
-					testRunner.Assert(property, 'box-shadow');
+					testRunner.Assert(
+						allowedProperties.has(property), true, `Unexpected animation property: ${property}`);
 				}
 			}
 		}
