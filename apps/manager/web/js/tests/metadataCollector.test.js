@@ -30,7 +30,7 @@ testRunner.Test('Accept supported descriptions and type-specific display accurac
 		const id = 60000 + index;
 		MetadataCollector.AddMetadata(id, metadata, true);
 		testRunner.Assert(MetadataCollector.HasMetadata(id), true);
-		testRunner.Assert(MetadataCollector.GetMetadata(id).metadata, metadata);
+		testRunner.Assert(MetadataCollector.GetMetadataObject(id).definition, metadata);
 	}
 });
 
@@ -77,7 +77,7 @@ testRunner.Test('Accept display properties on array and object table columns', (
 			= { name : 'Described table', type : 'TableData', description : 'Table details', columns : tableColumns };
 		MetadataCollector.AddMetadata(id, metadata, false);
 		testRunner.Assert(MetadataCollector.HasMetadata(id), true);
-		testRunner.Assert(MetadataCollector.GetMetadata(id).metadata, metadata);
+		testRunner.Assert(MetadataCollector.GetMetadataObject(id).definition, metadata);
 	}
 });
 

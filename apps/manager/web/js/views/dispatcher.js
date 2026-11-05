@@ -27,9 +27,9 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 
 class Dispatcher extends View {
 	static #privateFields = (() => {
-		const m_nodeToHiddenViews = new Map();
-		const m_panelToCreateFunc = new Map();
-		return { m_nodeToHiddenViews, m_panelToCreateFunc };
+		const m_viewToHiddenEntryNode = new Map();
+		const m_panelNameToCreateFunction = new Map();
+		return { m_viewToHiddenEntryNode, m_panelNameToCreateFunction };
 	})();
 
 	constructor() { super("Dispatcher", { "isInterfaceUnit" : true }); }
@@ -49,7 +49,7 @@ class Dispatcher extends View {
 		this.m_hiddenViews = this.m_view.querySelector('.hiddenViews');
 		this.m_registeredPanels = this.m_view.querySelector('.registeredPanels');
 
-		for (let [panelName, creatorFunction] of Dispatcher.#privateFields.m_panelToCreateFunc) {
+		for (let [panelName, creatorFunction] of Dispatcher.#privateFields.m_panelNameToCreateFunction) {
 			this.AddPanel(panelName, creatorFunction);
 		}
 
@@ -58,7 +58,7 @@ class Dispatcher extends View {
 
 	AddHiddenView(view)
 	{
-		if (Dispatcher.#privateFields.m_nodeToHiddenViews.has(view)) {
+		if (Dispatcher.#privateFields.m_viewToHiddenEntryNode.has(view)) {
 			return;
 		}
 
@@ -74,7 +74,7 @@ class Dispatcher extends View {
 		});
 
 		hiddenViewsList.appendChild(div);
-		Dispatcher.#privateFields.m_nodeToHiddenViews.set(view, div);
+		Dispatcher.#privateFields.m_viewToHiddenEntryNode.set(view, div);
 		if (!this.m_hiddenViews.classList.contains('visible')) {
 			this.m_hiddenViews.classList.add('visible');
 		}
@@ -83,15 +83,15 @@ class Dispatcher extends View {
 
 	RemoveHiddenView(view)
 	{
-		if (!Dispatcher.#privateFields.m_nodeToHiddenViews.has(view)) {
+		if (!Dispatcher.#privateFields.m_viewToHiddenEntryNode.has(view)) {
 			return;
 		}
 
-		Dispatcher.#privateFields.m_nodeToHiddenViews.get(view).remove();
+		Dispatcher.#privateFields.m_viewToHiddenEntryNode.get(view).remove();
 		if (this.m_hiddenViews.querySelector('.list').childElementCount === 0) {
 			this.m_hiddenViews.classList.remove('visible');
 		}
-		Dispatcher.#privateFields.m_nodeToHiddenViews.delete(view);
+		Dispatcher.#privateFields.m_viewToHiddenEntryNode.delete(view);
 		view.m_parentView.classList.remove("hidden");
 	}
 
@@ -102,11 +102,11 @@ class Dispatcher extends View {
 			return;
 		}
 
-		if (Dispatcher.#privateFields.m_panelToCreateFunc.has(panelName)) {
+		if (Dispatcher.#privateFields.m_panelNameToCreateFunction.has(panelName)) {
 			return;
 		}
 
-		Dispatcher.#privateFields.m_panelToCreateFunc.set(panelName, creatorFunction);
+		Dispatcher.#privateFields.m_panelNameToCreateFunction.set(panelName, creatorFunction);
 
 		if (dispatcher) {
 			dispatcher.AddPanel(panelName, creatorFunction);
@@ -132,11 +132,11 @@ class Dispatcher extends View {
 
 	UnregisterPanel(panelName)
 	{
-		if (!Dispatcher.#privateFields.m_panelToCreateFunc.has(panelName)) {
+		if (!Dispatcher.#privateFields.m_panelNameToCreateFunction.has(panelName)) {
 			return;
 		}
 
-		Dispatcher.#privateFields.m_panelToCreateFunc.delete(panelName);
+		Dispatcher.#privateFields.m_panelNameToCreateFunction.delete(panelName);
 
 		let registeredPanelsList = this.m_registeredPanels.querySelector('.list');
 		if (!registeredPanelsList) {

@@ -28,7 +28,7 @@ class TableView extends View {
 
 		let table = new Table(
 			{ parent : this.m_view, id : parameters.tableId, metadata : parameters.metadata, isMutable : false });
-		this.m_tables.set(+parameters.tableId, table);
+		this.m_tableIdToTable.set(+parameters.tableId, table);
 
 		return true;
 	}

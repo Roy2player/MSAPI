@@ -118,11 +118,11 @@ testRunner.Test('Create InstalledApps panel', async () => {
 
 	await TestRunner.WaitFor(() => view.m_grid.m_visibleRows.length == 4, "Installed apps are loaded");
 	testRunner.Assert(view.m_grid.m_visibleRows.length, 4, 'Installed app rows count is unexpected');
-	testRunner.Assert(view.m_grid.m_columnById.size, 2, 'Columns size is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.size, 2, 'Columns size is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(0).headerCell.querySelector("span.text").innerHTML, 'Create',
-		'First column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(1).headerCell.querySelector("span.text").innerHTML, 'Type',
+	testRunner.Assert(view.m_grid.m_idToColumnObject.size, 2, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.size, 2, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(0).headerCell.querySelector("span.text").innerHTML,
+		'Create', 'First column name is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(1).headerCell.querySelector("span.text").innerHTML, 'Type',
 		'Second column name is unexpected');
 
 	await TestRunner.WaitFor(() => MetadataCollector.HasMetadata("2000001"), "Metadata request is responded");
@@ -165,24 +165,24 @@ testRunner.Test('Add view to CreatedApps panel', () => {
 	testRunner.Assert(view.m_grid !== null, true, 'Grid not created');
 	testRunner.Assert(view.m_grid.m_visibleRows.length, 0, 'Created apps grid should be empty');
 	// Some additional metadata should be already taken from Installed Apps view request
-	testRunner.Assert(view.m_grid.m_columnById.size, 8, 'Columns size is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.size, 8, 'Columns size is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(0).headerCell.querySelector("span.text").innerHTML, 'Open view',
-		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(1).headerCell.querySelector("span.text").innerHTML,
+	testRunner.Assert(view.m_grid.m_idToColumnObject.size, 8, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.size, 8, 'Columns size is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(0).headerCell.querySelector("span.text").innerHTML,
+		'Open view', 'Column name is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(1).headerCell.querySelector("span.text").innerHTML,
 		'Change state', 'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(2).headerCell.querySelector("span.text").innerHTML, 'Modify',
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(2).headerCell.querySelector("span.text").innerHTML,
+		'Modify', 'Column name is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(3).headerCell.querySelector("span.text").innerHTML,
+		'Delete', 'Column name is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(4).headerCell.querySelector("span.text").innerHTML, 'Name',
 		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(3).headerCell.querySelector("span.text").innerHTML, 'Delete',
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(5).headerCell.querySelector("span.text").innerHTML, 'Type',
 		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(4).headerCell.querySelector("span.text").innerHTML, 'Name',
-		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(5).headerCell.querySelector("span.text").innerHTML, 'Type',
-		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(6).headerCell.querySelector("span.text").innerHTML, 'Listen IP',
-		'Column name is unexpected');
-	testRunner.Assert(view.m_grid.m_columnByOrder.get(7).headerCell.querySelector("span.text").innerHTML, 'Listen port',
-		'Column name is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(6).headerCell.querySelector("span.text").innerHTML,
+		'Listen IP', 'Column name is unexpected');
+	testRunner.Assert(view.m_grid.m_orderToColumnObject.get(7).headerCell.querySelector("span.text").innerHTML,
+		'Listen port', 'Column name is unexpected');
 });
 
 testRunner.Run();

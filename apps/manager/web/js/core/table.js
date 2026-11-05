@@ -65,10 +65,12 @@ class Table {
 	 * @param metadata - Table metadata, including column types and optional display accuracy.
 	 * @param isMutable - Whether rows can be edited through the table controls.
 	 * @param postSaveFunction - Optional callback invoked after a save attempt.
+	 * @param columnIdToParameterId - Optional mapping from table column IDs to source parameter IDs for select options.
+	 * Omission uses the registered table-column hashes.
 	 *
 	 * @test Yes.
 	 */
-	constructor({ parent, id, metadata, isMutable, postSaveFunction })
+	constructor({ parent, id, metadata, isMutable, postSaveFunction, columnIdToParameterId })
 	{
 		this.m_parent = parent;
 		this.m_id = id;
@@ -182,9 +184,9 @@ class Table {
 						? (columnMetadata.canBeEmpty == undefined ? "true" : columnMetadata.canBeEmpty.toString())
 						: "false");
 
-				const tableColumnHash = Helper.StringHash32Uint(id + "-" + columnId);
-				if (MetadataCollector.IsSelect(tableColumnHash)) {
-					inputElement.setAttribute("parameter-id", tableColumnHash);
+				const parameterId = columnIdToParameterId?.[columnId] ?? Helper.StringHash32Uint(id + "-" + columnId);
+				if (MetadataCollector.IsSelect(parameterId)) {
+					inputElement.setAttribute("parameter-id", parameterId);
 					Select.Apply({ input : inputElement });
 				}
 				else {
@@ -306,7 +308,7 @@ class Table {
 				}
 
 				if (inputs[index].hasAttribute("timestamp")) {
-					Timer.SetValue(inputs[index], BigInt(values[index]));
+					Timer.SetValue(inputs[index], values[index]);
 					continue;
 				}
 
@@ -396,7 +398,7 @@ class Table {
 
 		remove.addEventListener("click", () => {
 			if (this.m_newRowsReferences.includes(newRowCopy)) {
-				this.m_newRowsReferences = this.m_newRowsReferences.filter(row => row != newRowCopy);
+				this.m_newRowsReferences = this.m_newRowsReferences.filter(rowNode => rowNode != newRowCopy);
 
 				newRowCopy.remove();
 
@@ -505,12 +507,12 @@ class Table {
 		}
 
 		this.m_data = null;
-		this.m_newRowsReferences.forEach(row => { row.remove(); });
+		this.m_newRowsReferences.forEach(rowNode => { rowNode.remove(); });
 		this.m_newRowsReferences = [];
 
 		let removed = this.m_wrapper.querySelectorAll(".table > .removed");
 		if (removed.length != 0) {
-			removed.forEach(row => { row.classList.remove("removed"); });
+			removed.forEach(rowNode => { rowNode.classList.remove("removed"); });
 		}
 
 		let changed = this.m_wrapper.querySelectorAll(".table > .row input.changed");
@@ -549,8 +551,8 @@ class Table {
 
 		let allRows = this.m_wrapper.querySelectorAll(".table > .row:not(.header):not(.new)");
 		if (allRows.length != 0
-			&& Array.from(allRows).some(
-				row => Array.from(row.querySelectorAll("input")).some(input => input.classList.contains("invalid")))) {
+			&& Array.from(allRows).some(rowNode => Array.from(rowNode.querySelectorAll("input"))
+													   .some(input => input.classList.contains("invalid")))) {
 
 			if (this.m_postSaveFunction) {
 				this.m_postSaveFunction();
@@ -578,9 +580,9 @@ class Table {
 
 		let added = this.m_wrapper.querySelectorAll(".table > .added");
 		if (added.length != 0) {
-			added.forEach(row => {
-				row.classList.remove("added");
-				row.querySelectorAll("input").forEach(input => {
+			added.forEach(rowNode => {
+				rowNode.classList.remove("added");
+				rowNode.querySelectorAll("input").forEach(input => {
 					input.classList.remove("changed");
 					if (input.type == "checkbox") {
 						input.setAttribute("backup", input.checked);
@@ -599,7 +601,7 @@ class Table {
 
 		let removed = this.m_wrapper.querySelectorAll(".table > .removed");
 		if (removed.length != 0) {
-			removed.forEach(row => { row.remove(); });
+			removed.forEach(rowNode => { rowNode.remove(); });
 		}
 
 		this.m_newRowsReferences = [];
@@ -612,11 +614,11 @@ class Table {
 	Clear()
 	{
 		let rows = this.m_wrapper.querySelectorAll(".table > .row.added");
-		rows.forEach(row => { row.remove(); });
+		rows.forEach(rowNode => { rowNode.remove(); });
 
 		rows = this.m_wrapper.querySelectorAll(".table > .row.new");
-		rows.forEach(row => {
-			row.querySelectorAll("input").forEach(input => {
+		rows.forEach(rowNode => {
+			rowNode.querySelectorAll("input").forEach(input => {
 				input.removeAttribute("raw-value");
 				if (input.type == "checkbox") {
 					input.checked = false;
@@ -629,7 +631,7 @@ class Table {
 		});
 
 		rows = this.m_wrapper.querySelectorAll(".table > .row:not(.header):not(.new)");
-		rows.forEach(row => { row.classList.add("removed"); });
+		rows.forEach(rowNode => { rowNode.classList.add("removed"); });
 
 		if (rows.length != 0) {
 			this.m_wrapper.classList.add("changed");
@@ -658,9 +660,9 @@ class Table {
 
 		const rows = this.m_wrapper.querySelectorAll(".table > .row:not(.header):not(.new)");
 
-		rows.forEach(row => {
+		rows.forEach(rowNode => {
 			let data = [];
-			row.querySelectorAll("input").forEach(input => {
+			rowNode.querySelectorAll("input").forEach(input => {
 				if (input.hasAttribute("raw-value")) {
 					const rawValue = input.getAttribute("raw-value");
 					data.push(rawValue === "" ? null : Number(rawValue));

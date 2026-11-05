@@ -26,38 +26,38 @@ global.body = document.querySelector('body');
 
 const originalAddEventListener = EventTarget.prototype.addEventListener;
 const originalRemoveEventListener = EventTarget.prototype.removeEventListener;
-const eventListeners = new WeakMap();
+const eventTargetToListeners = new WeakMap();
 
 EventTarget.prototype.addEventListener = function(type, listener, options) {
-	if (!eventListeners.has(this)) {
-		eventListeners.set(this, {});
+	if (!eventTargetToListeners.has(this)) {
+		eventTargetToListeners.set(this, {});
 	}
-	if (!eventListeners.get(this)[type]) {
-		eventListeners.get(this)[type] = [];
+	if (!eventTargetToListeners.get(this)[type]) {
+		eventTargetToListeners.get(this)[type] = [];
 	}
 
-	eventListeners.get(this)[type].push({ listener, options });
+	eventTargetToListeners.get(this)[type].push({ listener, options });
 	originalAddEventListener.call(this, type, listener, options);
 };
 
 EventTarget.prototype.removeEventListener = function(type, listener, options) {
 	originalRemoveEventListener.call(this, type, listener, options);
-	if (!eventListeners.has(this) || !eventListeners.get(this)[type]) {
+	if (!eventTargetToListeners.has(this) || !eventTargetToListeners.get(this)[type]) {
 		return;
 	}
 
-	const index = eventListeners.get(this)[type].findIndex(
+	const index = eventTargetToListeners.get(this)[type].findIndex(
 		({ listener : registeredListener, options : registeredOptions }) => listener === registeredListener
 			&& options === registeredOptions);
 
 	if (index !== -1) {
-		eventListeners.get(this)[type].splice(index, 1);
+		eventTargetToListeners.get(this)[type].splice(index, 1);
 	}
 };
 
-global.getEventListeners = function(target) { return eventListeners.get(target) || {}; };
+global.getEventListeners = function(target) { return eventTargetToListeners.get(target) || {}; };
 global.window = jsdom.window;
-global.MutationObserver = require("mutation-observer");
+global.MutationObserver = jsdom.window.MutationObserver;
 global.ResizeObserver = class {
 	observe() { }
 	disconnect() { }

@@ -64,7 +64,7 @@
  * @brief m_title - title of view.
  * @brief m_parentView - parent view element.
  * @brief m_parentNode - parent node of view.
- * @brief m_tables - map of tables in view.
+ * @brief m_tableIdToTable - map of tables in view.
  * @brief m_grid - grid in view.
  * @brief m_created - flag of view creation.
  * @brief m_maximizeButton - maximize button element.
@@ -80,19 +80,23 @@
 
 class View {
 	static #privateFields = (() => {
-		const m_viewTemplateToViewType = new Map();
-		const m_parametersTemplateToViewType = new Map();
-		const m_parametersToPort = new Map();
-		const m_createdViews = new Map();
+		const m_viewTypeToTemplateObject = new Map();
+		// Each view type maps template names to parameter templates.
+		const m_viewTypeToParametersTemplates = new Map();
+		const m_portToParameters = new Map();
+		const m_uidToView = new Map();
 		const m_lastCreatedView = null;
 		return {
-			m_viewTemplateToViewType,
-			m_parametersTemplateToViewType,
-			m_parametersToPort,
-			m_createdViews,
+			m_viewTypeToTemplateObject,
+			m_viewTypeToParametersTemplates,
+			m_portToParameters,
+			m_uidToView,
 			m_lastCreatedView
 		};
 	})();
+
+	// Minimum visible height in pixels when placing a new view near the window's bottom edge.
+	static MIN_VISIBLE_HEIGHT = 50;
 
 	static m_clingSensitive = 20;
 
@@ -163,31 +167,34 @@ class View {
 
 	static AddViewTemplate(viewType, template)
 	{
-		if (View.#privateFields.m_viewTemplateToViewType.has(viewType)) {
+		if (View.#privateFields.m_viewTypeToTemplateObject.has(viewType)) {
 			console.warn("View template for view type", viewType, "is already registered, overwriting");
 		}
-		View.#privateFields.m_viewTemplateToViewType.set(viewType, { template, templateElement : null });
+		View.#privateFields.m_viewTypeToTemplateObject.set(viewType, { template, templateElement : null });
 	}
 
-	static GetViewTemplate(viewType) { return View.#privateFields.m_viewTemplateToViewType.get(viewType); }
+	static GetViewTemplate(viewType) { return View.#privateFields.m_viewTypeToTemplateObject.get(viewType); }
 
 	static AddParametersTemplate(viewType, templateName, template)
 	{
-		if (!View.#privateFields.m_parametersTemplateToViewType.has(viewType)) {
-			View.#privateFields.m_parametersTemplateToViewType.set(viewType, new Map());
-			View.#privateFields.m_parametersTemplateToViewType.get(viewType).set(templateName, template);
+		if (!View.#privateFields.m_viewTypeToParametersTemplates.has(viewType)) {
+			View.#privateFields.m_viewTypeToParametersTemplates.set(viewType, new Map());
+			View.#privateFields.m_viewTypeToParametersTemplates.get(viewType).set(templateName, template);
 			return;
 		}
-		View.#privateFields.m_parametersTemplateToViewType.get(viewType).set(templateName, template);
+		View.#privateFields.m_viewTypeToParametersTemplates.get(viewType).set(templateName, template);
 	}
 
-	static GetParametersTemplates(viewType) { return View.#privateFields.m_parametersTemplateToViewType.get(viewType); }
+	static GetParametersTemplates(viewType)
+	{
+		return View.#privateFields.m_viewTypeToParametersTemplates.get(viewType);
+	}
 
 	static GetParametersTemplate(viewType, templateName)
 	{
-		if (View.#privateFields.m_parametersTemplateToViewType.has(viewType)) {
-			if (View.#privateFields.m_parametersTemplateToViewType.get(viewType).has(templateName)) {
-				return View.#privateFields.m_parametersTemplateToViewType.get(viewType).get(templateName);
+		if (View.#privateFields.m_viewTypeToParametersTemplates.has(viewType)) {
+			if (View.#privateFields.m_viewTypeToParametersTemplates.get(viewType).has(templateName)) {
+				return View.#privateFields.m_viewTypeToParametersTemplates.get(viewType).get(templateName);
 			}
 		}
 
@@ -202,16 +209,16 @@ class View {
 		}
 
 		View.#privateFields.m_lastCreatedView = view;
-		View.#privateFields.m_createdViews.set(view.m_uid, view);
+		View.#privateFields.m_uidToView.set(view.m_uid, view);
 	}
 
 	static GetLastCreatedView() { return View.#privateFields.m_lastCreatedView; }
 
-	static GetCreatedViews() { return View.#privateFields.m_createdViews; }
+	static GetCreatedViews() { return View.#privateFields.m_uidToView; }
 
 	static ShowExistedView(newView)
 	{
-		for (let view of View.#privateFields.m_createdViews.values()) {
+		for (let view of View.#privateFields.m_uidToView.values()) {
 			if (view.m_viewType == newView.m_viewType && view.m_port == newView.m_port) {
 				view.Show();
 				newView.m_silentExit = true;
@@ -222,12 +229,12 @@ class View {
 		return false;
 	}
 
-	static RemoveCreatedView(view) { View.#privateFields.m_createdViews.delete(view.m_uid); }
+	static RemoveCreatedView(view) { View.#privateFields.m_uidToView.delete(view.m_uid); }
 
 	static HandleResponse(type, response, parameters)
 	{
 		const callbackName = "Handle" + type.charAt(0).toUpperCase() + type.slice(1) + "Response";
-		for (let view of View.#privateFields.m_createdViews.values()) {
+		for (let view of View.#privateFields.m_uidToView.values()) {
 			if (view.hasOwnProperty(callbackName)) {
 				view[callbackName](response, parameters);
 			}
@@ -258,6 +265,17 @@ class View {
 	</div>`;
 	static #generalTemplateElement = null;
 
+	/**************************
+	 * @brief Creates and initializes a view from its registered template. Clamps views horizontally to the
+	 * window after their content initializes, using the same bounds as dragging. Keeps the header and a minimum
+	 * visible strip above the bottom edge. Observes subsequent size changes to preserve these bounds when callers
+	 * append more content after construction.
+	 *
+	 * @param viewType Registered view type.
+	 * @param parameters View configuration and optional positionUnder anchor.
+	 *
+	 * @test Yes.
+	 */
 	constructor(viewType, parameters)
 	{
 		try {
@@ -277,12 +295,12 @@ class View {
 				return false;
 			}
 
-			if (!View.#privateFields.m_viewTemplateToViewType.has(viewType)) {
+			if (!View.#privateFields.m_viewTypeToTemplateObject.has(viewType)) {
 				console.error("Can't find view template for view");
 				return false;
 			}
 
-			let specificTemplate = View.#privateFields.m_viewTemplateToViewType.get(viewType);
+			let specificTemplate = View.#privateFields.m_viewTypeToTemplateObject.get(viewType);
 			if (!specificTemplate.templateElement) {
 				const template = document.createElement("template");
 				template.innerHTML = specificTemplate.template;
@@ -316,7 +334,7 @@ class View {
 			this.m_footer = this.m_parentView.querySelector(".viewFooter");
 			this.m_parentNode.appendChild(this.m_parentView);
 
-			this.m_tables = new Map();
+			this.m_tableIdToTable = new Map();
 
 			this.MakeDraggable(this.m_parentView.querySelector(".viewHeader .title"), this.m_parentView);
 			this.m_parentView.addEventListener("mousedown", () => { View.UpdateZIndex(this); });
@@ -569,15 +587,21 @@ class View {
 
 			View.SaveView(this);
 			this.m_parentView.setAttribute("uid", this.m_uid);
-			this.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
+			this.m_parentView.style.zIndex = View.#privateFields.m_uidToView.size;
 
 			if (parameters) {
 				if (parameters.hasOwnProperty("positionUnder")) {
-					this.m_parentView.style.left = parameters.positionUnder.getBoundingClientRect().left + "px";
-					this.m_parentView.style.top = parameters.positionUnder.getBoundingClientRect().bottom + "px";
+					const anchor = parameters.positionUnder.getBoundingClientRect();
 					this.m_parentView.style.position = "absolute";
+					this.m_parentView.style.left = anchor.left + "px";
+					this.m_parentView.style.top = anchor.bottom + "px";
 				}
 			}
+
+			this.ClampPosition();
+			// Callers can add content after construction, as Grid does with its column-filter table.
+			this.m_positionResizeObserver = new ResizeObserver(() => this.ClampPosition());
+			this.m_positionResizeObserver.observe(this.m_parentView, { box : "border-box" });
 
 			this.m_created = true;
 		}
@@ -585,6 +609,28 @@ class View {
 			console.error("Can't create view:", error);
 			this.Destructor();
 		}
+	}
+
+	/**************************
+	 * @brief Clamps an attached view horizontally to the window and keeps its header and minimum visible height above
+	 * the bottom edge. Handles initial placement and size changes without moving hidden or detached views.
+	 *
+	 * @test Yes.
+	 */
+	ClampPosition()
+	{
+		if (!this.m_parentView?.isConnected || this.m_parentView.classList.contains("hidden")) {
+			return;
+		}
+
+		this.m_parentView.style.left
+			= Math.max(0, Math.min(this.m_parentView.offsetLeft, window.innerWidth - this.m_parentView.offsetWidth))
+			+ "px";
+
+		const header = this.m_parentView.querySelector(".viewHeader");
+		const visibleHeight = Math.max(View.MIN_VISIBLE_HEIGHT, header.offsetTop + header.offsetHeight);
+		this.m_parentView.style.top
+			= Math.max(0, Math.min(this.m_parentView.offsetTop, window.innerHeight - visibleHeight)) + "px";
 	}
 
 	Constructor(parameters)
@@ -595,10 +641,11 @@ class View {
 
 	Destructor()
 	{
+		this.m_positionResizeObserver?.disconnect();
 		View.RemoveCreatedView(this);
-		if (this.m_tables) {
-			this.m_tables.forEach(table => { table.Destructor(); });
-			this.m_tables.clear();
+		if (this.m_tableIdToTable) {
+			this.m_tableIdToTable.forEach(table => { table.Destructor(); });
+			this.m_tableIdToTable.clear();
 		}
 		if (this.m_grid) {
 			this.m_grid.Destructor();
@@ -930,20 +977,20 @@ class View {
 
 	static UpdateZIndex(view)
 	{
-		if (view.m_parentView.style.zIndex == View.#privateFields.m_createdViews.size) {
+		if (view.m_parentView.style.zIndex == View.#privateFields.m_uidToView.size) {
 			return;
 		}
 
 		const shiftedPosition = view.m_parentView.style.zIndex;
 
-		View.#privateFields.m_createdViews.forEach((item, uid) => {
+		View.#privateFields.m_uidToView.forEach((item, uid) => {
 			if (uid != view.m_uid) {
 				if (item.m_parentView.style.zIndex > shiftedPosition) {
 					item.m_parentView.style.zIndex = item.m_parentView.style.zIndex - 1;
 				}
 			}
 			else {
-				item.m_parentView.style.zIndex = View.#privateFields.m_createdViews.size;
+				item.m_parentView.style.zIndex = View.#privateFields.m_uidToView.size;
 			}
 		});
 	}

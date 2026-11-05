@@ -17,6 +17,7 @@
  * OptionalUint8, OptionalUint16, OptionalUint32, OptionalUint64, OptionalDouble, OptionalFloat, String, Timer,
  * Duration, TableData. And one additional type: system, which is used for show system properties
  * on grids and tables views. Only one instance can be created.
+ * Registry lookups return metadata objects containing the shared definition and its isConst flag.
  * Optional description text extends metadata tooltips. Float/Double accuracy is a positive rounding increment;
  * Timer accuracy is a Timer.ACCURACY value. These properties also apply to table-column metadata.
  */
@@ -36,12 +37,17 @@ class MetadataCollector extends View {
 	]);
 
 	static #privateFields = (() => {
-		let m_metadataToId = new Map();
-		let m_stringInterpretationsToId = new Map();
-		let m_metadataToAppType = new Map();
-		let m_viewPortParameterToAppType = new Map();
+		let m_idToMetadataObject = new Map();
+		let m_idToStringInterpretations = new Map();
+		let m_appTypeToMetadata = new Map();
+		let m_appTypeToViewPortParameterId = new Map();
 
-		return { m_metadataToId, m_stringInterpretationsToId, m_metadataToAppType, m_viewPortParameterToAppType };
+		return {
+			m_idToMetadataObject,
+			m_idToStringInterpretations,
+			m_appTypeToMetadata,
+			m_appTypeToViewPortParameterId
+		};
 	})();
 
 	constructor(parameters) { super("Metadata collector", parameters); }
@@ -54,40 +60,50 @@ class MetadataCollector extends View {
 		return true;
 	}
 
-	static AddMetadata(id, metadata, isConst)
+	/**************************
+	 * @brief Registers a shared parameter definition and its const flag, including enum-valued table columns.
+	 * Existing identifiers retain their original metadata objects.
+	 *
+	 * @param id Parameter identifier.
+	 * @param definition Parameter definition with its name, type and optional properties.
+	 * @param isConst Whether the parameter belongs to an application's const section.
+	 *
+	 * @test Yes.
+	 */
+	static AddMetadata(id, definition, isConst)
 	{
-		if (typeof metadata !== "object" || typeof (+id) !== "number" || typeof isConst !== "boolean") {
-			console.error(`Invalid metadata, id or const attribute: ${metadata}, ${id}, ${isConst}`);
+		if (typeof definition !== "object" || typeof (+id) !== "number" || typeof isConst !== "boolean") {
+			console.error(`Invalid definition, id or const attribute: ${definition}, ${id}, ${isConst}`);
 			return;
 		}
 
-		if (MetadataCollector.#privateFields.m_metadataToId.has(+id)) {
+		if (MetadataCollector.#privateFields.m_idToMetadataObject.has(+id)) {
 			return;
 		}
 
-		if (!MetadataCollector.#ValidateMetadata(metadata)) {
+		if (!MetadataCollector.#ValidateMetadata(definition)) {
 			return;
 		}
 
-		MetadataCollector.#privateFields.m_metadataToId.set(+id, { metadata, isConst });
+		MetadataCollector.#privateFields.m_idToMetadataObject.set(+id, { definition, isConst });
 
-		if ("stringInterpretations" in metadata) {
-			MetadataCollector.#privateFields.m_stringInterpretationsToId.set(+id, metadata.stringInterpretations);
+		if ("stringInterpretations" in definition) {
+			MetadataCollector.#privateFields.m_idToStringInterpretations.set(+id, definition.stringInterpretations);
 		}
-		else if (metadata.type == "TableData") {
-			for (let column of Object.entries(metadata.columns)) {
+		else if (definition.type == "TableData") {
+			for (let column of Object.entries(definition.columns)) {
 				if (column.length > 1 && "stringInterpretations" in column[1]) {
 					const tableColumnHash = Helper.StringHash32Uint(id.toString() + "-" + column[0].toString());
-					MetadataCollector.#privateFields.m_stringInterpretationsToId.set(
+					MetadataCollector.#privateFields.m_idToStringInterpretations.set(
 						tableColumnHash, column[1].stringInterpretations);
 
-					if (MetadataCollector.#privateFields.m_metadataToId.has(tableColumnHash)) {
+					if (MetadataCollector.#privateFields.m_idToMetadataObject.has(tableColumnHash)) {
 						console.error(
 							`Table column hash is not among metadata items, it can lead to unexpected results`,
 							tableColumnHash);
 					}
-					MetadataCollector.#privateFields.m_metadataToId.set(
-						tableColumnHash, { metadata : column[1], isConst });
+					MetadataCollector.#privateFields.m_idToMetadataObject.set(
+						tableColumnHash, { definition : column[1], isConst });
 				}
 			}
 		}
@@ -275,17 +291,24 @@ class MetadataCollector extends View {
 		return true;
 	}
 
-	static GetMetadata(id)
+	/**************************
+	 * @param id Parameter identifier.
+	 *
+	 * @return Metadata object containing definition and isConst, or undefined if the identifier is unknown.
+	 *
+	 * @test Yes.
+	 */
+	static GetMetadataObject(id)
 	{
-		if (!MetadataCollector.#privateFields.m_metadataToId.has(+id)) {
+		if (!MetadataCollector.#privateFields.m_idToMetadataObject.has(+id)) {
 			console.warn(`Metadata with id: ${id} not found`);
 			return undefined;
 		}
 
-		return MetadataCollector.#privateFields.m_metadataToId.get(+id);
+		return MetadataCollector.#privateFields.m_idToMetadataObject.get(+id);
 	}
 
-	static HasMetadata(id) { return MetadataCollector.#privateFields.m_metadataToId.has(+id); }
+	static HasMetadata(id) { return MetadataCollector.#privateFields.m_idToMetadataObject.has(+id); }
 
 	/**************************
 	 * @param id - Parameter ID to get string interpretations for.
@@ -294,7 +317,7 @@ class MetadataCollector extends View {
 	 */
 	static GetStringInterpretations(id)
 	{
-		const stringInterpretations = MetadataCollector.#privateFields.m_stringInterpretationsToId.get(+id);
+		const stringInterpretations = MetadataCollector.#privateFields.m_idToStringInterpretations.get(+id);
 		if (!stringInterpretations) {
 			console.warn(`String interpretations for parameter id ${id} are not found`);
 			return undefined;
@@ -303,7 +326,7 @@ class MetadataCollector extends View {
 		return stringInterpretations;
 	}
 
-	static IsSelect(id) { return MetadataCollector.#privateFields.m_stringInterpretationsToId.has(+id); }
+	static IsSelect(id) { return MetadataCollector.#privateFields.m_idToStringInterpretations.has(+id); }
 
 	/**************************
 	 * @brief Adds or updates metadata for a specific application type.
@@ -323,7 +346,7 @@ class MetadataCollector extends View {
 			console.warn(`App metadata for '${appType}' should have 'mutable' or 'const' sections`);
 		}
 
-		MetadataCollector.#privateFields.m_metadataToAppType.set(appType, metadata);
+		MetadataCollector.#privateFields.m_appTypeToMetadata.set(appType, metadata);
 
 		for (let section of ["mutable", "const"]) {
 			if (metadata.hasOwnProperty(section)) {
@@ -346,7 +369,7 @@ class MetadataCollector extends View {
 	 *
 	 * @return Metadata object or undefined if not found.
 	 */
-	static GetAppMetadata(appType) { return MetadataCollector.#privateFields.m_metadataToAppType.get(appType); }
+	static GetAppMetadata(appType) { return MetadataCollector.#privateFields.m_appTypeToMetadata.get(appType); }
 
 	/**************************
 	 * @brief Sets the view port parameter for a specific application type.
@@ -354,9 +377,9 @@ class MetadataCollector extends View {
 	 * @param appType - Application type identifier.
 	 * @param parameterId - Parameter ID for the view port.
 	 */
-	static SetViewPortParameterToAppType(appType, parameterId)
+	static SetViewPortParameterId(appType, parameterId)
 	{
-		MetadataCollector.#privateFields.m_viewPortParameterToAppType.set(appType, parameterId);
+		MetadataCollector.#privateFields.m_appTypeToViewPortParameterId.set(appType, parameterId);
 	}
 
 	/**************************
@@ -364,9 +387,9 @@ class MetadataCollector extends View {
 	 *
 	 * @return Parameter ID or undefined if not found.
 	 */
-	static GetViewPortParameterToAppType(appType)
+	static GetViewPortParameterId(appType)
 	{
-		return MetadataCollector.#privateFields.m_viewPortParameterToAppType.get(appType);
+		return MetadataCollector.#privateFields.m_appTypeToViewPortParameterId.get(appType);
 	}
 };
 

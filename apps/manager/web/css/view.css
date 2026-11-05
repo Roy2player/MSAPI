@@ -598,12 +598,12 @@
     background: var(--background-element-general-hover);
 }
 
-.view > .viewContent > .gridSettingsView > .group.hidden
+.view > .viewContent > .gridColumnSettingsView > .group.hidden
 {
     display:none;
 }
 
-.view>.viewContent>.gridSettingsView>.group {
+.view>.viewContent>.gridColumnSettingsView>.group {
     display: flex;
     height: 25px;
     align-items: center;
@@ -613,30 +613,30 @@
     user-select: none;
 }
 
-.view>.viewContent>.gridSettingsView>.group>.text {
+.view>.viewContent>.gridColumnSettingsView>.group>.text {
     min-width: 65px;
 }
 
-.view>.viewContent>.gridSettingsView>.group.accuracy>input {
+.view>.viewContent>.gridColumnSettingsView>.group.accuracy>input {
     margin-left: 10px;
 }
 
-.view>.viewContent>.gridSettingsView>.group>.action {
+.view>.viewContent>.gridColumnSettingsView>.group>.action {
     width: 20px;
     height: 100%;
     margin-left: 10px;
     overflow: hidden;
 }
 
-.view>.viewContent>.gridSettingsView>.group>.action:hover::before {
+.view>.viewContent>.gridColumnSettingsView>.group>.action:hover::before {
     opacity: 1;
 }
 
-.view>.viewContent>.gridSettingsView>.group>.action.active::before {
+.view>.viewContent>.gridColumnSettingsView>.group>.action.active::before {
     opacity: 1;
 }
 
-.view>.viewContent>.gridSettingsView>.group>.action::before {
+.view>.viewContent>.gridColumnSettingsView>.group>.action::before {
     content: "";
     position: absolute;
     left: 0;
@@ -652,7 +652,7 @@
     mask-position: center;
 }
 
-.view>.viewContent>.gridSettingsView>.group:first-child {
+.view>.viewContent>.gridColumnSettingsView>.group:first-child {
     margin-top: 4px;
 }
 
@@ -684,7 +684,7 @@
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M4 4h16l-6 8v6l-4 2v-8z'/%3E%3C/svg%3E");
 }
 
-.view>.viewContent>.gridSettingsView>.group>.action.disabled {
+.view>.viewContent>.gridColumnSettingsView>.group>.action.disabled {
     width: 0;
     margin: 0;
 }

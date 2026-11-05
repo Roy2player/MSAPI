@@ -119,7 +119,7 @@ MSAPI frontend provides a modular set of views for managing, configuring, and in
 - [**App view:**](apps/manager/web/js/views/appView.js) Embeds the application’s custom UI in an iframe.
 - [**Table view:**](apps/manager/web/js/views/tableView.js) Displays a read-only MSAPI table for a given parameter.
 - [**Select view:**](apps/manager/web/js/views/selectView.js) Provides a searchable, case-sensitive select dialog for choosing parameter values.
-- [**Grid settings view:**](apps/manager/web/js/views/gridSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options.
+- [**Grid column settings view:**](apps/manager/web/js/views/gridColumnSettingsView.js) Offers a settings panel for grid columns, including alignment, sorting, and filtering options.
 - [**Account:**](apps/manager/web/js/views/account.js) View to display logging and sign up forms, manage account and its information.
 
 - [**Palette:**](apps/manager/web/js/views/palette.js) Compares existing light and dark color tokens with interactive UI examples.

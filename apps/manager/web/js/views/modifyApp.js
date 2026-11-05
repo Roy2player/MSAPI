@@ -52,7 +52,7 @@ class ModifyApp extends View {
 					parent.appendChild(tables);
 				}
 
-				saveThis.m_tables.set(+parameterId,
+				saveThis.m_tableIdToTable.set(+parameterId,
 					new Table({ parent : tables, id : parameterId, metadata : parameter, isMutable : mutable }));
 				return;
 			}
@@ -208,7 +208,7 @@ class ModifyApp extends View {
 
 				if (parameter.type == "TableData") {
 					if ("Rows" in value) {
-						let table = saveThis.m_tables.get(+key);
+						let table = saveThis.m_tableIdToTable.get(+key);
 						if (!table) {
 							console.error("Table id not found in view:", key);
 							continue;
@@ -272,7 +272,7 @@ class ModifyApp extends View {
 				return;
 			}
 
-			for (let table of this.m_tables.values()) {
+			for (let table of this.m_tableIdToTable.values()) {
 				if (table.IsChanged()) {
 					return;
 				}
@@ -281,7 +281,7 @@ class ModifyApp extends View {
 			this.SetLoading(true);
 			let newParameters
 				= View.ParseInputs(containerWithInputs, false, MetadataCollector.GetAppMetadata(this.m_appType));
-			for (const table of this.m_tables.values()) {
+			for (const table of this.m_tableIdToTable.values()) {
 				newParameters[table.m_id] = table.GetData();
 			}
 			new WebSocketSingle({

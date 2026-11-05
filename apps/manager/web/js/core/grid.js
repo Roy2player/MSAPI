@@ -29,8 +29,8 @@
  * 3) postUpdateRowFunction - function to be called after row is added or updated. It is passed row object and
  * updated values object.
  *
- * @note Sorting and filtering are coalesced per animation frame for real-time data sources. A row update changes its
- * data immediately, while the active filter and sort are applied by the next scheduled update.
+ * @note Sorting, filtering, and cell update highlights share one animation-frame flush. Row data and displayed values
+ * change immediately; repeated display changes produce at most one CSS animation class swap per cell in that flush.
  *
  * Performance considerations:
  * - Sorting currently costs O(N*log(N)), where N is the number of visible rows. Repeated updates in one frame share one
@@ -49,14 +49,20 @@
  * @todo Add ability to move columns.
  */
 class Grid {
+	// Alternate animation names restart CSS highlights without layout reads or animation handles.
+	static CELL_UPDATE_ANIMATION_1 = "cell-update-animation-1";
+	// Second class in the alternating pair; appearance and timing are defined in grid.css.
+	static CELL_UPDATE_ANIMATION_2 = "cell-update-animation-2";
+
 	static #template = `<div class="grid"><div class="header row"></div><div class="content"></div></div>`;
 	static #templateElement = undefined;
 	static #privateFields = (() => {
 		let m_hasGlobalEventListener = false;
 		let m_settingsViews = new Set();
-		let m_tablesViewsForColumnsByRows = new Map();
+		// Each row index value maps column IDs to their open table views.
+		let m_rowIndexValueToTableViews = new Map();
 
-		return { m_hasGlobalEventListener, m_settingsViews, m_tablesViewsForColumnsByRows };
+		return { m_hasGlobalEventListener, m_settingsViews, m_rowIndexValueToTableViews };
 	})();
 
 	static ALIGN_TYPE = Object.freeze({ left : -1, center: 0, right: 1 });
@@ -96,7 +102,7 @@ class Grid {
 	static GetTablesViewsNumber()
 	{
 		let size = 0;
-		Grid.#privateFields.m_tablesViewsForColumnsByRows.forEach((container, rowId) => { size += container.size; });
+		Grid.#privateFields.m_rowIndexValueToTableViews.forEach((container, rowId) => { size += container.size; });
 
 		return size;
 	}
@@ -134,11 +140,12 @@ class Grid {
 			}
 		}
 
-		this.m_columnByOrder = new Map();
-		this.m_columnById = new Map();
-		this.m_rowByIndexValue = new Map();
+		this.m_orderToColumnObject = new Map();
+		this.m_idToColumnObject = new Map();
+		this.m_indexValueToRowObject = new Map();
 		this.m_visibleRows = new Array();
 		this.m_pendingFilterColumns = new Set();
+		this.m_pendingCellUpdates = new Set();
 		this.m_isSortingPending = false;
 		this.m_isUpdateScheduled = false;
 		this.m_resizingColumn = null;
@@ -176,7 +183,7 @@ class Grid {
 		if (!Grid.#privateFields.m_hasGlobalEventListener) {
 			Grid.#privateFields.m_hasGlobalEventListener = true;
 			let settingsViews = Grid.#privateFields.m_settingsViews;
-			let tablesViews = Grid.#privateFields.m_tablesViewsForColumnsByRows;
+			let rowIndexValueToTableViews = Grid.#privateFields.m_rowIndexValueToTableViews;
 
 			document.addEventListener("click", (event) => {
 				// Child handlers can remove the clicked node before bubbling reaches this listener.
@@ -204,7 +211,7 @@ class Grid {
 					}
 				});
 
-				tablesViews.forEach((container, rowId) => {
+				rowIndexValueToTableViews.forEach((container, rowId) => {
 					container.forEach((tableView, columnId) => {
 						if (!tableView.m_parentView.parentNode) {
 							container.delete(columnId);
@@ -244,56 +251,56 @@ class Grid {
 	 */
 	ShiftColumns({ order, forward, bound })
 	{
-		if (order < 0 || order >= this.m_columnByOrder.size) {
+		if (order < 0 || order >= this.m_orderToColumnObject.size) {
 			console.error("Shifting is interrupted, invalid column order", order);
 			return;
 		}
 
 		if (forward) {
 			if (bound == undefined) {
-				bound = this.m_columnByOrder.size - 1;
+				bound = this.m_orderToColumnObject.size - 1;
 			}
-			else if (bound < order || bound >= this.m_columnByOrder.size) {
-				console.error("Shifting is interrupted, invalid bound", bound, order, this.m_columnByOrder.size);
+			else if (bound < order || bound >= this.m_orderToColumnObject.size) {
+				console.error("Shifting is interrupted, invalid bound", bound, order, this.m_orderToColumnObject.size);
 				return;
 			}
 
 			for (let i = bound; i >= order; --i) {
-				let column = this.m_columnByOrder.get(i);
+				let column = this.m_orderToColumnObject.get(i);
 				if (!column) {
 					console.error("Shifting is interrupted, column not found", i);
 					return;
 				}
 
 				column.headerCell.style.order = i + 1;
-				column.cells.forEach((cell) => cell.style.order = i + 1);
-				this.m_columnByOrder.set(i + 1, column);
+				column.rowObjectToCellNode.forEach((cell) => cell.style.order = i + 1);
+				this.m_orderToColumnObject.set(i + 1, column);
 			}
 			return;
 		}
 
-		if (this.m_columnByOrder.has(order - 1)) {
+		if (this.m_orderToColumnObject.has(order - 1)) {
 			console.error("Shifting is interrupted, column with order", order - 1, "already exists");
 		}
 
 		if (bound == undefined) {
-			bound = this.m_columnByOrder.size;
+			bound = this.m_orderToColumnObject.size;
 		}
-		else if (bound < order || bound > this.m_columnByOrder.size) {
+		else if (bound < order || bound > this.m_orderToColumnObject.size) {
 			console.error("Shifting is interrupted, invalid bound", bound);
 			return;
 		}
 
 		for (let i = order; i <= bound; ++i) {
-			let column = this.m_columnByOrder.get(i);
+			let column = this.m_orderToColumnObject.get(i);
 			if (!column) {
 				console.error("Shifting is interrupted, column not found", i);
 				return;
 			}
 
 			column.headerCell.style.order = i - 1;
-			column.cells.forEach((cell) => cell.style.order = i - 1);
-			this.m_columnByOrder.set(i - 1, column);
+			column.rowObjectToCellNode.forEach((cell) => cell.style.order = i - 1);
+			this.m_orderToColumnObject.set(i - 1, column);
 		}
 	}
 
@@ -308,25 +315,25 @@ class Grid {
 	 */
 	AddColumn({ id, order = -1 })
 	{
-		const metadata = MetadataCollector.GetMetadata(id);
-		if (!metadata) {
+		const metadataObject = MetadataCollector.GetMetadataObject(id);
+		if (!metadataObject) {
 			return;
 		}
 
-		for (const column of this.m_columnByOrder.values()) {
+		for (const column of this.m_orderToColumnObject.values()) {
 			if (column.id == id) {
 				console.error("Column already exists", id);
 				return;
 			}
 		}
 
-		if (order > this.m_columnByOrder.size) {
-			console.error(`Invalid order: ${order}, columns count: ${this.m_columnByOrder.size}`);
+		if (order > this.m_orderToColumnObject.size) {
+			console.error(`Invalid order: ${order}, columns count: ${this.m_orderToColumnObject.size}`);
 			return;
 		}
 
 		if (order < 0) {
-			order = this.m_columnByOrder.size;
+			order = this.m_orderToColumnObject.size;
 		}
 		else {
 			this.ShiftColumns({ order, forward : true });
@@ -336,13 +343,14 @@ class Grid {
 		headerCell.classList.add("cell");
 		headerCell.style.order = order;
 		headerCell.setAttribute("parameter-id", id);
-		headerCell.title = Helper.GetCombinedTitle(metadata.metadata.name, metadata.metadata.description);
+		headerCell.title
+			= Helper.GetCombinedTitle(metadataObject.definition.name, metadataObject.definition.description);
 		const widthVariable = `--grid-column-${id}-width`;
 		headerCell.style.width = `var(${widthVariable})`;
 
 		let text = document.createElement("span");
 		text.classList.add("text");
-		text.innerHTML = metadata.metadata.name;
+		text.innerHTML = metadataObject.definition.name;
 		headerCell.appendChild(text);
 		const resizeHandle = document.createElement("span");
 		resizeHandle.classList.add("resizeHandle");
@@ -357,23 +365,23 @@ class Grid {
 		headerCell.appendChild(resizeHandle);
 		this.m_header.appendChild(headerCell);
 		let columnObject = {
-			metadata,
-			accuracy : metadata.metadata.accuracy, // Can be overridden afterwards
+			metadata : metadataObject.definition,
+			accuracy : metadataObject.definition.accuracy, // Can be overridden afterwards
 			id,
 			index : order,
 			headerCell,
 			resizeHandle,
 			widthVariable,
 			width : Grid.DEFAULT_COLUMN_WIDTH,
-			cells : new Map(),
+			rowObjectToCellNode : new Map(),
 			aligned : Grid.ALIGN_TYPE.center,
 			isFilterActive : false,
 			filters : [],
 			sorting : Grid.SORTING_TYPE.none,
 			systemTableMetadataId : 7 // Can be overridden afterwards
 		};
-		this.m_columnById.set(id, columnObject);
-		this.m_columnByOrder.set(order, columnObject);
+		this.m_idToColumnObject.set(id, columnObject);
+		this.m_orderToColumnObject.set(order, columnObject);
 		this.SetColumnWidth({ columnObject, width : Grid.DEFAULT_COLUMN_WIDTH });
 
 		resizeHandle.addEventListener("pointerdown", (event) => { this.StartColumnResize({ columnObject, event }); });
@@ -403,20 +411,21 @@ class Grid {
 			this.SetColumnWidth({ columnObject, width });
 		});
 
-		this.m_rowByIndexValue.forEach((rowObject, indexValue) => { this.InsertCell({ columnObject, rowObject }); });
+		this.m_indexValueToRowObject.forEach(
+			(rowObject, indexValue) => { this.InsertCell({ columnObject, rowObject }); });
 
-		if (metadata.metadata.type == "TableData" || metadata.metadata.type == "system") {
+		if (metadataObject.definition.type == "TableData" || metadataObject.definition.type == "system") {
 			return;
 		}
 
-		if (columnObject.metadata.metadata.type == "Bool") {
+		if (columnObject.metadata.type == "Bool") {
 			columnObject.systemTableMetadataId = 6;
 		}
-		else if (columnObject.metadata.metadata.type == "String") {
+		else if (columnObject.metadata.type == "String") {
 			columnObject.systemTableMetadataId = 8;
 		}
-		else if (columnObject.metadata.metadata.type == "Timer" || columnObject.metadata.metadata.type == "Duration"
-			|| columnObject.metadata.metadata.type.includes("Optional")) {
+		else if (columnObject.metadata.type == "Timer" || columnObject.metadata.type == "Duration"
+			|| columnObject.metadata.type.includes("Optional")) {
 
 			columnObject.systemTableMetadataId = 9;
 		}
@@ -445,7 +454,7 @@ class Grid {
 				return;
 			}
 
-			settingsView = new GridSettingsView({
+			settingsView = new GridColumnSettingsView({
 				eventTarget : settings,
 				parameterId : id,
 				viewTitle : "Manage column settings",
@@ -627,8 +636,8 @@ class Grid {
 				}
 			});
 
-			const filterTypeMetadata = MetadataCollector.GetMetadata(columnObject.systemTableMetadataId);
-			if (filterTypeMetadata) {
+			const filterTypeMetadataObject = MetadataCollector.GetMetadataObject(columnObject.systemTableMetadataId);
+			if (filterTypeMetadataObject) {
 				let filtersTable = new Table({
 					parent : filters,
 					metadata : {
@@ -636,12 +645,13 @@ class Grid {
 						"type" : "TableData",
 						"canBeEmpty" : true,
 						"columns" : [
-							filterTypeMetadata.metadata.columns[0],
-							columnObject.metadata.metadata,
+							filterTypeMetadataObject.definition.columns[0],
+							columnObject.metadata,
 						]
 					},
 					isMutable : true,
 					id : columnObject.systemTableMetadataId,
+					columnIdToParameterId : { 1 : columnObject.id },
 					postSaveFunction : () => {
 						const newData = filtersTable.GetData();
 						if (!Helper.DeepEqual(columnObject.filters, newData)) {
@@ -660,7 +670,7 @@ class Grid {
 					}
 				});
 
-				settingsView.m_tables.set(columnObject.systemTableMetadataId, filtersTable);
+				settingsView.m_tableIdToTable.set(columnObject.systemTableMetadataId, filtersTable);
 
 				columnObject.filters.forEach((filter) => { filtersTable.AddRow(filter); });
 				filtersTable.Save();
@@ -698,7 +708,7 @@ class Grid {
 	 */
 	static SetColumnAccuracy({ columnObject, accuracy })
 	{
-		const metadata = columnObject.metadata.metadata;
+		const metadata = columnObject.metadata;
 		if (!metadata) {
 			console.error("No metadata for column", columnObject);
 			return;
@@ -714,7 +724,7 @@ class Grid {
 		}
 
 		columnObject.accuracy = accuracy;
-		columnObject.cells.forEach((cell, rowObject) => {
+		columnObject.rowObjectToCellNode.forEach((cell, rowObject) => {
 			const value = rowObject.values[columnObject.id];
 			if (value !== undefined && value !== null) {
 				Grid.SetValueToCell(cell, value, metadata, accuracy);
@@ -725,15 +735,15 @@ class Grid {
 	static ApplyAlignment({ columnObject })
 	{
 		if (columnObject.aligned == Grid.ALIGN_TYPE.left) {
-			columnObject.cells.forEach((cell) => { cell.style.textAlign = "left"; });
+			columnObject.rowObjectToCellNode.forEach((cell) => { cell.style.textAlign = "left"; });
 			return;
 		}
 		if (columnObject.aligned == Grid.ALIGN_TYPE.center) {
-			columnObject.cells.forEach((cell) => { cell.style.textAlign = "center"; });
+			columnObject.rowObjectToCellNode.forEach((cell) => { cell.style.textAlign = "center"; });
 			return;
 		}
 		if (columnObject.aligned == Grid.ALIGN_TYPE.right) {
-			columnObject.cells.forEach((cell) => { cell.style.textAlign = "right"; });
+			columnObject.rowObjectToCellNode.forEach((cell) => { cell.style.textAlign = "right"; });
 			return;
 		}
 
@@ -836,7 +846,7 @@ class Grid {
 			return;
 		}
 
-		for (const [order, other] of this.m_columnByOrder) {
+		for (const [order, other] of this.m_orderToColumnObject) {
 			if (other.sorting == Grid.SORTING_TYPE.none || other.id == columnObject.id) {
 				continue;
 			}
@@ -887,8 +897,8 @@ class Grid {
 	}
 
 	/**************************
-	 * @brief Schedule the shared filter and sort update callback. At most one requestAnimationFrame callback is pending
-	 * for this grid.
+	 * @brief Schedules the shared filter, sort, and highlight flush. At most one requestAnimationFrame callback is
+	 * pending for this grid.
 	 */
 	ScheduleUpdate()
 	{
@@ -901,8 +911,10 @@ class Grid {
 	}
 
 	/**************************
-	 * @brief Apply pending filters first and then the active sort once per frame. Filtering precedes sorting so rows
-	 * that become visible are included in the sorted order.
+	 * @brief Applies pending filters, sorting, and one highlight per changed cell in the shared frame flush.
+	 * Filtering precedes sorting so newly visible rows participate in the sort; only connected cells are highlighted.
+	 *
+	 * @test Yes.
 	 */
 	FlushUpdates()
 	{
@@ -924,6 +936,13 @@ class Grid {
 				this.ApplySorting({ columnObject : this.m_sortingColumnObject });
 			}
 		}
+
+		for (const cell of this.m_pendingCellUpdates) {
+			if (cell.isConnected) {
+				Grid.AnimateCellUpdate(cell);
+			}
+		}
+		this.m_pendingCellUpdates.clear();
 
 		// Reset last, so requests made during flush are handled in this flush
 		this.m_isUpdateScheduled = false;
@@ -955,7 +974,7 @@ class Grid {
 
 		if (columnObject.filters.length == 0) {
 			let anyUpdate = false;
-			this.m_rowByIndexValue.forEach((rowObject, indexValue) => {
+			this.m_indexValueToRowObject.forEach((rowObject, indexValue) => {
 				const index = rowObject.filteredBy.indexOf(columnObject);
 				if (index == -1) {
 					return;
@@ -972,7 +991,7 @@ class Grid {
 					}
 				}
 
-				rowObject.row.style.display = "";
+				rowObject.node.style.display = "";
 				rowObject.isFiltered = false;
 
 				anyUpdate = true;
@@ -996,7 +1015,7 @@ class Grid {
 
 		if (columnObject.isFilterActive == false) {
 			let anyUpdate = false;
-			this.m_rowByIndexValue.forEach((rowObject, indexValue) => {
+			this.m_indexValueToRowObject.forEach((rowObject, indexValue) => {
 				const index = rowObject.filteredBy.indexOf(columnObject);
 				if (index == -1) {
 					return;
@@ -1012,7 +1031,7 @@ class Grid {
 					}
 				}
 
-				rowObject.row.style.display = "";
+				rowObject.node.style.display = "";
 				rowObject.isFiltered = false;
 				anyUpdate = true;
 				this.AddVisibleRow({ rowObject });
@@ -1038,7 +1057,7 @@ class Grid {
 				rowObject.filteredBy.push(columnObject);
 			}
 			if (!rowObject.isFiltered) {
-				rowObject.row.style.display = "none";
+				rowObject.node.style.display = "none";
 				rowObject.isFiltered = true;
 
 				this.RemoveVisibleRow({ removedIndex : rowObject.index })
@@ -1047,13 +1066,11 @@ class Grid {
 		};
 
 		let anyNewVisible = false;
-		this.m_rowByIndexValue.forEach((rowObject, indexValue) => {
+		this.m_indexValueToRowObject.forEach((rowObject, indexValue) => {
 			const index = rowObject.filteredBy.indexOf(columnObject);
 
 			if (columnObject.systemTableMetadataId == 7 || columnObject.systemTableMetadataId == 9) {
-				if (columnObject.metadata.metadata.type.includes("Float")
-					|| columnObject.metadata.metadata.type.includes("Double")) {
-
+				if (columnObject.metadata.type.includes("Float") || columnObject.metadata.type.includes("Double")) {
 					for (let i = 0; i < columnObject.filters.length; ++i) {
 						if (columnObject.filters[i][0] == Grid.NUMBER_FILTER.equal) {
 							if (!Helper.FloatEqual(rowObject.values[columnObject.id], columnObject.filters[i][1])) {
@@ -1169,9 +1186,12 @@ class Grid {
 				}
 			}
 			else if (columnObject.systemTableMetadataId == 8) {
+				// Match text without changing raw values; missing cells have empty text.
+				const value = String(rowObject.values[columnObject.id] ?? "");
 				for (let i = 0; i < columnObject.filters.length; ++i) {
+					const filterValue = String(columnObject.filters[i][1] ?? "");
 					if (columnObject.filters[i][0] == Grid.STRING_FILTER.equalCaseSensitive) {
-						if (rowObject.values[columnObject.id] != columnObject.filters[i][1]) {
+						if (value != filterValue) {
 							applyFilter(index, rowObject);
 							return;
 						}
@@ -1179,8 +1199,7 @@ class Grid {
 					}
 
 					if (columnObject.filters[i][0] == Grid.STRING_FILTER.equalCaseInsensitive) {
-						if (rowObject.values[columnObject.id].toUpperCase()
-							!= columnObject.filters[i][1].toUpperCase()) {
+						if (value.toUpperCase() != filterValue.toUpperCase()) {
 							applyFilter(index, rowObject);
 							return;
 						}
@@ -1188,7 +1207,7 @@ class Grid {
 					}
 
 					if (columnObject.filters[i][0] == Grid.STRING_FILTER.notEqualCaseSensitive) {
-						if (rowObject.values[columnObject.id] == columnObject.filters[i][1]) {
+						if (value == filterValue) {
 							applyFilter(index, rowObject);
 							return;
 						}
@@ -1196,8 +1215,7 @@ class Grid {
 					}
 
 					if (columnObject.filters[i][0] == Grid.STRING_FILTER.notEqualCaseInsensitive) {
-						if (rowObject.values[columnObject.id].toUpperCase()
-							== columnObject.filters[i][1].toUpperCase()) {
+						if (value.toUpperCase() == filterValue.toUpperCase()) {
 							applyFilter(index, rowObject);
 							return;
 						}
@@ -1205,7 +1223,7 @@ class Grid {
 					}
 
 					if (columnObject.filters[i][0] == Grid.STRING_FILTER.containsCaseSensitive) {
-						if (rowObject.values[columnObject.id].indexOf(columnObject.filters[i][1]) == -1) {
+						if (value.indexOf(filterValue) == -1) {
 							applyFilter(index, rowObject);
 							return;
 						}
@@ -1213,10 +1231,7 @@ class Grid {
 					}
 
 					if (columnObject.filters[i][0] == Grid.STRING_FILTER.containsCaseInsensitive) {
-						if (rowObject.values[columnObject.id].toUpperCase().indexOf(
-								columnObject.filters[i][1].toUpperCase())
-							== -1) {
-
+						if (value.toUpperCase().indexOf(filterValue.toUpperCase()) == -1) {
 							applyFilter(index, rowObject);
 							return;
 						}
@@ -1236,7 +1251,7 @@ class Grid {
 					}
 				}
 
-				rowObject.row.style.display = "";
+				rowObject.node.style.display = "";
 				rowObject.isFiltered = false;
 				anyNewVisible = true;
 				this.AddVisibleRow({ rowObject });
@@ -1287,27 +1302,27 @@ class Grid {
 			return;
 		}
 
-		let column = this.m_columnByOrder.get(order);
+		let column = this.m_orderToColumnObject.get(order);
 		if (!column) {
 			console.error("Move columns is interrupted, column to move not found, order:", order);
 			return;
 		}
 
-		if (!this.m_columnByOrder.has(newOrder)) {
+		if (!this.m_orderToColumnObject.has(newOrder)) {
 			console.error("Column with new order not found", newOrder);
 			return;
 		}
 
 		if (newOrder < order) {
-			this.m_columnByOrder.delete(order);
+			this.m_orderToColumnObject.delete(order);
 			this.ShiftColumns({ order : newOrder, forward : true, bound : order - 1 });
-			this.m_columnByOrder.set(newOrder, column);
+			this.m_orderToColumnObject.set(newOrder, column);
 			return;
 		}
 
-		this.m_columnByOrder.delete(order);
+		this.m_orderToColumnObject.delete(order);
 		this.ShiftColumns({ order : order + 1, forward : false, bound : newOrder });
-		this.m_columnByOrder.set(newOrder, column);
+		this.m_orderToColumnObject.set(newOrder, column);
 	}
 
 	/**************************
@@ -1390,12 +1405,12 @@ class Grid {
 
 	RemoveColumn({ order })
 	{
-		if (order < 0 || order >= this.m_columnByOrder.size) {
+		if (order < 0 || order >= this.m_orderToColumnObject.size) {
 			console.error("Invalid column order", order);
 			return;
 		}
 
-		let columnObject = this.m_columnByOrder.get(order);
+		let columnObject = this.m_orderToColumnObject.get(order);
 		if (!columnObject) {
 			console.error("Column not found", order);
 			return;
@@ -1422,16 +1437,16 @@ class Grid {
 		this.m_view.style.removeProperty(columnObject.widthVariable);
 
 		columnObject.headerCell.remove();
-		columnObject.cells.forEach((cell) => cell.remove());
-		this.m_columnById.delete(columnObject.id);
-		this.m_columnByOrder.delete(order);
+		columnObject.rowObjectToCellNode.forEach((cell) => cell.remove());
+		this.m_idToColumnObject.delete(columnObject.id);
+		this.m_orderToColumnObject.delete(order);
 
-		if (this.m_columnByOrder.size == 0 || order >= this.m_columnByOrder.size) {
+		if (this.m_orderToColumnObject.size == 0 || order >= this.m_orderToColumnObject.size) {
 			return;
 		}
 
 		this.ShiftColumns({ order : order + 1, forward : false });
-		this.m_columnByOrder.delete(this.m_columnByOrder.size - 1);
+		this.m_orderToColumnObject.delete(this.m_orderToColumnObject.size - 1);
 	}
 
 	InsertCell({ columnObject, rowObject })
@@ -1442,10 +1457,10 @@ class Grid {
 		cell.setAttribute("parameter-id", columnObject.id);
 		cell.style.width = `var(${columnObject.widthVariable})`;
 
-		if (columnObject.metadata.metadata.type == "TableData") {
+		if (columnObject.metadata.type == "TableData") {
 			cell.classList.add("action", "table");
 
-			let tableViews = Grid.#privateFields.m_tablesViewsForColumnsByRows;
+			let rowIndexValueToTableViews = Grid.#privateFields.m_rowIndexValueToTableViews;
 
 			let tableView;
 			cell.addEventListener("click", () => {
@@ -1454,10 +1469,10 @@ class Grid {
 				}
 
 				const indexValue = rowObject.values[this.m_indexColumnId];
-				const tableMetadata = MetadataCollector.GetMetadata(this.m_indexColumnId);
+				const tableMetadataObject = MetadataCollector.GetMetadataObject(this.m_indexColumnId);
 				let viewTitle = "";
-				if (tableMetadata) {
-					viewTitle = tableMetadata.metadata.name + " " + indexValue;
+				if (tableMetadataObject) {
+					viewTitle = tableMetadataObject.definition.name + " " + indexValue;
 				}
 				else {
 					viewTitle = "Table " + indexValue;
@@ -1466,7 +1481,7 @@ class Grid {
 				tableView = new TableView({
 					eventTarget : cell,
 					tableId : columnObject.id,
-					metadata : columnObject.metadata.metadata,
+					metadata : columnObject.metadata,
 					viewTitle,
 					positionUnder : cell,
 					canBeHidden : false,
@@ -1475,7 +1490,7 @@ class Grid {
 					canBeClinged : false
 				});
 
-				let table = tableView.m_tables.get(columnObject.id);
+				let table = tableView.m_tableIdToTable.get(columnObject.id);
 				if (!table) {
 					console.error("Table is not found, parameter id:", columnObject.id);
 					return;
@@ -1493,30 +1508,30 @@ class Grid {
 					}
 				}
 
-				if (!tableViews.has(indexValue)) {
-					tableViews.set(indexValue, new Map());
+				if (!rowIndexValueToTableViews.has(indexValue)) {
+					rowIndexValueToTableViews.set(indexValue, new Map());
 				}
-				tableViews.get(indexValue).set(columnObject.id, tableView);
+				rowIndexValueToTableViews.get(indexValue).set(columnObject.id, tableView);
 			});
 
-			rowObject.row.appendChild(cell);
-			columnObject.cells.set(rowObject, cell);
+			rowObject.node.appendChild(cell);
+			columnObject.rowObjectToCellNode.set(rowObject, cell);
 
 			return undefined;
 		}
 
 		const value = rowObject.values[columnObject.id];
 
-		if (columnObject.metadata.metadata.type == "Duration") {
+		if (columnObject.metadata.type == "Duration") {
 			let input = document.createElement("input");
 			input.readOnly = true;
-			Duration.Apply(input, columnObject.metadata.metadata.durationType);
+			Duration.Apply(input, columnObject.metadata.durationType);
 			if (value != undefined) {
 				Duration.SetValue(input, BigInt(value));
 			}
 			cell.appendChild(input);
 		}
-		else if (columnObject.metadata.metadata.type == "Timer") {
+		else if (columnObject.metadata.type == "Timer") {
 			let input = document.createElement("input");
 			input.readOnly = true;
 			Timer.Apply(input);
@@ -1538,11 +1553,11 @@ class Grid {
 			cell.appendChild(input);
 		}
 		else if (value != undefined) {
-			Grid.SetValueToCell(cell, value, columnObject.metadata.metadata, columnObject.accuracy);
+			Grid.SetValueToCell(cell, value, columnObject.metadata, columnObject.accuracy);
 		}
 
-		rowObject.row.appendChild(cell);
-		columnObject.cells.set(rowObject, cell);
+		rowObject.node.appendChild(cell);
+		columnObject.rowObjectToCellNode.set(rowObject, cell);
 		return cell;
 	}
 
@@ -1556,19 +1571,19 @@ class Grid {
 			console.error("Index column", this.m_indexColumnId, "is not found in values:", values);
 			return undefined;
 		}
-		if (this.m_rowByIndexValue.has(values[this.m_indexColumnId])) {
+		if (this.m_indexValueToRowObject.has(values[this.m_indexColumnId])) {
 			return this.UpdateRow(values[this.m_indexColumnId], values);
 		}
 
-		let row = document.createElement("div");
-		row.classList.add("row");
-		const rowObject = { row, index : -1, values, filteredBy : [], isFiltered : false };
-		this.m_rowByIndexValue.set(values[this.m_indexColumnId], rowObject);
+		let rowNode = document.createElement("div");
+		rowNode.classList.add("row");
+		const rowObject = { node : rowNode, index : -1, values, filteredBy : [], isFiltered : false };
+		this.m_indexValueToRowObject.set(values[this.m_indexColumnId], rowObject);
 
 		// Diagnostic
-		row.setAttribute("data-index", this.m_rowByIndexValue.size - 1);
+		rowNode.setAttribute("data-index", this.m_indexValueToRowObject.size - 1);
 
-		this.m_columnByOrder.forEach((columnObject, order) => {
+		this.m_orderToColumnObject.forEach((columnObject, order) => {
 			let cell = this.InsertCell({ columnObject, rowObject });
 
 			if (columnObject.isFilterActive && columnObject.filters.length != 0) {
@@ -1603,11 +1618,65 @@ class Grid {
 		this.AddVisibleRow({ rowObject });
 		this.RequestSorting();
 
-		return row;
+		return rowNode;
 	}
 
+	/**************************
+	 * @brief Queues a changed display in the grid's shared frame flush, deduplicating repeated cell updates.
+	 *
+	 * @param cell Connected cell whose displayed value changed.
+	 *
+	 * @test Yes.
+	 */
+	RequestCellUpdate(cell)
+	{
+		this.m_pendingCellUpdates.add(cell);
+		this.ScheduleUpdate();
+	}
+
+	/**************************
+	 * @brief Swaps the cell's CSS animation class, retaining the class after the animation completes.
+	 *
+	 * @param cell Existing cell whose displayed value changed.
+	 *
+	 * @test Yes.
+	 */
+	static AnimateCellUpdate(cell)
+	{
+		const classes = cell.classList;
+		if (classes.contains(Grid.CELL_UPDATE_ANIMATION_1)) {
+			classes.replace(Grid.CELL_UPDATE_ANIMATION_1, Grid.CELL_UPDATE_ANIMATION_2);
+		}
+		else if (classes.contains(Grid.CELL_UPDATE_ANIMATION_2)) {
+			classes.replace(Grid.CELL_UPDATE_ANIMATION_2, Grid.CELL_UPDATE_ANIMATION_1);
+		}
+		else {
+			classes.add(Grid.CELL_UPDATE_ANIMATION_1);
+		}
+	}
+
+	/**************************
+	 * @brief Writes a formatted value and detects a changed display in an already connected cell.
+	 * Reads textContent or the input value without measuring layout. Detached cells are initialized or refreshed
+	 * silently, so pool rendering never highlights values received while a row was outside the viewport.
+	 *
+	 * @param cell Cell to update.
+	 * @param value Raw value to display.
+	 * @param metadata Column metadata.
+	 * @param accuracy Configured display accuracy.
+	 *
+	 * @return True if a connected cell's displayed text changes, false for initial or identical displays.
+	 *
+	 * @test Yes.
+	 */
 	static SetValueToCell(cell, value, metadata, accuracy)
 	{
+		let previousDisplay;
+		if (cell.isConnected) {
+			const input = cell.firstElementChild;
+			previousDisplay = input?.tagName === "INPUT" ? input.value : cell.textContent;
+		}
+
 		if (metadata.type == "bool") {
 			cell.innerHTML = value;
 			if (value == false) {
@@ -1616,38 +1685,47 @@ class Grid {
 			else {
 				cell.classList.add("true");
 			}
-			return;
 		}
-
-		if (metadata.type == "Timer") {
+		else if (metadata.type == "Timer") {
 			const input = cell.querySelector("input");
 			if (accuracy !== undefined) {
 				input.setAttribute("accuracy", accuracy);
 			}
 			Timer.SetValue(input, BigInt(value));
-			return;
 		}
-
-		if (metadata.type == "Duration") {
+		else if (metadata.type == "Duration") {
 			Duration.SetValue(cell.querySelector("input"), BigInt(value));
-			return;
 		}
-
-		if (MetadataCollector.IsSelect(cell.getAttribute("parameter-id"))) {
+		else if (MetadataCollector.IsSelect(cell.getAttribute("parameter-id"))) {
 			Select.SetValue(cell.querySelector("input"), value);
-			return;
 		}
-
-		if (metadata.type.includes("Float") || metadata.type.includes("Double")) {
+		else if (metadata.type.includes("Float") || metadata.type.includes("Double")) {
 			cell.textContent = value == null ? "" : Helper.FloatToString(value, accuracy);
-			return;
+		}
+		else {
+			// TableData is handled separately.
+			cell.innerHTML = value;
 		}
 
-		// TableData handled separately
+		if (previousDisplay !== undefined) {
+			const input = cell.firstElementChild;
+			const currentDisplay = input?.tagName === "INPUT" ? input.value : cell.textContent;
+			return previousDisplay !== currentDisplay;
+		}
 
-		cell.innerHTML = value;
+		return false;
 	}
 
+	/**************************
+	 * @brief Updates raw values and cell text immediately, queuing changed displays in the shared frame flush.
+	 *
+	 * @param indexValue Existing row's index-column value.
+	 * @param values Column values to apply to the row.
+	 *
+	 * @return Updated row element, or undefined if the update object or row identifier is invalid.
+	 *
+	 * @test Yes.
+	 */
 	UpdateRow(indexValue, values)
 	{
 		if (values instanceof Object === false) {
@@ -1655,7 +1733,7 @@ class Grid {
 			return undefined;
 		}
 
-		let rowObject = this.m_rowByIndexValue.get(indexValue);
+		let rowObject = this.m_indexValueToRowObject.get(indexValue);
 		if (!rowObject) {
 			console.error(`Row with index ${indexValue} as ${indexValue} is not found`);
 			return undefined;
@@ -1668,27 +1746,27 @@ class Grid {
 			}
 			rowObject.values[key] = value;
 		}
-		rowObject.row.querySelectorAll(".cell").forEach((cell) => {
+		rowObject.node.querySelectorAll(".cell").forEach((cell) => {
 			let columnId = +cell.getAttribute("parameter-id");
 			if (changedColumns.indexOf(columnId) == -1) {
 				return;
 			}
 
-			const metadata = MetadataCollector.GetMetadata(columnId);
-			if (!metadata) {
+			const metadataObject = MetadataCollector.GetMetadataObject(columnId);
+			if (!metadataObject) {
 				return;
 			}
 
-			let columnObject = this.m_columnById.get(columnId);
+			let columnObject = this.m_idToColumnObject.get(columnId);
 			if (!columnObject) {
 				console.error("Column object is not found", columnId);
 				return;
 			}
 
-			if (metadata.metadata.type == "TableData") {
-				let tableView = Grid.#privateFields.m_tablesViewsForColumnsByRows.get(indexValue)?.get(columnId);
+			if (metadataObject.definition.type == "TableData") {
+				let tableView = Grid.#privateFields.m_rowIndexValueToTableViews.get(indexValue)?.get(columnId);
 				if (tableView) {
-					let table = tableView.m_tables.get(columnId);
+					let table = tableView.m_tableIdToTable.get(columnId);
 					if (!table) {
 						console.error("Table is not found", columnId);
 						return;
@@ -1701,7 +1779,9 @@ class Grid {
 				}
 			}
 			else {
-				Grid.SetValueToCell(cell, values[columnId], metadata.metadata, columnObject.accuracy);
+				if (Grid.SetValueToCell(cell, values[columnId], metadataObject.definition, columnObject.accuracy)) {
+					this.RequestCellUpdate(cell);
+				}
 			}
 
 			if (columnObject === this.m_sortingColumnObject) {
@@ -1716,7 +1796,7 @@ class Grid {
 			this.m_postUpdateRowFunction(rowObject, values);
 		}
 
-		return rowObject.row;
+		return rowObject.node;
 	}
 
 	static MatchRow(cells, values)
@@ -1746,7 +1826,7 @@ class Grid {
 
 	HasRow(cells)
 	{
-		for (let [indexValue, rowObject] of this.m_rowByIndexValue) {
+		for (let [indexValue, rowObject] of this.m_indexValueToRowObject) {
 			if (Grid.MatchRow(cells, rowObject.values)) {
 				return true;
 			}
@@ -1764,9 +1844,9 @@ class Grid {
 
 		let rows = [];
 
-		for (let [indexValue, rowObject] of this.m_rowByIndexValue) {
+		for (let [indexValue, rowObject] of this.m_indexValueToRowObject) {
 			if (Grid.MatchRow(cells, rowObject.values)) {
-				rows.push(rowObject.row);
+				rows.push(rowObject.node);
 			}
 		}
 
@@ -1780,12 +1860,12 @@ class Grid {
 	 */
 	RemoveRow({ indexValue })
 	{
-		let rowObject = this.m_rowByIndexValue.get(indexValue);
+		let rowObject = this.m_indexValueToRowObject.get(indexValue);
 		if (!rowObject) {
 			return;
 		}
 
-		this.m_rowByIndexValue.delete(indexValue);
+		this.m_indexValueToRowObject.delete(indexValue);
 		this.RemoveVisibleRow({ removedIndex : rowObject.index });
 	}
 
@@ -1793,7 +1873,7 @@ class Grid {
 	{
 		rowObject.index = this.m_visibleRows.length;
 		this.m_visibleRows.push(rowObject);
-		this.m_pool.AddRow(rowObject.row);
+		this.m_pool.AddRow(rowObject.node);
 	}
 
 	RemoveVisibleRow({ removedIndex })
@@ -1814,14 +1894,25 @@ class Grid {
 		this.m_pool.RemoveRow(removedIndex);
 	}
 
+	/**************************
+	 * @brief Removes all rows and releases pending cell notifications before resetting the rendered pool.
+	 *
+	 * @test Yes.
+	 */
 	ClearRows()
 	{
-		this.m_columnByOrder.forEach((column) => column.cells.clear());
-		this.m_rowByIndexValue.clear();
+		this.m_pendingCellUpdates.clear();
+		this.m_orderToColumnObject.forEach((column) => column.rowObjectToCellNode.clear());
+		this.m_indexValueToRowObject.clear();
 		this.m_visibleRows = [];
 		this.m_pool.Reset();
 	}
 
+	/**************************
+	 * @brief Releases grid resources and pending notifications, leaving scheduled flushes harmless.
+	 *
+	 * @test Yes.
+	 */
 	Destructor()
 	{
 		this.m_stopColumnResize?.();
@@ -1830,22 +1921,23 @@ class Grid {
 			this.m_pool = null;
 		}
 		this.m_pendingFilterColumns?.clear();
+		this.m_pendingCellUpdates?.clear();
 		this.m_isSortingPending = false;
 		if (this.m_view) {
 			this.m_view.remove();
 			this.m_view = null;
 		}
-		if (this.m_columnByOrder) {
-			this.m_columnByOrder.clear();
-			this.m_columnByOrder = null;
+		if (this.m_orderToColumnObject) {
+			this.m_orderToColumnObject.clear();
+			this.m_orderToColumnObject = null;
 		}
-		if (this.m_columnById) {
-			this.m_columnById.clear();
-			this.m_columnById = null;
+		if (this.m_idToColumnObject) {
+			this.m_idToColumnObject.clear();
+			this.m_idToColumnObject = null;
 		}
-		if (this.m_rowByIndexValue) {
-			this.m_rowByIndexValue.clear();
-			this.m_rowByIndexValue = null;
+		if (this.m_indexValueToRowObject) {
+			this.m_indexValueToRowObject.clear();
+			this.m_indexValueToRowObject = null;
 		}
 		if (this.m_visibleRows) {
 			this.m_visibleRows = [];
@@ -1976,6 +2068,10 @@ class Pool {
 	 */
 	Destructor()
 	{
+		if (this.m_grid) {
+			this.ClearRenderedRows();
+		}
+
 		if (this.m_resizeObserver) {
 			this.m_resizeObserver.disconnect();
 			this.m_resizeObserver = null;
@@ -2008,10 +2104,10 @@ class Pool {
 		this.m_grid = null;
 	}
 
-	AddRow(row)
+	AddRow(rowNode)
 	{
 		const hasRowHeight = this.m_rowHeight != 0;
-		if (!this.SetRowHeight(row)) {
+		if (!this.SetRowHeight(rowNode)) {
 			return;
 		}
 
@@ -2023,18 +2119,18 @@ class Pool {
 		this.Resize(this.m_parentNode.offsetHeight);
 	}
 
-	SetRowHeight(row)
+	SetRowHeight(rowNode)
 	{
 		if (this.m_rowHeight != 0) {
 			return true;
 		}
 
-		const display = row.style.display;
-		row.style.display = "";
-		this.m_grid.m_content.appendChild(row);
-		this.m_rowHeight = Helper.GetFullDimensions(row).height;
-		row.remove();
-		row.style.display = display;
+		const display = rowNode.style.display;
+		rowNode.style.display = "";
+		this.m_grid.m_content.appendChild(rowNode);
+		this.m_rowHeight = Helper.GetFullDimensions(rowNode).height;
+		this.RemoveRenderedRow(rowNode);
+		rowNode.style.display = display;
 
 		if (this.m_rowHeight <= 0) {
 			console.error("Row height measurement for pool rendering is failed");
@@ -2074,6 +2170,26 @@ class Pool {
 		this.Render(this.m_shift);
 	}
 
+	/**************************
+	 * @brief Detaches one row from the rendered window without changing its data ownership.
+	 *
+	 * @param node Row leaving the pool window.
+	 *
+	 * @test Yes.
+	 */
+	RemoveRenderedRow(node) { node.remove(); }
+
+	/**************************
+	 * @brief Detaches the rendered window while retaining each row's own DOM cells.
+	 *
+	 * @test Yes.
+	 */
+	ClearRenderedRows()
+	{
+		const content = this.m_grid.m_content;
+		content.replaceChildren();
+	}
+
 	Render(shift)
 	{
 		const rowsNumber = this.m_grid.m_visibleRows.length;
@@ -2085,30 +2201,30 @@ class Pool {
 
 		if (hasOverlap) {
 			for (let index = this.m_shift; index < newShift; ++index) {
-				this.m_grid.m_content.firstElementChild.remove();
+				this.RemoveRenderedRow(this.m_grid.m_content.firstElementChild);
 			}
 			for (let index = oldEnd; index > newEnd; --index) {
-				this.m_grid.m_content.lastElementChild.remove();
+				this.RemoveRenderedRow(this.m_grid.m_content.lastElementChild);
 			}
 			for (let index = this.m_shift - 1; index >= newShift; --index) {
-				const row = this.GetRow(index);
-				if (row) {
-					this.m_grid.m_content.prepend(row);
+				const rowNode = this.GetRow(index);
+				if (rowNode) {
+					this.m_grid.m_content.prepend(rowNode);
 				}
 			}
 			for (let index = oldEnd; index < newEnd; ++index) {
-				const row = this.GetRow(index);
-				if (row) {
-					this.m_grid.m_content.appendChild(row);
+				const rowNode = this.GetRow(index);
+				if (rowNode) {
+					this.m_grid.m_content.appendChild(rowNode);
 				}
 			}
 		}
 		else {
-			this.m_grid.m_content.replaceChildren();
+			this.ClearRenderedRows();
 			for (let index = newShift; index < newEnd; ++index) {
-				const row = this.GetRow(index);
-				if (row) {
-					this.m_grid.m_content.appendChild(row);
+				const rowNode = this.GetRow(index);
+				if (rowNode) {
+					this.m_grid.m_content.appendChild(rowNode);
 				}
 			}
 		}
@@ -2123,7 +2239,7 @@ class Pool {
 
 	Rerender()
 	{
-		this.m_grid.m_content.replaceChildren();
+		this.ClearRenderedRows();
 		this.m_size = 0;
 		this.Render(this.m_shift);
 	}
@@ -2141,20 +2257,20 @@ class Pool {
 		let firstChanged = false;
 
 		for (let index = this.m_shift; index < end; ++index) {
-			const row = this.GetRow(index);
+			const rowNode = this.GetRow(index);
 			const current = content.children[index - this.m_shift] ?? null;
-			if (!row || row === current) {
+			if (!rowNode || rowNode === current) {
 				continue;
 			}
 
 			if (index == this.m_shift) {
 				firstChanged = true;
 			}
-			content.insertBefore(row, current);
+			content.insertBefore(rowNode, current);
 		}
 
 		while (content.children.length > this.m_size) {
-			content.lastElementChild.remove();
+			this.RemoveRenderedRow(content.lastElementChild);
 		}
 
 		if (firstChanged) {
@@ -2194,7 +2310,7 @@ class Pool {
 			this.m_marginRow.style.marginTop = "";
 			this.m_marginRow = null;
 		}
-		this.m_grid.m_content.replaceChildren();
+		this.ClearRenderedRows();
 		this.m_size = 0;
 		this.m_shift = 0;
 		this.m_isEnd = true;
@@ -2222,6 +2338,16 @@ class Pool {
 		firstRow.style.marginTop = overflow > 0 ? -Math.min(this.m_rowHeight, overflow) + "px" : "";
 	}
 
+	/**************************
+	 * @brief Retrieves the row-owned DOM element, clearing stale CSS notifications before a detached row returns.
+	 * Connected rows retain their animation classes; merely scrolling a row into view does not highlight it.
+	 *
+	 * @param index Visible-row index requested by the pool.
+	 *
+	 * @return Row element, or null if the requested visible row does not exist.
+	 *
+	 * @test Yes.
+	 */
 	GetRow(index)
 	{
 		const rowObject = this.m_grid.m_visibleRows[index];
@@ -2230,7 +2356,19 @@ class Pool {
 			return null;
 		}
 
-		return rowObject.row;
+		if (!rowObject.node.isConnected) {
+			// A retained class would replay on attachment. Returning rows display current data silently.
+			for (const cell of rowObject.node.children) {
+				this.m_grid.m_pendingCellUpdates.delete(cell);
+				if (cell.classList.contains(Grid.CELL_UPDATE_ANIMATION_1)
+					|| cell.classList.contains(Grid.CELL_UPDATE_ANIMATION_2)) {
+
+					cell.classList.remove(Grid.CELL_UPDATE_ANIMATION_1, Grid.CELL_UPDATE_ANIMATION_2);
+				}
+			}
+		}
+
+		return rowObject.node;
 	}
 
 	UpdateScrollbarHeight()
@@ -2301,7 +2439,7 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	View = require("./view");
 	Table = require("./table");
 	TableView = require("../views/tableView");
-	GridSettingsView = require("../views/gridSettingsView");
+	GridColumnSettingsView = require("../views/gridColumnSettingsView");
 	SelectView = require("../views/selectView");
 	MetadataCollector = require("../views/metadataCollector");
 }

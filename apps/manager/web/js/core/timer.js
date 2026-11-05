@@ -46,12 +46,12 @@ class Timer {
 
 	static #privateFields = (() => {
 		let m_hasGlobalEventListener = false;
-		let m_timers = new Map();
+		let m_inputToEditState = new Map();
 
-		return { m_hasGlobalEventListener, m_timers };
+		return { m_hasGlobalEventListener, m_inputToEditState };
 	})();
 
-	static GetTimersNumber() { return Timer.#privateFields.m_timers.size; }
+	static GetTimersNumber() { return Timer.#privateFields.m_inputToEditState.size; }
 
 	static Apply(input)
 	{
@@ -69,15 +69,13 @@ class Timer {
 	 *
 	 * @param input - Input initialized by Apply or cloned with its timestamp and utc attributes.
 	 *
-	 * @locking Is not required.
-	 *
 	 * @test Yes.
 	 */
 	static SetEvent(input)
 	{
 		let isActive = { "isActive" : false };
-		let timers = Timer.#privateFields.m_timers;
-		timers.set(input, isActive);
+		let inputToEditState = Timer.#privateFields.m_inputToEditState;
+		inputToEditState.set(input, isActive);
 
 		let hasFocusMask = false;
 		input.addEventListener("focus", () => {
@@ -124,9 +122,9 @@ class Timer {
 		if (!Timer.#privateFields.m_hasGlobalEventListener) {
 			Timer.#privateFields.m_hasGlobalEventListener = true;
 			document.addEventListener("click", (event) => {
-				timers.forEach((isActive, input) => {
+				inputToEditState.forEach((isActive, input) => {
 					if (!input.parentNode) {
-						timers.delete(input);
+						inputToEditState.delete(input);
 						return;
 					}
 
@@ -146,8 +144,6 @@ class Timer {
 	 * @param timestamp - Complete timestamp in nanoseconds.
 	 * @param utc - Existing timezone label.
 	 * @param accuracy - Optional Timer.ACCURACY value; omission displays nanoseconds.
-	 *
-	 * @locking Is not required.
 	 *
 	 * @return Formatted local date/time with the timezone suffix.
 	 *
@@ -187,8 +183,6 @@ class Timer {
 	 * Inputs with accuracy interpret short fractional parts as decimal seconds; other inputs retain nanosecond parsing.
 	 *
 	 * @param input - Timestamp input whose text is committed and formatted at its display accuracy.
-	 *
-	 * @locking Is not required.
 	 *
 	 * @test Yes.
 	 */
@@ -334,12 +328,25 @@ class Timer {
 		return true;
 	}
 
+	/**************************
+	 * @brief Sets and validates a timestamp input, clearing both its display and timestamp attribute for empty values.
+	 * Normalizes nonpositive timestamps to zero.
+	 *
+	 * @param input - Timestamp input receiving the value.
+	 * @param timestamp - Nanoseconds convertible to BigInt, or null, undefined or an empty string to clear the input.
+	 *
+	 * @test Yes.
+	 */
 	static SetValue(input, timestamp)
 	{
-		if (typeof timestamp !== "bigint") {
-			console.error("Nanoseconds timestamp is not a BigInt", timestamp);
+		if (timestamp == null || timestamp === "") {
+			input.value = "";
+			input.setAttribute("timestamp", "");
+			Timer.Validate(input);
+			return;
 		}
 
+		timestamp = BigInt(timestamp);
 		if (timestamp <= 0n) {
 			timestamp = 0n;
 		}

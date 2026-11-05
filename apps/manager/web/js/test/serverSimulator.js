@@ -21,7 +21,7 @@ const WebSocketStream = require("../core/webSocketHandler").WebSocketStream;
 class ServerSimulator {
 	constructor()
 	{
-		this.m_createdApps = new Map();
+		this.m_portToAppData = new Map();
 		this.m_installedApps
 			= new Set([ { type : "Gateway T" }, { type : "Strategy" }, { type : "Storage" }, { type : "Graph" } ]);
 	}
@@ -108,7 +108,7 @@ class ServerSimulator {
 		}
 
 		const port = Math.floor(Math.random() * (65535 - 1000 + 1)) + 1000;
-		this.m_createdApps.set(
+		this.m_portToAppData.set(
 			port, { "type" : appType, "port" : port, "pid" : port, "creation time" : "2026-04-28 16:53:15.460089632" });
 		let response = { "uids" : [ json["uid"] ], "data" : { "port" : port } };
 		connection.send(Helper.ParametersToJson(response));
@@ -117,7 +117,7 @@ class ServerSimulator {
 	SendCreatedApps(connection, json)
 	{
 		let response = { "uids" : [ json["uid"] ], "data" : { "created" : [] } };
-		this.m_createdApps.forEach((appData) => { response["data"]["created"].push(appData); });
+		this.m_portToAppData.forEach((appData) => { response["data"]["created"].push(appData); });
 		connection.send(Helper.ParametersToJson(response));
 	}
 
