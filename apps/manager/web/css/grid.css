@@ -12,6 +12,8 @@
  */
 
 .grid {
+    --cell-update-duration: 2000ms;
+    --cell-update-easing: ease-out;
     font-size: 14px;
     overflow-x: auto;
     overflow-y: hidden;
@@ -53,6 +55,41 @@
     align-content: center;
 }
 
+.grid .cell.cell-update-animation-1,
+.grid .cell.cell-update-animation-2 {
+    animation-duration: var(--cell-update-duration);
+    animation-timing-function: var(--cell-update-easing);
+    animation-iteration-count: 1;
+    animation-fill-mode: none;
+}
+
+.grid .cell.cell-update-animation-1 {
+    animation-name: cell-update-1;
+}
+
+.grid .cell.cell-update-animation-2 {
+    animation-name: cell-update-2;
+}
+
+/* Inset shadows paint without shifting layout or changing cell backgrounds; distinct names allow restarts. */
+@keyframes cell-update-1 {
+    from {
+        box-shadow: inset 0 0 0 100vmax var(--cell-update-tint);
+    }
+    to {
+        box-shadow: inset 0 0 0 100vmax transparent;
+    }
+}
+
+@keyframes cell-update-2 {
+    from {
+        box-shadow: inset 0 0 0 100vmax var(--cell-update-tint);
+    }
+    to {
+        box-shadow: inset 0 0 0 100vmax transparent;
+    }
+}
+
 .grid>.content>.row>.cell>input.select {
     cursor: inherit;
 }
@@ -61,6 +98,7 @@
     width: 100%;
     height: 100%;
     text-align: inherit;
+    background: transparent;
 }
 
 .grid>.row.header>.cell {

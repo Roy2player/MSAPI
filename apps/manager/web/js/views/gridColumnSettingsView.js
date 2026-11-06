@@ -10,7 +10,7 @@
  *
  * Required Notice: MSAPI, copyright © 2021–2026 Maksim Andreevich Leonov, msapi.info@mail.ru
  *
- * @brief View to display grid settings.
+ * @brief View to display grid column settings.
  */
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
@@ -21,8 +21,8 @@ if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
 	Grid = require("../core/grid");
 }
 
-class GridSettingsView extends View {
-	constructor(parameters) { super("GridSettingsView", parameters); }
+class GridColumnSettingsView extends View {
+	constructor(parameters) { super("GridColumnSettingsView", parameters); }
 
 	/**************************
 	 * @brief Creates type-specific display accuracy controls and restores invalid edits to the previous selection.
@@ -46,7 +46,7 @@ class GridSettingsView extends View {
 			return false;
 		}
 
-		const metadata = columnObject?.metadata?.metadata;
+		const metadata = columnObject?.metadata;
 		if (!metadata) {
 			console.error("Column metadata is not provided");
 			return false;
@@ -128,7 +128,7 @@ class GridSettingsView extends View {
 	}
 }
 
-View.AddViewTemplate("GridSettingsView", `<div class="gridSettingsView customView">
+View.AddViewTemplate("GridColumnSettingsView", `<div class="gridColumnSettingsView customView">
     <div class="group">
         <span class="text">Align:</span>
         <span class="action alignLeft" title="Align text left"></span>
@@ -152,5 +152,5 @@ View.AddViewTemplate("GridSettingsView", `<div class="gridSettingsView customVie
 </div>`);
 
 if (typeof module !== "undefined" && typeof module.exports !== "undefined") {
-	module.exports = GridSettingsView;
+	module.exports = GridColumnSettingsView;
 }

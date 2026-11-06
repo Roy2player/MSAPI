@@ -184,13 +184,13 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		3000, [&client]() { return client.GetActionsNumber(); }, 2, "Client actions number is correct"));
 	const auto& clientHTTPData{ client.GetHTTPData() };
-	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5159, "", indexPage, "200", "OK",
-		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5025" }, { "Connection", "keep-alive" },
+	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5156, "", indexPage, "200", "OK",
+		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5022" }, { "Connection", "keep-alive" },
 			{ "Keep-Alive", "timeout=0,max=0" } },
 		"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl            "
 		": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 200\n\tcode text "
-		"     : OK\n\tmessage size   : 5159\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
-		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
+		"     : OK\n\tmessage size   : 5156\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
+		"5022\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
 
 	// 3) Send request to load index page with relative url withput page format specification
 	RETURN_IF_FALSE(t.Assert(
@@ -205,13 +205,13 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 	// 4) Reserved response with 200 and index page
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		3000, [&client]() { return client.GetActionsNumber(); }, 4, "Client actions number is correct"));
-	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5159, "", indexPage, "200", "OK",
-		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5025" }, { "Connection", "keep-alive" },
+	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5156, "", indexPage, "200", "OK",
+		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5022" }, { "Connection", "keep-alive" },
 			{ "Keep-Alive", "timeout=0,max=0" } },
 		"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl            "
 		": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 200\n\tcode text "
-		"     : OK\n\tmessage size   : 5159\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
-		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
+		"     : OK\n\tmessage size   : 5156\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
+		"5022\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
 
 	// 5) Send request to load unkown page
 	RETURN_IF_FALSE(t.Assert(
@@ -274,13 +274,13 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 	// 10) Reserved response with 200 and index page
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		3000, [&client]() { return client.GetActionsNumber(); }, 10, "Client actions number is correct"));
-	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5159, "", indexPage, "200", "OK",
-		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5025" }, { "Connection", "keep-alive" },
+	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5156, "", indexPage, "200", "OK",
+		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5022" }, { "Connection", "keep-alive" },
 			{ "Keep-Alive", "timeout=0,max=0" } },
 		"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl            "
 		": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 200\n\tcode text "
-		"     : OK\n\tmessage size   : 5159\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
-		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
+		"     : OK\n\tmessage size   : 5156\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
+		"5022\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
 
 	// 11) Send request to load unknown page
 	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /unknown.html HTTP/1.1"),
@@ -338,13 +338,13 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 	// 16) Reserved response with 200 and css
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		3000, [&client]() { return client.GetActionsNumber(); }, 16, "Client actions number is correct"));
-	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 4366, "", css, "200", "OK",
-		{ { "Content-Type", "text/css; charset=utf-8" }, { "Content-Length", "4233" }, { "Connection", "keep-alive" },
+	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 4364, "", css, "200", "OK",
+		{ { "Content-Type", "text/css; charset=utf-8" }, { "Content-Length", "4231" }, { "Connection", "keep-alive" },
 			{ "Keep-Alive", "timeout=0,max=0" } },
 		"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl            "
 		": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 200\n\tcode text "
-		"     : OK\n\tmessage size   : 4366\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
-		"4233\n\tContent-Type   : text/css; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
+		"     : OK\n\tmessage size   : 4364\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
+		"4231\n\tContent-Type   : text/css; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
 
 	// 17) Send request to load js
 	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection, "GET /index.js HTTP/1.1"),
@@ -359,13 +359,13 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 	// 18) Reserved response with 200 and js
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		3000, [&client]() { return client.GetActionsNumber(); }, 18, "Client actions number is correct"));
-	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5261, "", js, "200", "OK",
-		{ { "Content-Type", "application/javascript; charset=utf-8" }, { "Content-Length", "5114" },
+	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5259, "", js, "200", "OK",
+		{ { "Content-Type", "application/javascript; charset=utf-8" }, { "Content-Length", "5112" },
 			{ "Connection", "keep-alive" }, { "Keep-Alive", "timeout=0,max=0" } },
 		"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl            "
 		": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 200\n\tcode text "
-		"     : OK\n\tmessage size   : 5261\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
-		"5114\n\tContent-Type   : application/javascript; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
+		"     : OK\n\tmessage size   : 5259\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
+		"5112\n\tContent-Type   : application/javascript; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
 
 	// 19) Send request with specific header
 	RETURN_IF_FALSE(t.Assert(MSAPI::Protocol::HTTP::SendRequest(clientToServerConnection,
@@ -461,13 +461,13 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 	// 26) Reserved response with 200 and index page, query does not affect static file routing
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		3000, [&client]() { return client.GetActionsNumber(); }, 26, "Client actions number is correct"));
-	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5159, "", indexPage, "200", "OK",
-		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5025" }, { "Connection", "keep-alive" },
+	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5156, "", indexPage, "200", "OK",
+		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5022" }, { "Connection", "keep-alive" },
 			{ "Keep-Alive", "timeout=0,max=0" } },
 		"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl            "
 		": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 200\n\tcode text "
-		"     : OK\n\tmessage size   : 5159\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
-		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
+		"     : OK\n\tmessage size   : 5156\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
+		"5022\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
 
 	// 27) Send request to load index page with symbol "#" in URL and following data
 	RETURN_IF_FALSE(
@@ -483,13 +483,13 @@ FORCE_INLINE [[nodiscard]] bool HttpProtocol()
 	// 28) Reserved response with 200 and index page, symbol "#" and following data is ignored
 	RETURN_IF_FALSE(t.Wait<uint64_t>(
 		3000, [&client]() { return client.GetActionsNumber(); }, 28, "Client actions number is correct"));
-	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5159, "", indexPage, "200", "OK",
-		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5025" }, { "Connection", "keep-alive" },
+	RETURN_IF_FALSE(checkAll(clientHTTPData, false, "", "", "HTTP", "1.1", 5156, "", indexPage, "200", "OK",
+		{ { "Content-Type", "text/html; charset=utf-8" }, { "Content-Length", "5022" }, { "Connection", "keep-alive" },
 			{ "Keep-Alive", "timeout=0,max=0" } },
 		"HTTP message:\n{\n\tis valid       : true\n\ttype           : Response\n\tmessage type   : \n\turl            "
 		": \n\tHTTP type      : HTTP\n\tversion        : 1.1\n\tformat         : \n\tcode           : 200\n\tcode text "
-		"     : OK\n\tmessage size   : 5159\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
-		"5025\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
+		"     : OK\n\tmessage size   : 5156\n\tHeaders        :\n{\n\tConnection     : keep-alive\n\tContent-Length : "
+		"5022\n\tContent-Type   : text/html; charset=utf-8\n\tKeep-Alive     : timeout=0,max=0\n}\n}"));
 
 	// 29) Close source request and response handling
 	{

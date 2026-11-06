@@ -35,7 +35,7 @@ class InstalledApps extends View {
 			indexColumnId : 5,
 			columns : [ 1, 5 ],
 			postAddRowFunction : (rowObject) => {
-				let createCell = rowObject.row.querySelector(".cell[parameter-id='1']");
+				let createCell = rowObject.node.querySelector(".cell[parameter-id='1']");
 				if (createCell && rowObject.values.hasOwnProperty(5)) {
 					createCell.addEventListener("click", () => { new NewApp({ appType : rowObject.values[5] }); });
 					createCell.classList.add("action", "create");
@@ -61,7 +61,7 @@ class InstalledApps extends View {
 				}
 
 				if ("viewPortParameter" in app) {
-					MetadataCollector.SetViewPortParameterToAppType(app.type, app.viewPortParameter);
+					MetadataCollector.SetViewPortParameterId(app.type, app.viewPortParameter);
 				}
 			});
 		};

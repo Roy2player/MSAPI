@@ -44,7 +44,7 @@ class CreatedApps extends View {
 			columns : [ 10, 2, 3, 4, 2000001, 5, 1000006, 1000007 ],
 			indexColumn : "Port",
 			postAddRowFunction : (rowObject) => {
-				let changeStateCell = rowObject.row.querySelector(".cell[parameter-id='2']");
+				let changeStateCell = rowObject.node.querySelector(".cell[parameter-id='2']");
 				if (changeStateCell) {
 					changeStateCell.addEventListener("click", () => {
 						if (changeStateCell.classList.contains("loading")) {
@@ -79,7 +79,7 @@ class CreatedApps extends View {
 					changeStateCell.classList.add("action");
 				}
 
-				let modifyCell = rowObject.row.querySelector(".cell[parameter-id='3']");
+				let modifyCell = rowObject.node.querySelector(".cell[parameter-id='3']");
 				if (modifyCell) {
 					modifyCell.addEventListener("click", () => {
 						const port = rowObject.values[1000007];
@@ -100,7 +100,7 @@ class CreatedApps extends View {
 					modifyCell.classList.add("action", "modify");
 				}
 
-				let deleteCell = rowObject.row.querySelector(".cell[parameter-id='4']");
+				let deleteCell = rowObject.node.querySelector(".cell[parameter-id='4']");
 				if (deleteCell) {
 					deleteCell.addEventListener("click", () => {
 						const port = rowObject.values[1000007];
@@ -143,7 +143,7 @@ class CreatedApps extends View {
 			},
 			postUpdateRowFunction : (rowObject, updatedValues) => {
 				if (updatedValues.hasOwnProperty(2000002)) {
-					let changeStateCell = rowObject.row.querySelector(".cell[parameter-id='2']");
+					let changeStateCell = rowObject.node.querySelector(".cell[parameter-id='2']");
 					if (changeStateCell) {
 						if (updatedValues[2000002] == 1) {
 							changeStateCell.classList.add("run");
@@ -161,17 +161,17 @@ class CreatedApps extends View {
 				}
 
 				if (updatedValues.hasOwnProperty(10)) {
-					let viewCell = rowObject.row.querySelector(".cell[parameter-id='10']");
+					let viewCell = rowObject.node.querySelector(".cell[parameter-id='10']");
 					if (viewCell && !viewCell.classList.contains("action", "openAppView")) {
 						let appType = rowObject.values[5];
 						if (appType === undefined) {
 							console.error("Can't find application type in row values", rowObject);
 							return;
 						}
-						const viewPortParameter = MetadataCollector.GetViewPortParameterToAppType(appType);
-						if (viewPortParameter != undefined) {
+						const viewPortParameterId = MetadataCollector.GetViewPortParameterId(appType);
+						if (viewPortParameterId != undefined) {
 							viewCell.addEventListener("click", () => {
-								const port = rowObject.values[viewPortParameter];
+								const port = rowObject.values[viewPortParameterId];
 								if (port === undefined) {
 									console.error("Can't find server port in row values");
 									return;

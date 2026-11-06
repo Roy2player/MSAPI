@@ -1865,4 +1865,36 @@ testRunner.Test('Add rounded new-row inputs and clear their raw values without l
 	table.Destructor();
 });
 
+testRunner.Test('Optional event dates stay blank and do not reuse the preceding timestamp', () => {
+	const table = new Table({
+		parent : body,
+		id : 895,
+		isMutable : false,
+		metadata : {
+			name : 'Event dates',
+			type : 'TableData',
+			columns : [ { name : 'Payment', type : 'Timer', accuracy : Timer.ACCURACY.Days } ]
+		}
+	});
+	try {
+		const time = 1793664000000000000n;
+		for (const value of [time, null, undefined, '', 0n, time]) {
+			table.AddRow([ value ]);
+		}
+		table.Save();
+		const inputs = table.m_wrapper.querySelectorAll('.row:not(.header):not(.new) input');
+		testRunner.Assert(inputs.length, 6);
+		testRunner.Assert(inputs[0].getAttribute('timestamp'), time.toString());
+		for (const index of [1, 2, 3]) {
+			testRunner.Assert(inputs[index].value, '');
+			testRunner.Assert(inputs[index].getAttribute('timestamp'), '');
+		}
+		testRunner.Assert(inputs[4].getAttribute('timestamp'), '0', 'An explicit epoch remains distinct from absence');
+		testRunner.Assert(inputs[5].getAttribute('timestamp'), time.toString());
+	}
+	finally {
+		table.Destructor();
+	}
+});
+
 testRunner.Run();

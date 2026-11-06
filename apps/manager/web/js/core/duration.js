@@ -33,12 +33,12 @@ class Duration {
 
 	static #privateFields = (() => {
 		let m_hasGlobalEventListener = false;
-		let m_durations = new Map();
+		let m_inputToEditState = new Map();
 
-		return { m_hasGlobalEventListener, m_durations };
+		return { m_hasGlobalEventListener, m_inputToEditState };
 	})();
 
-	static GetDurationsNumber() { return Duration.#privateFields.m_durations.size; }
+	static GetDurationsNumber() { return Duration.#privateFields.m_inputToEditState.size; }
 
 	static mask = {
 		"Days" : "d",
@@ -62,17 +62,17 @@ class Duration {
 	static SetEvent(input)
 	{
 		let isActive = { "isActive" : false };
-		let durations = Duration.#privateFields.m_durations;
-		durations.set(input, isActive);
+		let inputToEditState = Duration.#privateFields.m_inputToEditState;
+		inputToEditState.set(input, isActive);
 
 		input.addEventListener("input", () => { isActive.isActive = true; });
 
 		if (!Duration.#privateFields.m_hasGlobalEventListener) {
 			Duration.#privateFields.m_hasGlobalEventListener = true;
 			document.addEventListener("click", (event) => {
-				durations.forEach((isActive, input) => {
+				inputToEditState.forEach((isActive, input) => {
 					if (!input.parentNode) {
-						durations.delete(input);
+						inputToEditState.delete(input);
 						return;
 					}
 

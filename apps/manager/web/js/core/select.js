@@ -70,9 +70,9 @@ class Select {
 
 			let selectViews = Select.#privateFields.m_selectsViews;
 			let viewTitle = "";
-			const selectMetadata = MetadataCollector.GetMetadata(parameterId);
-			if (selectMetadata) {
-				viewTitle = "Select: " + selectMetadata.metadata.name + " " + parameterId;
+			const metadataObject = MetadataCollector.GetMetadataObject(parameterId);
+			if (metadataObject) {
+				viewTitle = "Select: " + metadataObject.definition.name + " " + parameterId;
 			}
 			else {
 				viewTitle = "Select: " + parameterId;

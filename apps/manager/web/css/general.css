@@ -12,42 +12,68 @@
  */
 
 :root {
+    /* Main surfaces */
     --background-view: white;
     --background-element-general: #eaecf7;
     --background-element-sub-general: #d7dbf0;
     --background-element-header: #bdc4fa;
     --background-element-general-hover: #faf3bd;
+
+    /* States */
     --background-element-invalid: #ffcccc;
     --background-element-disabled: #f0f0f0;
     --background-element-enabled: #c2e8d8;
+
+    /* Borders and text */
     --border-color-general: #8490A6;
     --border-color-sub-general: #ccc;
     --text-color-general: black;
+
+    /* Loading and errors */
     --loader-background: rgba(255, 255, 255, 0.5);
     --loader-background-element: #fff;
     --error-message-color: red;
+
+    /* Selection */
     --background-selection: #a8b8f0;
     --text-color-selection: #000;
+
+    /* Cell updates */
+    --cell-update-color: rgba(35, 105, 210, 0.65);
+    --cell-update-tint: rgba(80, 160, 255, 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --background-view: #1e1e1e;
-        --background-element-general: #2c2f3a;
-        --background-element-sub-general: #353847;
-        --background-element-header: #3e4260;
-        --background-element-general-hover: #494d66;
-        --background-element-invalid: #4b1d1d;
-        --background-element-disabled: #333;
-        --background-element-enabled: #3a6151;
-        --border-color-general: #999;
-        --border-color-sub-general: #555;
-        --text-color-general: #f0f0f0;
-        --loader-background: rgba(255, 255, 255, 0.5);
-        --loader-background-element: #222;
-        --error-message-color: #ff6666;
-        --background-selection: #52649a;
-        --text-color-selection: #fff;
+        /* Main surfaces */
+        --background-view: #181c22;
+        --background-element-general: #222832;
+        --background-element-sub-general: #2b3340;
+        --background-element-header: #303b4b;
+        --background-element-general-hover: #35465b;
+
+        /* States */
+        --background-element-invalid: #482a30;
+        --background-element-disabled: #252a31;
+        --background-element-enabled: #254438;
+
+        /* Borders and text */
+        --border-color-general: #394350;
+        --border-color-sub-general: #2d3540;
+        --text-color-general: #dce3ec;
+
+        /* Loading and errors */
+        --loader-background: rgba(15, 19, 25, 0.65);
+        --loader-background-element: #293342;
+        --error-message-color: #ff8791;
+
+        /* Selection */
+        --background-selection: #304f73;
+        --text-color-selection: #f1f6fc;
+
+        /* Cell updates */
+        --cell-update-color: rgba(112, 181, 255, 0.75);
+        --cell-update-tint: rgba(90, 165, 255, 0.16);
     }
 }
 
