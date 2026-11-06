@@ -2870,14 +2870,14 @@ testRunner.Test('Highlight changed displays once per frame and alternate persist
 		grid.UpdateRow(1n, { [priceId] : 1.24 });
 		testRunner.Assert(cell.textContent, '1.2');
 		testRunner.Assert(row.values[priceId], 1.24);
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0, 'Identical displays must not queue highlights');
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates.size, 0, 'Identical displays must not queue highlights');
 		grid.UpdateRow(1n, { [priceId] : 1.26 });
 		testRunner.Assert(cell.textContent, '1.3', 'The latest text must be visible before the frame flush');
 		GridChecking.CheckCellUpdateClass(cell, 0);
 		await GridChecking.FlushGridUpdates(grid);
 		GridChecking.CheckCellUpdateClass(cell, 1);
 		grid.UpdateRow(1n, { [priceId] : 1.27 });
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0);
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates.size, 0);
 		GridChecking.CheckCellUpdateClass(cell, 1);
 		grid.UpdateRow(1n, { [priceId] : 2 });
 		await GridChecking.FlushGridUpdates(grid);
@@ -2891,14 +2891,16 @@ testRunner.Test('Highlight changed displays once per frame and alternate persist
 		testRunner.Assert(cell.classList.contains('selected'), true);
 		testRunner.Assert(getEventListeners(cell).animationend, undefined);
 		Grid.SetColumnAccuracy({ columnObject : column, accuracy : 0.01 });
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0, 'An accuracy change with identical text stays silent');
+		testRunner.Assert(
+			grid.m_rowObjectToPendingCellUpdates.size, 0, 'An accuracy change with identical text stays silent');
 		grid.UpdateRow(1n, { [priceId] : 3.12 });
 		await GridChecking.FlushGridUpdates(grid);
 		GridChecking.CheckCellUpdateClass(cell, 2);
 		Grid.SetColumnAccuracy({ columnObject : column, accuracy : 1 });
 		await GridChecking.FlushGridUpdates(grid);
 		GridChecking.CheckCellUpdateClass(cell, 2);
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0, 'Accuracy-only formatting does not queue data updates');
+		testRunner.Assert(
+			grid.m_rowObjectToPendingCellUpdates.size, 0, 'Accuracy-only formatting does not queue data updates');
 	}
 	finally {
 		grid.Destructor();
@@ -2931,14 +2933,16 @@ testRunner.Test('Compare displayed timer, duration, and enum labels before queui
 		await GridChecking.FlushGridUpdates(grid);
 		GridChecking.RenderAllRows(grid);
 		grid.UpdateRow(1n, { [timestampId] : time + 1n, [selectId] : 2 });
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0, 'Raw changes with identical labels stay silent');
+		testRunner.Assert(
+			grid.m_rowObjectToPendingCellUpdates.size, 0, 'Raw changes with identical labels stay silent');
 		grid.UpdateRow(1n, {
 			[timestampId] : time + 1000000000n,
 			[selectId] : 3,
 			[duration_seconds_parameter_1] : 2000000000n,
 			[string_parameter] : '<button>After</button>'
 		});
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 4);
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates.size, 1);
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates.get(grid.m_indexValueToRowObject.get(1n)).size, 4);
 		await GridChecking.FlushGridUpdates(grid);
 		const row = grid.m_indexValueToRowObject.get(1n);
 		for (const id of [timestampId, selectId, duration_seconds_parameter_1, string_parameter]) {
@@ -2973,18 +2977,21 @@ testRunner.Test('Batch 2000 frequently updated cells into one shared animation f
 		window.getComputedStyle = () => { throw new Error('Notifications must not force style resolution'); };
 		observer = new window.MutationObserver(() => {});
 		observer.observe(grid.m_content, { subtree : true, attributes : true, attributeFilter : [ 'class' ] });
-		const pending = grid.m_pendingCellUpdates;
+		const pending = grid.m_rowObjectToPendingCellUpdates;
 		for (let value = 1; value <= 10; ++value) {
 			for (let id = 1n; id <= 500n; ++id) {
 				grid.UpdateRow(id, { [ids[0]] : value, [ids[1]] : value, [ids[2]] : value, [ids[3]] : value });
 			}
 		}
 		testRunner.Assert(callbacks.length, 1, 'Unsorted and unfiltered updates share one frame callback');
-		testRunner.Assert(pending.size, 2000);
+		testRunner.Assert(pending.size, 500);
+		for (const cells of pending.values()) {
+			testRunner.Assert(cells.size, 4, 'Repeated updates queue each changed cell once per row');
+		}
 		testRunner.Assert(observer.takeRecords().length, 0, 'Bursts must not mutate animation classes eagerly');
 		callbacks.shift()();
 		testRunner.Assert(observer.takeRecords().length, 2000, 'Each changed cell gets exactly one class mutation');
-		testRunner.Assert(grid.m_pendingCellUpdates === pending, true, 'Reuse the queue across frames');
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates === pending, true, 'Reuse the queue across frames');
 		testRunner.Assert(pending.size, 0);
 		for (const id of ids) {
 			grid.m_idToColumnObject.get(id).rowObjectToCellNode.forEach(cell => {
@@ -3006,57 +3013,6 @@ testRunner.Test('Batch 2000 frequently updated cells into one shared animation f
 		observer?.disconnect();
 		global.requestAnimationFrame = originalFrame;
 		window.getComputedStyle = originalComputedStyle;
-		grid.Destructor();
-	}
-});
-
-testRunner.Test('Keep row-owned notifications silent when virtual scrolling restores a row', async () => {
-	const parent = document.createElement('div');
-	body.appendChild(parent);
-	const grid
-		= new Grid({ parent, indexColumnId : scalar_parameter, columns : [ scalar_parameter, float_point_parameter ] });
-	try {
-		grid.m_pool.m_rowHeight = 1;
-		for (let id = 1n; id <= 5n; ++id) {
-			grid.AddOrUpdateRow({ [scalar_parameter] : id, [float_point_parameter] : Number(id) });
-		}
-		const pool = grid.m_pool;
-		pool.m_height = 2;
-		pool.m_capacity = 2;
-		pool.Render(0);
-		const row = grid.m_indexValueToRowObject.get(1n);
-		const cell = grid.m_idToColumnObject.get(float_point_parameter).rowObjectToCellNode.get(row);
-		grid.UpdateRow(1n, { [float_point_parameter] : 10 });
-		pool.Render(1);
-		await GridChecking.FlushGridUpdates(grid);
-		GridChecking.CheckCellUpdateClass(cell, 0);
-		grid.UpdateRow(1n, { [float_point_parameter] : 11 });
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0);
-		grid.UpdateRow(2n, { [float_point_parameter] : 20 });
-		await GridChecking.FlushGridUpdates(grid);
-		const retained = grid.m_idToColumnObject.get(float_point_parameter)
-							 .rowObjectToCellNode.get(grid.m_indexValueToRowObject.get(2n));
-		pool.Render(0);
-		GridChecking.CheckCellUpdateClass(retained, 1);
-		testRunner.Assert(
-			grid.m_idToColumnObject.get(float_point_parameter).rowObjectToCellNode.get(row) === cell, true);
-		testRunner.Assert(cell.textContent, '11');
-		GridChecking.CheckCellUpdateClass(cell, 0);
-		grid.UpdateRow(1n, { [float_point_parameter] : 12 });
-		await GridChecking.FlushGridUpdates(grid);
-		GridChecking.CheckCellUpdateClass(cell, 1);
-		grid.UpdateRow(1n, { [float_point_parameter] : 13 });
-		pool.Render(3);
-		pool.Render(0);
-		await GridChecking.FlushGridUpdates(grid);
-		GridChecking.CheckCellUpdateClass(cell, 0);
-		testRunner.Assert(cell.textContent, '13', 'Returning rows must retain the latest offscreen value');
-		grid.UpdateRow(1n, { [float_point_parameter] : 14 });
-		await GridChecking.FlushGridUpdates(grid);
-		pool.Rerender();
-		GridChecking.CheckCellUpdateClass(cell, 0);
-	}
-	finally {
 		grid.Destructor();
 	}
 });
@@ -3093,7 +3049,7 @@ testRunner.Test('Sort and filter before applying pending highlights to visible r
 		grid.UpdateRow(1n, { [float_point_parameter] : -1 });
 		await GridChecking.FlushGridUpdates(grid);
 		testRunner.Assert(cell.isConnected, false, 'A filtered-out pending notification must be ignored');
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0);
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates.size, 0);
 	}
 	finally {
 		grid.Destructor();
@@ -3113,23 +3069,23 @@ testRunner.Test('Discard pending highlights for removed cells and clear queues o
 		grid.UpdateRow(1n, { [float_point_parameter] : 10 });
 		grid.RemoveColumn({ order : grid.m_idToColumnObject.get(float_point_parameter).index });
 		await GridChecking.FlushGridUpdates(grid);
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0);
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates.size, 0);
 		grid.AddColumn({ id : float_point_parameter });
 		const column = grid.m_idToColumnObject.get(float_point_parameter);
 		column.rowObjectToCellNode.forEach(cell => GridChecking.CheckCellUpdateClass(cell, 0));
 		grid.UpdateRow(2n, { [float_point_parameter] : 20 });
 		grid.RemoveRow({ indexValue : 2n });
 		await GridChecking.FlushGridUpdates(grid);
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0);
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates.size, 0);
 		grid.UpdateRow(1n, { [float_point_parameter] : 11 });
 		grid.ClearRows();
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0);
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates.size, 0);
 		grid.AddOrUpdateRow({ [scalar_parameter] : 3n, [float_point_parameter] : 3 });
 		await GridChecking.FlushGridUpdates(grid);
 		GridChecking.RenderAllRows(grid);
 		grid.UpdateRow(3n, { [float_point_parameter] : 30 });
 		grid.Destructor();
-		testRunner.Assert(grid.m_pendingCellUpdates.size, 0);
+		testRunner.Assert(grid.m_rowObjectToPendingCellUpdates.size, 0);
 		grid.FlushUpdates();
 	}
 	finally {

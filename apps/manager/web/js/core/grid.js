@@ -1768,11 +1768,11 @@ class Grid {
 				if (Grid.SetValueToCell(cell, values[columnId], metadataObject.definition, columnObject.accuracy)) {
 					let pendingCellUpdates = this.m_rowObjectToPendingCellUpdates.get(rowObject);
 					if (!pendingCellUpdates) {
-						pendingCellUpdates = new Array();
+						pendingCellUpdates = new Set();
 						this.m_rowObjectToPendingCellUpdates.set(rowObject, pendingCellUpdates);
 					}
 
-					pendingCellUpdates.push(cell);
+					pendingCellUpdates.add(cell);
 					this.ScheduleUpdate();
 				}
 			}
