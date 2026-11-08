@@ -27,6 +27,7 @@ class GridColumnSettingsView extends View {
 	/**************************
 	 * @brief Creates type-specific display accuracy controls and restores invalid edits to the previous selection.
 	 * Floating-point controls accept powers of ten within the type's declared accuracy limits.
+	 * Shows the column name as additional title information.
 	 *
 	 * @param parameters - Settings view title, event target, parameter identifier, and column object.
 	 *
@@ -36,7 +37,7 @@ class GridColumnSettingsView extends View {
 	 */
 	Constructor(parameters)
 	{
-		this.m_parentView.querySelector(".title > span").textContent = parameters.viewTitle;
+		this.SetTitleText(parameters.viewTitle);
 		this.m_eventTarget = parameters.eventTarget;
 		this.m_parameterId = parameters.parameterId;
 
@@ -52,8 +53,10 @@ class GridColumnSettingsView extends View {
 			return false;
 		}
 
+		this.SetTitleInfo(metadata.name);
+
 		if (metadata.type == "Timer") {
-			let accuracyNode = this.m_view.querySelector(".group.accuracy");
+			let accuracyNode = this.m_viewNode.querySelector(".group.accuracy");
 			if (!accuracyNode) {
 				console.error("Accuracy node is not found");
 				return false;
@@ -85,7 +88,7 @@ class GridColumnSettingsView extends View {
 		const isFloat = metadata.type.includes("Float");
 		const isDouble = metadata.type.includes("Double");
 		if (isFloat || isDouble) {
-			let accuracyNode = this.m_view.querySelector(".group.accuracy");
+			let accuracyNode = this.m_viewNode.querySelector(".group.accuracy");
 			if (!accuracyNode) {
 				console.error("Accuracy node is not found");
 				return false;

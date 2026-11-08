@@ -27,6 +27,7 @@ class AppView extends View {
 			return false;
 		}
 
+		this.m_appType = parameters.appType;
 		this.m_listenIp = parameters.ip;
 		if (!this.m_listenIp) {
 			console.error("Listen IP is not provided");
@@ -40,7 +41,7 @@ class AppView extends View {
 		iframe.style.height = "100%";
 		iframe.style.border = "none";
 
-		this.m_view.appendChild(iframe);
+		this.m_viewNode.appendChild(iframe);
 		this.SetLoading(true);
 
 		iframe.addEventListener("load", () => {
@@ -62,14 +63,8 @@ class AppView extends View {
 			handleData : (parameters) => {
 				let name = parameters["2000001"];
 				if (!isTitleUpdated && name != undefined) {
-					if (name) {
-						this.m_title += ": " + name + " on port " + this.m_port;
-					}
-					else {
-						this.m_title += ": " + this.m_appType + " on port " + this.m_port;
-					}
+					this.SetTitleInfo((name || this.m_appType) + " on port " + this.m_port);
 					isTitleUpdated = true;
-					this.m_parentView.querySelector(".title > span").textContent = this.m_title;
 				}
 
 				const state = parameters["2000002"];

@@ -36,7 +36,7 @@ class ModifyApp extends View {
 			return false;
 		}
 
-		let inputs = this.m_view.querySelector(".inputs");
+		let inputs = this.m_viewNode.querySelector(".inputs");
 		if (!inputs) {
 			console.error("No inputs to fill app parameters");
 			return false;
@@ -249,14 +249,8 @@ class ModifyApp extends View {
 			handleData : (parameters) => {
 				let name = parameters["2000001"];
 				if (!isTitleUpdated && name != undefined) {
-					if (name) {
-						this.m_title += ": " + name + " on port " + this.m_port;
-					}
-					else {
-						this.m_title += ": " + this.m_appType + " on port " + this.m_port;
-					}
+					this.SetTitleInfo((name || this.m_appType) + " on port " + this.m_port);
 					isTitleUpdated = true;
-					this.m_parentView.querySelector(".title > span").textContent = this.m_title;
 				}
 
 				displayParameters(this, parameters);
@@ -266,7 +260,7 @@ class ModifyApp extends View {
 			data : { "port" : this.m_port, "filter" : this.m_port }
 		});
 
-		this.m_view.querySelector(".button").addEventListener("click", async () => {
+		this.m_viewNode.querySelector(".button").addEventListener("click", async () => {
 			this.HideErrorMessage();
 			if (!View.ValidateInputs(containerWithInputs)) {
 				return;

@@ -33,8 +33,8 @@ function DestroyViews()
 	document.querySelectorAll('body > main > section.views .viewHeader .close')
 		.forEach((button) => button.dispatchEvent(new Event("click", { bubbles : true })));
 	testRunner.Assert(View.GetCreatedViews().size, 0, 'Unexpected created views count');
-	if (global.dispatcher && global.dispatcher.m_view) {
-		global.dispatcher.m_view.classList.add('hidden');
+	if (global.dispatcher && global.dispatcher.m_viewNode) {
+		global.dispatcher.m_viewNode.classList.add('hidden');
 	}
 }
 
@@ -143,11 +143,11 @@ MetadataCollector.AddMetadata(9, {
 	true);
 
 testRunner.Test('Manage list of hidden views via dispatcher and directly via view objects\' callbacks', async () => {
+	testRunner.Assert(global.dispatcher.m_mountNode, document.querySelector('main'), 'Dispatcher mount node not found');
+	testRunner.Assert(global.dispatcher.m_viewNode, document.querySelector('main > section.views > .dispatcher'),
+		'Dispatcher view node not found');
 	testRunner.Assert(
-		global.dispatcher.m_parentNode, document.querySelector('main'), 'Dispatcher parent node not found');
-	testRunner.Assert(global.dispatcher.m_view, document.querySelector('main > section.views > .dispatcher'),
-		'Dispatcher view not found');
-	testRunner.Assert(global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
+		global.dispatcher.m_viewNode.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
 	testRunner.Assert(global.dispatcher.m_control,
 		document.querySelector('main > section.views > .dispatcher > .control'), 'Dispatcher control not found');
 	testRunner.Assert(global.dispatcher.m_hiddenViews,
@@ -163,7 +163,7 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 
 	let view1 = new InstalledApps();
 	await TestRunner.WaitFor(() => view1.m_created, 'view1 created');
-	CheckClassList(view1.m_parentView, [ 'view' ]);
+	CheckClassList(view1.m_rootNode, [ 'view' ]);
 
 	let hiddenViewsList = global.dispatcher.m_hiddenViews.querySelector('.hiddenViews > .list');
 
@@ -172,95 +172,95 @@ testRunner.Test('Manage list of hidden views via dispatcher and directly via vie
 	CheckHiddenViewsList(1);
 	testRunner.Assert(hiddenViewsList.childNodes[0].querySelector('span').innerHTML, 'Installed apps',
 		'Unexpected name on hidden view');
-	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
+	CheckClassList(view1.m_rootNode, [ 'view', 'hidden' ]);
 
 	// Click to show
 	hiddenViewsList.firstElementChild.dispatchEvent(new Event("click", { bubbles : true }));
 	CheckHiddenViewsList(0);
-	CheckClassList(view1.m_parentView, [ 'view' ]);
+	CheckClassList(view1.m_rootNode, [ 'view' ]);
 
 	// Add hidden view
 	global.dispatcher.AddHiddenView(view1);
 	CheckHiddenViewsList(1);
-	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
+	CheckClassList(view1.m_rootNode, [ 'view', 'hidden' ]);
 
 	// Try to add the same view again
 	global.dispatcher.AddHiddenView(view1);
 	CheckHiddenViewsList(1);
-	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
+	CheckClassList(view1.m_rootNode, [ 'view', 'hidden' ]);
 
 	// Add another hidden view
 	let view2 = new Account();
 	await TestRunner.WaitFor(() => view2.m_created, 'view2 created');
-	CheckClassList(view2.m_parentView, [ 'view' ]);
+	CheckClassList(view2.m_rootNode, [ 'view' ]);
 	global.dispatcher.AddHiddenView(view2);
 	CheckHiddenViewsList(2);
-	CheckClassList(view2.m_parentView, [ 'view', 'hidden' ]);
+	CheckClassList(view2.m_rootNode, [ 'view', 'hidden' ]);
 
 	// Add another hidden view
 	let view3 = new CreatedApps();
 	await TestRunner.WaitFor(() => view3.m_created, 'view3 created');
-	CheckClassList(view3.m_parentView, [ 'view' ]);
+	CheckClassList(view3.m_rootNode, [ 'view' ]);
 	global.dispatcher.AddHiddenView(view3);
 	CheckHiddenViewsList(3);
 	testRunner.Assert(hiddenViewsList.childNodes[2].querySelector('span').innerHTML, 'Created apps',
 		'Unexpected name on hidden view');
-	CheckClassList(view3.m_parentView, [ 'view', 'hidden' ]);
+	CheckClassList(view3.m_rootNode, [ 'view', 'hidden' ]);
 
 	// Call show on view
 	view1.Show();
 	CheckHiddenViewsList(2);
-	CheckClassList(view1.m_parentView, [ 'view' ]);
+	CheckClassList(view1.m_rootNode, [ 'view' ]);
 
 	// Call maximize on view
 	view2.Maximize();
 	CheckHiddenViewsList(1);
-	CheckClassList(view2.m_parentView, [ 'view', 'maximized' ]);
+	CheckClassList(view2.m_rootNode, [ 'view', 'maximized' ]);
 
 	// Call hide on views
 	view1.Hide();
 	view2.Hide();
 	CheckHiddenViewsList(3);
-	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
-	CheckClassList(view2.m_parentView, [ 'view', 'maximized', 'hidden' ]);
+	CheckClassList(view1.m_rootNode, [ 'view', 'hidden' ]);
+	CheckClassList(view2.m_rootNode, [ 'view', 'maximized', 'hidden' ]);
 
 	// Click to show to all
 	hiddenViewsList.childNodes[2].dispatchEvent(new Event("click", { bubbles : true }));
 	hiddenViewsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
 	hiddenViewsList.childNodes[0].dispatchEvent(new Event("click", { bubbles : true }));
 	CheckHiddenViewsList(0);
-	CheckClassList(view1.m_parentView, [ 'view' ]);
-	CheckClassList(view2.m_parentView, [ 'view', 'maximized' ]);
-	CheckClassList(view3.m_parentView, [ 'view' ]);
+	CheckClassList(view1.m_rootNode, [ 'view' ]);
+	CheckClassList(view2.m_rootNode, [ 'view', 'maximized' ]);
+	CheckClassList(view3.m_rootNode, [ 'view' ]);
 
 	// Add hidden views
 	global.dispatcher.AddHiddenView(view1);
 	global.dispatcher.AddHiddenView(view2);
 	global.dispatcher.AddHiddenView(view3);
 	CheckHiddenViewsList(3);
-	CheckClassList(view1.m_parentView, [ 'view', 'hidden' ]);
-	CheckClassList(view2.m_parentView, [ 'view', 'maximized', 'hidden' ]);
-	CheckClassList(view3.m_parentView, [ 'view', 'hidden' ]);
+	CheckClassList(view1.m_rootNode, [ 'view', 'hidden' ]);
+	CheckClassList(view2.m_rootNode, [ 'view', 'maximized', 'hidden' ]);
+	CheckClassList(view3.m_rootNode, [ 'view', 'hidden' ]);
 
 	// Remove hidden view
 	global.dispatcher.RemoveHiddenView(view1);
 	CheckHiddenViewsList(2);
-	CheckClassList(view1.m_parentView, [ 'view' ]);
+	CheckClassList(view1.m_rootNode, [ 'view' ]);
 
 	// Remove hidden views
 	global.dispatcher.RemoveHiddenView(view2);
 	global.dispatcher.RemoveHiddenView(view3);
 	CheckHiddenViewsList(0);
-	CheckClassList(view2.m_parentView, [ 'view', 'maximized' ]);
-	CheckClassList(view3.m_parentView, [ 'view' ]);
+	CheckClassList(view2.m_rootNode, [ 'view', 'maximized' ]);
+	CheckClassList(view3.m_rootNode, [ 'view' ]);
 });
 
 testRunner.Test('Manage list of registered panels', async () => {
+	testRunner.Assert(global.dispatcher.m_mountNode, document.querySelector('main'), 'Dispatcher mount node not found');
+	testRunner.Assert(global.dispatcher.m_viewNode, document.querySelector('main > section.views > .dispatcher'),
+		'Dispatcher view node not found');
 	testRunner.Assert(
-		global.dispatcher.m_parentNode, document.querySelector('main'), 'Dispatcher parent node not found');
-	testRunner.Assert(global.dispatcher.m_view, document.querySelector('main > section.views > .dispatcher'),
-		'Dispatcher view not found');
-	testRunner.Assert(global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
+		global.dispatcher.m_viewNode.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
 	testRunner.Assert(global.dispatcher.m_control,
 		document.querySelector('main > section.views > .dispatcher > .control'), 'Dispatcher control not found');
 	testRunner.Assert(global.dispatcher.m_hiddenViews,
@@ -320,7 +320,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 
 	testRunner.Assert(View.GetCreatedViews().size, 1, 'Unexpected created views count');
 	testRunner.Assert(
-		Array.from(View.GetCreatedViews().values())[0].m_title, 'Installed apps', 'Unexpected name on created view');
+		Array.from(View.GetCreatedViews().values())[0].GetTitle(), 'Installed apps', 'Unexpected name on created view');
 
 	// Click to create panel
 	registeredPanelsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
@@ -328,7 +328,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 	checkRegisteredPanelsList(2, 0);
 	testRunner.Assert(View.GetCreatedViews().size, 2, 'Unexpected created views count');
 	testRunner.Assert(
-		Array.from(View.GetCreatedViews().values())[1].m_title, 'Created apps', 'Unexpected name on created view');
+		Array.from(View.GetCreatedViews().values())[1].GetTitle(), 'Created apps', 'Unexpected name on created view');
 
 	// Click to create panel
 	registeredPanelsList.childNodes[1].dispatchEvent(new Event("click", { bubbles : true }));
@@ -336,7 +336,7 @@ testRunner.Test('Manage list of registered panels', async () => {
 	checkRegisteredPanelsList(2, 0);
 	testRunner.Assert(View.GetCreatedViews().size, 3, 'Unexpected created views count');
 	testRunner.Assert(
-		Array.from(View.GetCreatedViews().values())[2].m_title, 'Created apps', 'Unexpected name on created view');
+		Array.from(View.GetCreatedViews().values())[2].GetTitle(), 'Created apps', 'Unexpected name on created view');
 
 	// Hide views
 	let views = Array.from(View.GetCreatedViews().values());
@@ -354,11 +354,11 @@ testRunner.Test('Manage list of registered panels', async () => {
 });
 
 testRunner.Test('Hide and show dispatcher', () => {
+	testRunner.Assert(global.dispatcher.m_mountNode, document.querySelector('main'), 'Dispatcher mount node not found');
+	testRunner.Assert(global.dispatcher.m_viewNode, document.querySelector('main > section.views > .dispatcher'),
+		'Dispatcher view node not found');
 	testRunner.Assert(
-		global.dispatcher.m_parentNode, document.querySelector('main'), 'Dispatcher parent node not found');
-	testRunner.Assert(global.dispatcher.m_view, document.querySelector('main > section.views > .dispatcher'),
-		'Dispatcher view not found');
-	testRunner.Assert(global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
+		global.dispatcher.m_viewNode.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
 	testRunner.Assert(global.dispatcher.m_control,
 		document.querySelector('main > section.views > .dispatcher > .control'), 'Dispatcher control not found');
 	testRunner.Assert(global.dispatcher.m_hiddenViews,
@@ -373,10 +373,12 @@ testRunner.Test('Hide and show dispatcher', () => {
 		'Unexpected registered panels visibility');
 
 	global.dispatcher.m_control.dispatchEvent(new Event("click"));
-	testRunner.Assert(!global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
+	testRunner.Assert(
+		!global.dispatcher.m_viewNode.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
 
 	global.dispatcher.m_control.dispatchEvent(new Event("click"));
-	testRunner.Assert(global.dispatcher.m_view.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
+	testRunner.Assert(
+		global.dispatcher.m_viewNode.classList.contains('hidden'), true, 'Unexpected dispatcher visibility');
 });
 
 testRunner.Run();

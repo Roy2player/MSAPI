@@ -36,8 +36,8 @@ class Dispatcher extends View {
 
 	Constructor()
 	{
-		this.m_control = this.m_view.querySelector('.control');
-		this.m_control.addEventListener("click", () => { this.m_view.classList.toggle('hidden'); });
+		this.m_control = this.m_viewNode.querySelector('.control');
+		this.m_control.addEventListener("click", () => { this.m_viewNode.classList.toggle('hidden'); });
 		let savedThis = this;
 		document.addEventListener('keydown', function(event) {
 			if (event.ctrlKey && (event.key === 'd' || event.key === 'D')) {
@@ -46,8 +46,8 @@ class Dispatcher extends View {
 			}
 		});
 
-		this.m_hiddenViews = this.m_view.querySelector('.hiddenViews');
-		this.m_registeredPanels = this.m_view.querySelector('.registeredPanels');
+		this.m_hiddenViews = this.m_viewNode.querySelector('.hiddenViews');
+		this.m_registeredPanels = this.m_viewNode.querySelector('.registeredPanels');
 
 		for (let [panelName, creatorFunction] of Dispatcher.#privateFields.m_panelNameToCreateFunction) {
 			this.AddPanel(panelName, creatorFunction);
@@ -64,7 +64,7 @@ class Dispatcher extends View {
 
 		let div = document.createElement('div');
 		let span = document.createElement('span');
-		span.innerHTML = view.m_title || 'Unknown';
+		span.textContent = view.GetTitle() || 'Unknown';
 		div.appendChild(span);
 
 		let hiddenViewsList = this.m_hiddenViews.querySelector('.list');
@@ -78,7 +78,7 @@ class Dispatcher extends View {
 		if (!this.m_hiddenViews.classList.contains('visible')) {
 			this.m_hiddenViews.classList.add('visible');
 		}
-		view.m_parentView.classList.add("hidden");
+		view.m_rootNode.classList.add("hidden");
 	}
 
 	RemoveHiddenView(view)
@@ -92,7 +92,7 @@ class Dispatcher extends View {
 			this.m_hiddenViews.classList.remove('visible');
 		}
 		Dispatcher.#privateFields.m_viewToHiddenEntryNode.delete(view);
-		view.m_parentView.classList.remove("hidden");
+		view.m_rootNode.classList.remove("hidden");
 	}
 
 	static RegisterPanel(panelName, creatorFunction)

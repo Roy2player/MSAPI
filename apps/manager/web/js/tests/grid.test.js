@@ -309,8 +309,7 @@ class GridChecking {
 
 						await TestRunner.WaitFor(() => tableViewInstance.m_created, 'Table view is created');
 						testRunner.Assert(tableView.querySelector('.tableWrapper').classList.contains('const'), true);
-						testRunner.Assert(
-							tableView.querySelector('.viewHeader .title span').innerHTML, values[index][key].title);
+						testRunner.Assert(tableViewInstance.GetTitle(), values[index][key].title);
 						testRunner.Assert(tableView.querySelector('.tableWrapper > div > .header').innerHTML,
 							values[index][key].header);
 						let columnHeaders
@@ -450,32 +449,32 @@ class GridChecking {
 			}
 
 			testRunner.Assert(
-				settingsView.m_parentView.querySelector('.title > span').innerHTML, "Manage column settings");
-			const sortingAscending = settingsView.m_view.querySelector('.ascending');
+				settingsView.m_rootNode.querySelector('.title > .text').innerHTML, "Manage column settings");
+			const sortingAscending = settingsView.m_viewNode.querySelector('.ascending');
 			testRunner.Assert(sortingAscending != null, true);
 			testRunner.Assert(
 				sortingAscending.classList.contains('active'), values[index].sorting == Grid.SORTING_TYPE.ascending);
 			testRunner.Assert(sortingAscending.classList.contains('action'), true);
-			const sortingNone = settingsView.m_view.querySelector('.none');
+			const sortingNone = settingsView.m_viewNode.querySelector('.none');
 			testRunner.Assert(sortingNone != null, true);
 			testRunner.Assert(
 				sortingNone.classList.contains('active'), values[index].sorting == Grid.SORTING_TYPE.none);
 			testRunner.Assert(sortingNone.classList.contains('action'), true);
-			const sortingDescending = settingsView.m_view.querySelector('.descending');
+			const sortingDescending = settingsView.m_viewNode.querySelector('.descending');
 			testRunner.Assert(sortingDescending != null, true);
 			testRunner.Assert(
 				sortingDescending.classList.contains('active'), values[index].sorting == Grid.SORTING_TYPE.descending);
 			testRunner.Assert(sortingDescending.classList.contains('action'), true);
 
-			const alignLeft = settingsView.m_view.querySelector('.alignLeft');
+			const alignLeft = settingsView.m_viewNode.querySelector('.alignLeft');
 			testRunner.Assert(alignLeft != null, true);
 			testRunner.Assert(alignLeft.classList.contains('active'), values[index].align == Grid.ALIGN_TYPE.left);
 			testRunner.Assert(alignLeft.classList.contains('action'), true);
-			const alignCenter = settingsView.m_view.querySelector('.alignCenter');
+			const alignCenter = settingsView.m_viewNode.querySelector('.alignCenter');
 			testRunner.Assert(alignCenter != null, true);
 			testRunner.Assert(alignCenter.classList.contains('active'), values[index].align == Grid.ALIGN_TYPE.center);
 			testRunner.Assert(alignCenter.classList.contains('action'), true);
-			const alignRight = settingsView.m_view.querySelector('.alignRight');
+			const alignRight = settingsView.m_viewNode.querySelector('.alignRight');
 			testRunner.Assert(alignRight != null, true);
 			testRunner.Assert(alignRight.classList.contains('active'), values[index].align == Grid.ALIGN_TYPE.right);
 			testRunner.Assert(alignRight.classList.contains('action'), true);
@@ -484,7 +483,7 @@ class GridChecking {
 
 			GridChecking.CheckColumnAlignment({ grid, columnId, align : values[index].align });
 
-			const filterInView = settingsView.m_view.querySelector('.filter');
+			const filterInView = settingsView.m_viewNode.querySelector('.filter');
 			testRunner.Assert(filterInView != null, true);
 			testRunner.Assert(filterInView.classList.contains('active'), values[index].isFilterActive,
 				`Column id is ${columnObject.id}`);
@@ -502,10 +501,10 @@ class GridChecking {
 			await TestRunner.WaitFor(() => View.GetCreatedViews().size > sizeBefore, 'Select view is created');
 			const views = document.querySelectorAll('.views > .view');
 			const selectView = View.GetCreatedViews().get(+views[views.length - 1].getAttribute('uid'));
-			selectView.m_view.querySelector('.options > div').dispatchEvent(new Event("click"));
+			selectView.m_viewNode.querySelector('.options > div').dispatchEvent(new Event("click"));
 			await TestRunner.WaitFor(() => View.GetCreatedViews().size == sizeBefore, 'Select view is destroyed');
-			testRunner.Assert(selectView.m_parentView.parentView == null, true);
-			testRunner.Assert(settingsView.m_parentView != null, true);
+			testRunner.Assert(selectView.m_rootNode.parentView == null, true);
+			testRunner.Assert(settingsView.m_rootNode != null, true);
 
 			if (values[index].settingsView == null) {
 				document.dispatchEvent(new Event("click"));
@@ -2154,27 +2153,27 @@ testRunner.Test('Test table type, its view logic', async () => {
 		let tableView1 = views[viewsBefore];
 		let tableView2 = views[viewsBefore + 1];
 
-		TableChecker.CheckValues(testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), []);
-		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'), []);
+		TableChecker.CheckValues(testRunner, tableView1.m_viewNode.querySelectorAll('.row:not(.new) input'), []);
+		TableChecker.CheckValues(testRunner, tableView2.m_viewNode.querySelectorAll('.row:not(.new) input'), []);
 
 		TestRunner.Step('Update table parameter for first row');
 		GridChecking.AddOrUpdateRow(
 			grid, { [table_parameter_1] : { "Rows" : [ [ 1n, 0.1 ] ] }, [scalar_parameter] : 0n });
 		TableChecker.CheckValues(
-			testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
-		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'), []);
+			testRunner, tableView1.m_viewNode.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
+		TableChecker.CheckValues(testRunner, tableView2.m_viewNode.querySelectorAll('.row:not(.new) input'), []);
 
 		TestRunner.Step('Update table parameter for second row');
 		GridChecking.AddOrUpdateRow(
 			grid, { [table_parameter_1] : { "Rows" : [ [ 2n, 0.2 ], [ 3n, 0.44 ] ] }, [scalar_parameter] : 1n });
 		TableChecker.CheckValues(
-			testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
-		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'),
+			testRunner, tableView1.m_viewNode.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
+		TableChecker.CheckValues(testRunner, tableView2.m_viewNode.querySelectorAll('.row:not(.new) input'),
 			[ "Share", "0.2", "Currency", "0.44" ]);
 
 		TestRunner.Step('Close table views');
-		tableView1.m_parentView.querySelector('.close').dispatchEvent(new Event("click"));
-		tableView2.m_parentView.querySelector('.close').dispatchEvent(new Event("click"));
+		tableView1.m_rootNode.querySelector('.close').dispatchEvent(new Event("click"));
+		tableView2.m_rootNode.querySelector('.close').dispatchEvent(new Event("click"));
 		await TestRunner.WaitFor(() => View.GetCreatedViews().size == viewsBefore);
 		testRunner.Assert(Grid.GetTablesViewsNumber(), 2);
 
@@ -2190,8 +2189,8 @@ testRunner.Test('Test table type, its view logic', async () => {
 		tableView1 = views[viewsBefore];
 		tableView2 = views[viewsBefore + 1];
 		TableChecker.CheckValues(
-			testRunner, tableView1.m_view.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
-		TableChecker.CheckValues(testRunner, tableView2.m_view.querySelectorAll('.row:not(.new) input'),
+			testRunner, tableView1.m_viewNode.querySelectorAll('.row:not(.new) input'), [ "Bond", "0.1" ]);
+		TableChecker.CheckValues(testRunner, tableView2.m_viewNode.querySelectorAll('.row:not(.new) input'),
 			[ "Share", "0.2", "Currency", "0.44" ]);
 		testRunner.Assert(Grid.GetTablesViewsNumber(), 2);
 	}
@@ -2686,26 +2685,25 @@ testRunner.Test('Test removing an unsaved filter row is an internal settings cli
 		table.AddRow([ Grid.NUMBER_FILTER.greater, 10n ]);
 		const addedRow = table.m_wrapper.querySelector('.row.added');
 		testRunner.Assert(addedRow != null, true);
-		testRunner.Assert(settings.m_parentView.contains(addedRow), true);
+		testRunner.Assert(settings.m_rootNode.contains(addedRow), true);
 		addedRow.querySelector('.remove').click();
 		testRunner.Assert(addedRow.isConnected, false, 'The unsaved row must be removed immediately');
-		testRunner.Assert(settings.m_parentView.isConnected, true, 'Removing an internal row must keep settings open');
+		testRunner.Assert(settings.m_rootNode.isConnected, true, 'Removing an internal row must keep settings open');
 		testRunner.Assert(table.m_newRowsReferences.length, 0);
 
 		// An option click can also destroy its own popup before it reaches the document listener.
 		table.m_wrapper.querySelector('.row.new input.select').click();
 		const select = View.GetLastCreatedView();
 		testRunner.Assert(select.m_viewType, 'SelectView');
-		select.m_view.querySelector('.options > div > span').click();
-		testRunner.Assert(select.m_parentView.isConnected, false);
-		testRunner.Assert(
-			settings.m_parentView.isConnected, true, 'Choosing a filter operator must keep settings open');
+		select.m_viewNode.querySelector('.options > div > span').click();
+		testRunner.Assert(select.m_rootNode.isConnected, false);
+		testRunner.Assert(settings.m_rootNode.isConnected, true, 'Choosing a filter operator must keep settings open');
 
 		const triggerChild = document.createElement('span');
 		settingsButton.appendChild(triggerChild);
 		triggerChild.click();
 		testRunner.Assert(
-			settings.m_parentView.isConnected, true, 'A child of the settings trigger is an internal click');
+			settings.m_rootNode.isConnected, true, 'A child of the settings trigger is an internal click');
 
 		// Detached external targets must still close the popup; disconnection alone does not make a click internal.
 		const outside = document.createElement('button');
@@ -2713,7 +2711,7 @@ testRunner.Test('Test removing an unsaved filter row is an internal settings cli
 		outside.addEventListener('click', () => { outside.remove(); });
 		outside.click();
 		testRunner.Assert(
-			settings.m_parentView.isConnected, false, 'A removed external target is still an outside click');
+			settings.m_rootNode.isConnected, false, 'A removed external target is still an outside click');
 	}
 	finally {
 		grid.Destructor();

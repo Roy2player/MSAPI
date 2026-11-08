@@ -163,13 +163,13 @@ class Grid {
 
 		this.m_header = this.m_view.querySelector("div.row.header");
 		if (!this.m_header) {
-			log.error("Header row is not found");
+			console.error("Header row is not found");
 			return;
 		}
 
 		this.m_content = this.m_view.querySelector("div.content");
 		if (!this.m_content) {
-			log.error("Content div is not found");
+			console.error("Content div is not found");
 			return;
 		}
 
@@ -189,15 +189,15 @@ class Grid {
 				// Child handlers can remove the clicked node before bubbling reaches this listener.
 				const eventPath = event.composedPath();
 				settingsViews.forEach(settingView => {
-					if (!settingView.m_parentView.parentNode) {
+					if (!settingView.m_rootNode.parentNode) {
 						settingsViews.delete(settingView);
 						return;
 					}
 
-					if (!eventPath.includes(settingView.m_parentView)) {
+					if (!eventPath.includes(settingView.m_rootNode)) {
 						const lastView = View.GetLastCreatedView();
 						if (lastView && lastView.m_viewType == "SelectView"
-							&& eventPath.includes(lastView.m_parentView)) {
+							&& eventPath.includes(lastView.m_rootNode)) {
 
 							return;
 						}
@@ -213,16 +213,16 @@ class Grid {
 
 				rowIndexValueToTableViews.forEach((container, rowId) => {
 					container.forEach((tableView, columnId) => {
-						if (!tableView.m_parentView.parentNode) {
+						if (!tableView.m_rootNode.parentNode) {
 							container.delete(columnId);
 							return;
 						}
 
-						if (!eventPath.includes(tableView.m_parentView)) {
+						if (!eventPath.includes(tableView.m_rootNode)) {
 
 							const lastView = View.GetLastCreatedView();
 							if (lastView && lastView.m_viewType == "TableView"
-								&& eventPath.includes(lastView.m_parentView)) {
+								&& eventPath.includes(lastView.m_rootNode)) {
 
 								return;
 							}
@@ -450,7 +450,7 @@ class Grid {
 		let settingsViews = Grid.#privateFields.m_settingsViews;
 
 		settings.addEventListener("click", () => {
-			if (settingsView && settingsView.m_parentView.parentNode) {
+			if (settingsView && settingsView.m_rootNode.parentNode) {
 				return;
 			}
 
@@ -468,42 +468,42 @@ class Grid {
 
 			settingsViews.add(settingsView);
 
-			let alignLeft = settingsView.m_view.querySelector(".group > .action.alignLeft");
+			let alignLeft = settingsView.m_viewNode.querySelector(".group > .action.alignLeft");
 			if (!alignLeft) {
 				console.error("Align left is not found");
 				return;
 			}
-			let alignCenter = settingsView.m_view.querySelector(".group > .action.alignCenter");
+			let alignCenter = settingsView.m_viewNode.querySelector(".group > .action.alignCenter");
 			if (!alignCenter) {
 				console.error("Align center is not found");
 				return;
 			}
-			let alignRight = settingsView.m_view.querySelector(".group > .action.alignRight");
+			let alignRight = settingsView.m_viewNode.querySelector(".group > .action.alignRight");
 			if (!alignRight) {
 				console.error("Align right is not found");
 				return;
 			}
-			let sortingAscending = settingsView.m_view.querySelector(".group > .action.ascending");
+			let sortingAscending = settingsView.m_viewNode.querySelector(".group > .action.ascending");
 			if (!sortingAscending) {
 				console.error("Ascending is not found");
 				return;
 			}
-			let sortingNone = settingsView.m_view.querySelector(".group > .action.none");
+			let sortingNone = settingsView.m_viewNode.querySelector(".group > .action.none");
 			if (!sortingNone) {
 				console.error("None is not found");
 				return;
 			}
-			let sortingDescending = settingsView.m_view.querySelector(".group > .action.descending");
+			let sortingDescending = settingsView.m_viewNode.querySelector(".group > .action.descending");
 			if (!sortingDescending) {
 				console.error("Descending is not found");
 				return;
 			}
-			let filterGeneral = settingsView.m_view.querySelector(".group > .action.filter");
+			let filterGeneral = settingsView.m_viewNode.querySelector(".group > .action.filter");
 			if (!filterGeneral) {
 				console.error("Filter is not found");
 				return;
 			}
-			let filters = settingsView.m_view.querySelector(".filters");
+			let filters = settingsView.m_viewNode.querySelector(".filters");
 			if (!filters) {
 				console.error("Container for filters is not found");
 				return;
@@ -1285,7 +1285,7 @@ class Grid {
 
 		let settingsView;
 		for (let view of Grid.#privateFields.m_settingsViews) {
-			if (view.m_parentView.parentNode && view.m_parameterId == columnObject.id) {
+			if (view.m_rootNode.parentNode && view.m_parameterId == columnObject.id) {
 				settingsView = view;
 				break;
 			}
@@ -1294,7 +1294,7 @@ class Grid {
 		// Keep the configured filter enabled even when all current rows match, including an empty grid.
 		filter.classList.add("active");
 		if (settingsView) {
-			settingsView.m_view.querySelector(".group > .action.filter").classList.add("active");
+			settingsView.m_viewNode.querySelector(".group > .action.filter").classList.add("active");
 		}
 
 		if (anyNewVisible || hasFilteredRows) {
@@ -1477,7 +1477,7 @@ class Grid {
 
 			let tableView;
 			cell.addEventListener("click", () => {
-				if (tableView && tableView.m_parentView.parentNode) {
+				if (tableView && tableView.m_rootNode.parentNode) {
 					return;
 				}
 

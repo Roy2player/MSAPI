@@ -51,7 +51,7 @@ class Select {
 	{
 		let view = undefined;
 		input.addEventListener("click", () => {
-			if (view && view.m_parentView.parentNode) {
+			if (view && view.m_rootNode.parentNode) {
 				return;
 			}
 
@@ -89,7 +89,7 @@ class Select {
 				canBeClinged : false,
 			});
 
-			let selectItems = view.m_view.querySelector(".options");
+			let selectItems = view.m_viewNode.querySelector(".options");
 			if (!selectItems) {
 				console.error(`Select container for options is not found, parameter id: ${parameterId}`);
 				return;
@@ -111,7 +111,7 @@ class Select {
 					view.Destructor();
 
 					selectViews.forEach(selectView => {
-						if (!selectView.m_parentView.parentNode) {
+						if (!selectView.m_rootNode.parentNode) {
 							selectViews.delete(selectView);
 						}
 					});
@@ -130,12 +130,12 @@ class Select {
 					// Child handlers can remove the clicked node before bubbling reaches this listener.
 					const eventPath = event.composedPath();
 					selectViews.forEach(selectView => {
-						if (!selectView.m_parentView.parentNode) {
+						if (!selectView.m_rootNode.parentNode) {
 							selectViews.delete(selectView);
 							return;
 						}
 
-						if (!eventPath.includes(selectView.m_parentView)) {
+						if (!eventPath.includes(selectView.m_rootNode)) {
 							if (eventPath.includes(selectView.m_eventTarget)) {
 								View.UpdateZIndex(selectView);
 								return;

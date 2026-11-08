@@ -27,9 +27,8 @@ class Palette extends View {
 			return false;
 		}
 
-		this.m_parentView.classList.add("paletteWindow");
-		this.m_themes = this.m_view.querySelector(".paletteThemes");
-		this.m_view.querySelector(".paletteRefresh").addEventListener("click", () => this.RefreshColors());
+		this.m_themes = this.m_viewNode.querySelector(".paletteThemes");
+		this.m_viewNode.querySelector(".paletteRefresh").addEventListener("click", () => this.RefreshColors());
 		this.RefreshColors();
 		return true;
 	}
@@ -81,6 +80,10 @@ class Palette extends View {
 		return themes;
 	}
 
+	/**************************
+	 * @brief Rebuilds both theme previews and their color tokens. Shows text color tokens as foreground samples,
+	 * using the selection background for selection text.
+	 */
 	RefreshColors()
 	{
 		this.m_themes.replaceChildren();
@@ -105,7 +108,14 @@ class Palette extends View {
 				item.className = "paletteToken";
 				const swatch = document.createElement("span");
 				swatch.className = "paletteSwatch";
-				swatch.style.backgroundColor = `var(${property})`;
+				if (property.startsWith("--text-color-")) {
+					swatch.style.color = `var(${property})`;
+					swatch.style.backgroundColor = property === "--text-color-selection" ? "var(--background-selection)"
+																						 : "var(--background-view)";
+				}
+				else {
+					swatch.style.backgroundColor = `var(${property})`;
+				}
 				swatch.setAttribute("aria-hidden", "true");
 				swatch.textContent = "Aa";
 				const description = document.createElement("div");

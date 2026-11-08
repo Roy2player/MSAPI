@@ -74,7 +74,7 @@
 /* Inset shadows paint without shifting layout or changing cell backgrounds; distinct names allow restarts. */
 @keyframes cell-update-1 {
     from {
-        box-shadow: inset 0 0 0 100vmax var(--cell-update-tint);
+        box-shadow: inset 0 0 0 100vmax var(--background-cell-update);
     }
     to {
         box-shadow: inset 0 0 0 100vmax transparent;
@@ -83,7 +83,7 @@
 
 @keyframes cell-update-2 {
     from {
-        box-shadow: inset 0 0 0 100vmax var(--cell-update-tint);
+        box-shadow: inset 0 0 0 100vmax var(--background-cell-update);
     }
     to {
         box-shadow: inset 0 0 0 100vmax transparent;
@@ -108,12 +108,12 @@
     position: relative;
 }
 
-.grid>.row.header>.cell>.text {
-    padding: 1px 5px;
-    padding-right: 10px;
+.grid > .row.header > .cell > .text {
+    padding: 1px 0 1px 5px;
     overflow: hidden;
     min-width: 0;
     flex: 1;
+    text-overflow: ellipsis;
 }
 
 .grid>.row.header>.cell>.group {
@@ -248,10 +248,10 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    border: 3px solid var(--loader-background);
-    border-top-color: var(--loader-background-element);
+    border: 3px solid var(--border-color-loader-track);
+    border-top-color: var(--border-color-loader-indicator);
     transition: all 0.3s ease 0s;
-    animation: spin 1s linear infinite;
+    animation: spin 1.6s linear infinite;
     z-index: 2;
 }
 

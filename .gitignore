@@ -14,6 +14,7 @@ Makefile
 **/logs
 
 apps/manager/build/MSAPIManager
+apps/manager/data/*
 tests/integration/applicationHandlers/build/TestApplicationHandlers
 tests/integration/objectProtocol/build/TestObjectProtocol
 tests/integration/http/build/TestHttp
