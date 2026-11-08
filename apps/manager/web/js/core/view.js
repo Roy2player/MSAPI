@@ -23,7 +23,6 @@
  *
  * Has three parts:
  * 1) Header which contains view tile and on view options:
- * @field m_title - title of view.
  *	- Stick/unstick to disables/enables moving and resizing of view and another actions except closing;
  * @field m_canBeSticked - flag of view can be sticked/unsticked.
  * @field m_sticked - flag of view is sticked;
@@ -36,14 +35,15 @@
  *	- Close to close view and remove it from DOM tree.
  * @field m_canBeClosed - flag of view can be closed.
  * 2) Content which contains the main part of a view, exact in that part the specific view template is placed;
- * @brief m_view - root of template.
- * @brief m_parentView - parent of root of template.
+ * @brief m_viewNode - root node of the specific view template.
+ * @brief m_contentNode - container node for the specific view template.
  * 3) Footer which contains information about errors.
  *
  * Features:
  * 1) Creating view from template, template should be added by static method before creating view;
  * @field m_viewType - type of view, should match template added by static method;
- * 2) Moving view by dragging header. View cannot be moved outside window borders except bottom border;
+ * 2) Moving view by dragging header. View can cross the bottom border while keeping a minimum visible strip after
+ * dragging ends;
  * 3) Resizing view by dragging any side or corner of view, borders of that view are highlights. View cannot be resized
  *outside window borders except bottom border. View cannot be resized smaller than some minimum in each dimension;
  *
@@ -61,14 +61,16 @@
  * @brief m_parameters - parameters of view.
  * @brief m_uid - unique identifier of view.
  * @brief m_port - port associated with view.
- * @brief m_title - title of view.
- * @brief m_parentView - parent view element.
- * @brief m_parentNode - parent node of view.
+ * @brief m_rootNode - root node of the complete view wrapper.
+ * @brief m_mountNode - existing node that receives the view.
+ * @brief m_headerNode - header node of view.
+ * @brief m_titleTextNode - title text span.
+ * @brief m_titleInfoNode - span for optional information independent of the title.
  * @brief m_tableIdToTable - map of tables in view.
  * @brief m_grid - grid in view.
  * @brief m_created - flag of view creation.
  * @brief m_maximizeButton - maximize button element.
- * @brief m_footer - footer element of view.
+ * @brief m_footerNode - footer node of view.
  * @brief m_errorMessage - error message element in footer.
  * @brief m_silentExit - flag to suppress error logging on failed Constructor call.
  *
@@ -100,6 +102,63 @@ class View {
 
 	static m_clingSensitive = 20;
 
+	m_mountNode = undefined;
+	m_rootNode = undefined;
+	m_headerNode = undefined;
+	m_titleTextNode = undefined;
+	m_titleInfoNode = undefined;
+	m_contentNode = undefined;
+	m_viewNode = undefined;
+	m_footerNode = undefined;
+
+	/**************************
+	 * @brief Resolves the positioned parent's viewport origin and visible area, accounting for its border and scroll.
+	 * Uses document coordinates when the view belongs to the initial containing block.
+	 *
+	 * @return Viewport origin and visible bounds expressed in the view's containing-block coordinates.
+	 *
+	 * @test Yes.
+	 */
+	GetPositionContext()
+	{
+		const parent = this.m_rootNode.offsetParent;
+		if (!parent || (parent === document.body && window.getComputedStyle(parent).position === "static")) {
+			return {
+				originLeft : -window.scrollX,
+				originTop : -window.scrollY,
+				left : window.scrollX,
+				top : window.scrollY,
+				right : window.scrollX + window.innerWidth,
+				bottom : window.scrollY + window.innerHeight
+			};
+		}
+
+		const rect = parent.getBoundingClientRect();
+		const innerLeft = rect.left + parent.clientLeft;
+		const innerTop = rect.top + parent.clientTop;
+		const originLeft = innerLeft - parent.scrollLeft;
+		const originTop = innerTop - parent.scrollTop;
+		const left = Math.max(0, innerLeft) - originLeft;
+		const top = Math.max(0, innerTop) - originTop;
+		return {
+			originLeft,
+			originTop,
+			left,
+			top,
+			right : Math.max(left, Math.min(window.innerWidth, innerLeft + parent.clientWidth) - originLeft),
+			bottom : Math.max(top, Math.min(window.innerHeight, innerTop + parent.clientHeight) - originTop)
+		};
+	}
+
+	/**************************
+	 * @brief Finds nearby view edges and containing-block boundaries in the current view's positioning coordinates.
+	 *
+	 * @param bounds Proposed top, right, bottom, and left edges relative to the view's containing block.
+	 *
+	 * @return Adjusted left and top coordinates when an edge is close enough to snap, or undefined otherwise.
+	 *
+	 * @test Yes.
+	 */
 	FindClosestToCling({ top, right, bottom, left })
 	{
 		top = Math.round(top);
@@ -137,19 +196,20 @@ class View {
 			}
 		}
 
-		CheckX(0, left);
-		CheckX(window.innerWidth, right);
-		CheckY(0, top);
+		const context = this.GetPositionContext();
+		CheckX(context.left, left);
+		CheckX(context.right, right);
+		CheckY(context.top, top);
 
 		for (const other of View.GetCreatedViews().values()) {
 			if (other == this || !other.m_canBeClinged) {
 				continue;
 			}
-			const oRect = other.m_parentView.getBoundingClientRect();
-			const oTop = Math.round(oRect.top);
-			const oRight = Math.round(oRect.right);
-			const oBottom = Math.round(oRect.bottom);
-			const oLeft = Math.round(oRect.left);
+			const oRect = other.m_rootNode.getBoundingClientRect();
+			const oTop = Math.round(oRect.top - context.originTop);
+			const oRight = Math.round(oRect.right - context.originLeft);
+			const oBottom = Math.round(oRect.bottom - context.originTop);
+			const oLeft = Math.round(oRect.left - context.originLeft);
 
 			CheckX(oLeft, right);
 			CheckX(oRight, left);
@@ -244,7 +304,7 @@ class View {
 	static #generalTemplate = `
 	<div class="view">
 		<div class="viewHeader">
-			<div class="title"><span></span></div>
+			<div class="title"><span class="text"></span><span class="info"></span></div>
 			<div class="options">
 				<div class="stick"><span></span></div>
 				<div class="hide"><span></span></div>
@@ -266,10 +326,10 @@ class View {
 	static #generalTemplateElement = null;
 
 	/**************************
-	 * @brief Creates and initializes a view from its registered template. Clamps views horizontally to the
-	 * window after their content initializes, using the same bounds as dragging. Keeps the header and a minimum
-	 * visible strip above the bottom edge. Observes subsequent size changes to preserve these bounds when callers
-	 * append more content after construction.
+	 * @brief Creates and initializes a view from its registered template. Converts viewport anchors into
+	 * containing-block coordinates and clamps views to the same horizontal bounds as dragging. Keeps the header and a
+	 * minimum visible strip above the bottom edge. Observes subsequent size changes to preserve these bounds when
+	 * callers append more content after construction.
 	 *
 	 * @param viewType Registered view type.
 	 * @param parameters View configuration and optional positionUnder anchor.
@@ -280,18 +340,17 @@ class View {
 	{
 		try {
 			this.m_viewType = viewType;
-			this.m_title = viewType;
 			this.m_parameters = parameters;
 
 			if (parameters && parameters.parent) {
-				this.m_parentNode = parameters.parent;
+				this.m_mountNode = parameters.parent;
 			}
 			else {
-				this.m_parentNode = document.querySelector("body > main > section.views");
+				this.m_mountNode = document.querySelector("body > main > section.views");
 			}
 
-			if (!this.m_parentNode) {
-				console.error("Can't find parent node for view");
+			if (!this.m_mountNode) {
+				console.error("Can't find mount node for view");
 				return false;
 			}
 
@@ -308,8 +367,8 @@ class View {
 			}
 
 			if (parameters && parameters.isInterfaceUnit) {
-				this.m_view = specificTemplate.templateElement.content.cloneNode(true).firstElementChild;
-				this.m_parentNode.appendChild(this.m_view);
+				this.m_viewNode = specificTemplate.templateElement.content.cloneNode(true).firstElementChild;
+				this.m_mountNode.appendChild(this.m_viewNode);
 
 				if (!this.Constructor(parameters)) {
 					this.Destructor();
@@ -326,21 +385,25 @@ class View {
 				View.#generalTemplateElement = template;
 			}
 
-			this.m_parentView = View.#generalTemplateElement.content.cloneNode(true).firstElementChild;
-			this.m_parentView.querySelector(".title > span").textContent = this.m_title;
-			this.m_parentView.querySelector(".viewContent")
-				.appendChild(specificTemplate.templateElement.content.cloneNode(true));
-			this.m_view = this.m_parentView.querySelector(".viewContent").lastElementChild;
-			this.m_footer = this.m_parentView.querySelector(".viewFooter");
-			this.m_parentNode.appendChild(this.m_parentView);
+			this.m_rootNode = View.#generalTemplateElement.content.cloneNode(true).firstElementChild;
+			this.m_headerNode = this.m_rootNode.querySelector(".viewHeader");
+			this.m_titleTextNode = this.m_headerNode.querySelector(".title > .text");
+			this.m_titleInfoNode = this.m_headerNode.querySelector(".title > .info");
+			this.m_contentNode = this.m_rootNode.querySelector(".viewContent");
+			this.m_footerNode = this.m_rootNode.querySelector(".viewFooter");
+
+			this.SetTitleText(viewType);
+			this.m_contentNode.appendChild(specificTemplate.templateElement.content.cloneNode(true));
+			this.m_viewNode = this.m_contentNode.lastElementChild;
+			this.m_mountNode.appendChild(this.m_rootNode);
 
 			this.m_tableIdToTable = new Map();
 
-			this.MakeDraggable(this.m_parentView.querySelector(".viewHeader .title"), this.m_parentView);
-			this.m_parentView.addEventListener("mousedown", () => { View.UpdateZIndex(this); });
+			this.MakeDraggable(this.m_headerNode.querySelector(".title"), this.m_rootNode);
+			this.m_rootNode.addEventListener("mousedown", () => { View.UpdateZIndex(this); });
 
-			this.m_parentView.style.left = "0px";
-			this.m_parentView.style.top = "0px";
+			this.m_rootNode.style.left = "0px";
+			this.m_rootNode.style.top = "0px";
 
 			if (parameters) {
 				this.m_canBeHidden = parameters.canBeHidden != false;
@@ -357,7 +420,7 @@ class View {
 				this.m_canBeClinged = true;
 			}
 
-			this.m_parentView.querySelectorAll('.handleResize').forEach(handle => {
+			this.m_rootNode.querySelectorAll('.handleResize').forEach(handle => {
 				const direction = Array.from(handle.classList);
 				handle.addEventListener('mousedown', e => { StartResizing(e, direction, this); });
 
@@ -367,29 +430,29 @@ class View {
 					}
 
 					if (direction.includes('right') || direction.includes('left')) {
-						let w = Helper.GetFullDimensions(this.m_view).width;
-						const style = window.getComputedStyle(this.m_parentView);
+						let w = Helper.GetFullDimensions(this.m_viewNode).width;
+						const style = window.getComputedStyle(this.m_rootNode);
 						w += parseFloat(style.marginLeft) || 0;
 						w += parseFloat(style.marginRight) || 0;
 						w += parseFloat(style.borderLeftWidth) || 0;
 						w += parseFloat(style.borderRightWidth) || 0;
 						w += parseFloat(style.paddingLeft) || 0;
 						w += parseFloat(style.paddingRight) || 0;
-						this.m_parentView.style.width = w + 'px';
+						this.m_rootNode.style.width = w + 'px';
 					}
 
 					if (direction.includes('bottom') || direction.includes('top')) {
-						let h = Helper.GetFullDimensions(this.m_view).height;
-						h += Helper.GetFullDimensions(this.m_parentView.querySelector('.viewHeader')).height
-							+ Helper.GetFullDimensions(this.m_parentView.querySelector('.viewFooter')).height;
-						const style = window.getComputedStyle(this.m_parentView);
+						let h = Helper.GetFullDimensions(this.m_viewNode).height;
+						h += Helper.GetFullDimensions(this.m_headerNode).height
+							+ Helper.GetFullDimensions(this.m_footerNode).height;
+						const style = window.getComputedStyle(this.m_rootNode);
 						h += parseFloat(style.marginTop) || 0;
 						h += parseFloat(style.marginBottom) || 0;
 						h += parseFloat(style.borderTopWidth) || 0;
 						h += parseFloat(style.borderBottomWidth) || 0;
 						h += parseFloat(style.paddingTop) || 0;
 						h += parseFloat(style.paddingBottom) || 0;
-						this.m_parentView.style.height = h + 'px';
+						this.m_rootNode.style.height = h + 'px';
 					}
 				});
 			});
@@ -400,19 +463,23 @@ class View {
 					return;
 				}
 
-				savedThis.m_parentView.classList.add("resizing");
-				View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.add("changing"); });
+				savedThis.m_rootNode.classList.add("resizing");
+				View.GetCreatedViews().values().forEach((view) => { view.m_contentNode.classList.add("changing"); });
 
 				element.preventDefault();
-				const startX = element.clientX;
-				const startY = element.clientY;
-				const startWidth = savedThis.m_parentView.offsetWidth;
-				const startHeight = savedThis.m_parentView.offsetHeight;
-				const startTop = savedThis.m_parentView.offsetTop;
-				const startLeft = savedThis.m_parentView.offsetLeft;
+				const startContext = savedThis.GetPositionContext();
+				const startX = element.clientX - startContext.originLeft;
+				const startY = element.clientY - startContext.originTop;
+				const startWidth = savedThis.m_rootNode.offsetWidth;
+				const startHeight = savedThis.m_rootNode.offsetHeight;
+				const startTop = savedThis.m_rootNode.offsetTop;
+				const startLeft = savedThis.m_rootNode.offsetLeft;
 
 				function OnMouseMove(ev)
 				{
+					const context = savedThis.GetPositionContext();
+					const dx = ev.clientX - context.originLeft - startX;
+					const dy = ev.clientY - context.originTop - startY;
 					let newWidth = startWidth;
 					let newHeight = startHeight;
 					let newTop = startTop;
@@ -423,9 +490,9 @@ class View {
 					let includesLeft = direction.includes('left');
 
 					if (includesRight) {
-						newWidth += ev.clientX - startX;
-						if (newWidth + newLeft > window.innerWidth) {
-							newWidth = window.innerWidth - newLeft;
+						newWidth += dx;
+						if (newWidth + newLeft > context.right) {
+							newWidth = context.right - newLeft;
 						}
 
 						if (newWidth < 50) {
@@ -433,10 +500,9 @@ class View {
 						}
 					}
 					if (includesLeft) {
-						const dx = ev.clientX - startX;
-						if (newLeft + dx < 0) {
-							newWidth += newLeft;
-							newLeft = 0;
+						if (newLeft + dx < context.left) {
+							newWidth += newLeft - context.left;
+							newLeft = context.left;
 						}
 						else {
 							newWidth -= dx;
@@ -449,17 +515,16 @@ class View {
 						}
 					}
 					if (includesBottom) {
-						newHeight += ev.clientY - startY;
+						newHeight += dy;
 
 						if (newHeight < 50) {
 							newHeight = 50;
 						}
 					}
 					if (includesTop) {
-						const dy = ev.clientY - startY;
-						if (newTop + dy < 0) {
-							newHeight += newTop;
-							newTop = 0;
+						if (newTop + dy < context.top) {
+							newHeight += newTop - context.top;
+							newTop = context.top;
 						}
 						else {
 							newHeight -= dy;
@@ -473,10 +538,10 @@ class View {
 					}
 
 					if (!savedThis.m_canBeClinged) {
-						savedThis.m_parentView.style.left = newLeft + "px";
-						savedThis.m_parentView.style.top = newTop + "px";
-						savedThis.m_parentView.style.width = newWidth + "px";
-						savedThis.m_parentView.style.height = newHeight + "px";
+						savedThis.m_rootNode.style.left = newLeft + "px";
+						savedThis.m_rootNode.style.top = newTop + "px";
+						savedThis.m_rootNode.style.width = newWidth + "px";
+						savedThis.m_rootNode.style.height = newHeight + "px";
 					}
 					else {
 						const clingData = savedThis.FindClosestToCling(
@@ -484,36 +549,37 @@ class View {
 
 						if (clingData) {
 							if (includesRight) {
-								savedThis.m_parentView.style.left = newLeft + "px";
-								savedThis.m_parentView.style.width = newWidth + (clingData.left - newLeft) + "px";
+								savedThis.m_rootNode.style.left = newLeft + "px";
+								savedThis.m_rootNode.style.width = newWidth + (clingData.left - newLeft) + "px";
 							}
 							else {
-								savedThis.m_parentView.style.left = clingData.left + "px";
-								savedThis.m_parentView.style.width = newWidth - (clingData.left - newLeft) + "px";
+								savedThis.m_rootNode.style.left = clingData.left + "px";
+								savedThis.m_rootNode.style.width = newWidth - (clingData.left - newLeft) + "px";
 							}
 
 							if (includesBottom) {
-								savedThis.m_parentView.style.top = newTop + "px";
-								savedThis.m_parentView.style.height = newHeight + (clingData.top - newTop) + "px";
+								savedThis.m_rootNode.style.top = newTop + "px";
+								savedThis.m_rootNode.style.height = newHeight + (clingData.top - newTop) + "px";
 							}
 							else {
-								savedThis.m_parentView.style.top = clingData.top + "px";
-								savedThis.m_parentView.style.height = newHeight - (clingData.top - newTop) + "px";
+								savedThis.m_rootNode.style.top = clingData.top + "px";
+								savedThis.m_rootNode.style.height = newHeight - (clingData.top - newTop) + "px";
 							}
 						}
 						else {
-							savedThis.m_parentView.style.left = newLeft + "px";
-							savedThis.m_parentView.style.top = newTop + "px";
-							savedThis.m_parentView.style.width = newWidth + "px";
-							savedThis.m_parentView.style.height = newHeight + "px";
+							savedThis.m_rootNode.style.left = newLeft + "px";
+							savedThis.m_rootNode.style.top = newTop + "px";
+							savedThis.m_rootNode.style.width = newWidth + "px";
+							savedThis.m_rootNode.style.height = newHeight + "px";
 						}
 					}
 				}
 
 				function OnMouseUp()
 				{
-					savedThis.m_parentView.classList.remove("resizing");
-					View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.remove("changing"); });
+					savedThis.m_rootNode.classList.remove("resizing");
+					View.GetCreatedViews().values().forEach(
+						(view) => { view.m_contentNode.classList.remove("changing"); });
 					document.removeEventListener('mousemove', OnMouseMove);
 					document.removeEventListener('mouseup', OnMouseUp);
 				}
@@ -522,7 +588,7 @@ class View {
 				document.addEventListener('mouseup', OnMouseUp);
 			}
 
-			let closeButton = this.m_parentView.querySelector(".viewHeader .close");
+			let closeButton = this.m_headerNode.querySelector(".close");
 			if (!closeButton) {
 				console.error("Can't find close button for view");
 				return;
@@ -539,12 +605,12 @@ class View {
 				closeButton.style.display = "none";
 			}
 
-			let hideButton = this.m_parentView.querySelector(".viewHeader .hide");
+			let hideButton = this.m_headerNode.querySelector(".hide");
 			if (!hideButton) {
 				console.error("Can't find hide button for view");
 				this.Destructor();
 			}
-			this.m_maximizeButton = this.m_parentView.querySelector(".viewHeader .maximize");
+			this.m_maximizeButton = this.m_headerNode.querySelector(".maximize");
 			if (!this.m_maximizeButton) {
 				console.error("Can't find maximize button for view");
 				this.Destructor();
@@ -559,7 +625,7 @@ class View {
 				this.m_maximizeButton.style.display = "none";
 			}
 
-			this.m_stickButton = this.m_parentView.querySelector(".viewHeader .stick");
+			this.m_stickButton = this.m_headerNode.querySelector(".stick");
 			if (!this.m_stickButton) {
 				console.error("Can't find stick button for view");
 				this.Destructor();
@@ -586,22 +652,23 @@ class View {
 			}
 
 			View.SaveView(this);
-			this.m_parentView.setAttribute("uid", this.m_uid);
-			this.m_parentView.style.zIndex = View.#privateFields.m_uidToView.size;
+			this.m_rootNode.setAttribute("uid", this.m_uid);
+			this.m_rootNode.style.zIndex = View.#privateFields.m_uidToView.size;
 
 			if (parameters) {
 				if (parameters.hasOwnProperty("positionUnder")) {
 					const anchor = parameters.positionUnder.getBoundingClientRect();
-					this.m_parentView.style.position = "absolute";
-					this.m_parentView.style.left = anchor.left + "px";
-					this.m_parentView.style.top = anchor.bottom + "px";
+					const context = this.GetPositionContext();
+					this.m_rootNode.style.position = "absolute";
+					this.m_rootNode.style.left = anchor.left - context.originLeft + "px";
+					this.m_rootNode.style.top = anchor.bottom - context.originTop + "px";
 				}
 			}
 
 			this.ClampPosition();
 			// Callers can add content after construction, as Grid does with its column-filter table.
 			this.m_positionResizeObserver = new ResizeObserver(() => this.ClampPosition());
-			this.m_positionResizeObserver.observe(this.m_parentView, { box : "border-box" });
+			this.m_positionResizeObserver.observe(this.m_rootNode, { box : "border-box" });
 
 			this.m_created = true;
 		}
@@ -612,25 +679,71 @@ class View {
 	}
 
 	/**************************
-	 * @brief Clamps an attached view horizontally to the window and keeps its header and minimum visible height above
-	 * the bottom edge. Handles initial placement and size changes without moving hidden or detached views.
+	 * @brief Clamps an attached view to its containing block's visible horizontal area and keeps its header and
+	 * minimum visible height above the bottom edge. Handles initial placement, content size changes, and viewport
+	 * resizing without moving sticked, hidden, or detached views, including during browser zoom changes.
 	 *
 	 * @test Yes.
 	 */
 	ClampPosition()
 	{
-		if (!this.m_parentView?.isConnected || this.m_parentView.classList.contains("hidden")) {
+		if (this.m_sticked || !this.m_rootNode?.isConnected || this.m_rootNode.classList.contains("hidden")) {
 			return;
 		}
 
-		this.m_parentView.style.left
-			= Math.max(0, Math.min(this.m_parentView.offsetLeft, window.innerWidth - this.m_parentView.offsetWidth))
+		const context = this.GetPositionContext();
+		this.m_rootNode.style.left
+			= Math.max(context.left, Math.min(this.m_rootNode.offsetLeft, context.right - this.m_rootNode.offsetWidth))
 			+ "px";
 
-		const header = this.m_parentView.querySelector(".viewHeader");
-		const visibleHeight = Math.max(View.MIN_VISIBLE_HEIGHT, header.offsetTop + header.offsetHeight);
-		this.m_parentView.style.top
-			= Math.max(0, Math.min(this.m_parentView.offsetTop, window.innerHeight - visibleHeight)) + "px";
+		const visibleHeight
+			= Math.max(View.MIN_VISIBLE_HEIGHT, this.m_headerNode.offsetTop + this.m_headerNode.offsetHeight);
+		this.m_rootNode.style.top
+			= Math.max(context.top, Math.min(this.m_rootNode.offsetTop, context.bottom - visibleHeight)) + "px";
+	}
+
+	/**************************
+	 * @brief Sets the main title text and refreshes its combined title tooltip without changing the additional
+	 * information.
+	 *
+	 * @param text Plain title text.
+	 *
+	 * @pre The view has a header wrapper.
+	 *
+	 * @test Yes.
+	 */
+	SetTitleText(text)
+	{
+		this.m_titleTextNode.textContent = text;
+		this.m_titleTextNode.title = this.GetTitle();
+	}
+
+	/**************************
+	 * @brief Sets the additional title information and refreshes the combined tooltip on the title text node
+	 * without changing the main title text.
+	 *
+	 * @param info Plain additional information, or an empty string to clear it.
+	 *
+	 * @pre The view has a header wrapper.
+	 *
+	 * @test Yes.
+	 */
+	SetTitleInfo(info)
+	{
+		this.m_titleInfoNode.textContent = info;
+		this.m_titleTextNode.title = this.GetTitle();
+	}
+
+	/**************************
+	 * @pre The view has a header wrapper.
+	 *
+	 * @return Current title text and nonempty additional information joined by a colon and a space.
+	 *
+	 * @test Yes.
+	 */
+	GetTitle()
+	{
+		return [ this.m_titleTextNode.textContent, this.m_titleInfoNode.textContent ].filter(Boolean).join(": ");
 	}
 
 	Constructor(parameters)
@@ -651,31 +764,47 @@ class View {
 			this.m_grid.Destructor();
 			delete this.m_grid;
 		}
-		if (this.m_parentView) {
-			if (this.m_parentView.style.zIndex != "") {
+		if (this.m_rootNode) {
+			if (this.m_rootNode.style.zIndex != "") {
 				this.Show();
 			}
-			this.m_parentView.remove();
+			this.m_rootNode.remove();
 		}
 		WebSocketHandler.ClearViewRelatedEvents(this.m_uid);
 	}
 
 	/**************************
-	 * @brief Sets or clears the loading animation on the view's content element.
+	 * @brief Sets or clears the loading animation on the view's content node.
 	 *
 	 * @param isLoading True to show the loading animation, false to hide it.
 	 */
-	SetLoading(isLoading) { this.m_view.classList.toggle("loading", isLoading); }
+	SetLoading(isLoading) { this.m_contentNode.classList.toggle("loading", isLoading); }
 
+	/**************************
+	 * @brief Toggles the view's sticked state. Fixes an intrinsically sized view to its rendered width before hiding
+	 * header controls, preserving its width when unsticked. Retains explicit pixel and percentage widths and reapplies
+	 * position bounds when unsticked.
+	 *
+	 * @test Yes.
+	 */
 	ToggleStick()
 	{
 		if (!this.m_canBeSticked) {
 			return;
 		}
 
+		const width = this.m_rootNode.style.width;
+		if (!this.m_sticked && (!width || [ "auto", "min-content", "max-content", "fit-content" ].includes(width))) {
+			this.m_rootNode.style.width = this.m_rootNode.getBoundingClientRect().width + "px";
+		}
+
 		this.m_sticked = !this.m_sticked;
 		this.m_stickButton.classList.toggle("on");
-		this.m_parentView.classList.toggle("sticked");
+		this.m_rootNode.classList.toggle("sticked");
+
+		if (!this.m_sticked) {
+			this.ClampPosition();
+		}
 	}
 
 	Maximize()
@@ -692,21 +821,21 @@ class View {
 		else {
 			this.Show();
 			this.m_savedViewParameters = {
-				left : this.m_parentView.style.left,
-				top : this.m_parentView.style.top,
-				width : this.m_parentView.style.width,
-				height : this.m_parentView.style.height
+				left : this.m_rootNode.style.left,
+				top : this.m_rootNode.style.top,
+				width : this.m_rootNode.style.width,
+				height : this.m_rootNode.style.height
 			};
 
-			this.m_parentView.style.position = "absolute";
-			this.m_parentView.style.top = "0";
-			this.m_parentView.style.left = "0";
-			this.m_parentView.style.width = "100%";
-			this.m_parentView.style.height = "100%";
+			this.m_rootNode.style.position = "absolute";
+			this.m_rootNode.style.top = "0";
+			this.m_rootNode.style.left = "0";
+			this.m_rootNode.style.width = "100%";
+			this.m_rootNode.style.height = "100%";
 
 			this.m_maximized = true;
 			this.m_maximizeButton.classList.add("normalize");
-			this.m_parentView.classList.add("maximized");
+			this.m_rootNode.classList.add("maximized");
 		}
 	}
 
@@ -716,19 +845,19 @@ class View {
 			return;
 		}
 
-		this.m_parentView.style.top = this.m_savedViewParameters.top;
-		this.m_parentView.style.left = this.m_savedViewParameters.left;
-		this.m_parentView.style.width = this.m_savedViewParameters.width;
-		this.m_parentView.style.height = this.m_savedViewParameters.height;
+		this.m_rootNode.style.top = this.m_savedViewParameters.top;
+		this.m_rootNode.style.left = this.m_savedViewParameters.left;
+		this.m_rootNode.style.width = this.m_savedViewParameters.width;
+		this.m_rootNode.style.height = this.m_savedViewParameters.height;
 
 		this.m_maximized = false;
 		this.m_maximizeButton.classList.remove("normalize");
-		this.m_parentView.classList.remove("maximized");
+		this.m_rootNode.classList.remove("maximized");
 	}
 
 	Hide()
 	{
-		if (this.m_sticked || !this.m_canBeMaximized || this.m_parentView.classList.contains("hidden")) {
+		if (this.m_sticked || !this.m_canBeMaximized || this.m_rootNode.classList.contains("hidden")) {
 			return;
 		}
 
@@ -742,7 +871,7 @@ class View {
 		}
 
 		View.UpdateZIndex(this);
-		if (!this.m_parentView.classList.contains("hidden")) {
+		if (!this.m_rootNode.classList.contains("hidden")) {
 			return;
 		}
 
@@ -759,20 +888,31 @@ class View {
 		this[callbackName] = callback;
 	}
 
+	/**************************
+	 * @brief Enables dragging with the primary mouse button while the view is not sticked. Preserves the
+	 * pointer offset and converts viewport movement into containing-block coordinates. Clamps the final position
+	 * when dragging ends to keep the header and minimum visible height above the bottom edge.
+	 *
+	 * @param node Handle node that starts dragging.
+	 * @param element View node to move.
+	 *
+	 * @test Yes.
+	 */
 	MakeDraggable(node, element)
 	{
 		let isDragging = false;
-		let startX, startY, offsetX, offsetY;
+		let offsetX, offsetY;
 
 		node.addEventListener("mousedown", (e) => {
-			if (this.m_sticked) {
+			if (e.button !== 0 /* primary mouse button */ || this.m_sticked) {
 				return;
 			}
 
-			View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.add("changing"); });
+			View.GetCreatedViews().values().forEach((view) => { view.m_contentNode.classList.add("changing"); });
 
-			startX = e.clientX;
-			startY = e.clientY;
+			const rect = element.getBoundingClientRect();
+			offsetX = e.clientX - rect.left;
+			offsetY = e.clientY - rect.top;
 			document.addEventListener("mousemove", onMouseMove);
 			document.addEventListener("mouseup", onMouseUp);
 		});
@@ -782,56 +922,48 @@ class View {
 				isDragging = true;
 
 				if (this.m_maximized) {
-					this.m_parentView.style.left = e.clientX - 30 + "px";
-					this.m_parentView.style.top = e.clientY - 10 + "px";
-					this.m_parentView.style.width = this.m_savedViewParameters.width;
-					this.m_parentView.style.height = this.m_savedViewParameters.height;
-
+					this.m_rootNode.style.width = this.m_savedViewParameters.width;
+					this.m_rootNode.style.height = this.m_savedViewParameters.height;
+					// Keep a restored header under the pointer, independent of its containing block's position.
+					offsetX = 30;
+					offsetY = 10;
 					this.m_maximized = false;
 					this.m_maximizeButton.classList.remove("normalize");
+					this.m_rootNode.classList.remove("maximized");
 				}
 
-				offsetX = e.clientX - element.getBoundingClientRect().left;
-				offsetY = e.clientY - element.getBoundingClientRect().top;
 				element.style.position = "absolute";
-				element.style.left
-					= `${Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth - element.offsetWidth))}px`;
-				element.style.top = `${Math.max(0, e.clientY - offsetY)}px`;
-				return;
 			}
 
-			if (!this.m_canBeClinged) {
-				element.style.left
-					= `${Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth - element.offsetWidth))}px`;
-				element.style.top = `${Math.max(0, e.clientY - offsetY)}px`;
-				return;
+			const context = this.GetPositionContext();
+			let newLeft = Math.max(
+				context.left, Math.min(e.clientX - offsetX - context.originLeft, context.right - element.offsetWidth));
+			let newTop = Math.max(context.top, e.clientY - offsetY - context.originTop);
+
+			if (this.m_canBeClinged) {
+				const clingData = this.FindClosestToCling({
+					top : newTop,
+					right : newLeft + element.offsetWidth,
+					bottom : newTop + element.offsetHeight,
+					left : newLeft
+				});
+
+				if (clingData) {
+					newLeft = Math.max(context.left, Math.min(clingData.left, context.right - element.offsetWidth));
+					newTop = Math.max(context.top, clingData.top);
+				}
 			}
 
-			let newLeft = Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth - element.offsetWidth));
-			let newTop = Math.max(0, e.clientY - offsetY);
-
-			const clingData = this.FindClosestToCling({
-				top : newTop,
-				right : newLeft + element.offsetWidth,
-				bottom : newTop + element.offsetHeight,
-				left : newLeft
-			});
-
-			if (clingData) {
-				element.style.left = Math.max(0, clingData.left) + "px";
-				element.style.top = Math.max(0, clingData.top) + "px";
-			}
-			else {
-				element.style.left = `${newLeft}px`;
-				element.style.top = `${newTop}px`;
-			}
+			element.style.left = `${newLeft}px`;
+			element.style.top = `${newTop}px`;
 		};
 
 		const onMouseUp = () => {
 			isDragging = false;
 			document.removeEventListener("mousemove", onMouseMove);
 			document.removeEventListener("mouseup", onMouseUp);
-			View.GetCreatedViews().values().forEach((view) => { view.m_view.classList.remove("changing"); });
+			View.GetCreatedViews().values().forEach((view) => { view.m_contentNode.classList.remove("changing"); });
+			this.ClampPosition();
 		};
 	}
 
@@ -840,17 +972,17 @@ class View {
 		if (this.m_errorMessage === undefined) {
 			this.m_errorMessage = document.createElement("div");
 			this.m_errorMessage.classList.add("errorMessage");
-			this.m_footer.appendChild(this.m_errorMessage);
+			this.m_footerNode.appendChild(this.m_errorMessage);
 		}
 
-		this.m_footer.classList.add("visible");
+		this.m_footerNode.classList.add("visible");
 		this.m_errorMessage.innerHTML = message || "Error is not specified";
 	}
 
 	HideErrorMessage()
 	{
-		if (this.m_errorMessage !== undefined && this.m_footer.classList.contains("visible")) {
-			this.m_footer.classList.remove("visible");
+		if (this.m_errorMessage !== undefined && this.m_footerNode.classList.contains("visible")) {
+			this.m_footerNode.classList.remove("visible");
 		}
 	}
 
@@ -977,26 +1109,33 @@ class View {
 
 	static UpdateZIndex(view)
 	{
-		if (view.m_parentView.style.zIndex == View.#privateFields.m_uidToView.size) {
+		if (view.m_rootNode.style.zIndex == View.#privateFields.m_uidToView.size) {
 			return;
 		}
 
-		const shiftedPosition = view.m_parentView.style.zIndex;
+		const shiftedPosition = view.m_rootNode.style.zIndex;
 
 		View.#privateFields.m_uidToView.forEach((item, uid) => {
 			if (uid != view.m_uid) {
-				if (item.m_parentView.style.zIndex > shiftedPosition) {
-					item.m_parentView.style.zIndex = item.m_parentView.style.zIndex - 1;
+				if (item.m_rootNode.style.zIndex > shiftedPosition) {
+					item.m_rootNode.style.zIndex = item.m_rootNode.style.zIndex - 1;
 				}
 			}
 			else {
-				item.m_parentView.style.zIndex = View.#privateFields.m_uidToView.size;
+				item.m_rootNode.style.zIndex = View.#privateFields.m_uidToView.size;
 			}
 		});
 	}
 }
 
-// Handle clicks inside iframes to prevent losing focus
+// Fixed-size views may cross viewport edges without triggering their ResizeObserver.
+window.addEventListener("resize", () => {
+	for (const view of View.GetCreatedViews().values()) {
+		view.ClampPosition();
+	}
+});
+
+// Handle clicks inside iframes to prevent losing focus.
 window.addEventListener("message", function(event) {
 	if (event.data && event.data.type === "iframeClick") {
 		const view = View.GetCreatedViews().get(event.data.uid);
@@ -1005,7 +1144,7 @@ window.addEventListener("message", function(event) {
 			return;
 		}
 
-		view.m_parentView.dispatchEvent(new Event("mousedown", { bubbles : true }));
+		view.m_rootNode.dispatchEvent(new Event("mousedown", { bubbles : true }));
 	}
 });
 

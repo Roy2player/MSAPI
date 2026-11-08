@@ -110,7 +110,7 @@ class Account extends View {
 
 	SwitchTemplate()
 	{
-		let currentTemplate = this.m_view.querySelector(":first-child");
+		let currentTemplate = this.m_viewNode.querySelector(":first-child");
 		if (currentTemplate) {
 			currentTemplate.remove();
 		}
@@ -118,9 +118,9 @@ class Account extends View {
 		if (Account.m_isAuthorized) {
 			const template = document.createElement("template");
 			template.innerHTML = Account.authorizedTemplate;
-			this.m_view.appendChild(template.content.cloneNode(true));
+			this.m_viewNode.appendChild(template.content.cloneNode(true));
 
-			let infoForm = this.m_view.querySelector(".info");
+			let infoForm = this.m_viewNode.querySelector(".info");
 			if (!infoForm) {
 				console.warn("Info form is not found");
 				return false;
@@ -223,16 +223,16 @@ class Account extends View {
 
 			login.value = Account.m_login;
 
-			Dynamic.InitTriggers(this.m_view);
+			Dynamic.InitTriggers(this.m_viewNode);
 
 			return true;
 		}
 
 		const template = document.createElement("template");
 		template.innerHTML = Account.unauthorizedTemplate;
-		this.m_view.appendChild(template.content.cloneNode(true));
+		this.m_viewNode.appendChild(template.content.cloneNode(true));
 
-		let loginForm = this.m_view.querySelector(".contentSwitch > .login");
+		let loginForm = this.m_viewNode.querySelector(".contentSwitch > .login");
 		if (!loginForm) {
 			console.warn("Login form is not found");
 			return false;
@@ -244,7 +244,7 @@ class Account extends View {
 			return false;
 		}
 
-		let loginSwitch = this.m_view.querySelector(".switch > .logic");
+		let loginSwitch = this.m_viewNode.querySelector(".switch > .logic");
 		if (!loginSwitch) {
 			console.warn("Login switch button is not found");
 			return false;
@@ -256,7 +256,7 @@ class Account extends View {
 			return false;
 		}
 
-		let signupForm = this.m_view.querySelector(".contentSwitch > .signup");
+		let signupForm = this.m_viewNode.querySelector(".contentSwitch > .signup");
 		if (!signupForm) {
 			console.warn("Signup form is not found");
 			return false;
@@ -325,7 +325,7 @@ class Account extends View {
 			});
 		});
 
-		Dynamic.InitTriggers(this.m_view);
+		Dynamic.InitTriggers(this.m_viewNode);
 
 		return true;
 	}

@@ -12,10 +12,11 @@
  */
 
 :root {
+    /* Color tokens use property, role, and optional state, in that order. */
     /* Main surfaces */
     --background-view: white;
     --background-element-general: #eaecf7;
-    --background-element-sub-general: #d7dbf0;
+    --background-element-secondary: #d7dbf0;
     --background-element-header: #bdc4fa;
     --background-element-general-hover: #faf3bd;
 
@@ -26,21 +27,20 @@
 
     /* Borders and text */
     --border-color-general: #8490A6;
-    --border-color-sub-general: #ccc;
+    --border-color-secondary: #ccc;
     --text-color-general: black;
 
     /* Loading and errors */
-    --loader-background: rgba(255, 255, 255, 0.5);
-    --loader-background-element: #fff;
-    --error-message-color: red;
+    --border-color-loader-track: rgba(255, 255, 255, 0.5);
+    --border-color-loader-indicator: #7c83b5;
+    --text-color-error: red;
 
     /* Selection */
     --background-selection: #a8b8f0;
     --text-color-selection: #000;
 
     /* Cell updates */
-    --cell-update-color: rgba(35, 105, 210, 0.65);
-    --cell-update-tint: rgba(80, 160, 255, 0.18);
+    --background-cell-update: rgba(80, 160, 255, 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,7 +48,7 @@
         /* Main surfaces */
         --background-view: #181c22;
         --background-element-general: #222832;
-        --background-element-sub-general: #2b3340;
+        --background-element-secondary: #2b3340;
         --background-element-header: #303b4b;
         --background-element-general-hover: #35465b;
 
@@ -59,21 +59,20 @@
 
         /* Borders and text */
         --border-color-general: #394350;
-        --border-color-sub-general: #2d3540;
+        --border-color-secondary: #2d3540;
         --text-color-general: #dce3ec;
 
         /* Loading and errors */
-        --loader-background: rgba(15, 19, 25, 0.65);
-        --loader-background-element: #293342;
-        --error-message-color: #ff8791;
+        --border-color-loader-track: rgba(15, 19, 25, 0.65);
+        --border-color-loader-indicator: #90c2ff;
+        --text-color-error: #ff8791;
 
         /* Selection */
         --background-selection: #304f73;
         --text-color-selection: #f1f6fc;
 
         /* Cell updates */
-        --cell-update-color: rgba(112, 181, 255, 0.75);
-        --cell-update-tint: rgba(90, 165, 255, 0.16);
+        --background-cell-update: rgba(90, 165, 255, 0.16);
     }
 }
 

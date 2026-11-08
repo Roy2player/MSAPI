@@ -106,12 +106,11 @@ testRunner.Test('Create InstalledApps panel', async () => {
 	const view = new InstalledApps();
 
 	testRunner.Assert(view.m_viewType, 'Installed apps', 'View type is unexpected');
-	testRunner.Assert(view.m_title, 'Installed apps', 'Title is unexpected');
+	testRunner.Assert(view.GetTitle(), 'Installed apps', 'Title is unexpected');
 	testRunner.Assert(view.m_appType, undefined, 'App type is unexpected');
 	testRunner.Assert(view.m_parameters, null, 'Parameters are unexpected');
-	testRunner.Assert(view.m_parentNode, body.querySelector('main > section.views'), 'Parent node is unexpected');
-	testRunner.Assert(
-		view.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
+	testRunner.Assert(view.m_mountNode, body.querySelector('main > section.views'), 'Mount node is unexpected');
+	testRunner.Assert(view.m_rootNode, body.querySelector('main > section.views > .view'), 'Root node is unexpected');
 
 	testRunner.Assert(View.GetViewTemplate('Installed apps') !== undefined, true, 'View template is unexpected');
 	testRunner.Assert(view.m_grid !== null, true, 'Grid is not created');
@@ -136,12 +135,15 @@ testRunner.Test('Create NewApp and Modify panels', () => {
 	const view = new NewApp(parameters);
 
 	testRunner.Assert(view.m_viewType, 'New app', 'View type is unexpected');
-	testRunner.Assert(view.m_title, 'New app: Strategy', 'Title is unexpected');
+	testRunner.Assert(view.GetTitle(), 'New app: Strategy', 'Title is unexpected');
+	testRunner.Assert(view.m_titleTextNode.textContent, 'New app', 'Title text is unexpected');
+	testRunner.Assert(view.m_titleTextNode.title, 'New app: Strategy', 'Combined title tooltip is unexpected');
+	testRunner.Assert(view.m_titleInfoNode.textContent, 'Strategy', 'Title information is unexpected');
+	testRunner.Assert(view.m_titleInfoNode.hasAttribute('title'), false, 'Title information must not have a tooltip');
 	testRunner.Assert(view.m_appType, "Strategy", 'Alias is unexpected');
 	testRunner.Assert(view.m_parameters, parameters, 'Parameters are unexpected');
-	testRunner.Assert(view.m_parentNode, body.querySelector('main > section.views'), 'Parent node is unexpected');
-	testRunner.Assert(
-		view.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
+	testRunner.Assert(view.m_mountNode, body.querySelector('main > section.views'), 'Mount node is unexpected');
+	testRunner.Assert(view.m_rootNode, body.querySelector('main > section.views > .view'), 'Root node is unexpected');
 
 	testRunner.Assert(View.GetViewTemplate('New app') !== undefined, true, 'View template is unexpected');
 });
@@ -150,12 +152,11 @@ testRunner.Test('Add view to CreatedApps panel', () => {
 	const view = new CreatedApps();
 
 	testRunner.Assert(view.m_viewType, 'Created apps', 'View type is unexpected');
-	testRunner.Assert(view.m_title, 'Created apps', 'Title is unexpected');
+	testRunner.Assert(view.GetTitle(), 'Created apps', 'Title is unexpected');
 	testRunner.Assert(view.m_appType, undefined, 'App type is unexpected');
 	testRunner.Assert(view.m_parameters, null, 'Parameters are unexpected');
-	testRunner.Assert(view.m_parentNode, body.querySelector('main > section.views'), 'Parent node is unexpected');
-	testRunner.Assert(
-		view.m_parentView, body.querySelector('main > section.views > .view'), 'Parent view node is unexpected');
+	testRunner.Assert(view.m_mountNode, body.querySelector('main > section.views'), 'Mount node is unexpected');
+	testRunner.Assert(view.m_rootNode, body.querySelector('main > section.views > .view'), 'Root node is unexpected');
 
 	testRunner.Assert(View.GetViewTemplate('Created apps') !== undefined, true, 'View template is unexpected');
 

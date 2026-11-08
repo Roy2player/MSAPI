@@ -130,7 +130,7 @@ testRunner.Test('Cast input to select and check', async () => {
 	testRunner.Assert(Select.GetSelectViewsNumber(), 1);
 	let views = document.querySelector('.views').querySelectorAll('.view');
 	testRunner.Assert(views.length, 1);
-	testRunner.Assert(views[0].querySelector('.viewHeader .title > span').innerHTML, 'Select: Price type 7683294087');
+	testRunner.Assert(views[0].querySelector('.viewHeader .title > .text').innerHTML, 'Select: Price type 7683294087');
 	testRunner.Assert(views[0].querySelector('.viewHeader .stick').style.display, 'none');
 	testRunner.Assert(views[0].querySelector('.viewHeader .hide').style.display, 'none');
 	testRunner.Assert(views[0].querySelector('.viewHeader .maximize').style.display, 'none');
@@ -364,25 +364,25 @@ testRunner.Test('Keep select open when an internal click removes or moves its ta
 
 		TestRunner.Step('Remove the clicked internal element before the click reaches document');
 		const removeButton = document.createElement("button");
-		view.m_view.appendChild(removeButton);
+		view.m_viewNode.appendChild(removeButton);
 		removeButton.addEventListener("click", () => removeButton.remove());
 		removeButton.click();
 		testRunner.Assert(removeButton.isConnected, false);
-		testRunner.Assert(view.m_parentView.isConnected, true);
+		testRunner.Assert(view.m_rootNode.isConnected, true);
 
 		TestRunner.Step('Move the clicked internal element outside the view');
 		movedButton = document.createElement("button");
-		view.m_view.appendChild(movedButton);
+		view.m_viewNode.appendChild(movedButton);
 		movedButton.addEventListener("click", () => body.appendChild(movedButton));
 		movedButton.click();
 		testRunner.Assert(movedButton.parentNode, body);
-		testRunner.Assert(view.m_parentView.isConnected, true);
+		testRunner.Assert(view.m_rootNode.isConnected, true);
 
 		TestRunner.Step('Selecting an option still closes the view');
-		view.m_view.querySelectorAll(".options > div")[1].querySelector("span").click();
+		view.m_viewNode.querySelectorAll(".options > div")[1].querySelector("span").click();
 		testRunner.Assert(input.value, "Fair");
 		testRunner.Assert(input.getAttribute("select"), "1");
-		testRunner.Assert(view.m_parentView.isConnected, false);
+		testRunner.Assert(view.m_rootNode.isConnected, false);
 
 		TestRunner.Step('An outside click still closes the view when its target removes itself');
 		input.click();
@@ -393,10 +393,10 @@ testRunner.Test('Keep select open when an internal click removes or moves its ta
 		outsideButton.addEventListener("click", () => outsideButton.remove());
 		outsideButton.click();
 		testRunner.Assert(outsideButton.isConnected, false);
-		testRunner.Assert(view.m_parentView.isConnected, false);
+		testRunner.Assert(view.m_rootNode.isConnected, false);
 	}
 	finally {
-		if (view && view.m_parentView.isConnected) {
+		if (view && view.m_rootNode.isConnected) {
 			view.Destructor();
 		}
 		input.remove();

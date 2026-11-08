@@ -31,7 +31,7 @@ class InstalledApps extends View {
 		}
 
 		this.m_grid = new Grid({
-			parent : this.m_view,
+			parent : this.m_viewNode,
 			indexColumnId : 5,
 			columns : [ 1, 5 ],
 			postAddRowFunction : (rowObject) => {

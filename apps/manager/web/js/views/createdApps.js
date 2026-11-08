@@ -39,7 +39,7 @@ class CreatedApps extends View {
 	{
 		this.m_portToParametersStream = new Map();
 		this.m_grid = new Grid({
-			parent : this.m_view,
+			parent : this.m_viewNode,
 			indexColumnId : 1000007,
 			columns : [ 10, 2, 3, 4, 2000001, 5, 1000006, 1000007 ],
 			indexColumn : "Port",

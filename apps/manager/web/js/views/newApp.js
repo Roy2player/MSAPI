@@ -23,12 +23,11 @@ class NewApp extends View {
 	Constructor(parameters)
 	{
 		this.m_appType = parameters.appType;
-		this.m_title += ": " + this.m_appType;
-		this.m_parentView.querySelector(".title > span").textContent = this.m_title;
+		this.SetTitleInfo(this.m_appType);
 
-		this.m_view.querySelector(".button").addEventListener("click", () => {
+		this.m_viewNode.querySelector(".button").addEventListener("click", () => {
 			this.HideErrorMessage();
-			if (!View.ValidateInputs(this.m_view)) {
+			if (!View.ValidateInputs(this.m_viewNode)) {
 				return;
 			}
 
@@ -36,7 +35,7 @@ class NewApp extends View {
 
 			let data = {};
 			data["appType"] = Helper.StringHash32Uint(this.m_appType);
-			data["parameters"] = View.ParseInputs(this.m_view, true);
+			data["parameters"] = View.ParseInputs(this.m_viewNode, true);
 
 			new WebSocketSingle({
 				event : Helper.StringHash32Uint("createApp"),
@@ -59,7 +58,7 @@ View.AddParametersTemplate("New app", "default", [
 	{ "checkboxes" : [ { "key" : "logInFile", "value" : true }, { "key" : "separateDaysLogging", "value" : true } ] }
 ]);
 
-View.AddViewTemplate("New app", `<div class="customView">
+View.AddViewTemplate("New app", `<div class="customView newAppView">
         <div class="items vertical">
 			<div class="item"><input name="name" type="text" placeholder="Name"/></div>
 			<div class="item"><input value="127.0.0.1" name="ip" type="text" placeholder="Listen IP" canBeEmpty="false" /></div>
