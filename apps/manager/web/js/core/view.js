@@ -42,7 +42,8 @@
  * Features:
  * 1) Creating view from template, template should be added by static method before creating view;
  * @field m_viewType - type of view, should match template added by static method;
- * 2) Moving view by dragging header. View cannot be moved outside window borders except bottom border;
+ * 2) Moving view by dragging header. View can cross the bottom border while keeping a minimum visible strip after
+ * dragging ends;
  * 3) Resizing view by dragging any side or corner of view, borders of that view are highlights. View cannot be resized
  *outside window borders except bottom border. View cannot be resized smaller than some minimum in each dimension;
  *
@@ -889,7 +890,8 @@ class View {
 
 	/**************************
 	 * @brief Enables dragging with the primary mouse button while the view is not sticked. Preserves the
-	 * pointer offset and converts viewport movement into containing-block coordinates.
+	 * pointer offset and converts viewport movement into containing-block coordinates. Clamps the final position
+	 * when dragging ends to keep the header and minimum visible height above the bottom edge.
 	 *
 	 * @param node Handle node that starts dragging.
 	 * @param element View node to move.
@@ -961,6 +963,7 @@ class View {
 			document.removeEventListener("mousemove", onMouseMove);
 			document.removeEventListener("mouseup", onMouseUp);
 			View.GetCreatedViews().values().forEach((view) => { view.m_contentNode.classList.remove("changing"); });
+			this.ClampPosition();
 		};
 	}
 

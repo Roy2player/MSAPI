@@ -454,7 +454,9 @@ testRunner.Test('Keep view placement and pointer operations aligned below a page
 			const visibleTop = Math.max(0, top + borderTop);
 			const visibleRight = Math.min(1000, left + borderLeft + width);
 			const visibleBottom = Math.min(768, top + borderTop + height);
-			Object.defineProperties(browser, { innerWidth : { value : 1000 }, innerHeight : { value : 768 } });
+			// Keep viewport dimensions writable when replacing JSDOM accessor properties for resize simulation.
+			Object.defineProperties(browser,
+				{ innerWidth : { value : 1000, writable : true }, innerHeight : { value : 768, writable : true } });
 			main.getBoundingClientRect = () => ({ left, top });
 			Object.defineProperties(main, {
 				clientLeft : { value : borderLeft },
@@ -532,6 +534,16 @@ testRunner.Test('Keep view placement and pointer operations aligned below a page
 			testRunner.Assert(root.getBoundingClientRect().left, visibleLeft);
 			testRunner.Assert(root.getBoundingClientRect().top, visibleTop, 'Dragging stays below the page header');
 			mouse(browser.document, 'mouseup', -100, -100);
+
+			const beforeBottomDrag = root.getBoundingClientRect();
+			mouse(handle, 'mousedown', beforeBottomDrag.left + 10, beforeBottomDrag.top + 10);
+			mouse(browser.document, 'mousemove', beforeBottomDrag.left + 10, visibleBottom - 1);
+			testRunner.Assert(root.getBoundingClientRect().top, visibleBottom - 11,
+				'Dragging follows the pointer near the bottom edge');
+			mouse(browser.document, 'mouseup', beforeBottomDrag.left + 10, visibleBottom - 1);
+			testRunner.Assert(root.getBoundingClientRect().top, visibleBottom - 50,
+				'Ending a drag restores the minimum visible height without a resize notification');
+			testRunner.Assert(root.style.height, '100px', 'Ending a drag preserves the fixed view height');
 
 			root.style.left = '5000px';
 			root.style.top = '5000px';
