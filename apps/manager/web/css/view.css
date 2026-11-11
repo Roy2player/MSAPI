@@ -739,10 +739,14 @@
   background: var(--background-element-general-hover);
 }
 
-.view > .viewContent > .customView.accountView {
-  min-width: 250px;
+.view:has( > .viewContent > .customView.accountView) {
+  width: 250px;
 }
 
-.view > .viewContent > .customView.newAppView {
-    min-width: 300px;
+.view:has( > .viewContent > .customView.newAppView) {
+  width: 300px;
+}
+
+.view:has( > .viewContent > .customView.selectView) {
+  width: 300px;
 }
