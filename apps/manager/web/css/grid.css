@@ -109,7 +109,7 @@
 }
 
 .grid > .row.header > .cell > .text {
-    padding: 1px 0 1px 5px;
+    padding: 1px 5px;
     overflow: hidden;
     min-width: 0;
     flex: 1;
@@ -151,6 +151,9 @@
     transition: all 0.3s ease 0s;
     overflow: hidden;
     position: relative;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
 }
 
 .grid>.row.header>.cell>.group>.action::before {

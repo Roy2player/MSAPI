@@ -714,7 +714,8 @@ class GridChecking {
 		const columnObject = grid.m_idToColumnObject.get(columnId);
 		testRunner.Assert(columnObject != undefined, true);
 		testRunner.Assert(columnObject.rowObjectToCellNode.size > 0, true);
-		columnObject.rowObjectToCellNode.forEach((cell) => {
+		const cells = [ columnObject.headerCell, ...columnObject.rowObjectToCellNode.values() ];
+		cells.forEach((cell) => {
 			testRunner.Assert(
 				cell.style.textAlign == "left", align == Grid.ALIGN_TYPE.left, `Column id is ${columnId}`);
 			testRunner.Assert(cell.style.textAlign == "center" || cell.style.textAlign == "",
@@ -1620,6 +1621,12 @@ testRunner.Test('Test sorting, align and filtering functionality. Include settin
 		TestRunner.Step("Change align to right for " + columnObject.id);
 		await GridChecking.ChangeSettingsByClick(
 			{ grid, inView : true, columnId : columnObject.id, align : Grid.ALIGN_TYPE.right, headers });
+	}
+
+	for (const [order, columnObject] of grid.m_orderToColumnObject.entries()) {
+		TestRunner.Step("Change align to center for " + columnObject.id);
+		await GridChecking.ChangeSettingsByClick(
+			{ grid, inView : true, columnId : columnObject.id, align : Grid.ALIGN_TYPE.center, headers });
 	}
 
 	await GridChecking.CheckRows(grid, data);

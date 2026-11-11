@@ -732,17 +732,27 @@ class Grid {
 		});
 	}
 
+	/**************************
+	 * @brief Applies the column alignment to its header text and all existing data cells.
+	 *
+	 * @param columnObject Column with the selected alignment, header cell, and data cells.
+	 *
+	 * @test Yes.
+	 */
 	static ApplyAlignment({ columnObject })
 	{
 		if (columnObject.aligned == Grid.ALIGN_TYPE.left) {
+			columnObject.headerCell.style.textAlign = "left";
 			columnObject.rowObjectToCellNode.forEach((cell) => { cell.style.textAlign = "left"; });
 			return;
 		}
 		if (columnObject.aligned == Grid.ALIGN_TYPE.center) {
+			columnObject.headerCell.style.textAlign = "center";
 			columnObject.rowObjectToCellNode.forEach((cell) => { cell.style.textAlign = "center"; });
 			return;
 		}
 		if (columnObject.aligned == Grid.ALIGN_TYPE.right) {
+			columnObject.headerCell.style.textAlign = "right";
 			columnObject.rowObjectToCellNode.forEach((cell) => { cell.style.textAlign = "right"; });
 			return;
 		}

@@ -50,7 +50,7 @@
         --background-element-general: #222832;
         --background-element-secondary: #2b3340;
         --background-element-header: #303b4b;
-        --background-element-general-hover: #35465b;
+        --background-element-general-hover: #504914;
 
         /* States */
         --background-element-invalid: #482a30;
@@ -82,7 +82,7 @@
 }
 
 body {
-    overflow-x: hidden;
+    overflow: hidden;
     min-width: 320px;
     line-height: 1.15;
     font-size: 15px;
